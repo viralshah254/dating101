@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../location/app_location_service.dart';
 import '../../features/splash/screens/splash_screen.dart';
 import '../../features/splash/screens/tagline_screen.dart';
+import '../../features/location/screens/location_required_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/mode_select/screens/mode_select_screen.dart';
@@ -26,6 +28,21 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
+    redirect: (context, state) async {
+      final loc = state.matchedLocation;
+      final isShellRoute = loc == '/' ||
+          loc.startsWith('/map') ||
+          loc.startsWith('/chats') ||
+          loc.startsWith('/community') ||
+          loc.startsWith('/profile-settings');
+      if (isShellRoute) {
+        final access = await AppLocationService.instance.checkAccess();
+        if (access != LocationAccess.granted) {
+          return '/location-required?then=${Uri.encodeComponent(loc)}';
+        }
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/splash',
@@ -34,6 +51,13 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/tagline',
         builder: (_, __) => const TaglineScreen(),
+      ),
+      GoRoute(
+        path: '/location-required',
+        builder: (_, state) {
+          final thenPath = state.uri.queryParameters['then'] ?? '/';
+          return LocationRequiredScreen(thenPath: thenPath);
+        },
       ),
       GoRoute(
         path: '/login',

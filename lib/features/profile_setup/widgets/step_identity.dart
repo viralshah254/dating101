@@ -85,7 +85,29 @@ class StepIdentity extends StatelessWidget {
             hint: nameHint,
             textInputAction: TextInputAction.next,
             onChanged: (v) {
-              formData.name = v;
+              formData.name = ProfileFormData.toTitleCase(v);
+              onChanged();
+            },
+          ),
+          if (formData.name.trim().isNotEmpty && !ProfileFormData.isNameValid(formData.name)) ...[
+            const SizedBox(height: 6),
+            Text(
+              l.nameValidationHint,
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+
+          // ── About me (first page, after name) ────────────────────
+          _SectionLabel(label: forSelf ? l.profileBuilderAbout : l.dynAboutTitle(subject)),
+          const SizedBox(height: 8),
+          _StyledMultilineField(
+            value: formData.bio,
+            hint: forSelf ? 'Write a few lines about yourself...' : l.dynAboutHint(subject),
+            onChanged: (v) {
+              formData.bio = v;
               onChanged();
             },
           ),
@@ -125,7 +147,7 @@ class StepIdentity extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // ── Date of birth (mandatory) ───────────────────────────
+          // ── Date of birth (mandatory, 18+) ──────────────────────
           _SectionLabel(label: dobLabel, mandatory: true),
           const SizedBox(height: 8),
           _DateOfBirthPicker(
@@ -134,6 +156,20 @@ class StepIdentity extends StatelessWidget {
               formData.dateOfBirth = d;
               onChanged();
             },
+          ),
+          if (formData.dateOfBirth != null && !ProfileFormData.isAtLeast18(formData.dateOfBirth)) ...[
+            const SizedBox(height: 6),
+            Text(
+              l.dobMustBe18,
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          _ConfirmAge18Checkbox(
+            formData: formData,
+            onChanged: onChanged,
           ),
           const SizedBox(height: 24),
 
@@ -622,6 +658,62 @@ class _StyledTextFieldState extends State<_StyledTextField> {
   }
 }
 
+class _StyledMultilineField extends StatefulWidget {
+  const _StyledMultilineField({
+    required this.value,
+    required this.hint,
+    required this.onChanged,
+  });
+
+  final String value;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_StyledMultilineField> createState() => _StyledMultilineFieldState();
+}
+
+class _StyledMultilineFieldState extends State<_StyledMultilineField> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(_StyledMultilineField old) {
+    super.didUpdateWidget(old);
+    if (old.value != widget.value && widget.value != _ctrl.text) {
+      _ctrl.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _ctrl,
+      maxLines: 4,
+      textInputAction: TextInputAction.newline,
+      decoration: InputDecoration(
+        hintText: widget.hint,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.all(16),
+      ),
+      onChanged: widget.onChanged,
+    );
+  }
+}
+
 class _ChipSelector extends StatelessWidget {
   const _ChipSelector({
     required this.options,
@@ -669,11 +761,70 @@ class _ChipSelector extends StatelessWidget {
   }
 }
 
+class _ConfirmAge18Checkbox extends StatelessWidget {
+  const _ConfirmAge18Checkbox({required this.formData, required this.onChanged});
+
+  final ProfileFormData formData;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final forSelf = formData.isForSelf;
+    final label = forSelf ? l.confirmAge18Self : l.confirmAge18Other;
+    final accent = Theme.of(context).colorScheme.primary;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return InkWell(
+      onTap: () {
+        formData.confirmedAge18 = !formData.confirmedAge18;
+        onChanged();
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: formData.confirmedAge18,
+                onChanged: (v) {
+                  formData.confirmedAge18 = v ?? false;
+                  onChanged();
+                },
+                activeColor: accent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: onSurface,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DateOfBirthPicker extends StatelessWidget {
   const _DateOfBirthPicker({required this.value, required this.onChanged});
 
   final DateTime? value;
   final ValueChanged<DateTime> onChanged;
+
+  static DateTime get _today => DateTime.now();
+  static DateTime get _maxDate => DateTime(_today.year - 18, _today.month, _today.day);
 
   @override
   Widget build(BuildContext context) {
@@ -684,12 +835,10 @@ class _DateOfBirthPicker extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        final now = DateTime.now();
-        final picked = await showDatePicker(
+        final picked = await _showEfficientDatePicker(
           context: context,
-          initialDate: value ?? DateTime(now.year - 25, 1, 1),
-          firstDate: DateTime(1950),
-          lastDate: DateTime(now.year - 18, now.month, now.day),
+          initial: value ?? DateTime(_today.year - 25, 1, 1),
+          lastDate: _maxDate,
         );
         if (picked != null) onChanged(picked);
       },
@@ -714,6 +863,125 @@ class _DateOfBirthPicker extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Efficient picker: year and month via dropdowns, day in a grid or dropdown.
+  static Future<DateTime?> _showEfficientDatePicker({
+    required BuildContext context,
+    required DateTime initial,
+    required DateTime lastDate,
+  }) {
+    final l = AppLocalizations.of(context)!;
+    final firstDate = DateTime(1950, 1, 1);
+    int year = initial.year.clamp(firstDate.year, lastDate.year);
+    int month = initial.month.clamp(1, 12);
+    int day = initial.day;
+
+    return showDialog<DateTime>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            int daysInMonth = DateTime(year, month + 1, 0).day;
+            int dayClamped = day.clamp(1, daysInMonth);
+
+            final years = List.generate(lastDate.year - firstDate.year + 1, (i) => lastDate.year - i);
+            const months = [
+              'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+            ];
+
+            return AlertDialog(
+              title: Text(l.selectDate),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            value: year,
+                            decoration: InputDecoration(
+                              labelText: 'Year',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            isExpanded: true,
+                            items: years.map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                year = v;
+                                daysInMonth = DateTime(year, month + 1, 0).day;
+                                if (day > daysInMonth) day = daysInMonth;
+                                setState(() {});
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            value: month,
+                            decoration: InputDecoration(
+                              labelText: 'Month',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            isExpanded: true,
+                            items: List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(value: m, child: Text(months[m - 1]))).toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                month = v;
+                                daysInMonth = DateTime(year, month + 1, 0).day;
+                                if (day > daysInMonth) day = daysInMonth;
+                                setState(() {});
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: dayClamped,
+                      decoration: InputDecoration(
+                        labelText: 'Day',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      isExpanded: true,
+                      items: List.generate(daysInMonth, (i) => i + 1).map((d) => DropdownMenuItem(value: d, child: Text('$d'))).toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          day = v;
+                          setState(() {});
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final d = day.clamp(1, DateTime(year, month + 1, 0).day);
+                    final picked = DateTime(year, month, d);
+                    Navigator.of(ctx).pop(picked);
+                  },
+                  child: Text(l.ok),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

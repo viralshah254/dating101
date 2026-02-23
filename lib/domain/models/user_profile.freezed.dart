@@ -42,6 +42,12 @@ mixin _$UserProfile {
       throw _privateConstructorUsedError;
   DateTime? get lastActiveAt => throw _privateConstructorUsedError;
 
+  /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
+  double? get creationLat => throw _privateConstructorUsedError;
+  double? get creationLng => throw _privateConstructorUsedError;
+  DateTime? get creationAt => throw _privateConstructorUsedError;
+  String? get creationAddress => throw _privateConstructorUsedError;
+
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -78,6 +84,10 @@ abstract class $UserProfileCopyWith<$Res> {
     MatrimonyExtensions? matrimonyExtensions,
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
+    double? creationLat,
+    double? creationLng,
+    DateTime? creationAt,
+    String? creationAddress,
   });
 
   $VerificationStatusCopyWith<$Res> get verificationStatus;
@@ -122,6 +132,10 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? matrimonyExtensions = freezed,
     Object? partnerPreferences = freezed,
     Object? lastActiveAt = freezed,
+    Object? creationLat = freezed,
+    Object? creationLng = freezed,
+    Object? creationAt = freezed,
+    Object? creationAddress = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -209,6 +223,22 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
                 ? _value.lastActiveAt
                 : lastActiveAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            creationLat: freezed == creationLat
+                ? _value.creationLat
+                : creationLat // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            creationLng: freezed == creationLng
+                ? _value.creationLng
+                : creationLng // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            creationAt: freezed == creationAt
+                ? _value.creationAt
+                : creationAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            creationAddress: freezed == creationAddress
+                ? _value.creationAddress
+                : creationAddress // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -304,6 +334,10 @@ abstract class _$$UserProfileImplCopyWith<$Res>
     MatrimonyExtensions? matrimonyExtensions,
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
+    double? creationLat,
+    double? creationLng,
+    DateTime? creationAt,
+    String? creationAddress,
   });
 
   @override
@@ -351,6 +385,10 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? matrimonyExtensions = freezed,
     Object? partnerPreferences = freezed,
     Object? lastActiveAt = freezed,
+    Object? creationLat = freezed,
+    Object? creationLng = freezed,
+    Object? creationAt = freezed,
+    Object? creationAddress = freezed,
   }) {
     return _then(
       _$UserProfileImpl(
@@ -438,6 +476,22 @@ class __$$UserProfileImplCopyWithImpl<$Res>
             ? _value.lastActiveAt
             : lastActiveAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        creationLat: freezed == creationLat
+            ? _value.creationLat
+            : creationLat // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        creationLng: freezed == creationLng
+            ? _value.creationLng
+            : creationLng // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        creationAt: freezed == creationAt
+            ? _value.creationAt
+            : creationAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        creationAddress: freezed == creationAddress
+            ? _value.creationAddress
+            : creationAddress // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -468,6 +522,10 @@ class _$UserProfileImpl extends _UserProfile {
     this.matrimonyExtensions,
     this.partnerPreferences,
     this.lastActiveAt,
+    this.creationLat,
+    this.creationLng,
+    this.creationAt,
+    this.creationAddress,
   }) : _languagesSpoken = languagesSpoken,
        _photoUrls = photoUrls,
        _interests = interests,
@@ -549,9 +607,19 @@ class _$UserProfileImpl extends _UserProfile {
   @override
   final DateTime? lastActiveAt;
 
+  /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
+  @override
+  final double? creationLat;
+  @override
+  final double? creationLng;
+  @override
+  final DateTime? creationAt;
+  @override
+  final String? creationAddress;
+
   @override
   String toString() {
-    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt)';
+    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
   }
 
   @override
@@ -603,7 +671,15 @@ class _$UserProfileImpl extends _UserProfile {
             (identical(other.partnerPreferences, partnerPreferences) ||
                 other.partnerPreferences == partnerPreferences) &&
             (identical(other.lastActiveAt, lastActiveAt) ||
-                other.lastActiveAt == lastActiveAt));
+                other.lastActiveAt == lastActiveAt) &&
+            (identical(other.creationLat, creationLat) ||
+                other.creationLat == creationLat) &&
+            (identical(other.creationLng, creationLng) ||
+                other.creationLng == creationLng) &&
+            (identical(other.creationAt, creationAt) ||
+                other.creationAt == creationAt) &&
+            (identical(other.creationAddress, creationAddress) ||
+                other.creationAddress == creationAddress));
   }
 
   @override
@@ -630,6 +706,10 @@ class _$UserProfileImpl extends _UserProfile {
     matrimonyExtensions,
     partnerPreferences,
     lastActiveAt,
+    creationLat,
+    creationLng,
+    creationAt,
+    creationAddress,
   ]);
 
   /// Create a copy of UserProfile
@@ -664,6 +744,10 @@ abstract class _UserProfile extends UserProfile {
     final MatrimonyExtensions? matrimonyExtensions,
     final PartnerPreferences? partnerPreferences,
     final DateTime? lastActiveAt,
+    final double? creationLat,
+    final double? creationLng,
+    final DateTime? creationAt,
+    final String? creationAddress,
   }) = _$UserProfileImpl;
   const _UserProfile._() : super._();
 
@@ -709,6 +793,16 @@ abstract class _UserProfile extends UserProfile {
   PartnerPreferences? get partnerPreferences;
   @override
   DateTime? get lastActiveAt;
+
+  /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
+  @override
+  double? get creationLat;
+  @override
+  double? get creationLng;
+  @override
+  DateTime? get creationAt;
+  @override
+  String? get creationAddress;
 
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.

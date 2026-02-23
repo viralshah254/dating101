@@ -34,6 +34,11 @@ class UserProfile with _$UserProfile {
     MatrimonyExtensions? matrimonyExtensions,
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
+    /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
+    double? creationLat,
+    double? creationLng,
+    DateTime? creationAt,
+    String? creationAddress,
   }) = _UserProfile;
 
   /// For discovery cards: display location (city or city, country).

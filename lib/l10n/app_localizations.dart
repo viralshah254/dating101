@@ -614,6 +614,30 @@ abstract class AppLocalizations {
   /// **'Interests'**
   String get interests;
 
+  /// No description provided for @interestsAndHobbies.
+  ///
+  /// In en, this message translates to:
+  /// **'Interests & Hobbies'**
+  String get interestsAndHobbies;
+
+  /// No description provided for @interestsAndHobbiesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick up to 6 — we\'ll use them for better matches.'**
+  String get interestsAndHobbiesSubtitle;
+
+  /// No description provided for @interestsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search interests & hobbies...'**
+  String get interestsSearchHint;
+
+  /// No description provided for @interestsMaxReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum 6 interests. Remove one to add another.'**
+  String get interestsMaxReached;
+
   /// No description provided for @prompt.
   ///
   /// In en, this message translates to:
@@ -779,8 +803,14 @@ abstract class AppLocalizations {
   /// No description provided for @nameHint.
   ///
   /// In en, this message translates to:
-  /// **'e.g. Priya, Arjun'**
+  /// **'e.g. Priya Sharma, Arjun Kumar'**
   String get nameHint;
+
+  /// No description provided for @nameValidationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 2 words with capital letters, e.g. Priya Sharma'**
+  String get nameValidationHint;
 
   /// No description provided for @aboutYou.
   ///
@@ -1208,6 +1238,36 @@ abstract class AppLocalizations {
   /// **'Date of birth'**
   String get dateOfBirth;
 
+  /// No description provided for @confirmAge18Self.
+  ///
+  /// In en, this message translates to:
+  /// **'I confirm I am 18 years or older'**
+  String get confirmAge18Self;
+
+  /// No description provided for @confirmAge18Other.
+  ///
+  /// In en, this message translates to:
+  /// **'I confirm this person is 18 years or older'**
+  String get confirmAge18Other;
+
+  /// No description provided for @dobMustBe18.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be 18 or older'**
+  String get dobMustBe18;
+
+  /// No description provided for @selectDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select date'**
+  String get selectDate;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
   /// No description provided for @currentLocation.
   ///
   /// In en, this message translates to:
@@ -1238,10 +1298,22 @@ abstract class AppLocalizations {
   /// **'Photos'**
   String get profileStepPhotos;
 
+  /// No description provided for @profileStepEducation.
+  ///
+  /// In en, this message translates to:
+  /// **'Education'**
+  String get profileStepEducation;
+
+  /// No description provided for @profileStepCareer.
+  ///
+  /// In en, this message translates to:
+  /// **'Career'**
+  String get profileStepCareer;
+
   /// No description provided for @profileStepDetails.
   ///
   /// In en, this message translates to:
-  /// **'Details'**
+  /// **'Lifestyle & more'**
   String get profileStepDetails;
 
   /// No description provided for @profileStepPreferences.
@@ -1249,6 +1321,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Preferences'**
   String get profileStepPreferences;
+
+  /// No description provided for @addEducation.
+  ///
+  /// In en, this message translates to:
+  /// **'Add education'**
+  String get addEducation;
+
+  /// No description provided for @whatDidYouComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you complete?'**
+  String get whatDidYouComplete;
+
+  /// No description provided for @whatDidYouCompleteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. High school, Bachelors, MBA'**
+  String get whatDidYouCompleteHint;
+
+  /// No description provided for @educationStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'First choose high school or college/university. For degrees, add your institution — it helps with matching.'**
+  String get educationStepSubtitle;
+
+  /// No description provided for @searchUniversity.
+  ///
+  /// In en, this message translates to:
+  /// **'University / college'**
+  String get searchUniversity;
+
+  /// No description provided for @searchUniversityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. IIT Delhi, Christ University'**
+  String get searchUniversityHint;
+
+  /// No description provided for @universityImportantHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choosing your institution helps with better matches.'**
+  String get universityImportantHint;
+
+  /// No description provided for @degreeLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Degree / level'**
+  String get degreeLevel;
+
+  /// No description provided for @searchDegreeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search degree or level'**
+  String get searchDegreeHint;
+
+  /// No description provided for @graduationYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year of graduation'**
+  String get graduationYear;
+
+  /// No description provided for @degreeGrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Degree grade / classification'**
+  String get degreeGrade;
+
+  /// No description provided for @degreeGradeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. UK 1st class honours, India First class'**
+  String get degreeGradeHint;
+
+  /// No description provided for @scoreCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Grading system'**
+  String get scoreCountry;
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
 
   /// No description provided for @datingIntentQuestion.
   ///
@@ -2041,6 +2197,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Background'**
   String get backgroundTitle;
+
+  /// No description provided for @aboutCareer.
+  ///
+  /// In en, this message translates to:
+  /// **'About your career'**
+  String get aboutCareer;
+
+  /// No description provided for @aboutCareerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Role, years of experience, what you love about your work'**
+  String get aboutCareerHint;
+
+  /// No description provided for @aboutEducation.
+  ///
+  /// In en, this message translates to:
+  /// **'About your education'**
+  String get aboutEducation;
+
+  /// No description provided for @aboutEducationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Degrees, institutions, certifications (CFA, etc.)'**
+  String get aboutEducationHint;
+
+  /// No description provided for @sectorQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Sector'**
+  String get sectorQuestion;
+
+  /// No description provided for @sectorPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get sectorPrivate;
+
+  /// No description provided for @sectorGovernment.
+  ///
+  /// In en, this message translates to:
+  /// **'Government'**
+  String get sectorGovernment;
+
+  /// No description provided for @sectorPSU.
+  ///
+  /// In en, this message translates to:
+  /// **'PSU'**
+  String get sectorPSU;
+
+  /// No description provided for @sectorBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Business / Self-employed'**
+  String get sectorBusiness;
+
+  /// No description provided for @sectorOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get sectorOther;
+
+  /// No description provided for @familyLocationQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Family based out of'**
+  String get familyLocationQuestion;
+
+  /// No description provided for @familyLocationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Bhilai, Mumbai'**
+  String get familyLocationHint;
+
+  /// No description provided for @householdIncomeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Household income'**
+  String get householdIncomeQuestion;
+
+  /// No description provided for @motherOccupationQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Mother\'s occupation'**
+  String get motherOccupationQuestion;
+
+  /// No description provided for @motherOccupationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Homemaker, Teacher'**
+  String get motherOccupationHint;
+
+  /// No description provided for @fatherOccupationQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Father\'s occupation'**
+  String get fatherOccupationQuestion;
+
+  /// No description provided for @fatherOccupationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Govt. employee, Business'**
+  String get fatherOccupationHint;
+
+  /// No description provided for @motherAgeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Mother\'s age'**
+  String get motherAgeQuestion;
+
+  /// No description provided for @fatherAgeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Father\'s age'**
+  String get fatherAgeQuestion;
+
+  /// No description provided for @siblingsQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Siblings'**
+  String get siblingsQuestion;
+
+  /// No description provided for @siblingsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 1 Brother (married), 1 Sister (unmarried)'**
+  String get siblingsHint;
+
+  /// No description provided for @siblingsBrothers.
+  ///
+  /// In en, this message translates to:
+  /// **'Brothers'**
+  String get siblingsBrothers;
+
+  /// No description provided for @siblingsSisters.
+  ///
+  /// In en, this message translates to:
+  /// **'Sisters'**
+  String get siblingsSisters;
+
+  /// No description provided for @birthTimeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Time of birth'**
+  String get birthTimeQuestion;
+
+  /// No description provided for @birthTimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 11:00 AM (for horoscope)'**
+  String get birthTimeHint;
+
+  /// No description provided for @birthPlaceQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Place of birth'**
+  String get birthPlaceQuestion;
+
+  /// No description provided for @birthPlaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Bhilai, Chhattisgarh'**
+  String get birthPlaceHint;
+
+  /// No description provided for @prefCountryQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred country'**
+  String get prefCountryQuestion;
+
+  /// No description provided for @prefCountryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. India, UAE, UK, Any'**
+  String get prefCountryHint;
+
+  /// No description provided for @strictMatchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Strict (only show matches with this)'**
+  String get strictMatchLabel;
+
+  /// No description provided for @locationRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location required'**
+  String get locationRequiredTitle;
+
+  /// No description provided for @locationRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'DesiLink needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.'**
+  String get locationRequiredMessage;
+
+  /// No description provided for @locationAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location'**
+  String get locationAllow;
+
+  /// No description provided for @locationOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get locationOpenSettings;
+
+  /// No description provided for @locationServiceDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Please turn on location in your device settings to continue.'**
+  String get locationServiceDisabled;
+
+  /// No description provided for @locationPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location access was denied. Enable it in settings to use the app.'**
+  String get locationPermissionDenied;
+
+  /// No description provided for @profileCreationLocationError.
+  ///
+  /// In en, this message translates to:
+  /// **'We need your location to create your profile (for safety and support). Please allow location and try again.'**
+  String get profileCreationLocationError;
 
   /// No description provided for @emptyStateGeneric.
   ///

@@ -270,6 +270,20 @@ class AppLocalizationsMr extends AppLocalizations {
   String get interests => 'Interests';
 
   @override
+  String get interestsAndHobbies => 'Interests & Hobbies';
+
+  @override
+  String get interestsAndHobbiesSubtitle =>
+      'Pick up to 6 — we\'ll use them for better matches.';
+
+  @override
+  String get interestsSearchHint => 'Search interests & hobbies...';
+
+  @override
+  String get interestsMaxReached =>
+      'Maximum 6 interests. Remove one to add another.';
+
+  @override
   String get prompt => 'Prompt';
 
   @override
@@ -354,6 +368,10 @@ class AppLocalizationsMr extends AppLocalizations {
 
   @override
   String get nameHint => 'e.g. Priya, Arjun';
+
+  @override
+  String get nameValidationHint =>
+      'Use at least 2 words with capital letters, e.g. Priya Sharma';
 
   @override
   String get aboutYou => 'A few lines about you';
@@ -580,6 +598,21 @@ class AppLocalizationsMr extends AppLocalizations {
   String get dateOfBirth => 'Date of birth';
 
   @override
+  String get confirmAge18Self => 'I confirm I am 18 years or older';
+
+  @override
+  String get confirmAge18Other => 'I confirm this person is 18 years or older';
+
+  @override
+  String get dobMustBe18 => 'Must be 18 or older';
+
+  @override
+  String get selectDate => 'Select date';
+
+  @override
+  String get ok => 'OK';
+
+  @override
   String get currentLocation => 'Where do you live?';
 
   @override
@@ -595,10 +628,60 @@ class AppLocalizationsMr extends AppLocalizations {
   String get profileStepPhotos => 'Photos';
 
   @override
-  String get profileStepDetails => 'Details';
+  String get profileStepEducation => 'Education';
+
+  @override
+  String get profileStepCareer => 'Career';
+
+  @override
+  String get profileStepDetails => 'Lifestyle & more';
 
   @override
   String get profileStepPreferences => 'Preferences';
+
+  @override
+  String get addEducation => 'Add education';
+
+  @override
+  String get whatDidYouComplete => 'What did you complete?';
+
+  @override
+  String get whatDidYouCompleteHint => 'e.g. High school, Bachelors, MBA';
+
+  @override
+  String get educationStepSubtitle =>
+      'First choose high school or college/university. For degrees, add your institution — it helps with matching.';
+
+  @override
+  String get searchUniversity => 'University / college';
+
+  @override
+  String get searchUniversityHint => 'e.g. IIT Delhi, Christ University';
+
+  @override
+  String get universityImportantHint =>
+      'Choosing your institution helps with better matches.';
+
+  @override
+  String get degreeLevel => 'Degree / level';
+
+  @override
+  String get searchDegreeHint => 'Search degree or level';
+
+  @override
+  String get graduationYear => 'Year of graduation';
+
+  @override
+  String get degreeGrade => 'Degree grade / classification';
+
+  @override
+  String get degreeGradeHint => 'e.g. UK 1st class honours, India First class';
+
+  @override
+  String get scoreCountry => 'Grading system';
+
+  @override
+  String get remove => 'Remove';
 
   @override
   String get datingIntentQuestion => 'What are you looking for?';
@@ -1024,6 +1107,123 @@ class AppLocalizationsMr extends AppLocalizations {
 
   @override
   String get backgroundTitle => 'Background';
+
+  @override
+  String get aboutCareer => 'About your career';
+
+  @override
+  String get aboutCareerHint =>
+      'e.g. Role, years of experience, what you love about your work';
+
+  @override
+  String get aboutEducation => 'About your education';
+
+  @override
+  String get aboutEducationHint =>
+      'e.g. Degrees, institutions, certifications (CFA, etc.)';
+
+  @override
+  String get sectorQuestion => 'Sector';
+
+  @override
+  String get sectorPrivate => 'Private';
+
+  @override
+  String get sectorGovernment => 'Government';
+
+  @override
+  String get sectorPSU => 'PSU';
+
+  @override
+  String get sectorBusiness => 'Business / Self-employed';
+
+  @override
+  String get sectorOther => 'Other';
+
+  @override
+  String get familyLocationQuestion => 'Family based out of';
+
+  @override
+  String get familyLocationHint => 'e.g. Bhilai, Mumbai';
+
+  @override
+  String get householdIncomeQuestion => 'Household income';
+
+  @override
+  String get motherOccupationQuestion => 'Mother\'s occupation';
+
+  @override
+  String get motherOccupationHint => 'e.g. Homemaker, Teacher';
+
+  @override
+  String get fatherOccupationQuestion => 'Father\'s occupation';
+
+  @override
+  String get fatherOccupationHint => 'e.g. Govt. employee, Business';
+
+  @override
+  String get motherAgeQuestion => 'Mother\'s age';
+
+  @override
+  String get fatherAgeQuestion => 'Father\'s age';
+
+  @override
+  String get siblingsQuestion => 'Siblings';
+
+  @override
+  String get siblingsHint => 'e.g. 1 Brother (married), 1 Sister (unmarried)';
+
+  @override
+  String get siblingsBrothers => 'Brothers';
+
+  @override
+  String get siblingsSisters => 'Sisters';
+
+  @override
+  String get birthTimeQuestion => 'Time of birth';
+
+  @override
+  String get birthTimeHint => 'e.g. 11:00 AM (for horoscope)';
+
+  @override
+  String get birthPlaceQuestion => 'Place of birth';
+
+  @override
+  String get birthPlaceHint => 'e.g. Bhilai, Chhattisgarh';
+
+  @override
+  String get prefCountryQuestion => 'Preferred country';
+
+  @override
+  String get prefCountryHint => 'e.g. India, UAE, UK, Any';
+
+  @override
+  String get strictMatchLabel => 'Strict (only show matches with this)';
+
+  @override
+  String get locationRequiredTitle => 'Location required';
+
+  @override
+  String get locationRequiredMessage =>
+      'DesiLink needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
+
+  @override
+  String get locationAllow => 'Allow location';
+
+  @override
+  String get locationOpenSettings => 'Open settings';
+
+  @override
+  String get locationServiceDisabled =>
+      'Please turn on location in your device settings to continue.';
+
+  @override
+  String get locationPermissionDenied =>
+      'Location access was denied. Enable it in settings to use the app.';
+
+  @override
+  String get profileCreationLocationError =>
+      'We need your location to create your profile (for safety and support). Please allow location and try again.';
 
   @override
   String get emptyStateGeneric => 'Nothing here yet';

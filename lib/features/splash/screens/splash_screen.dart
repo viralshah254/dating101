@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/location/app_location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
@@ -23,7 +24,14 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigateAfterSplash() async {
     await Future<void>.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
-    context.go('/login');
+    // Automate location check on app open: show location-required if not granted
+    final access = await AppLocationService.instance.checkAccess();
+    if (!mounted) return;
+    if (access == LocationAccess.granted) {
+      context.go('/login');
+    } else {
+      context.go('/location-required?then=${Uri.encodeComponent('/login')}');
+    }
   }
 
   @override
