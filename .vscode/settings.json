@@ -1,0 +1,10 @@
+{
+  "dart.packageConfigFile": ".dart_tool/package_config.json",
+  "dart.analysisServerFolding": true,
+  "editor.formatOnSave": true,
+  "[dart]": {
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.selectionHighlight": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false
+  }
+}
