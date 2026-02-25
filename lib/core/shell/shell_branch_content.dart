@@ -15,7 +15,7 @@ import '../../features/community/screens/community_screen.dart';
 
 /// Renders the correct screen for a shell branch index and current app mode.
 /// If mode is null (first run), branch 0 shows ModeSelectScreen.
-/// Branch indices: 0=Discover/Matches, 1=Map/Requests, 2=Chats, 3=Communities/Shortlist, 4=Profile.
+/// Branch indices: 0=Discover/Matches, 1=Map/Requests, 2=Chats/Shortlist, 3=Communities/Chats, 4=Profile.
 class ShellBranchContent extends ConsumerWidget {
   const ShellBranchContent({super.key, required this.branchIndex});
 
@@ -46,16 +46,16 @@ class ShellBranchContent extends ConsumerWidget {
           return const DiscoveryScreen();
       }
     } else {
-      // matrimony
+      // matrimony: 0=Matches, 1=Requests, 2=Shortlist, 3=Chats, 4=Profile
       switch (branchIndex) {
         case 0:
           return const MatchesScreen();
         case 1:
           return const RequestsScreen();
         case 2:
-          return const ChatListScreen();
-        case 3:
           return const ShortlistScreen();
+        case 3:
+          return const ChatListScreen();
         case 4:
           return const ProfileSettingsScreen();
         default:

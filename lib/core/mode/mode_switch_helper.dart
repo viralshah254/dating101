@@ -8,9 +8,8 @@ import '../theme/app_typography.dart';
 import 'app_mode.dart';
 import 'mode_provider.dart';
 
-/// Handles mode switching with profile-completion prompt.
-/// When switching from dating to matrimony, shows a dialog
-/// asking the user to complete their extended profile.
+/// Handles mode switching with optional profile-completion prompt.
+/// Profile data is shared; user can complete mode-specific details in profile-setup.
 Future<void> switchAppMode(
   BuildContext context,
   WidgetRef ref,
@@ -23,17 +22,27 @@ Future<void> switchAppMode(
 
   if (!context.mounted) return;
 
-  if (newMode == AppMode.matrimony) {
-    final shouldComplete = await _showCompletionDialog(context);
-    if (shouldComplete && context.mounted) {
-      context.push('/profile-setup');
-    }
+  // Navigate to home so shell shows the correct mode (Discover vs Matches, etc.)
+  context.go('/');
+
+  if (!context.mounted) return;
+
+  // Offer to complete/update profile for the new mode
+  final shouldComplete = await _showCompletionDialog(context, newMode);
+  if (shouldComplete && context.mounted) {
+    context.push('/profile-setup');
   }
 }
 
-Future<bool> _showCompletionDialog(BuildContext context) async {
+Future<bool> _showCompletionDialog(BuildContext context, AppMode newMode) async {
   final l = AppLocalizations.of(context)!;
   final onSurface = Theme.of(context).colorScheme.onSurface;
+  final isMatrimony = newMode == AppMode.matrimony;
+  final accent = isMatrimony ? AppColors.indiaGreen : AppColors.saffron;
+  final icon = isMatrimony ? Icons.diversity_3_rounded : Icons.favorite_rounded;
+  final subtitle = isMatrimony
+      ? l.modeSwitchCompleteSubtitle
+      : 'Add or update your dating profile so we can show you better matches.';
 
   final result = await showDialog<bool>(
     context: context,
@@ -47,14 +56,10 @@ Future<bool> _showCompletionDialog(BuildContext context) async {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.indiaGreen.withValues(alpha: 0.1),
+                color: accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.diversity_3_rounded,
-                size: 40,
-                color: AppColors.indiaGreen,
-              ),
+              child: Icon(icon, size: 40, color: accent),
             ),
             const SizedBox(height: 20),
             Text(
@@ -67,7 +72,7 @@ Future<bool> _showCompletionDialog(BuildContext context) async {
             ),
             const SizedBox(height: 8),
             Text(
-              l.modeSwitchCompleteSubtitle,
+              subtitle,
               style: AppTypography.bodyMedium.copyWith(
                 color: onSurface.withValues(alpha: 0.65),
                 height: 1.4,
@@ -81,7 +86,7 @@ Future<bool> _showCompletionDialog(BuildContext context) async {
               child: FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.indiaGreen,
+                  backgroundColor: accent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(

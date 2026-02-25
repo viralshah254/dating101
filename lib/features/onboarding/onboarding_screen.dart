@@ -1,35 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_typography.dart';
 
-class OnboardingScreen extends StatefulWidget {
+import '../../core/mode/app_mode.dart';
+import '../../core/mode/mode_provider.dart';
+import '../../core/theme/app_typography.dart';
+import '../../l10n/app_localizations.dart';
+
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
-  static const _pages = [
-    _OnboardingPage(
-      title: 'Depth-first connections',
-      body: 'See full profiles and send thoughtful intros—no mindless swiping.',
-      icon: Icons.person_search,
-    ),
-    _OnboardingPage(
-      title: 'Explore by map',
-      body: 'Discover people in your city or plan ahead when you travel.',
-      icon: Icons.map,
-    ),
-    _OnboardingPage(
-      title: 'Circles & events',
-      body: 'Join communities and real-world meetups that match your life.',
-      icon: Icons.groups,
-    ),
-  ];
+
+  /// Builds the 3 onboarding slides for the current mode (Dating vs Matrimony).
+  List<_OnboardingPage> _buildPages(AppMode mode, AppLocalizations l) {
+    if (mode == AppMode.matrimony) {
+      return [
+        _OnboardingPage(
+          title: l.onboardingMatrimonySlide1Title,
+          body: l.onboardingMatrimonySlide1Body,
+          icon: Icons.diversity_3_rounded,
+        ),
+        _OnboardingPage(
+          title: l.onboardingMatrimonySlide2Title,
+          body: l.onboardingMatrimonySlide2Body,
+          icon: Icons.family_restroom,
+        ),
+        _OnboardingPage(
+          title: l.onboardingMatrimonySlide3Title,
+          body: l.onboardingMatrimonySlide3Body,
+          icon: Icons.verified_user,
+        ),
+      ];
+    }
+    return [
+      _OnboardingPage(
+        title: l.onboardingDatingSlide1Title,
+        body: l.onboardingDatingSlide1Body,
+        icon: Icons.person_search,
+      ),
+      _OnboardingPage(
+        title: l.onboardingDatingSlide2Title,
+        body: l.onboardingDatingSlide2Body,
+        icon: Icons.map,
+      ),
+      _OnboardingPage(
+        title: l.onboardingDatingSlide3Title,
+        body: l.onboardingDatingSlide3Body,
+        icon: Icons.groups,
+      ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -40,6 +68,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+    final l = AppLocalizations.of(context)!;
+    final pages = _buildPages(mode, l);
 
     return Scaffold(
       body: SafeArea(
@@ -50,7 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: TextButton(
                 onPressed: () => context.go('/profile-setup'),
                 child: Text(
-                  'Skip',
+                  l.skip,
                   style: TextStyle(color: Theme.of(context).colorScheme.primary),
                 ),
               ),
@@ -58,10 +89,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (context, i) {
-                  final p = _pages[i];
+                  final p = pages[i];
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
@@ -103,7 +134,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
-                  _pages.length,
+                  pages.length,
                   (i) => Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: _currentPage == i ? 24 : 8,
@@ -125,7 +156,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    if (_currentPage < _pages.length - 1) {
+                    if (_currentPage < pages.length - 1) {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -135,7 +166,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     }
                   },
                   child: Text(
-                    _currentPage < _pages.length - 1 ? 'Next' : 'Get started',
+                    _currentPage < pages.length - 1 ? l.next : l.getStarted,
                   ),
                 ),
               ),

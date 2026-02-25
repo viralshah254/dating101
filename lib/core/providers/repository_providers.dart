@@ -1,45 +1,146 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/location/app_location_service.dart';
+import '../../data/api/api_client.dart';
+import '../../data/api/api_config.dart';
+import '../../data/api/token_storage.dart';
+import '../../data/services/photo_upload_service.dart';
+import '../../data/services/security_service.dart';
+import '../../data/repositories_api/api_auth_repository.dart';
+import '../../data/repositories_api/api_chat_repository.dart';
+import '../../data/repositories_api/api_discovery_repository.dart';
+import '../../data/repositories_api/api_interactions_repository.dart';
+import '../../data/repositories_api/api_interests_repository.dart';
+import '../../data/repositories_api/api_matches_repository.dart';
+import '../../data/repositories_api/api_profile_repository.dart';
+import '../../data/repositories_api/api_shortlist_repository.dart';
+import '../../data/repositories_api/api_subscription_repository.dart';
+import '../../data/repositories_api/api_visits_repository.dart';
 import '../../data/repositories_fake/fake_auth_repository.dart';
 import '../../data/repositories_fake/fake_chat_repository.dart';
 import '../../data/repositories_fake/fake_discovery_repository.dart';
+import '../../data/repositories_fake/fake_interactions_repository.dart';
 import '../../data/repositories_fake/fake_interests_repository.dart';
+import '../../data/repositories_fake/fake_matches_repository.dart';
 import '../../data/repositories_fake/fake_profile_repository.dart';
 import '../../data/repositories_fake/fake_shortlist_repository.dart';
 import '../../data/repositories_fake/fake_subscription_repository.dart';
+import '../../data/repositories_fake/fake_visits_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/discovery_repository.dart';
+import '../../domain/repositories/interactions_repository.dart';
 import '../../domain/repositories/interests_repository.dart';
+import '../../domain/repositories/matches_repository.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../domain/repositories/shortlist_repository.dart';
 import '../../domain/repositories/subscription_repository.dart';
+import '../../domain/repositories/visits_repository.dart';
+
+// ── Configuration ────────────────────────────────────────────────────────
+
+/// Change this to ApiConfig.localDev or ApiConfig.production to use real API.
+const _config = ApiConfig.localDev;
+
+// ── Providers ────────────────────────────────────────────────────────────
+
+final apiConfigProvider = Provider<ApiConfig>((_) => _config);
+
+/// Override this in main.dart with a loaded TokenStorage instance.
+final tokenStorageProvider = Provider<TokenStorage>((_) => TokenStorage());
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient(
+    baseUrl: _config.baseUrl,
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
+});
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return FakeAuthRepository();
+  if (_config.useFakeBackend) return FakeAuthRepository();
+  return ApiAuthRepository(
+    api: ref.watch(apiClientProvider),
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
 });
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  return FakeProfileRepository();
+  if (_config.useFakeBackend) return FakeProfileRepository();
+  return ApiProfileRepository(api: ref.watch(apiClientProvider));
 });
 
 final discoveryRepositoryProvider = Provider<DiscoveryRepository>((ref) {
-  final profileRepo = ref.watch(profileRepositoryProvider);
-  return FakeDiscoveryRepository(profileRepo);
+  if (_config.useFakeBackend) {
+    final profileRepo = ref.watch(profileRepositoryProvider);
+    return FakeDiscoveryRepository(profileRepo);
+  }
+  return ApiDiscoveryRepository(api: ref.watch(apiClientProvider));
 });
 
 final interestsRepositoryProvider = Provider<InterestsRepository>((ref) {
-  return FakeInterestsRepository();
+  if (_config.useFakeBackend) return FakeInterestsRepository();
+  return ApiInterestsRepository(api: ref.watch(apiClientProvider));
+});
+
+final interactionsRepositoryProvider = Provider<InteractionsRepository>((ref) {
+  if (_config.useFakeBackend) return FakeInteractionsRepository();
+  return ApiInteractionsRepository(api: ref.watch(apiClientProvider));
+});
+
+final matchesRepositoryProvider = Provider<MatchesRepository>((ref) {
+  if (_config.useFakeBackend) return FakeMatchesRepository();
+  return ApiMatchesRepository(api: ref.watch(apiClientProvider));
 });
 
 final shortlistRepositoryProvider = Provider<ShortlistRepository>((ref) {
-  return FakeShortlistRepository();
+  if (_config.useFakeBackend) return FakeShortlistRepository();
+  return ApiShortlistRepository(api: ref.watch(apiClientProvider));
 });
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  return FakeChatRepository();
+  if (_config.useFakeBackend) return FakeChatRepository();
+  return ApiChatRepository(api: ref.watch(apiClientProvider));
 });
 
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
-  return FakeSubscriptionRepository();
+  if (_config.useFakeBackend) return FakeSubscriptionRepository();
+  return ApiSubscriptionRepository(api: ref.watch(apiClientProvider));
+});
+
+final visitsRepositoryProvider = Provider<VisitsRepository>((ref) {
+  if (_config.useFakeBackend) return FakeVisitsRepository();
+  return ApiVisitsRepository(api: ref.watch(apiClientProvider));
+});
+
+final photoUploadServiceProvider = Provider<PhotoUploadService>((ref) {
+  return PhotoUploadService(api: ref.watch(apiClientProvider));
+});
+
+final securityServiceProvider = Provider<SecurityService>((ref) {
+  return SecurityService(api: ref.watch(apiClientProvider));
+});
+
+/// Tracks whether we have already fired the security location record this session.
+final recordLocationFiredProvider = StateProvider<bool>((ref) => false);
+
+/// Call once per app open when user is logged in to record location for security (POST /security/location).
+/// Trigger from shell via ref.read(recordSecurityLocationProvider)() when !ref.read(recordLocationFiredProvider).
+final recordSecurityLocationProvider = Provider<void Function()>((ref) {
+  return () async {
+    try {
+      if (ref.read(recordLocationFiredProvider)) return;
+      final userId = ref.read(authRepositoryProvider).currentUserId;
+      if (userId == null) return;
+      ref.read(recordLocationFiredProvider.notifier).state = true;
+      final loc = await AppLocationService.instance.getCurrentCreationLocation();
+      if (loc == null) return;
+      await ref.read(securityServiceProvider).recordLocation(
+            lat: loc.latitude,
+            lng: loc.longitude,
+            address: loc.address,
+          );
+    } catch (_) {
+      ref.read(recordLocationFiredProvider.notifier).state = false;
+    }
+  };
 });

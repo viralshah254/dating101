@@ -207,8 +207,9 @@ class _IdentityOnboardingScreenState extends State<IdentityOnboardingScreen> {
                       onLiveSelect: (v) => setState(() => _selectedLive = v),
                       onLiveSameAsOriginChanged: (v) => setState(() {
                         _liveSameAsOrigin = v;
-                        if (v && _selectedOrigin != null)
+                        if (v && _selectedOrigin != null) {
                           _selectedLive = _selectedOrigin;
+                        }
                       }),
                     ),
                     _LanguageStep(

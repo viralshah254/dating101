@@ -1,6 +1,6 @@
-# DesiLink Mega Spec — Implementation Status
+# saathi Mega Spec — Implementation Status
 
-This doc tracks progress against [DesiLink-Frontend-MegaSpec.md](/Users/v/Desktop/DesiLink-Frontend-MegaSpec.md). The app is being redesigned for **dual mode (Dating + Matrimony)** and **full i18n**.
+This doc tracks progress against [saathi-Frontend-MegaSpec.md](/Users/v/Desktop/saathi-Frontend-MegaSpec.md). The app is being redesigned for **dual mode (Dating + Matrimony)** and **full i18n**.
 
 ---
 

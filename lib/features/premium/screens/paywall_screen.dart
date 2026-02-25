@@ -1,17 +1,90 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/entitlements/entitlements.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/constants/app_ctas.dart';
 
-class PaywallScreen extends StatelessWidget {
+class PaywallScreen extends ConsumerWidget {
   const PaywallScreen({super.key});
 
+  Future<void> _onSubscribe(BuildContext context, WidgetRef ref) async {
+    final platform = Platform.isIOS ? 'ios' : 'android';
+    try {
+      // In production, the receipt/token comes from StoreKit or Google Play billing.
+      // For now, trigger the purchase flow which the backend will validate.
+      await ref.read(subscriptionRepositoryProvider).purchaseSubscription(
+            platform: platform,
+            receiptOrToken: 'placeholder_receipt',
+            planId: 'premium_monthly',
+          );
+      ref.invalidate(entitlementsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Subscription activated!'), behavior: SnackBarBehavior.floating),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Purchase failed: ${e is Exception ? e.toString() : 'Unknown error'}'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> _onRestore(BuildContext context, WidgetRef ref) async {
+    try {
+      final restored = await ref.read(subscriptionRepositoryProvider).restorePurchases();
+      ref.invalidate(entitlementsProvider);
+      if (!context.mounted) return;
+      if (restored) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Purchases restored!'), behavior: SnackBarBehavior.floating),
+        );
+        context.pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active purchases found.'), behavior: SnackBarBehavior.floating),
+        );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not restore purchases.'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget build(BuildContext context, WidgetRef ref) {
     final accent = Theme.of(context).colorScheme.primary;
+    final ent = ref.watch(entitlementsProvider);
+
+    final maleFeatures = [
+      'Send messages & intros',
+      'See who likes you',
+      'Request contact details',
+      'Unlimited express interests',
+      'Travel mode: explore other cities',
+      'Priority in discovery',
+      'Read receipts',
+      'View compatibility breakdown',
+    ];
+
+    final femaleFeatures = [
+      'Unlimited messaging',
+      'Travel mode: explore other cities',
+      'Profile boost',
+      'Priority in discovery',
+      'Read receipts',
+    ];
+
+    final features = ent.isFemale ? femaleFeatures : maleFeatures;
 
     return Scaffold(
       appBar: AppBar(
@@ -26,29 +99,62 @@ class PaywallScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.saffron.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.workspace_premium, size: 48, color: AppColors.saffron),
+            ),
+            const SizedBox(height: 16),
             Text(
-              'Unlock more with DesiLink',
+              'Unlock more with saathi',
               style: AppTypography.displaySmall,
               textAlign: TextAlign.center,
             ).animate().fadeIn().slideY(begin: -0.05, end: 0),
             const SizedBox(height: 8),
             Text(
-              AppCTAs.upgradeGlobal,
-              style: AppTypography.bodyLarge,
+              ent.upgradeReason,
+              style: AppTypography.bodyLarge.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 80.ms),
-            const SizedBox(height: 32),
+
+            if (ent.isFemale) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.indiaGreen.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.indiaGreen.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, size: 20, color: AppColors.indiaGreen),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'You already have free access to messaging, seeing likes, and contact requests.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.indiaGreen,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
             _PlanCard(
               title: 'Premium',
               price: '£9.99',
               period: '/month',
-              features: const [
-                'See who likes you',
-                'Unlimited intros',
-                'Travel mode: explore other cities',
-                'Priority in discovery',
-                'Read receipts',
-              ],
+              features: features,
               accent: accent,
               isPopular: true,
             ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.03, end: 0),
@@ -66,15 +172,16 @@ class PaywallScreen extends StatelessWidget {
             ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.03, end: 0),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: () {
-                // Stripe / IAP
-                context.pop();
-              },
+              onPressed: () => _onSubscribe(context, ref),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
               child: const Text('Subscribe'),
             ).animate().fadeIn(delay: 250.ms),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () {},
+              onPressed: () => _onRestore(context, ref),
               child: const Text('Restore purchases'),
             ),
             const SizedBox(height: 24),

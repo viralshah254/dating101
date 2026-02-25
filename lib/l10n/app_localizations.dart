@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'DesiLink'**
+  /// **'saathi'**
   String get appTitle;
 
   /// No description provided for @appTagline.
@@ -245,7 +245,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginTitle.
   ///
   /// In en, this message translates to:
-  /// **'DesiLink'**
+  /// **'saathi'**
   String get loginTitle;
 
   /// No description provided for @loginTagline.
@@ -458,6 +458,12 @@ abstract class AppLocalizations {
   /// **'Express Interest'**
   String get ctaSendInterest;
 
+  /// No description provided for @ctaSendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Message'**
+  String get ctaSendMessage;
+
   /// No description provided for @ctaShortlist.
   ///
   /// In en, this message translates to:
@@ -469,6 +475,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Request Contact'**
   String get ctaRequestContact;
+
+  /// No description provided for @ctaUpgradeToPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to saathi Premium'**
+  String get ctaUpgradeToPremium;
+
+  /// No description provided for @premiumRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium Feature'**
+  String get premiumRequired;
+
+  /// No description provided for @premiumMessageMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to send messages, see who likes you, and unlock contact details.'**
+  String get premiumMessageMale;
+
+  /// No description provided for @premiumMessageFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade for travel mode, profile boosts, and priority discovery.'**
+  String get premiumMessageFemale;
+
+  /// No description provided for @freeLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit reached'**
+  String get freeLimitReached;
+
+  /// No description provided for @freeLimitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used all your free interests today. Upgrade for unlimited.'**
+  String get freeLimitBody;
 
   /// No description provided for @block.
   ///
@@ -794,6 +836,78 @@ abstract class AppLocalizations {
   /// **'More about you'**
   String get onboardingStepExtended;
 
+  /// No description provided for @onboardingDatingSlide1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth-first connections'**
+  String get onboardingDatingSlide1Title;
+
+  /// No description provided for @onboardingDatingSlide1Body.
+  ///
+  /// In en, this message translates to:
+  /// **'See full profiles and send thoughtful intros—no mindless swiping.'**
+  String get onboardingDatingSlide1Body;
+
+  /// No description provided for @onboardingDatingSlide2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore by map'**
+  String get onboardingDatingSlide2Title;
+
+  /// No description provided for @onboardingDatingSlide2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover people in your city or plan ahead when you travel.'**
+  String get onboardingDatingSlide2Body;
+
+  /// No description provided for @onboardingDatingSlide3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Circles & events'**
+  String get onboardingDatingSlide3Title;
+
+  /// No description provided for @onboardingDatingSlide3Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Join communities and real-world meetups that match your life.'**
+  String get onboardingDatingSlide3Body;
+
+  /// No description provided for @onboardingMatrimonySlide1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Meaningful matches'**
+  String get onboardingMatrimonySlide1Title;
+
+  /// No description provided for @onboardingMatrimonySlide1Body.
+  ///
+  /// In en, this message translates to:
+  /// **'See full profiles and partner preferences—serious about marriage.'**
+  String get onboardingMatrimonySlide1Body;
+
+  /// No description provided for @onboardingMatrimonySlide2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Families involved'**
+  String get onboardingMatrimonySlide2Title;
+
+  /// No description provided for @onboardingMatrimonySlide2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Share profiles with family and align on preferences together.'**
+  String get onboardingMatrimonySlide2Body;
+
+  /// No description provided for @onboardingMatrimonySlide3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified & detailed'**
+  String get onboardingMatrimonySlide3Title;
+
+  /// No description provided for @onboardingMatrimonySlide3Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus on verified profiles and detailed preferences for a trusted match.'**
+  String get onboardingMatrimonySlide3Body;
+
   /// No description provided for @yourName.
   ///
   /// In en, this message translates to:
@@ -881,7 +995,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallTitle.
   ///
   /// In en, this message translates to:
-  /// **'Unlock more with DesiLink'**
+  /// **'Unlock more with saathi'**
   String get paywallTitle;
 
   /// No description provided for @paywallDatingSubtitle.
@@ -1139,7 +1253,7 @@ abstract class AppLocalizations {
   /// No description provided for @modeSelectSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose how you\'d like to use DesiLink. You can switch anytime from settings.'**
+  /// **'Choose how you\'d like to use saathi. You can switch anytime from settings.'**
   String get modeSelectSubtitle;
 
   /// No description provided for @modeSwitchHint.
@@ -2387,7 +2501,7 @@ abstract class AppLocalizations {
   /// No description provided for @locationRequiredMessage.
   ///
   /// In en, this message translates to:
-  /// **'DesiLink needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.'**
+  /// **'saathi needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.'**
   String get locationRequiredMessage;
 
   /// No description provided for @locationAllow.

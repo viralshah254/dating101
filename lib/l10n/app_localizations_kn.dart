@@ -9,7 +9,7 @@ class AppLocalizationsKn extends AppLocalizations {
   AppLocalizationsKn([String locale = 'kn']) : super(locale);
 
   @override
-  String get appTitle => 'DesiLink';
+  String get appTitle => 'saathi';
 
   @override
   String get appTagline => 'Sophisticated connections, globally.';
@@ -74,7 +74,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get notNow => 'Not now';
 
   @override
-  String get loginTitle => 'DesiLink';
+  String get loginTitle => 'saathi';
 
   @override
   String get loginTagline => 'Sophisticated connections, globally.';
@@ -190,10 +190,34 @@ class AppLocalizationsKn extends AppLocalizations {
   String get ctaSendInterest => 'Express Interest';
 
   @override
+  String get ctaSendMessage => 'Send Message';
+
+  @override
   String get ctaShortlist => 'Shortlist';
 
   @override
   String get ctaRequestContact => 'Request Contact';
+
+  @override
+  String get ctaUpgradeToPremium => 'Upgrade to saathi Premium';
+
+  @override
+  String get premiumRequired => 'Premium Feature';
+
+  @override
+  String get premiumMessageMale =>
+      'Upgrade to send messages, see who likes you, and unlock contact details.';
+
+  @override
+  String get premiumMessageFemale =>
+      'Upgrade for travel mode, profile boosts, and priority discovery.';
+
+  @override
+  String get freeLimitReached => 'Daily limit reached';
+
+  @override
+  String get freeLimitBody =>
+      'You\'ve used all your free interests today. Upgrade for unlimited.';
 
   @override
   String get block => 'Block';
@@ -364,6 +388,48 @@ class AppLocalizationsKn extends AppLocalizations {
   String get onboardingStepExtended => 'More about you';
 
   @override
+  String get onboardingDatingSlide1Title => 'Depth-first connections';
+
+  @override
+  String get onboardingDatingSlide1Body =>
+      'See full profiles and send thoughtful intros—no mindless swiping.';
+
+  @override
+  String get onboardingDatingSlide2Title => 'Explore by map';
+
+  @override
+  String get onboardingDatingSlide2Body =>
+      'Discover people in your city or plan ahead when you travel.';
+
+  @override
+  String get onboardingDatingSlide3Title => 'Circles & events';
+
+  @override
+  String get onboardingDatingSlide3Body =>
+      'Join communities and real-world meetups that match your life.';
+
+  @override
+  String get onboardingMatrimonySlide1Title => 'Meaningful matches';
+
+  @override
+  String get onboardingMatrimonySlide1Body =>
+      'See full profiles and partner preferences—serious about marriage.';
+
+  @override
+  String get onboardingMatrimonySlide2Title => 'Families involved';
+
+  @override
+  String get onboardingMatrimonySlide2Body =>
+      'Share profiles with family and align on preferences together.';
+
+  @override
+  String get onboardingMatrimonySlide3Title => 'Verified & detailed';
+
+  @override
+  String get onboardingMatrimonySlide3Body =>
+      'Focus on verified profiles and detailed preferences for a trusted match.';
+
+  @override
   String get yourName => 'Your name';
 
   @override
@@ -408,7 +474,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get lookingForGroom => 'Groom';
 
   @override
-  String get paywallTitle => 'Unlock more with DesiLink';
+  String get paywallTitle => 'Unlock more with saathi';
 
   @override
   String get paywallDatingSubtitle =>
@@ -546,7 +612,7 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get modeSelectSubtitle =>
-      'Choose how you\'d like to use DesiLink. You can switch anytime from settings.';
+      'Choose how you\'d like to use saathi. You can switch anytime from settings.';
 
   @override
   String get modeSwitchHint => 'You can switch anytime in Settings.';
@@ -1205,7 +1271,7 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get locationRequiredMessage =>
-      'DesiLink needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
+      'saathi needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
 
   @override
   String get locationAllow => 'Allow location';

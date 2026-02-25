@@ -1,4 +1,4 @@
-# DesiLink — Flutter Dating App (MVP Frontend)
+# saathi — Flutter Dating App (MVP Frontend)
 
 Sophisticated Indian-global dating app: depth-first profiles, map discovery, circles, events, premium, and verification. Built to the 90-day plan (Weeks 1–12).
 
@@ -49,7 +49,7 @@ flutter run
 The packages are installed (see `.dart_tool/package_config.json`). The Dart analyzer may be using the wrong folder. Do this:
 
 1. **Open the project folder as the workspace root**  
-   File → Open Folder → choose the **desilink** folder (the one that contains `pubspec.yaml`). Do not open a parent folder like `Apps` if it contains multiple projects.
+   File → Open Folder → choose the **saathi** folder (the one that contains `pubspec.yaml`). Do not open a parent folder like `Apps` if it contains multiple projects.
 
 2. **Get packages and restart analysis**  
    - Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) → **Dart: Get Packages** (or **Flutter: Get Packages**).  

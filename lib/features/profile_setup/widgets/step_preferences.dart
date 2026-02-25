@@ -194,13 +194,20 @@ class _MatrimonyPreferencesState extends State<_MatrimonyPreferences> {
     if (d.prefEducation == null) {
       final deg = d.educationEntries.isNotEmpty ? d.educationEntries.first.degree : null;
       if (deg != null && deg.isNotEmpty) {
-        if (deg.contains('PhD')) d.prefEducation = 'PhD';
-        else if (deg.contains('MBA')) d.prefEducation = 'MBA';
-        else if (deg.contains('Medical') || deg.contains('MBBS')) d.prefEducation = 'Medical';
-        else if (deg.contains('Engineering') || deg.contains('B.Tech')) d.prefEducation = 'Engineering';
-        else if (deg.contains('Masters') || deg.contains('M.Tech')) d.prefEducation = 'Masters+';
-        else if (deg.contains('Bachelors') || deg.contains('B.Tech')) d.prefEducation = 'Bachelors+';
-        if (d.prefEducation != null) changed = true;
+        if (deg.contains('PhD')) {
+          d.prefEducation = 'PhD';
+        } else if (deg.contains('MBA')) {
+          d.prefEducation = 'MBA';
+        } else if (deg.contains('Medical') || deg.contains('MBBS')) {
+          d.prefEducation = 'Medical';
+        } else if (deg.contains('Engineering') || deg.contains('B.Tech')) {
+          d.prefEducation = 'Engineering';
+        } else if (deg.contains('Masters') || deg.contains('M.Tech')) {
+          d.prefEducation = 'Masters+';
+        } else if (deg.contains('Bachelors') || deg.contains('B.Tech')) {
+          d.prefEducation = 'Bachelors+';
+        }
+        if (d.prefEducation != null) { changed = true; }
       }
     }
     if (d.prefDiet == null && d.diet != null && d.diet!.isNotEmpty) {
@@ -482,7 +489,7 @@ class _MatrimonyPreferencesState extends State<_MatrimonyPreferences> {
               children: [
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _cityModeValue(widget.formData.prefCityMode),
+                  initialValue: _cityModeValue(widget.formData.prefCityMode),
                   isExpanded: true,
                   decoration: InputDecoration(
                     filled: true,
@@ -615,7 +622,7 @@ class _PrefDropdownCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: value != null && items.contains(value) ? value! : (items.isNotEmpty ? items.first : null),
+            initialValue: value != null && items.contains(value) ? value! : (items.isNotEmpty ? items.first : null),
             isExpanded: true,
             decoration: InputDecoration(
               filled: true,

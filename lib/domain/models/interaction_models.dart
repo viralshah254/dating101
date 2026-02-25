@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'profile_summary.dart';
+
 part 'interaction_models.freezed.dart';
 
 /// Dating: intro sent (with optional message).
@@ -55,3 +57,40 @@ class ContactRequest with _$ContactRequest {
 }
 
 enum ContactRequestStatus { pending, approved, denied }
+
+/// One item in the requests inbox (GET /interactions/received) or sent list.
+class InteractionInboxItem {
+  const InteractionInboxItem({
+    required this.interactionId,
+    required this.otherUser,
+    this.message,
+    this.seenByRecipient = false,
+    this.status = 'pending',
+    this.type = 'interest',
+    required this.createdAt,
+  });
+  final String interactionId;
+  final ProfileSummary otherUser;
+  final String? message;
+  final bool seenByRecipient;
+  final String status;
+  final String type;
+  final DateTime createdAt;
+}
+
+/// Result of expressing interest or priority interest (Saathi interactions API).
+class ExpressInterestResult {
+  const ExpressInterestResult({
+    required this.interactionId,
+    required this.mutualMatch,
+    this.matchId,
+    this.chatThreadId,
+    this.priorityRemaining,
+  });
+  final String interactionId;
+  final bool mutualMatch;
+  final String? matchId;
+  final String? chatThreadId;
+  /// Daily priority-interest count remaining (priority interest only).
+  final int? priorityRemaining;
+}

@@ -1,6 +1,6 @@
 # Profile setup wizard – fields audit
 
-This doc maps the **reference app** (screenshots: About, Photos, Career, Education, Family, Horoscope, Looking For) to our **DesiLink profile setup** so we collect the same info with better UI/UX.
+This doc maps the **reference app** (screenshots: About, Photos, Career, Education, Family, Horoscope, Looking For) to our **saathi profile setup** so we collect the same info with better UI/UX.
 
 ---
 

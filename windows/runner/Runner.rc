@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.desilink" "\0"
-            VALUE "FileDescription", "desilink" "\0"
+            VALUE "CompanyName", "com.saathi" "\0"
+            VALUE "FileDescription", "saathi" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "desilink" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.desilink. All rights reserved." "\0"
-            VALUE "OriginalFilename", "desilink.exe" "\0"
-            VALUE "ProductName", "desilink" "\0"
+            VALUE "InternalName", "saathi" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.saathi. All rights reserved." "\0"
+            VALUE "OriginalFilename", "saathi.exe" "\0"
+            VALUE "ProductName", "saathi" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

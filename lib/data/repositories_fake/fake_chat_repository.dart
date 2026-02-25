@@ -7,34 +7,43 @@ class FakeChatRepository implements ChatRepository {
 
   String _nextMessageId() => 'msg-${++_messageIdCounter}';
 
-  List<ChatThreadSummary> _threadSummaries() {
-    final names = <String, String>{};
-    for (final id in FakeData.allProfiles.keys) {
-      names[id] = FakeData.allProfiles[id]!.name;
-    }
+  List<ChatThreadSummary> _threadSummaries({String? mode}) {
+    final keys = FakeData.allProfiles.keys.toList();
+    final id1 = keys.isNotEmpty ? keys[0] : '1';
+    final id2 = keys.length > 1 ? keys[1] : '2';
+    final name1 = FakeData.allProfiles[id1]?.name ?? 'Priya';
+    final name2 = FakeData.allProfiles[id2]?.name ?? 'Ananya';
     return [
       ChatThreadSummary(
-        id: '1',
-        otherUserId: '1',
-        otherName: names['1'] ?? 'Priya',
+        id: 'thread_$id1',
+        otherUserId: id1,
+        otherName: name1,
         lastMessage: 'That sounds great! How about Saturday?',
         lastMessageAt: DateTime.now().subtract(const Duration(minutes: 2)),
         unreadCount: 1,
+        mode: mode,
       ),
       ChatThreadSummary(
-        id: '2',
-        otherUserId: '2',
-        otherName: names['2'] ?? 'Ananya',
+        id: 'thread_$id2',
+        otherUserId: id2,
+        otherName: name2,
         lastMessage: "Sure, let's do the coffee spot you mentioned.",
         lastMessageAt: DateTime.now().subtract(const Duration(hours: 1)),
+        mode: mode,
       ),
     ];
   }
 
   @override
-  Future<List<ChatThreadSummary>> getThreads({int limit = 50}) async {
+  Future<List<ChatThreadSummary>> getThreads({int limit = 50, String? mode}) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return _threadSummaries().take(limit).toList();
+    return _threadSummaries(mode: mode).take(limit).toList();
+  }
+
+  @override
+  Future<String> createThread(String otherUserId, {String? mode}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return 'thread_$otherUserId';
   }
 
   @override

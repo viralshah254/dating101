@@ -59,11 +59,55 @@ const _religionOptions = [
   'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist', 'Parsi', 'Jewish', 'Other',
 ];
 
-/// Background: community/caste dropdown options (India).
-const _communityOptions = [
-  'Brahmin', 'Kshatriya', 'Vaishya', 'Maratha', 'Reddy', 'Kapu', 'Nair', 'Jat', 'Baniya', 'Kayastha',
-  'Rajput', 'Patel', 'Gupta', 'Sharma', 'Verma', 'Agarwal', 'Sindhi', 'Parsi', 'Other',
-];
+/// Background: community/caste options keyed by religion.
+const _communityByReligion = <String, List<String>>{
+  'Hindu': [
+    'Brahmin', 'Kshatriya', 'Vaishya', 'Shudra',
+    'Agarwal', 'Arora', 'Baniya', 'Bania', 'Gupta', 'Jat', 'Kayastha',
+    'Khatri', 'Kurmi', 'Lingayat', 'Maratha', 'Meena',
+    'Nair', 'Naidu', 'Patel', 'Rajput', 'Reddy', 'Kapu',
+    'Sharma', 'Sindhi', 'Verma', 'Yadav',
+    'SC', 'ST', 'OBC', 'Other',
+  ],
+  'Muslim': [
+    'Syed', 'Sheikh', 'Mughal', 'Pathan', 'Ansari', 'Qureshi',
+    'Bohra', 'Khoja', 'Memon', 'Mappila', 'Shia', 'Sunni',
+    'Hanafi', 'Deobandi', 'Barelvi', 'Ahmadiyya', 'Other',
+  ],
+  'Christian': [
+    'Roman Catholic', 'Protestant', 'Syrian Catholic', 'Syrian Orthodox',
+    'Marthoma', 'CSI', 'CNI', 'Pentecostal', 'Evangelical',
+    'Adventist', 'Baptist', 'Methodist', 'Anglican',
+    'Latin Catholic', 'Jacobite', 'Other',
+  ],
+  'Sikh': [
+    'Jat Sikh', 'Khatri Sikh', 'Ramgarhia', 'Arora Sikh',
+    'Saini', 'Labana', 'Ramdasia', 'Mazhabi',
+    'Namdhari', 'Nihang', 'Other',
+  ],
+  'Jain': [
+    'Digambar', 'Shwetambar', 'Agarwal', 'Baniya',
+    'Oswal', 'Porwal', 'Khandelwal', 'Humad',
+    'Sthanakvasi', 'Terapanthi', 'Other',
+  ],
+  'Buddhist': [
+    'Theravada', 'Mahayana', 'Vajrayana', 'Neo-Buddhist',
+    'Ambedkarite', 'Tibetan', 'Other',
+  ],
+  'Parsi': [
+    'Irani', 'Parsi', 'Other',
+  ],
+  'Jewish': [
+    'Bene Israel', 'Cochin Jews', 'Baghdadi Jews', 'Other',
+  ],
+};
+
+List<String> _communityOptionsForReligion(String? religion) {
+  if (religion == null || religion.isEmpty) {
+    return _communityByReligion.values.expand((l) => l).toSet().toList()..sort();
+  }
+  return _communityByReligion[religion] ?? ['Other'];
+}
 
 /// Mother tongue & languages: Indian languages + English + Other.
 const _motherTongueAndLanguageOptions = [
@@ -396,8 +440,11 @@ class _YearOfGraduationPicker extends StatelessWidget {
                 onClear: () => Navigator.of(ctx).pop(clearYearSentinel),
               ),
             );
-            if (picked == clearYearSentinel) onChanged(null);
-            else if (picked != null) onChanged(picked);
+            if (picked == clearYearSentinel) {
+              onChanged(null);
+            } else if (picked != null) {
+              onChanged(picked);
+            }
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -583,7 +630,9 @@ class _SearchableDegreeFieldState extends State<_SearchableDegreeField> {
               itemBuilder: (context, i) {
                 final d = _filtered[i];
                 return ListTile(
-                  title: Text(d, style: AppTypography.bodyMedium),
+                  title: Text(d, style: AppTypography.bodyMedium.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  )),
                   onTap: () {
                     _ctrl.text = d;
                     _focusNode.unfocus();
@@ -1381,14 +1430,21 @@ class _MatrimonyDetails extends StatelessWidget {
                 label: l.matrimonyReligionQuestion,
                 value: formData.religion,
                 items: _religionOptions,
-                onChanged: (v) { formData.religion = v; onChanged(); },
+                onChanged: (v) {
+                  formData.religion = v;
+                  if (formData.community != null &&
+                      !_communityOptionsForReligion(v).contains(formData.community)) {
+                    formData.community = null;
+                  }
+                  onChanged();
+                },
               ),
               const SizedBox(height: 16),
               _SearchableSelectField(
                 label: l.matrimonyCommunityQuestion,
                 value: formData.community,
-                hint: 'e.g. Brahmin, Maratha, Reddy',
-                options: _communityOptions,
+                hint: 'e.g. ${_communityOptionsForReligion(formData.religion).take(3).join(", ")}',
+                options: _communityOptionsForReligion(formData.religion),
                 onChanged: (v) { formData.community = v; onChanged(); },
               ),
               const SizedBox(height: 16),
@@ -1714,7 +1770,7 @@ class _TimeOfBirthField extends StatelessWidget {
               context: context,
               initialTime: initial,
               builder: (context, child) => Theme(
-                data: Theme.of(context).copyWith(useMaterial3: true),
+                data: Theme.of(context),
                 child: child!,
               ),
             );
@@ -1766,7 +1822,7 @@ class _DropdownField extends StatelessWidget {
         Text(label, style: AppTypography.labelMedium.copyWith(color: onSurface.withValues(alpha: 0.7))),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           isExpanded: true,
           dropdownColor: surface,
           style: TextStyle(color: onSurface, fontSize: 14, fontWeight: FontWeight.w400),

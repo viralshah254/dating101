@@ -28,9 +28,26 @@ mixin _$ProfileSummary {
   String get bio => throw _privateConstructorUsedError;
   String? get promptAnswer => throw _privateConstructorUsedError;
   List<String> get interests => throw _privateConstructorUsedError;
+
+  /// Interests this profile shares with the current viewer (from backend).
+  List<String> get sharedInterests => throw _privateConstructorUsedError;
   String? get motherTongue => throw _privateConstructorUsedError;
   String? get occupation => throw _privateConstructorUsedError;
   int? get heightCm => throw _privateConstructorUsedError;
+  String? get religion => throw _privateConstructorUsedError;
+  String? get community => throw _privateConstructorUsedError;
+  String? get educationDegree => throw _privateConstructorUsedError;
+  String? get maritalStatus => throw _privateConstructorUsedError;
+  String? get diet => throw _privateConstructorUsedError;
+  String? get incomeLabel => throw _privateConstructorUsedError;
+  String? get employer => throw _privateConstructorUsedError;
+  String? get familyType => throw _privateConstructorUsedError;
+  int get photoCount =>
+      throw _privateConstructorUsedError; // ML compatibility scoring
+  double? get compatibilityScore => throw _privateConstructorUsedError;
+  String? get compatibilityLabel => throw _privateConstructorUsedError;
+  List<String> get matchReasons => throw _privateConstructorUsedError;
+  Map<String, double>? get breakdown => throw _privateConstructorUsedError;
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.
@@ -58,9 +75,23 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     String bio,
     String? promptAnswer,
     List<String> interests,
+    List<String> sharedInterests,
     String? motherTongue,
     String? occupation,
     int? heightCm,
+    String? religion,
+    String? community,
+    String? educationDegree,
+    String? maritalStatus,
+    String? diet,
+    String? incomeLabel,
+    String? employer,
+    String? familyType,
+    int photoCount,
+    double? compatibilityScore,
+    String? compatibilityLabel,
+    List<String> matchReasons,
+    Map<String, double>? breakdown,
   });
 }
 
@@ -90,9 +121,23 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? bio = null,
     Object? promptAnswer = freezed,
     Object? interests = null,
+    Object? sharedInterests = null,
     Object? motherTongue = freezed,
     Object? occupation = freezed,
     Object? heightCm = freezed,
+    Object? religion = freezed,
+    Object? community = freezed,
+    Object? educationDegree = freezed,
+    Object? maritalStatus = freezed,
+    Object? diet = freezed,
+    Object? incomeLabel = freezed,
+    Object? employer = freezed,
+    Object? familyType = freezed,
+    Object? photoCount = null,
+    Object? compatibilityScore = freezed,
+    Object? compatibilityLabel = freezed,
+    Object? matchReasons = null,
+    Object? breakdown = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -140,6 +185,10 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.interests
                 : interests // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            sharedInterests: null == sharedInterests
+                ? _value.sharedInterests
+                : sharedInterests // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             motherTongue: freezed == motherTongue
                 ? _value.motherTongue
                 : motherTongue // ignore: cast_nullable_to_non_nullable
@@ -152,6 +201,58 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.heightCm
                 : heightCm // ignore: cast_nullable_to_non_nullable
                       as int?,
+            religion: freezed == religion
+                ? _value.religion
+                : religion // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            community: freezed == community
+                ? _value.community
+                : community // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            educationDegree: freezed == educationDegree
+                ? _value.educationDegree
+                : educationDegree // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            maritalStatus: freezed == maritalStatus
+                ? _value.maritalStatus
+                : maritalStatus // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            diet: freezed == diet
+                ? _value.diet
+                : diet // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            incomeLabel: freezed == incomeLabel
+                ? _value.incomeLabel
+                : incomeLabel // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            employer: freezed == employer
+                ? _value.employer
+                : employer // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            familyType: freezed == familyType
+                ? _value.familyType
+                : familyType // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            photoCount: null == photoCount
+                ? _value.photoCount
+                : photoCount // ignore: cast_nullable_to_non_nullable
+                      as int,
+            compatibilityScore: freezed == compatibilityScore
+                ? _value.compatibilityScore
+                : compatibilityScore // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            compatibilityLabel: freezed == compatibilityLabel
+                ? _value.compatibilityLabel
+                : compatibilityLabel // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            matchReasons: null == matchReasons
+                ? _value.matchReasons
+                : matchReasons // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            breakdown: freezed == breakdown
+                ? _value.breakdown
+                : breakdown // ignore: cast_nullable_to_non_nullable
+                      as Map<String, double>?,
           )
           as $Val,
     );
@@ -179,9 +280,23 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     String bio,
     String? promptAnswer,
     List<String> interests,
+    List<String> sharedInterests,
     String? motherTongue,
     String? occupation,
     int? heightCm,
+    String? religion,
+    String? community,
+    String? educationDegree,
+    String? maritalStatus,
+    String? diet,
+    String? incomeLabel,
+    String? employer,
+    String? familyType,
+    int photoCount,
+    double? compatibilityScore,
+    String? compatibilityLabel,
+    List<String> matchReasons,
+    Map<String, double>? breakdown,
   });
 }
 
@@ -210,9 +325,23 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? bio = null,
     Object? promptAnswer = freezed,
     Object? interests = null,
+    Object? sharedInterests = null,
     Object? motherTongue = freezed,
     Object? occupation = freezed,
     Object? heightCm = freezed,
+    Object? religion = freezed,
+    Object? community = freezed,
+    Object? educationDegree = freezed,
+    Object? maritalStatus = freezed,
+    Object? diet = freezed,
+    Object? incomeLabel = freezed,
+    Object? employer = freezed,
+    Object? familyType = freezed,
+    Object? photoCount = null,
+    Object? compatibilityScore = freezed,
+    Object? compatibilityLabel = freezed,
+    Object? matchReasons = null,
+    Object? breakdown = freezed,
   }) {
     return _then(
       _$ProfileSummaryImpl(
@@ -260,6 +389,10 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value._interests
             : interests // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        sharedInterests: null == sharedInterests
+            ? _value._sharedInterests
+            : sharedInterests // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         motherTongue: freezed == motherTongue
             ? _value.motherTongue
             : motherTongue // ignore: cast_nullable_to_non_nullable
@@ -272,6 +405,58 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value.heightCm
             : heightCm // ignore: cast_nullable_to_non_nullable
                   as int?,
+        religion: freezed == religion
+            ? _value.religion
+            : religion // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        community: freezed == community
+            ? _value.community
+            : community // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        educationDegree: freezed == educationDegree
+            ? _value.educationDegree
+            : educationDegree // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        maritalStatus: freezed == maritalStatus
+            ? _value.maritalStatus
+            : maritalStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        diet: freezed == diet
+            ? _value.diet
+            : diet // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        incomeLabel: freezed == incomeLabel
+            ? _value.incomeLabel
+            : incomeLabel // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        employer: freezed == employer
+            ? _value.employer
+            : employer // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        familyType: freezed == familyType
+            ? _value.familyType
+            : familyType // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        photoCount: null == photoCount
+            ? _value.photoCount
+            : photoCount // ignore: cast_nullable_to_non_nullable
+                  as int,
+        compatibilityScore: freezed == compatibilityScore
+            ? _value.compatibilityScore
+            : compatibilityScore // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        compatibilityLabel: freezed == compatibilityLabel
+            ? _value.compatibilityLabel
+            : compatibilityLabel // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        matchReasons: null == matchReasons
+            ? _value._matchReasons
+            : matchReasons // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        breakdown: freezed == breakdown
+            ? _value._breakdown
+            : breakdown // ignore: cast_nullable_to_non_nullable
+                  as Map<String, double>?,
       ),
     );
   }
@@ -292,10 +477,27 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     this.bio = '',
     this.promptAnswer,
     final List<String> interests = const [],
+    final List<String> sharedInterests = const [],
     this.motherTongue,
     this.occupation,
     this.heightCm,
-  }) : _interests = interests;
+    this.religion,
+    this.community,
+    this.educationDegree,
+    this.maritalStatus,
+    this.diet,
+    this.incomeLabel,
+    this.employer,
+    this.familyType,
+    this.photoCount = 0,
+    this.compatibilityScore,
+    this.compatibilityLabel,
+    final List<String> matchReasons = const [],
+    final Map<String, double>? breakdown,
+  }) : _interests = interests,
+       _sharedInterests = sharedInterests,
+       _matchReasons = matchReasons,
+       _breakdown = breakdown;
 
   @override
   final String id;
@@ -328,16 +530,70 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     return EqualUnmodifiableListView(_interests);
   }
 
+  /// Interests this profile shares with the current viewer (from backend).
+  final List<String> _sharedInterests;
+
+  /// Interests this profile shares with the current viewer (from backend).
+  @override
+  @JsonKey()
+  List<String> get sharedInterests {
+    if (_sharedInterests is EqualUnmodifiableListView) return _sharedInterests;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_sharedInterests);
+  }
+
   @override
   final String? motherTongue;
   @override
   final String? occupation;
   @override
   final int? heightCm;
+  @override
+  final String? religion;
+  @override
+  final String? community;
+  @override
+  final String? educationDegree;
+  @override
+  final String? maritalStatus;
+  @override
+  final String? diet;
+  @override
+  final String? incomeLabel;
+  @override
+  final String? employer;
+  @override
+  final String? familyType;
+  @override
+  @JsonKey()
+  final int photoCount;
+  // ML compatibility scoring
+  @override
+  final double? compatibilityScore;
+  @override
+  final String? compatibilityLabel;
+  final List<String> _matchReasons;
+  @override
+  @JsonKey()
+  List<String> get matchReasons {
+    if (_matchReasons is EqualUnmodifiableListView) return _matchReasons;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_matchReasons);
+  }
+
+  final Map<String, double>? _breakdown;
+  @override
+  Map<String, double>? get breakdown {
+    final value = _breakdown;
+    if (value == null) return null;
+    if (_breakdown is EqualUnmodifiableMapView) return _breakdown;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
 
   @override
   String toString() {
-    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm)';
+    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown)';
   }
 
   @override
@@ -364,16 +620,49 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
               other._interests,
               _interests,
             ) &&
+            const DeepCollectionEquality().equals(
+              other._sharedInterests,
+              _sharedInterests,
+            ) &&
             (identical(other.motherTongue, motherTongue) ||
                 other.motherTongue == motherTongue) &&
             (identical(other.occupation, occupation) ||
                 other.occupation == occupation) &&
             (identical(other.heightCm, heightCm) ||
-                other.heightCm == heightCm));
+                other.heightCm == heightCm) &&
+            (identical(other.religion, religion) ||
+                other.religion == religion) &&
+            (identical(other.community, community) ||
+                other.community == community) &&
+            (identical(other.educationDegree, educationDegree) ||
+                other.educationDegree == educationDegree) &&
+            (identical(other.maritalStatus, maritalStatus) ||
+                other.maritalStatus == maritalStatus) &&
+            (identical(other.diet, diet) || other.diet == diet) &&
+            (identical(other.incomeLabel, incomeLabel) ||
+                other.incomeLabel == incomeLabel) &&
+            (identical(other.employer, employer) ||
+                other.employer == employer) &&
+            (identical(other.familyType, familyType) ||
+                other.familyType == familyType) &&
+            (identical(other.photoCount, photoCount) ||
+                other.photoCount == photoCount) &&
+            (identical(other.compatibilityScore, compatibilityScore) ||
+                other.compatibilityScore == compatibilityScore) &&
+            (identical(other.compatibilityLabel, compatibilityLabel) ||
+                other.compatibilityLabel == compatibilityLabel) &&
+            const DeepCollectionEquality().equals(
+              other._matchReasons,
+              _matchReasons,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._breakdown,
+              _breakdown,
+            ));
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     name,
@@ -386,10 +675,24 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     bio,
     promptAnswer,
     const DeepCollectionEquality().hash(_interests),
+    const DeepCollectionEquality().hash(_sharedInterests),
     motherTongue,
     occupation,
     heightCm,
-  );
+    religion,
+    community,
+    educationDegree,
+    maritalStatus,
+    diet,
+    incomeLabel,
+    employer,
+    familyType,
+    photoCount,
+    compatibilityScore,
+    compatibilityLabel,
+    const DeepCollectionEquality().hash(_matchReasons),
+    const DeepCollectionEquality().hash(_breakdown),
+  ]);
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.
@@ -416,9 +719,23 @@ abstract class _ProfileSummary implements ProfileSummary {
     final String bio,
     final String? promptAnswer,
     final List<String> interests,
+    final List<String> sharedInterests,
     final String? motherTongue,
     final String? occupation,
     final int? heightCm,
+    final String? religion,
+    final String? community,
+    final String? educationDegree,
+    final String? maritalStatus,
+    final String? diet,
+    final String? incomeLabel,
+    final String? employer,
+    final String? familyType,
+    final int photoCount,
+    final double? compatibilityScore,
+    final String? compatibilityLabel,
+    final List<String> matchReasons,
+    final Map<String, double>? breakdown,
   }) = _$ProfileSummaryImpl;
 
   @override
@@ -443,12 +760,42 @@ abstract class _ProfileSummary implements ProfileSummary {
   String? get promptAnswer;
   @override
   List<String> get interests;
+
+  /// Interests this profile shares with the current viewer (from backend).
+  @override
+  List<String> get sharedInterests;
   @override
   String? get motherTongue;
   @override
   String? get occupation;
   @override
   int? get heightCm;
+  @override
+  String? get religion;
+  @override
+  String? get community;
+  @override
+  String? get educationDegree;
+  @override
+  String? get maritalStatus;
+  @override
+  String? get diet;
+  @override
+  String? get incomeLabel;
+  @override
+  String? get employer;
+  @override
+  String? get familyType;
+  @override
+  int get photoCount; // ML compatibility scoring
+  @override
+  double? get compatibilityScore;
+  @override
+  String? get compatibilityLabel;
+  @override
+  List<String> get matchReasons;
+  @override
+  Map<String, double>? get breakdown;
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.

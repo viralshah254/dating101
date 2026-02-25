@@ -1,4 +1,21 @@
-/// Result of sign-in (phone/email/social).
+/// Result of an OTP send attempt.
+sealed class SendOtpResult {
+  const SendOtpResult();
+}
+
+class SendOtpSuccess extends SendOtpResult {
+  const SendOtpSuccess({required this.verificationId, this.expiresInSeconds = 300});
+  final String verificationId;
+  final int expiresInSeconds;
+}
+
+class SendOtpFailure extends SendOtpResult {
+  const SendOtpFailure(this.message, {this.code});
+  final String message;
+  final String? code;
+}
+
+/// Result of OTP verification / sign-in.
 sealed class AuthResult {
   const AuthResult();
 }
@@ -6,6 +23,9 @@ sealed class AuthResult {
 class AuthSuccess extends AuthResult {
   const AuthSuccess({this.userId, this.isNewUser = false});
   final String? userId;
+
+  /// true = user has no profile yet → route to mode-select / signup flow
+  /// false = returning user → route to home
   final bool isNewUser;
 }
 
@@ -15,26 +35,25 @@ class AuthFailure extends AuthResult {
   final String? code;
 }
 
-/// Auth: phone/email/social sign-in, OTP verify, sign-out.
-/// Implement with FakeAuthRepository for now; later FirebaseAuth.
+/// Auth: phone OTP sign-in, social sign-in, sign-out.
 abstract class AuthRepository {
-  /// Send OTP to phone; returns success or error message.
-  Future<AuthResult> sendOtp({required String countryCode, required String phone});
+  /// Send OTP to phone. Returns verificationId on success.
+  Future<SendOtpResult> sendOtp({required String countryCode, required String phone});
 
-  /// Verify OTP and return auth result.
+  /// Verify OTP code. Returns auth tokens + whether user is new or returning.
   Future<AuthResult> verifyOtp({required String verificationId, required String code});
 
-  /// Sign in with email (for dev); no real email auth in fake.
-  Future<AuthResult> signInWithEmail({required String email});
-
-  /// Sign in with Google (placeholder).
+  /// Sign in with Google.
   Future<AuthResult> signInWithGoogle();
 
-  /// Sign in with Apple (placeholder).
+  /// Sign in with Apple.
   Future<AuthResult> signInWithApple();
 
-  /// Current user id if logged in.
-  Stream<String?> get currentUserId;
+  /// Current user id (null = not logged in). Synchronous check.
+  String? get currentUserId;
+
+  /// Stream of auth state changes.
+  Stream<String?> get authStateChanges;
 
   /// Sign out.
   Future<void> signOut();

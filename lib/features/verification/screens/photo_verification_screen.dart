@@ -107,7 +107,7 @@ class _IntroStep extends StatelessWidget {
           ).animate().fadeIn(delay: 100.ms),
           const SizedBox(height: 12),
           Text(
-            'We’ll ask you to take a photo and complete a quick blink or smile. This helps keep DesiLink safe.',
+            'We’ll ask you to take a photo and complete a quick blink or smile. This helps keep saathi safe.',
             style: AppTypography.bodyMedium,
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 200.ms),

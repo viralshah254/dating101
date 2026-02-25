@@ -17,8 +17,24 @@ class ProfileSummary with _$ProfileSummary {
     @Default('') String bio,
     String? promptAnswer,
     @Default([]) List<String> interests,
+    /// Interests this profile shares with the current viewer (from backend).
+    @Default([]) List<String> sharedInterests,
     String? motherTongue,
     String? occupation,
     int? heightCm,
+    String? religion,
+    String? community,
+    String? educationDegree,
+    String? maritalStatus,
+    String? diet,
+    String? incomeLabel,
+    String? employer,
+    String? familyType,
+    @Default(0) int photoCount,
+    // ML compatibility scoring
+    double? compatibilityScore,
+    String? compatibilityLabel,
+    @Default([]) List<String> matchReasons,
+    Map<String, double>? breakdown,
   }) = _ProfileSummary;
 }

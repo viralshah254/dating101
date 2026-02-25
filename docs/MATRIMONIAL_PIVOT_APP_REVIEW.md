@@ -1,4 +1,4 @@
-# DesiLink → Indian Matrimonial App: Codebase Review & Gap Analysis
+# saathi → Indian Matrimonial App: Codebase Review & Gap Analysis
 
 **Purpose:** Feed this document to ChatGPT (or any AI) to identify what is missing or needs to change when pivoting from an Indian-global **dating app** to an **Indian matrimonial app** that aims to offer a better experience than Shaadi.com, BharatMatrimony, Jeevansathi, etc.
 
@@ -6,7 +6,7 @@
 
 ## 1. Executive Summary
 
-- **Current product:** DesiLink — Flutter MVP frontend for a “sophisticated Indian-global dating app” (depth-first profiles, map discovery, circles, events, premium, verification).
+- **Current product:** saathi — Flutter MVP frontend for a “sophisticated Indian-global dating app” (depth-first profiles, map discovery, circles, events, premium, verification).
 - **Target product:** Indian **matrimonial** app with a better UX than incumbents (Shaadi.com & similar).
 - **Codebase:** Flutter (Dart), Riverpod, go_router, Firebase (Auth, Firestore, Storage), Material 3, ~35 Dart files under `lib/`.
 - **Data:** All discovery/profile/chat/events/circles data is **mock** (in-memory); no backend API or Firestore wiring yet.
@@ -71,11 +71,11 @@ lib/
 | **Chat** | UI + mock | List of threads, thread screen with bubbles, voice note UI, typing bar. Mock threads/messages. |
 | **Circles** | UI + mock | List of groups (e.g. London Desi Professionals, IIT Alumni UK, Chai & Chats); “Join” → paywall. |
 | **Events** | UI + mock | Upcoming / My RSVPs tabs; event cards; detail sheet; RSVP. Mock events. |
-| **Premium** | UI | Paywall: “Unlock more with DesiLink”, Premium (£9.99/mo), Boost pack; features like “See who likes you”, “Unlimited intros”, “Travel mode”, “Priority in discovery”, “Read receipts”. Restore purchases. |
+| **Premium** | UI | Paywall: “Unlock more with saathi”, Premium (£9.99/mo), Boost pack; features like “See who likes you”, “Unlimited intros”, “Travel mode”, “Priority in discovery”, “Read receipts”. Restore purchases. |
 | **Verification** | UI | Tiles: ID, face match, LinkedIn, education; safety score bar; ID upload bottom sheet. Photo verification: intro → capture → challenge → processing/success/failed/retry. |
 | **Referral** | UI | Invite code, copy, share (“sophisticated dating, globally”), copy link; rewards text (Premium for inviter/invitee). |
 | **Profile & settings** | UI | My profile placeholder, Verification, Notifications, Privacy & safety, Help, Terms & Privacy, Sign out. |
-| **Splash / tagline** | UI | Splash: “DesiLink”, “Sophisticated connections, globally.” Tagline: “Depth-first connections. No mindless swiping.” |
+| **Splash / tagline** | UI | Splash: “saathi”, “Sophisticated connections, globally.” Tagline: “Depth-first connections. No mindless swiping.” |
 
 ---
 
@@ -122,7 +122,7 @@ lib/
 
 **Branding / taglines (to change):**
 
-- “DesiLink” — can keep or rename.
+- “saathi” — can keep or rename.
 - “Sophisticated connections, globally.” → matrimony positioning.
 - “Depth-first connections. No mindless swiping.” → e.g. “Serious about marriage. Meaningful profiles.”
 - “See full profiles and send thoughtful intros—no mindless swiping.” (onboarding)
@@ -232,7 +232,7 @@ You can paste this (and optionally this file) into ChatGPT:
 
 **Prompt:**
 
-“We have a Flutter dating app (DesiLink) and want to turn it into an Indian matrimonial app that’s better than Shaadi.com and similar apps. Attached is a detailed review of the codebase (features, data models, flows, copy, and a checklist of what typical matrimony apps have).  
+“We have a Flutter dating app (saathi) and want to turn it into an Indian matrimonial app that’s better than Shaadi.com and similar apps. Attached is a detailed review of the codebase (features, data models, flows, copy, and a checklist of what typical matrimony apps have).  
 1) List everything that is **missing** in our app compared to a full matrimonial product (profile fields, search, actions, monetisation, trust, privacy).  
 2) For each existing feature (discovery, map, chat, circles, events, premium, verification), say whether we should **keep, repurpose, or remove** it for matrimony and how.  
 3) Suggest **copy and terminology** changes (app-wide) from dating to matrimony.  
@@ -268,4 +268,4 @@ You can paste this (and optionally this file) into ChatGPT:
 
 ---
 
-*Document generated from codebase review for the DesiLink → Indian matrimonial pivot. Update this file as the product and codebase evolve.*
+*Document generated from codebase review for the saathi → Indian matrimonial pivot. Update this file as the product and codebase evolve.*

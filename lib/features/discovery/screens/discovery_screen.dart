@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_copy.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/discovery_providers.dart';
@@ -214,12 +216,82 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     );
   }
 
-  void _onSendIntro(ProfileSummary profile) {
-    context.push('/paywall');
+  Future<void> _onSendIntro(ProfileSummary profile) async {
+    try {
+      final result = await ref.read(interactionsRepositoryProvider).expressInterest(profile.id, source: 'recommended');
+      if (!mounted) return;
+      if (result.mutualMatch && result.chatThreadId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('It\'s a match with ${profile.name}!'), behavior: SnackBarBehavior.floating),
+        );
+        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profile.id)}');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Interest sent to ${profile.name}'), behavior: SnackBarBehavior.floating),
+        );
+      }
+      ref.invalidate(recommendedProfilesProvider);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 
-  void _onBlock(ProfileSummary profile) {}
-  void _onReport(ProfileSummary profile) {}
+  Future<void> _onBlock(ProfileSummary profile) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Block user?'),
+        content: Text('${profile.name} won\'t be able to see your profile or contact you.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(discoveryRepositoryProvider).sendFeedback(candidateId: profile.id, action: 'block', source: 'recommended');
+      if (!mounted) return;
+      ref.invalidate(recommendedProfilesProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${profile.name} blocked'), behavior: SnackBarBehavior.floating),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _onReport(ProfileSummary profile) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report user?'),
+        content: Text('Report ${profile.name} for inappropriate behaviour?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(discoveryRepositoryProvider).sendFeedback(candidateId: profile.id, action: 'report', source: 'recommended');
+      if (!mounted) return;
+      ref.invalidate(recommendedProfilesProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report submitted. Thank you.'), behavior: SnackBarBehavior.floating),
+      );
+    } catch (_) {}
+  }
 }
 
 class _CityChip extends StatelessWidget {

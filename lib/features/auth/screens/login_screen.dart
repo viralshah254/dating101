@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
 
 class _CountryCode {
@@ -13,18 +16,18 @@ class _CountryCode {
   final String flag;
 }
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
-  bool _usePhone = true;
   bool _ageConfirmed = false;
+  bool _isSending = false;
+  String? _errorMessage;
   _CountryCode _country = const _CountryCode(
     '+91',
     'India',
@@ -41,28 +44,51 @@ class _LoginScreenState extends State<LoginScreen> {
     _CountryCode('+49', 'Germany', '\u{1F1E9}\u{1F1EA}'),
     _CountryCode('+33', 'France', '\u{1F1EB}\u{1F1F7}'),
     _CountryCode('+1', 'Canada', '\u{1F1E8}\u{1F1E6}'),
+    _CountryCode('+254', 'Kenya', '\u{1F1F0}\u{1F1EA}'),
+    _CountryCode('+27', 'South Africa', '\u{1F1FF}\u{1F1E6}'),
+    _CountryCode('+60', 'Malaysia', '\u{1F1F2}\u{1F1FE}'),
   ];
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _emailController.dispose();
     super.dispose();
   }
 
-  bool get _canContinue {
-    if (!_ageConfirmed) return false;
-    if (_usePhone) return _phoneController.text.trim().length >= 10;
-    return _emailController.text.trim().contains('@');
+  /// Normalized phone: strip leading zeros, keep only digits.
+  String get _normalizedPhone {
+    final raw = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+    return raw.replaceFirst(RegExp(r'^0+'), '');
   }
 
-  void _continue() {
+  bool get _canContinue =>
+      _ageConfirmed && _normalizedPhone.length >= 7 && !_isSending;
+
+  Future<void> _continue() async {
     if (!_canContinue) return;
-    if (_usePhone) {
-      final phone = '${_country.code} ${_phoneController.text.trim()}';
-      context.push('/otp?phone=${Uri.encodeComponent(phone)}');
-    } else {
-      context.go('/mode-select');
+    setState(() {
+      _isSending = true;
+      _errorMessage = null;
+    });
+
+    final phone = _normalizedPhone;
+    final authRepo = ref.read(authRepositoryProvider);
+    final result = await authRepo.sendOtp(
+      countryCode: _country.code,
+      phone: phone,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSending = false);
+
+    switch (result) {
+      case SendOtpSuccess(:final verificationId):
+        final displayPhone = '${_country.code} $phone';
+        context.push(
+          '/otp?phone=${Uri.encodeComponent(displayPhone)}&vid=${Uri.encodeComponent(verificationId)}',
+        );
+      case SendOtpFailure(:final message):
+        setState(() => _errorMessage = message);
     }
   }
 
@@ -107,115 +133,81 @@ class _LoginScreenState extends State<LoginScreen> {
                       ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                       const SizedBox(height: 40),
 
-                      // Tab switcher
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          children: [
-                            _TabButton(
-                              label: l.phoneNumber,
-                              icon: Icons.phone_outlined,
-                              isSelected: _usePhone,
-                              onTap: () => setState(() => _usePhone = true),
+                      // Phone input
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _showCountryPicker(context),
+                            child: Container(
+                              height: 56,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).dividerColor,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _country.flag,
+                                    style: const TextStyle(fontSize: 22),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _country.code,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Icon(
+                                    Icons.keyboard_arrow_down,
+                                    size: 20,
+                                    color: onSurface.withValues(alpha: 0.5),
+                                  ),
+                                ],
+                              ),
                             ),
-                            _TabButton(
-                              label: l.email,
-                              icon: Icons.email_outlined,
-                              isSelected: !_usePhone,
-                              onTap: () => setState(() => _usePhone = false),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              style: AppTypography.bodyLarge.copyWith(
+                                color: onSurface,
+                                letterSpacing: 1.2,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: l.phoneNumber,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onChanged: (_) =>
+                                  setState(() => _errorMessage = null),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ).animate().fadeIn(delay: 250.ms),
 
-                      const SizedBox(height: 24),
-
-                      if (_usePhone) ...[
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => _showCountryPicker(context),
-                              child: Container(
-                                height: 56,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _country.flag,
-                                      style: const TextStyle(fontSize: 22),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _country.code,
-                                      style: AppTypography.bodyMedium.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: onSurface,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Icon(
-                                      Icons.keyboard_arrow_down,
-                                      size: 20,
-                                      color: onSurface.withValues(alpha: 0.5),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                style: AppTypography.bodyLarge.copyWith(
-                                  color: onSurface,
-                                  letterSpacing: 1.2,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: l.phoneNumber,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onChanged: (_) => setState(() {}),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ] else
-                        TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: onSurface,
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _errorMessage!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Theme.of(context).colorScheme.error,
                           ),
-                          decoration: InputDecoration(
-                            hintText: l.emailHint,
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onChanged: (_) => setState(() {}),
                         ),
+                      ],
 
                       const SizedBox(height: 20),
 
@@ -264,17 +256,26 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: Text(
-                            l.continueButton,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          child: _isSending
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  l.continueButton,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
                       // Divider
                       Row(
@@ -327,103 +328,137 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showCountryPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Theme.of(ctx).dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...(_countryCodes.map(
-              (c) => ListTile(
-                leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
-                title: Text(c.label),
-                trailing: Text(c.code, style: AppTypography.labelLarge),
-                onTap: () {
-                  setState(() => _country = c);
-                  Navigator.pop(ctx);
-                },
-              ),
-            )),
-            const SizedBox(height: 16),
-          ],
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (context, scrollController) => _CountryPickerSheet(
+          countries: _countryCodes,
+          scrollController: scrollController,
+          onSelect: (c) {
+            setState(() => _country = c);
+            Navigator.pop(context);
+          },
         ),
       ),
     );
   }
 }
 
-class _TabButton extends StatelessWidget {
-  const _TabButton({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
+class _CountryPickerSheet extends StatefulWidget {
+  const _CountryPickerSheet({
+    required this.countries,
+    required this.scrollController,
+    required this.onSelect,
   });
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
+  final List<_CountryCode> countries;
+  final ScrollController scrollController;
+  final void Function(_CountryCode) onSelect;
+
+  @override
+  State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
+}
+
+class _CountryPickerSheetState extends State<_CountryPickerSheet> {
+  final _searchController = TextEditingController();
+  List<_CountryCode> _filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.countries;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearch(String query) {
+    final q = query.toLowerCase().trim();
+    setState(() {
+      if (q.isEmpty) {
+        _filtered = widget.countries;
+      } else {
+        _filtered = widget.countries
+            .where((c) =>
+                c.label.toLowerCase().contains(q) ||
+                c.code.contains(q))
+            .toList();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? accent : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return SafeArea(
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Theme.of(context).dividerColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: isSelected
-                    ? Colors.white
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppTypography.labelLarge.copyWith(
-                  color: isSelected
-                      ? Colors.white
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Search country...',
+                prefixIcon: Icon(Icons.search, color: onSurface.withValues(alpha: 0.4)),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
-            ],
+              onChanged: _onSearch,
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _filtered.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        'No countries found',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: onSurface.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: widget.scrollController,
+                    itemCount: _filtered.length,
+                    itemBuilder: (context, i) {
+                      final c = _filtered[i];
+                      return ListTile(
+                        leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
+                        title: Text(c.label),
+                        trailing: Text(c.code, style: AppTypography.labelLarge),
+                        onTap: () => widget.onSelect(c),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

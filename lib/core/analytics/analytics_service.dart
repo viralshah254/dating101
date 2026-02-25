@@ -16,7 +16,6 @@ class AnalyticsService {
       // ignore: avoid_print
       print('[Analytics] $name ${params ?? {}}');
     }
-    // TODO: Mixpanel / Firebase Analytics
     // Mixpanel.track(name, properties: params);
   }
 
@@ -26,7 +25,7 @@ class AnalyticsService {
 
   void setUserId(String? id) {
     if (!_enabled) return;
-    // TODO: Mixpanel.identify(id);
+    // Mixpanel.identify(id);
   }
 
   /// MVP success metrics

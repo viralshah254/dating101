@@ -17,6 +17,7 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$PartnerPreferences {
+  String? get genderPreference => throw _privateConstructorUsedError;
   int get ageMin => throw _privateConstructorUsedError;
   int get ageMax => throw _privateConstructorUsedError;
   int? get heightMinCm => throw _privateConstructorUsedError;
@@ -24,11 +25,20 @@ mixin _$PartnerPreferences {
   List<String>? get preferredLocations => throw _privateConstructorUsedError;
   List<String>? get preferredReligions => throw _privateConstructorUsedError;
   List<String>? get preferredCommunities => throw _privateConstructorUsedError;
+  List<String>? get preferredMotherTongues =>
+      throw _privateConstructorUsedError;
   String? get educationPreference => throw _privateConstructorUsedError;
   String? get occupationPreference => throw _privateConstructorUsedError;
   List<String>? get maritalStatusPreference =>
       throw _privateConstructorUsedError;
   String? get dietPreference => throw _privateConstructorUsedError;
+  String? get incomePreference => throw _privateConstructorUsedError;
+  String? get drinkingPreference => throw _privateConstructorUsedError;
+  String? get smokingPreference => throw _privateConstructorUsedError;
+  String? get settledAbroadPreference => throw _privateConstructorUsedError;
+  List<String>? get preferredCountries => throw _privateConstructorUsedError;
+  String? get cityPreferenceMode => throw _privateConstructorUsedError;
+  double? get distanceMaxKm => throw _privateConstructorUsedError;
   bool? get horoscopeMatchPreferred => throw _privateConstructorUsedError;
 
   /// Create a copy of PartnerPreferences
@@ -46,6 +56,7 @@ abstract class $PartnerPreferencesCopyWith<$Res> {
   ) = _$PartnerPreferencesCopyWithImpl<$Res, PartnerPreferences>;
   @useResult
   $Res call({
+    String? genderPreference,
     int ageMin,
     int ageMax,
     int? heightMinCm,
@@ -53,10 +64,18 @@ abstract class $PartnerPreferencesCopyWith<$Res> {
     List<String>? preferredLocations,
     List<String>? preferredReligions,
     List<String>? preferredCommunities,
+    List<String>? preferredMotherTongues,
     String? educationPreference,
     String? occupationPreference,
     List<String>? maritalStatusPreference,
     String? dietPreference,
+    String? incomePreference,
+    String? drinkingPreference,
+    String? smokingPreference,
+    String? settledAbroadPreference,
+    List<String>? preferredCountries,
+    String? cityPreferenceMode,
+    double? distanceMaxKm,
     bool? horoscopeMatchPreferred,
   });
 }
@@ -76,6 +95,7 @@ class _$PartnerPreferencesCopyWithImpl<$Res, $Val extends PartnerPreferences>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? genderPreference = freezed,
     Object? ageMin = null,
     Object? ageMax = null,
     Object? heightMinCm = freezed,
@@ -83,14 +103,26 @@ class _$PartnerPreferencesCopyWithImpl<$Res, $Val extends PartnerPreferences>
     Object? preferredLocations = freezed,
     Object? preferredReligions = freezed,
     Object? preferredCommunities = freezed,
+    Object? preferredMotherTongues = freezed,
     Object? educationPreference = freezed,
     Object? occupationPreference = freezed,
     Object? maritalStatusPreference = freezed,
     Object? dietPreference = freezed,
+    Object? incomePreference = freezed,
+    Object? drinkingPreference = freezed,
+    Object? smokingPreference = freezed,
+    Object? settledAbroadPreference = freezed,
+    Object? preferredCountries = freezed,
+    Object? cityPreferenceMode = freezed,
+    Object? distanceMaxKm = freezed,
     Object? horoscopeMatchPreferred = freezed,
   }) {
     return _then(
       _value.copyWith(
+            genderPreference: freezed == genderPreference
+                ? _value.genderPreference
+                : genderPreference // ignore: cast_nullable_to_non_nullable
+                      as String?,
             ageMin: null == ageMin
                 ? _value.ageMin
                 : ageMin // ignore: cast_nullable_to_non_nullable
@@ -119,6 +151,10 @@ class _$PartnerPreferencesCopyWithImpl<$Res, $Val extends PartnerPreferences>
                 ? _value.preferredCommunities
                 : preferredCommunities // ignore: cast_nullable_to_non_nullable
                       as List<String>?,
+            preferredMotherTongues: freezed == preferredMotherTongues
+                ? _value.preferredMotherTongues
+                : preferredMotherTongues // ignore: cast_nullable_to_non_nullable
+                      as List<String>?,
             educationPreference: freezed == educationPreference
                 ? _value.educationPreference
                 : educationPreference // ignore: cast_nullable_to_non_nullable
@@ -135,6 +171,34 @@ class _$PartnerPreferencesCopyWithImpl<$Res, $Val extends PartnerPreferences>
                 ? _value.dietPreference
                 : dietPreference // ignore: cast_nullable_to_non_nullable
                       as String?,
+            incomePreference: freezed == incomePreference
+                ? _value.incomePreference
+                : incomePreference // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            drinkingPreference: freezed == drinkingPreference
+                ? _value.drinkingPreference
+                : drinkingPreference // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            smokingPreference: freezed == smokingPreference
+                ? _value.smokingPreference
+                : smokingPreference // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            settledAbroadPreference: freezed == settledAbroadPreference
+                ? _value.settledAbroadPreference
+                : settledAbroadPreference // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            preferredCountries: freezed == preferredCountries
+                ? _value.preferredCountries
+                : preferredCountries // ignore: cast_nullable_to_non_nullable
+                      as List<String>?,
+            cityPreferenceMode: freezed == cityPreferenceMode
+                ? _value.cityPreferenceMode
+                : cityPreferenceMode // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            distanceMaxKm: freezed == distanceMaxKm
+                ? _value.distanceMaxKm
+                : distanceMaxKm // ignore: cast_nullable_to_non_nullable
+                      as double?,
             horoscopeMatchPreferred: freezed == horoscopeMatchPreferred
                 ? _value.horoscopeMatchPreferred
                 : horoscopeMatchPreferred // ignore: cast_nullable_to_non_nullable
@@ -155,6 +219,7 @@ abstract class _$$PartnerPreferencesImplCopyWith<$Res>
   @override
   @useResult
   $Res call({
+    String? genderPreference,
     int ageMin,
     int ageMax,
     int? heightMinCm,
@@ -162,10 +227,18 @@ abstract class _$$PartnerPreferencesImplCopyWith<$Res>
     List<String>? preferredLocations,
     List<String>? preferredReligions,
     List<String>? preferredCommunities,
+    List<String>? preferredMotherTongues,
     String? educationPreference,
     String? occupationPreference,
     List<String>? maritalStatusPreference,
     String? dietPreference,
+    String? incomePreference,
+    String? drinkingPreference,
+    String? smokingPreference,
+    String? settledAbroadPreference,
+    List<String>? preferredCountries,
+    String? cityPreferenceMode,
+    double? distanceMaxKm,
     bool? horoscopeMatchPreferred,
   });
 }
@@ -184,6 +257,7 @@ class __$$PartnerPreferencesImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? genderPreference = freezed,
     Object? ageMin = null,
     Object? ageMax = null,
     Object? heightMinCm = freezed,
@@ -191,14 +265,26 @@ class __$$PartnerPreferencesImplCopyWithImpl<$Res>
     Object? preferredLocations = freezed,
     Object? preferredReligions = freezed,
     Object? preferredCommunities = freezed,
+    Object? preferredMotherTongues = freezed,
     Object? educationPreference = freezed,
     Object? occupationPreference = freezed,
     Object? maritalStatusPreference = freezed,
     Object? dietPreference = freezed,
+    Object? incomePreference = freezed,
+    Object? drinkingPreference = freezed,
+    Object? smokingPreference = freezed,
+    Object? settledAbroadPreference = freezed,
+    Object? preferredCountries = freezed,
+    Object? cityPreferenceMode = freezed,
+    Object? distanceMaxKm = freezed,
     Object? horoscopeMatchPreferred = freezed,
   }) {
     return _then(
       _$PartnerPreferencesImpl(
+        genderPreference: freezed == genderPreference
+            ? _value.genderPreference
+            : genderPreference // ignore: cast_nullable_to_non_nullable
+                  as String?,
         ageMin: null == ageMin
             ? _value.ageMin
             : ageMin // ignore: cast_nullable_to_non_nullable
@@ -227,6 +313,10 @@ class __$$PartnerPreferencesImplCopyWithImpl<$Res>
             ? _value._preferredCommunities
             : preferredCommunities // ignore: cast_nullable_to_non_nullable
                   as List<String>?,
+        preferredMotherTongues: freezed == preferredMotherTongues
+            ? _value._preferredMotherTongues
+            : preferredMotherTongues // ignore: cast_nullable_to_non_nullable
+                  as List<String>?,
         educationPreference: freezed == educationPreference
             ? _value.educationPreference
             : educationPreference // ignore: cast_nullable_to_non_nullable
@@ -243,6 +333,34 @@ class __$$PartnerPreferencesImplCopyWithImpl<$Res>
             ? _value.dietPreference
             : dietPreference // ignore: cast_nullable_to_non_nullable
                   as String?,
+        incomePreference: freezed == incomePreference
+            ? _value.incomePreference
+            : incomePreference // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        drinkingPreference: freezed == drinkingPreference
+            ? _value.drinkingPreference
+            : drinkingPreference // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        smokingPreference: freezed == smokingPreference
+            ? _value.smokingPreference
+            : smokingPreference // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        settledAbroadPreference: freezed == settledAbroadPreference
+            ? _value.settledAbroadPreference
+            : settledAbroadPreference // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        preferredCountries: freezed == preferredCountries
+            ? _value._preferredCountries
+            : preferredCountries // ignore: cast_nullable_to_non_nullable
+                  as List<String>?,
+        cityPreferenceMode: freezed == cityPreferenceMode
+            ? _value.cityPreferenceMode
+            : cityPreferenceMode // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        distanceMaxKm: freezed == distanceMaxKm
+            ? _value.distanceMaxKm
+            : distanceMaxKm // ignore: cast_nullable_to_non_nullable
+                  as double?,
         horoscopeMatchPreferred: freezed == horoscopeMatchPreferred
             ? _value.horoscopeMatchPreferred
             : horoscopeMatchPreferred // ignore: cast_nullable_to_non_nullable
@@ -256,6 +374,7 @@ class __$$PartnerPreferencesImplCopyWithImpl<$Res>
 
 class _$PartnerPreferencesImpl implements _PartnerPreferences {
   const _$PartnerPreferencesImpl({
+    this.genderPreference,
     this.ageMin = 21,
     this.ageMax = 45,
     this.heightMinCm,
@@ -263,16 +382,28 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
     final List<String>? preferredLocations,
     final List<String>? preferredReligions,
     final List<String>? preferredCommunities,
+    final List<String>? preferredMotherTongues,
     this.educationPreference,
     this.occupationPreference,
     final List<String>? maritalStatusPreference,
     this.dietPreference,
+    this.incomePreference,
+    this.drinkingPreference,
+    this.smokingPreference,
+    this.settledAbroadPreference,
+    final List<String>? preferredCountries,
+    this.cityPreferenceMode,
+    this.distanceMaxKm,
     this.horoscopeMatchPreferred,
   }) : _preferredLocations = preferredLocations,
        _preferredReligions = preferredReligions,
        _preferredCommunities = preferredCommunities,
-       _maritalStatusPreference = maritalStatusPreference;
+       _preferredMotherTongues = preferredMotherTongues,
+       _maritalStatusPreference = maritalStatusPreference,
+       _preferredCountries = preferredCountries;
 
+  @override
+  final String? genderPreference;
   @override
   @JsonKey()
   final int ageMin;
@@ -316,6 +447,17 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
     return EqualUnmodifiableListView(value);
   }
 
+  final List<String>? _preferredMotherTongues;
+  @override
+  List<String>? get preferredMotherTongues {
+    final value = _preferredMotherTongues;
+    if (value == null) return null;
+    if (_preferredMotherTongues is EqualUnmodifiableListView)
+      return _preferredMotherTongues;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   final String? educationPreference;
   @override
@@ -334,11 +476,34 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
   @override
   final String? dietPreference;
   @override
+  final String? incomePreference;
+  @override
+  final String? drinkingPreference;
+  @override
+  final String? smokingPreference;
+  @override
+  final String? settledAbroadPreference;
+  final List<String>? _preferredCountries;
+  @override
+  List<String>? get preferredCountries {
+    final value = _preferredCountries;
+    if (value == null) return null;
+    if (_preferredCountries is EqualUnmodifiableListView)
+      return _preferredCountries;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  @override
+  final String? cityPreferenceMode;
+  @override
+  final double? distanceMaxKm;
+  @override
   final bool? horoscopeMatchPreferred;
 
   @override
   String toString() {
-    return 'PartnerPreferences(ageMin: $ageMin, ageMax: $ageMax, heightMinCm: $heightMinCm, heightMaxCm: $heightMaxCm, preferredLocations: $preferredLocations, preferredReligions: $preferredReligions, preferredCommunities: $preferredCommunities, educationPreference: $educationPreference, occupationPreference: $occupationPreference, maritalStatusPreference: $maritalStatusPreference, dietPreference: $dietPreference, horoscopeMatchPreferred: $horoscopeMatchPreferred)';
+    return 'PartnerPreferences(genderPreference: $genderPreference, ageMin: $ageMin, ageMax: $ageMax, heightMinCm: $heightMinCm, heightMaxCm: $heightMaxCm, preferredLocations: $preferredLocations, preferredReligions: $preferredReligions, preferredCommunities: $preferredCommunities, preferredMotherTongues: $preferredMotherTongues, educationPreference: $educationPreference, occupationPreference: $occupationPreference, maritalStatusPreference: $maritalStatusPreference, dietPreference: $dietPreference, incomePreference: $incomePreference, drinkingPreference: $drinkingPreference, smokingPreference: $smokingPreference, settledAbroadPreference: $settledAbroadPreference, preferredCountries: $preferredCountries, cityPreferenceMode: $cityPreferenceMode, distanceMaxKm: $distanceMaxKm, horoscopeMatchPreferred: $horoscopeMatchPreferred)';
   }
 
   @override
@@ -346,6 +511,8 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$PartnerPreferencesImpl &&
+            (identical(other.genderPreference, genderPreference) ||
+                other.genderPreference == genderPreference) &&
             (identical(other.ageMin, ageMin) || other.ageMin == ageMin) &&
             (identical(other.ageMax, ageMax) || other.ageMax == ageMax) &&
             (identical(other.heightMinCm, heightMinCm) ||
@@ -364,6 +531,10 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
               other._preferredCommunities,
               _preferredCommunities,
             ) &&
+            const DeepCollectionEquality().equals(
+              other._preferredMotherTongues,
+              _preferredMotherTongues,
+            ) &&
             (identical(other.educationPreference, educationPreference) ||
                 other.educationPreference == educationPreference) &&
             (identical(other.occupationPreference, occupationPreference) ||
@@ -374,6 +545,25 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
             ) &&
             (identical(other.dietPreference, dietPreference) ||
                 other.dietPreference == dietPreference) &&
+            (identical(other.incomePreference, incomePreference) ||
+                other.incomePreference == incomePreference) &&
+            (identical(other.drinkingPreference, drinkingPreference) ||
+                other.drinkingPreference == drinkingPreference) &&
+            (identical(other.smokingPreference, smokingPreference) ||
+                other.smokingPreference == smokingPreference) &&
+            (identical(
+                  other.settledAbroadPreference,
+                  settledAbroadPreference,
+                ) ||
+                other.settledAbroadPreference == settledAbroadPreference) &&
+            const DeepCollectionEquality().equals(
+              other._preferredCountries,
+              _preferredCountries,
+            ) &&
+            (identical(other.cityPreferenceMode, cityPreferenceMode) ||
+                other.cityPreferenceMode == cityPreferenceMode) &&
+            (identical(other.distanceMaxKm, distanceMaxKm) ||
+                other.distanceMaxKm == distanceMaxKm) &&
             (identical(
                   other.horoscopeMatchPreferred,
                   horoscopeMatchPreferred,
@@ -382,8 +572,9 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
+    genderPreference,
     ageMin,
     ageMax,
     heightMinCm,
@@ -391,12 +582,20 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
     const DeepCollectionEquality().hash(_preferredLocations),
     const DeepCollectionEquality().hash(_preferredReligions),
     const DeepCollectionEquality().hash(_preferredCommunities),
+    const DeepCollectionEquality().hash(_preferredMotherTongues),
     educationPreference,
     occupationPreference,
     const DeepCollectionEquality().hash(_maritalStatusPreference),
     dietPreference,
+    incomePreference,
+    drinkingPreference,
+    smokingPreference,
+    settledAbroadPreference,
+    const DeepCollectionEquality().hash(_preferredCountries),
+    cityPreferenceMode,
+    distanceMaxKm,
     horoscopeMatchPreferred,
-  );
+  ]);
 
   /// Create a copy of PartnerPreferences
   /// with the given fields replaced by the non-null parameter values.
@@ -412,6 +611,7 @@ class _$PartnerPreferencesImpl implements _PartnerPreferences {
 
 abstract class _PartnerPreferences implements PartnerPreferences {
   const factory _PartnerPreferences({
+    final String? genderPreference,
     final int ageMin,
     final int ageMax,
     final int? heightMinCm,
@@ -419,13 +619,23 @@ abstract class _PartnerPreferences implements PartnerPreferences {
     final List<String>? preferredLocations,
     final List<String>? preferredReligions,
     final List<String>? preferredCommunities,
+    final List<String>? preferredMotherTongues,
     final String? educationPreference,
     final String? occupationPreference,
     final List<String>? maritalStatusPreference,
     final String? dietPreference,
+    final String? incomePreference,
+    final String? drinkingPreference,
+    final String? smokingPreference,
+    final String? settledAbroadPreference,
+    final List<String>? preferredCountries,
+    final String? cityPreferenceMode,
+    final double? distanceMaxKm,
     final bool? horoscopeMatchPreferred,
   }) = _$PartnerPreferencesImpl;
 
+  @override
+  String? get genderPreference;
   @override
   int get ageMin;
   @override
@@ -441,6 +651,8 @@ abstract class _PartnerPreferences implements PartnerPreferences {
   @override
   List<String>? get preferredCommunities;
   @override
+  List<String>? get preferredMotherTongues;
+  @override
   String? get educationPreference;
   @override
   String? get occupationPreference;
@@ -448,6 +660,20 @@ abstract class _PartnerPreferences implements PartnerPreferences {
   List<String>? get maritalStatusPreference;
   @override
   String? get dietPreference;
+  @override
+  String? get incomePreference;
+  @override
+  String? get drinkingPreference;
+  @override
+  String? get smokingPreference;
+  @override
+  String? get settledAbroadPreference;
+  @override
+  List<String>? get preferredCountries;
+  @override
+  String? get cityPreferenceMode;
+  @override
+  double? get distanceMaxKm;
   @override
   bool? get horoscopeMatchPreferred;
 

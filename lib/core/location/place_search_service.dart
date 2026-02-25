@@ -29,7 +29,7 @@ class PlaceSuggestion {
 class PlaceSearchService {
   PlaceSearchService._();
   static const _base = 'https://nominatim.openstreetmap.org/search';
-  static const _userAgent = 'DesiLink/1.0 (matrimony app)';
+  static const _userAgent = 'saathi/1.0 (matrimony app)';
 
   static Future<List<PlaceSuggestion>> search(String query) async {
     final q = query.trim();
@@ -43,10 +43,9 @@ class PlaceSearchService {
       },
     );
     try {
-      final response = await http.get(
-        uri,
-        headers: {'User-Agent': _userAgent},
-      ).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(uri, headers: {'User-Agent': _userAgent})
+          .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return [];
       final list = json.decode(response.body) as List<dynamic>?;
       if (list == null) return [];
@@ -56,17 +55,23 @@ class PlaceSearchService {
         final addr = e['address'] as Map<String, dynamic>?;
         final country = addr?['country'] as String? ?? '';
         final countryCode = addr?['country_code'] as String?;
-        final state = addr?['state'] as String? ?? addr?['state_district'] as String?;
-        final city = addr?['city'] as String? ?? addr?['town'] as String? ?? addr?['village'] as String?;
+        final state =
+            addr?['state'] as String? ?? addr?['state_district'] as String?;
+        final city =
+            addr?['city'] as String? ??
+            addr?['town'] as String? ??
+            addr?['village'] as String?;
         final displayName = e['display_name'] as String? ?? '';
         if (displayName.isEmpty) continue;
-        out.add(PlaceSuggestion(
-          displayName: displayName,
-          country: country,
-          countryCode: countryCode,
-          state: state,
-          city: city,
-        ));
+        out.add(
+          PlaceSuggestion(
+            displayName: displayName,
+            country: country,
+            countryCode: countryCode,
+            state: state,
+            city: city,
+          ),
+        );
       }
       return out;
     } catch (_) {

@@ -5,14 +5,14 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'l10n/app_localizations.dart';
 
-class DesiLinkApp extends ConsumerWidget {
-  const DesiLinkApp({super.key});
+class SaathiApp extends ConsumerWidget {
+  const SaathiApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
-      title: 'DesiLink',
+      title: 'saathi',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

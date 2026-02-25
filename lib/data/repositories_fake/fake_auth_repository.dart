@@ -2,7 +2,8 @@ import 'dart:async';
 
 import '../../domain/repositories/auth_repository.dart';
 
-/// Fake auth: no real OTP; succeeds after "verify" for testing.
+/// Fake auth for development. Any 6-digit code succeeds.
+/// Simulates new vs returning user based on phone number.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository() {
     _userIdController = StreamController<String?>.broadcast();
@@ -11,19 +12,26 @@ class FakeAuthRepository implements AuthRepository {
 
   String? _currentUserId;
   late final StreamController<String?> _userIdController;
+  bool _lastOtpIsNewUser = true;
 
-  static const String _fakeUserId = 'fake-user-1';
+  static const String _fakeUserId = 'me';
+
+  /// Phones ending in 0000 are treated as "returning" users for testing.
+  static bool _isReturningUser(String phone) {
+    return phone.trim().endsWith('0000');
+  }
 
   @override
-  Future<AuthResult> sendOtp({
+  Future<SendOtpResult> sendOtp({
     required String countryCode,
     required String phone,
   }) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    if (phone.length < 10) {
-      return const AuthFailure('Please enter a valid phone number');
+    if (phone.length < 7) {
+      return const SendOtpFailure('Please enter a valid phone number');
     }
-    return const AuthSuccess(userId: null, isNewUser: true);
+    _lastOtpIsNewUser = !_isReturningUser(phone);
+    return const SendOtpSuccess(verificationId: 'fake-verification-id');
   }
 
   @override
@@ -32,20 +40,12 @@ class FakeAuthRepository implements AuthRepository {
     required String code,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    if (code.length != 6) {
-      return const AuthFailure('Please enter a 6-digit code');
+    if (code.length != 4) {
+      return const AuthFailure('Please enter a 4-digit code');
     }
     _currentUserId = _fakeUserId;
     _userIdController.add(_currentUserId);
-    return AuthSuccess(userId: _currentUserId, isNewUser: true);
-  }
-
-  @override
-  Future<AuthResult> signInWithEmail({required String email}) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    _currentUserId = _fakeUserId;
-    _userIdController.add(_currentUserId);
-    return AuthSuccess(userId: _currentUserId, isNewUser: false);
+    return AuthSuccess(userId: _currentUserId, isNewUser: _lastOtpIsNewUser);
   }
 
   @override
@@ -65,7 +65,10 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Stream<String?> get currentUserId => _userIdController.stream;
+  String? get currentUserId => _currentUserId;
+
+  @override
+  Stream<String?> get authStateChanges => _userIdController.stream;
 
   @override
   Future<void> signOut() async {

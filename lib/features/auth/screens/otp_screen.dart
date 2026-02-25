@@ -1,22 +1,27 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
 
-class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key, this.phone});
+class OtpScreen extends ConsumerStatefulWidget {
+  const OtpScreen({super.key, this.phone, this.verificationId});
   final String? phone;
+  final String? verificationId;
 
   @override
-  State<OtpScreen> createState() => _OtpScreenState();
+  ConsumerState<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMixin {
-  static const _digitCount = 6;
+class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProviderStateMixin {
+  static const _digitCount = 4;
 
   final List<TextEditingController> _controllers =
       List.generate(_digitCount, (_) => TextEditingController());
@@ -26,6 +31,7 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
   Timer? _resendTimer;
   int _resendSeconds = 30;
   bool _isVerifying = false;
+  String? _errorMessage;
   late AnimationController _shakeController;
 
   String get _displayPhone {
@@ -35,7 +41,7 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
     if (digits.length < 4) return phone;
     final prefix = phone.startsWith('+') ? phone.split(RegExp(r'[\s]')).first : '+??';
     final last4 = digits.substring(digits.length - 4);
-    return '$prefix ●●●●● $last4';
+    return '$prefix \u25CF\u25CF\u25CF\u25CF\u25CF $last4';
   }
 
   String get _fullCode => _controllers.map((c) => c.text).join();
@@ -100,13 +106,52 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _verify() async {
-    if (_fullCode.length != _digitCount) return;
-    setState(() => _isVerifying = true);
-    // Simulate verification delay
-    await Future.delayed(const Duration(milliseconds: 800));
+    if (_fullCode.length != _digitCount || _isVerifying) return;
+    setState(() {
+      _isVerifying = true;
+      _errorMessage = null;
+    });
+
+    final authRepo = ref.read(authRepositoryProvider);
+    final result = await authRepo.verifyOtp(
+      verificationId: widget.verificationId ?? '',
+      code: _fullCode,
+    );
+
     if (!mounted) return;
     setState(() => _isVerifying = false);
-    context.go('/mode-select');
+
+    switch (result) {
+      case AuthSuccess(:final isNewUser):
+        if (isNewUser) {
+          debugPrint('[OTP] New user → mode-select');
+          context.go('/mode-select');
+        } else {
+          // Returning user — verify they have a profile
+          debugPrint('[OTP] Returning user, checking profile...');
+          try {
+            final profile = await ref.read(profileRepositoryProvider).getMyProfile();
+            if (!mounted) return;
+            if (profile != null) {
+              debugPrint('[OTP] Profile exists → home');
+              context.go('/');
+            } else {
+              debugPrint('[OTP] No profile → mode-select');
+              context.go('/mode-select');
+            }
+          } catch (e) {
+            debugPrint('[OTP] Error checking profile: $e → home');
+            if (mounted) context.go('/');
+          }
+        }
+      case AuthFailure(:final message):
+        setState(() => _errorMessage = message);
+        _shakeController.forward(from: 0);
+        for (final c in _controllers) {
+          c.clear();
+        }
+        _focusNodes[0].requestFocus();
+    }
   }
 
   @override
@@ -119,7 +164,6 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
       body: SafeArea(
         child: Column(
           children: [
-            // Custom top bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
@@ -131,7 +175,6 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                 ],
               ),
             ),
-
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -147,7 +190,6 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                         height: 1.15,
                       ),
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
-
                     const SizedBox(height: 12),
                     RichText(
                       text: TextSpan(
@@ -167,7 +209,6 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                         ],
                       ),
                     ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
-
                     const SizedBox(height: 40),
 
                     // OTP boxes
@@ -176,10 +217,10 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                       children: List.generate(_digitCount, (i) {
                         final hasValue = _controllers[i].text.isNotEmpty;
                         return Container(
-                          width: 48,
-                          height: 56,
+                          width: 56,
+                          height: 64,
                           margin: EdgeInsets.only(
-                            right: i < _digitCount - 1 ? (i == 2 ? 16 : 8) : 0,
+                            right: i < _digitCount - 1 ? 12 : 0,
                           ),
                           child: KeyboardListener(
                             focusNode: FocusNode(),
@@ -215,7 +256,9 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: hasValue ? accent.withValues(alpha: 0.5) : Theme.of(context).dividerColor,
+                                    color: hasValue
+                                        ? accent.withValues(alpha: 0.5)
+                                        : Theme.of(context).dividerColor,
                                   ),
                                 ),
                               ),
@@ -225,6 +268,18 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                         );
                       }),
                     ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.05, end: 0),
+
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Center(
+                        child: Text(
+                          _errorMessage!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 28),
 
@@ -265,7 +320,9 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                       child: FilledButton(
                         onPressed: _fullCode.length == _digitCount && !_isVerifying ? _verify : null,
                         style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         child: _isVerifying
                             ? const SizedBox(
@@ -282,7 +339,6 @@ class _OtpScreenState extends State<OtpScreen> with SingleTickerProviderStateMix
                               ),
                       ),
                     ),
-
                     const SizedBox(height: 32),
                   ],
                 ),

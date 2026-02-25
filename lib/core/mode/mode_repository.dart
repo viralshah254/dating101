@@ -2,8 +2,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_mode.dart';
 
-const String _keyMode = 'desilink_app_mode';
-const String _keyModeSelectedOnce = 'desilink_mode_selected_once';
+const String _keyMode = 'saathi_app_mode';
+const String _keyModeSelectedOnce = 'saathi_mode_selected_once';
 
 /// Persists and reads app mode locally.
 /// In production, also sync with user profile on backend.

@@ -6,6 +6,7 @@ part 'partner_preferences.freezed.dart';
 @freezed
 class PartnerPreferences with _$PartnerPreferences {
   const factory PartnerPreferences({
+    String? genderPreference,
     @Default(21) int ageMin,
     @Default(45) int ageMax,
     int? heightMinCm,
@@ -13,10 +14,18 @@ class PartnerPreferences with _$PartnerPreferences {
     List<String>? preferredLocations,
     List<String>? preferredReligions,
     List<String>? preferredCommunities,
+    List<String>? preferredMotherTongues,
     String? educationPreference,
     String? occupationPreference,
     List<String>? maritalStatusPreference,
     String? dietPreference,
+    String? incomePreference,
+    String? drinkingPreference,
+    String? smokingPreference,
+    String? settledAbroadPreference,
+    List<String>? preferredCountries,
+    String? cityPreferenceMode,
+    double? distanceMaxKm,
     bool? horoscopeMatchPreferred,
   }) = _PartnerPreferences;
 }

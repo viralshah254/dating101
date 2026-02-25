@@ -29,11 +29,24 @@ class FakeProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<UserProfile> createMyProfile(UserProfile profile) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    _myProfile = profile;
+    _controller.add(_myProfile);
+    return profile;
+  }
+
+  @override
   Future<UserProfile> updateMyProfile(UserProfile profile) async {
     await Future.delayed(const Duration(milliseconds: 150));
     _myProfile = profile;
     _controller.add(_myProfile);
     return profile;
+  }
+
+  @override
+  Future<void> saveProfileJson(Map<String, dynamic> json, {bool create = false}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
   }
 
   @override
@@ -81,5 +94,17 @@ class FakeProfileRepository implements ProfileRepository {
     if (profile.datingExtensions != null) score += 0.1;
     if (profile.matrimonyExtensions != null) score += 0.15;
     return score.clamp(0.0, 1.0);
+  }
+
+  @override
+  Future<Map<String, dynamic>> updatePrivacy(Map<String, dynamic> privacy) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return Map<String, dynamic>.from(privacy);
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateNotificationPreferences(Map<String, dynamic> preferences) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return Map<String, dynamic>.from(preferences);
   }
 }

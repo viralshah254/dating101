@@ -6,17 +6,45 @@ import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 import '../screens/profile_setup_screen.dart';
 
+/// Convert normalized stored value ("Woman", "Man", "Any") to display label.
+String? _genderPrefToDisplay(String? stored, AppMode mode, AppLocalizations l) {
+  if (stored == null) return null;
+  if (mode.isDating) {
+    switch (stored) {
+      case 'Woman': return l.interestedInWomen;
+      case 'Man': return l.interestedInMen;
+      case 'Any': return l.interestedInEveryone;
+    }
+  } else {
+    switch (stored) {
+      case 'Woman': return l.lookingForBride;
+      case 'Man': return l.lookingForGroom;
+    }
+  }
+  return stored;
+}
+
+/// Convert display label back to normalized stored value.
+String _displayToGenderPref(String display, AppLocalizations l) {
+  if (display == l.lookingForBride || display == l.interestedInWomen) return 'Woman';
+  if (display == l.lookingForGroom || display == l.interestedInMen) return 'Man';
+  if (display == l.interestedInEveryone) return 'Any';
+  return display;
+}
+
 class StepIdentity extends StatelessWidget {
   const StepIdentity({
     super.key,
     required this.mode,
     required this.formData,
     required this.onChanged,
+    this.isEditing = false,
   });
 
   final AppMode mode;
   final ProfileFormData formData;
   final VoidCallback onChanged;
+  final bool isEditing;
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +55,12 @@ class StepIdentity extends StatelessWidget {
     final forSelf = formData.isForSelf;
     final subject = formData.subjectName;
 
-    final title = forSelf ? l.profileSetupTitle : l.dynSetupTitle(subject);
-    final subtitle = forSelf ? l.profileSetupSubtitle : l.dynSetupSubtitle(subject);
+    final title = isEditing
+        ? 'Edit your profile'
+        : (forSelf ? l.profileSetupTitle : l.dynSetupTitle(subject));
+    final subtitle = isEditing
+        ? 'Update your details. Some fields cannot be changed.'
+        : (forSelf ? l.profileSetupSubtitle : l.dynSetupSubtitle(subject));
     final nameLabel = forSelf ? l.yourName : l.dynName(subject);
     final genderLabel = forSelf ? l.genderQuestion : l.dynGender(subject);
     final dobLabel = forSelf ? l.dateOfBirth : l.dynDob(subject);
@@ -69,27 +101,38 @@ class StepIdentity extends StatelessWidget {
           ).animate().fadeIn(delay: 100.ms),
           const SizedBox(height: 32),
 
-          // ── Creating for (matrimony only) ───────────────────────
-          if (mode.isMatrimony) ...[
+          // ── Creating for (matrimony only, first-time setup only) ──
+          if (mode.isMatrimony && !isEditing) ...[
             _SectionLabel(label: l.profileCreatingFor),
             const SizedBox(height: 12),
             _CreatingForSelector(formData: formData, onChanged: onChanged),
             const SizedBox(height: 28),
           ],
 
-          // ── Name (mandatory) ────────────────────────────────────
-          _SectionLabel(label: nameLabel, mandatory: true),
+          // ── Name (locked in edit mode) ────────────────────────
+          _SectionLabel(label: nameLabel, mandatory: !isEditing),
           const SizedBox(height: 8),
           _StyledTextField(
             value: formData.name,
             hint: nameHint,
             textInputAction: TextInputAction.next,
-            onChanged: (v) {
+            readOnly: isEditing,
+            onChanged: isEditing ? null : (v) {
               formData.name = ProfileFormData.toTitleCase(v);
               onChanged();
             },
           ),
-          if (formData.name.trim().isNotEmpty && !ProfileFormData.isNameValid(formData.name)) ...[
+          if (isEditing) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Name cannot be changed after setup',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
+            ),
+          ],
+          if (!isEditing && formData.name.trim().isNotEmpty && !ProfileFormData.isNameValid(formData.name)) ...[
             const SizedBox(height: 6),
             Text(
               l.nameValidationHint,
@@ -113,51 +156,72 @@ class StepIdentity extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // ── Gender (mandatory) ──────────────────────────────────
-          _SectionLabel(label: genderLabel, mandatory: true),
+          // ── Gender (locked in edit mode) ────────────────────────
+          _SectionLabel(label: genderLabel, mandatory: !isEditing),
           const SizedBox(height: 12),
-          _ChipSelector(
-            options: [l.genderWoman, l.genderMan, l.genderNonBinary],
-            selected: formData.gender,
-            onSelected: (v) {
-              formData.gender = v;
-              // Smart default: auto-set "Interested in" based on gender
-              if (v == l.genderMan && formData.interestedIn == null) {
-                formData.interestedIn = mode.isDating ? l.interestedInWomen : l.lookingForBride;
-              } else if (v == l.genderWoman && formData.interestedIn == null) {
-                formData.interestedIn = mode.isDating ? l.interestedInMen : l.lookingForGroom;
-              }
-              onChanged();
-            },
+          IgnorePointer(
+            ignoring: isEditing,
+            child: Opacity(
+              opacity: isEditing ? 0.6 : 1.0,
+              child: _ChipSelector(
+                options: [l.genderWoman, l.genderMan, l.genderNonBinary],
+                selected: formData.gender,
+                onSelected: (v) {
+                  formData.gender = v;
+                  if (v == l.genderMan && formData.interestedIn == null) {
+                    formData.interestedIn = 'Woman';
+                  } else if (v == l.genderWoman && formData.interestedIn == null) {
+                    formData.interestedIn = 'Man';
+                  }
+                  onChanged();
+                },
+              ),
+            ),
           ),
           const SizedBox(height: 24),
 
-          // ── Interested in (smart default) ───────────────────────
+          // ── Partner gender preference ───────────────────────────
           _SectionLabel(label: mode.isDating ? l.interestedIn : l.lookingForPartner),
           const SizedBox(height: 12),
           _ChipSelector(
             options: mode.isDating
                 ? [l.interestedInWomen, l.interestedInMen, l.interestedInEveryone]
                 : [l.lookingForBride, l.lookingForGroom],
-            selected: formData.interestedIn,
+            selected: _genderPrefToDisplay(formData.interestedIn, mode, l),
             onSelected: (v) {
-              formData.interestedIn = v;
+              formData.interestedIn = _displayToGenderPref(v, l);
               onChanged();
             },
           ),
           const SizedBox(height: 24),
 
-          // ── Date of birth (mandatory, 18+) ──────────────────────
-          _SectionLabel(label: dobLabel, mandatory: true),
+          // ── Date of birth (locked in edit mode) ──────────────────
+          _SectionLabel(label: dobLabel, mandatory: !isEditing),
           const SizedBox(height: 8),
-          _DateOfBirthPicker(
-            value: formData.dateOfBirth,
-            onChanged: (d) {
-              formData.dateOfBirth = d;
-              onChanged();
-            },
+          IgnorePointer(
+            ignoring: isEditing,
+            child: Opacity(
+              opacity: isEditing ? 0.6 : 1.0,
+              child: _DateOfBirthPicker(
+                value: formData.dateOfBirth,
+                onChanged: (d) {
+                  formData.dateOfBirth = d;
+                  onChanged();
+                },
+              ),
+            ),
           ),
-          if (formData.dateOfBirth != null && !ProfileFormData.isAtLeast18(formData.dateOfBirth)) ...[
+          if (isEditing && formData.dateOfBirth != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Date of birth cannot be changed',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
+            ),
+          ],
+          if (!isEditing && formData.dateOfBirth != null && !ProfileFormData.isAtLeast18(formData.dateOfBirth)) ...[
             const SizedBox(height: 6),
             Text(
               l.dobMustBe18,
@@ -166,11 +230,13 @@ class StepIdentity extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          _ConfirmAge18Checkbox(
-            formData: formData,
-            onChanged: onChanged,
-          ),
+          if (!isEditing) ...[
+            const SizedBox(height: 16),
+            _ConfirmAge18Checkbox(
+              formData: formData,
+              onChanged: onChanged,
+            ),
+          ],
           const SizedBox(height: 24),
 
           // ── Location ────────────────────────────────────────────
@@ -602,16 +668,18 @@ class _StyledTextField extends StatefulWidget {
   const _StyledTextField({
     required this.value,
     required this.hint,
-    required this.onChanged,
+    this.onChanged,
     this.icon,
     this.textInputAction = TextInputAction.done,
+    this.readOnly = false,
   });
 
   final String value;
   final String hint;
-  final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onChanged;
   final IconData? icon;
   final TextInputAction textInputAction;
+  final bool readOnly;
 
   @override
   State<_StyledTextField> createState() => _StyledTextFieldState();
@@ -646,12 +714,16 @@ class _StyledTextFieldState extends State<_StyledTextField> {
     return TextField(
       controller: _ctrl,
       textInputAction: widget.textInputAction,
+      readOnly: widget.readOnly,
+      enabled: !widget.readOnly,
       decoration: InputDecoration(
         hintText: widget.hint,
         prefixIcon: widget.icon != null ? Icon(widget.icon) : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        fillColor: widget.readOnly
+            ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
       onChanged: widget.onChanged,
     );
@@ -903,7 +975,7 @@ class _DateOfBirthPicker extends StatelessWidget {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<int>(
-                            value: year,
+                            initialValue: year,
                             decoration: InputDecoration(
                               labelText: 'Year',
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -924,7 +996,7 @@ class _DateOfBirthPicker extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<int>(
-                            value: month,
+                            initialValue: month,
                             decoration: InputDecoration(
                               labelText: 'Month',
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -946,7 +1018,7 @@ class _DateOfBirthPicker extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
-                      value: dayClamped,
+                      initialValue: dayClamped,
                       decoration: InputDecoration(
                         labelText: 'Day',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1021,11 +1093,11 @@ class _CreatingForSelector extends StatelessWidget {
               case 'son':
               case 'brother':
                 formData.gender = l.genderMan;
-                formData.interestedIn = l.lookingForBride;
+                formData.interestedIn = 'Woman';
               case 'daughter':
               case 'sister':
                 formData.gender = l.genderWoman;
-                formData.interestedIn = l.lookingForGroom;
+                formData.interestedIn = 'Man';
               default:
                 break;
             }

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/mode/mode_provider.dart';
+import 'core/providers/repository_providers.dart';
+import 'data/api/token_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,12 +16,15 @@ void main() async {
     // Run without Firebase until flutterfire configure is run
   }
   final prefs = await SharedPreferences.getInstance();
+  final tokens = TokenStorage();
+  await tokens.load();
   runApp(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        tokenStorageProvider.overrideWithValue(tokens),
       ],
-      child: const DesiLinkApp(),
+      child: const SaathiApp(),
     ),
   );
 }

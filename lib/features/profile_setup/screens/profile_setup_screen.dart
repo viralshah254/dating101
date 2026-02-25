@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/user_profile.dart';
 import '../../../l10n/app_localizations.dart';
 import '../widgets/step_identity.dart';
 import '../widgets/step_interests.dart';
@@ -15,7 +17,17 @@ import '../widgets/step_details.dart';
 import '../widgets/step_preferences.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
-  const ProfileSetupScreen({super.key});
+  const ProfileSetupScreen({
+    super.key,
+    this.isEditing = false,
+    this.initialStep,
+  });
+
+  /// When true, the user already has a profile — locked fields, different title.
+  final bool isEditing;
+
+  /// Jump directly to a specific step (0-based). Null starts at step 0.
+  final int? initialStep;
 
   @override
   ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -24,8 +36,11 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
-  final _formData = ProfileFormData();
+  late final ProfileFormData _formData = ProfileFormData(
+    isEditing: widget.isEditing,
+  );
   bool _isCompleting = false;
+  bool _isLoading = true;
 
   late List<_StepInfo> _steps;
   static final _locationService = AppLocationService.instance;
@@ -33,16 +48,41 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureLocationAndProceed());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _ensureLocationAndProceed(),
+    );
   }
 
   /// Redirect to location-required if permission not granted (app must not run without location).
+  /// If user has an existing profile, prefills the form for seamless edit / mode switch.
   Future<void> _ensureLocationAndProceed() async {
     if (!mounted) return;
     final access = await _locationService.checkAccess();
-    if (access == LocationAccess.granted) return;
-    if (!mounted) return;
-    context.go('/location-required?then=${Uri.encodeComponent('/profile-setup')}');
+    if (access != LocationAccess.granted) {
+      if (!mounted) return;
+      context.go(
+        '/location-required?then=${Uri.encodeComponent('/profile-setup')}',
+      );
+      return;
+    }
+    final repo = ref.read(profileRepositoryProvider);
+    final existing = await repo.getMyProfile();
+    if (existing != null && mounted) {
+      _formData.fillFrom(existing);
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (widget.initialStep != null) {
+          _currentStep = widget.initialStep!.clamp(0, 9);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_pageController.hasClients) {
+              _pageController.jumpToPage(_currentStep);
+            }
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -67,15 +107,49 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
       setState(() => _currentStep++);
     } else {
-      // Last step: capture exact creation location then complete
       setState(() => _isCompleting = true);
+
+      if (widget.isEditing) {
+        debugPrint('[ProfileSetup] Saving all edits (final)...');
+        try {
+          await _uploadPhotosIfNeeded();
+          final repo = ref.read(profileRepositoryProvider);
+          final json = _formData.toFullJson();
+          debugPrint('[ProfileSetup] Final edit payload: $json');
+          final existing = await repo.getMyProfile();
+          await repo.saveProfileJson(json, create: existing == null);
+          debugPrint('[ProfileSetup] Final edit saved ✓');
+        } catch (e) {
+          debugPrint('[ProfileSetup] Error saving edits: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to save: $e'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+          }
+        }
+        if (!mounted) return;
+        setState(() => _isCompleting = false);
+        context.pop();
+        return;
+      }
+
+      // First-time setup: capture exact creation location then complete
+      debugPrint(
+        '[ProfileSetup] First-time setup — getting creation location...',
+      );
       final creation = await _locationService.getCurrentCreationLocation();
       if (!mounted) return;
       if (creation == null) {
+        debugPrint('[ProfileSetup] Location unavailable');
         setState(() => _isCompleting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.profileCreationLocationError),
+            content: Text(
+              AppLocalizations.of(context)!.profileCreationLocationError,
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -85,21 +159,30 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _formData.creationLng = creation.longitude;
       _formData.creationAt = creation.capturedAt;
       _formData.creationAddress = creation.address;
+      debugPrint(
+        '[ProfileSetup] Creation location: ${creation.latitude}, ${creation.longitude} — ${creation.address}',
+      );
 
-      // Persist creation location to profile for safety/support tracking
       try {
+        await _uploadPhotosIfNeeded();
         final repo = ref.read(profileRepositoryProvider);
+        final json = _formData.toFullJson();
+        debugPrint('[ProfileSetup] First-time setup payload: $json');
         final existing = await repo.getMyProfile();
-        if (existing != null) {
-          await repo.updateMyProfile(existing.copyWith(
-            creationLat: creation.latitude,
-            creationLng: creation.longitude,
-            creationAt: creation.capturedAt,
-            creationAddress: creation.address,
-          ));
+        await repo.saveProfileJson(json, create: existing == null);
+        debugPrint(
+          '[ProfileSetup] Profile saved ✓ (${existing == null ? 'create' : 'update'})',
+        );
+      } catch (e) {
+        debugPrint('[ProfileSetup] Error saving profile: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save profile: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
         }
-      } catch (_) {
-        // Non-fatal: creation location is in formData; backend may persist later
       }
 
       if (!mounted) return;
@@ -116,6 +199,67 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
       setState(() => _currentStep++);
     }
+  }
+
+  bool _isSaving = false;
+
+  /// Save current changes, then advance to the next step (or close on last step).
+  Future<void> _saveAndContinue() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      await _uploadPhotosIfNeeded();
+      final repo = ref.read(profileRepositoryProvider);
+      final json = _formData.toFullJson();
+      debugPrint(
+        '[ProfileSetup] Save & continue (step ${_currentStep + 1})...',
+      );
+      final existing = await repo.getMyProfile();
+      await repo.saveProfileJson(json, create: existing == null);
+      debugPrint('[ProfileSetup] Saved ✓');
+    } catch (e) {
+      debugPrint('[ProfileSetup] Save error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        setState(() => _isSaving = false);
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (_currentStep < _steps.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+      setState(() => _currentStep++);
+    } else {
+      context.pop();
+    }
+  }
+
+  /// Upload any local-file photos to S3, replacing paths with CDN URLs.
+  Future<void> _uploadPhotosIfNeeded() async {
+    final hasLocal = _formData.photos.any((p) => !p.startsWith('http'));
+    if (!hasLocal) return;
+
+    debugPrint(
+      '[ProfileSetup] Uploading ${_formData.photos.where((p) => !p.startsWith("http")).length} photo(s) to S3...',
+    );
+    final uploadService = ref.read(photoUploadServiceProvider);
+    final uploaded = await uploadService.uploadAll(_formData.photos);
+    _formData.photos
+      ..clear()
+      ..addAll(uploaded);
+    debugPrint('[ProfileSetup] Photos uploaded: ${_formData.photos}');
   }
 
   void _back() {
@@ -136,7 +280,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
 
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: accent)),
+      );
+    }
+
     _steps = _buildSteps(mode, l);
+    if (_currentStep >= _steps.length) _currentStep = _steps.length - 1;
     final progress = (_currentStep + 1) / _steps.length;
     final currentStep = _steps[_currentStep];
 
@@ -151,9 +302,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
                 child: Row(
                   children: [
-                    if (_currentStep > 0)
+                    if (_currentStep > 0 || widget.isEditing)
                       IconButton(
-                        onPressed: _back,
+                        onPressed: _currentStep > 0
+                            ? _back
+                            : () => context.pop(),
                         icon: const Icon(Icons.arrow_back_ios_new, size: 20),
                       )
                     else
@@ -207,31 +360,83 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
                 child: Column(
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: FilledButton(
-                        onPressed: _canProceed ? _next : null,
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: Text(
-                          _currentStep < _steps.length - 1 ? l.next : l.getStarted,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    if (widget.isEditing) ...[
+                      // Edit mode: single button that saves and advances
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: FilledButton(
+                          onPressed: _isSaving ? null : _saveAndContinue,
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      _currentStep < _steps.length - 1
+                                          ? 'Save & continue'
+                                          : 'Save & close',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (_currentStep < _steps.length - 1) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.arrow_forward, size: 18),
+                                    ],
+                                  ],
+                                ),
                         ),
                       ),
-                    ),
-                    if (currentStep.skippable && _currentStep < _steps.length - 1) ...[
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: _skip,
-                        child: Text(
-                          l.skipForNow,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: onSurface.withValues(alpha: 0.5),
+                    ] else ...[
+                      // First-time setup: Next / Get started
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: FilledButton(
+                          onPressed: _canProceed ? _next : null,
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            _currentStep < _steps.length - 1
+                                ? l.next
+                                : l.getStarted,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
+                      if (currentStep.skippable &&
+                          _currentStep < _steps.length - 1) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _skip,
+                          child: Text(
+                            l.skipForNow,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -244,20 +449,26 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l) {
-    final void Function() onChanged = () => setState(() {});
+    void onChanged() => setState(() {});
+    final editing = widget.isEditing;
     if (mode.isMatrimony) {
       return [
         _StepInfo(
-          label: l.profileStepIdentity,
-          widget: StepIdentity(mode: mode, formData: _formData, onChanged: onChanged),
+          label: editing ? 'Edit Profile' : l.profileStepIdentity,
+          widget: StepIdentity(
+            mode: mode,
+            formData: _formData,
+            onChanged: onChanged,
+            isEditing: editing,
+          ),
           hasMandatory: true,
           skippable: false,
           isMandatorySatisfied: (d) =>
-            ProfileFormData.isNameValid(d.name) &&
-            d.gender != null &&
-            d.dateOfBirth != null &&
-            ProfileFormData.isAtLeast18(d.dateOfBirth) &&
-            d.confirmedAge18,
+              ProfileFormData.isNameValid(d.name) &&
+              d.gender != null &&
+              d.dateOfBirth != null &&
+              ProfileFormData.isAtLeast18(d.dateOfBirth) &&
+              (editing || d.confirmedAge18),
         ),
         _StepInfo(
           label: l.interestsAndHobbies,
@@ -285,13 +496,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
         _StepInfo(
           label: l.profileStepDetails,
-          widget: StepDetails(mode: mode, formData: _formData, onChanged: onChanged),
+          widget: StepDetails(
+            mode: mode,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
           label: l.profileStepPreferences,
-          widget: StepPreferences(mode: mode, formData: _formData, onChanged: onChanged),
+          widget: StepPreferences(
+            mode: mode,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
           hasMandatory: false,
           skippable: true,
         ),
@@ -299,16 +518,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
     return [
       _StepInfo(
-        label: l.profileStepIdentity,
-        widget: StepIdentity(mode: mode, formData: _formData, onChanged: onChanged),
+        label: editing ? 'Edit Profile' : l.profileStepIdentity,
+        widget: StepIdentity(
+          mode: mode,
+          formData: _formData,
+          onChanged: onChanged,
+          isEditing: editing,
+        ),
         hasMandatory: true,
         skippable: false,
         isMandatorySatisfied: (d) =>
-          ProfileFormData.isNameValid(d.name) &&
-          d.gender != null &&
-          d.dateOfBirth != null &&
-          ProfileFormData.isAtLeast18(d.dateOfBirth) &&
-          d.confirmedAge18,
+            ProfileFormData.isNameValid(d.name) &&
+            d.gender != null &&
+            d.dateOfBirth != null &&
+            ProfileFormData.isAtLeast18(d.dateOfBirth) &&
+            (editing || d.confirmedAge18),
       ),
       _StepInfo(
         label: l.interestsAndHobbies,
@@ -324,13 +548,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       ),
       _StepInfo(
         label: l.profileStepDetails,
-        widget: StepDetails(mode: mode, formData: _formData, onChanged: onChanged),
+        widget: StepDetails(
+          mode: mode,
+          formData: _formData,
+          onChanged: onChanged,
+        ),
         hasMandatory: false,
         skippable: true,
       ),
       _StepInfo(
         label: l.profileStepPreferences,
-        widget: StepPreferences(mode: mode, formData: _formData, onChanged: onChanged),
+        widget: StepPreferences(
+          mode: mode,
+          formData: _formData,
+          onChanged: onChanged,
+        ),
         hasMandatory: false,
         skippable: true,
       ),
@@ -372,7 +604,7 @@ class EducationEntry {
   String? country;
   int? graduationYear;
   String? scoreCountry; // e.g. India, UK, US, Other
-  String? scoreType;     // e.g. First class, 2:1, GPA 3.5
+  String? scoreType; // e.g. First class, 2:1, GPA 3.5
 }
 
 /// Degrees that do not show university/college (e.g. High School, Diploma).
@@ -383,6 +615,11 @@ bool educationEntryShowsInstitution(String? degree) {
 
 /// Shared mutable form data passed through all steps.
 class ProfileFormData {
+  ProfileFormData({this.isEditing = false});
+
+  /// If true, user already has a profile and is editing.
+  final bool isEditing;
+
   // Identity (mandatory: name, gender, dob, 18+ confirmed)
   String? creatingFor;
   String name = '';
@@ -432,18 +669,23 @@ class ProfileFormData {
   String? familyType;
   String? familyValues;
   String? familyLocation;
+
   /// Country of family location (e.g. "India") for currency: India → INR, else USD.
   String? familyBasedOutOfCountry;
   String? householdIncome;
   String? motherOccupation;
   String? fatherOccupation;
+
   /// Mother's age or "Deceased".
   String? motherAge;
+
   /// Father's age or "Deceased".
   String? fatherAge;
   String? siblings;
+
   /// Number of brothers (dropdown: None, 1, 2, 3, 4+).
   String? siblingBrothers;
+
   /// Number of sisters (dropdown: None, 1, 2, 3, 4+).
   String? siblingSisters;
 
@@ -470,6 +712,9 @@ class ProfileFormData {
   String bio = '';
   String promptAnswer = '';
 
+  // Photos (local file paths; first is profile pic)
+  List<String> photos = [];
+
   // Interests
   List<String> selectedInterests = [];
 
@@ -494,23 +739,155 @@ class ProfileFormData {
   bool prefSmokeStrict = false;
   String? prefSettledAbroad;
   bool prefSettledAbroadStrict = false;
+
   /// City preference: 'any' | 'same_as_me' | 'preferred'
   String? prefCityMode;
+
   /// Preferred cities (multiple), used when prefCityMode == 'preferred'.
   List<String> preferredCities = [];
+
   /// Preferred countries (multiple).
   List<String> preferredCountries = [];
+
+  /// Prefill from existing profile so edit / mode switch is seamless. Shared and mode-specific fields are mapped.
+  void fillFrom(UserProfile? p) {
+    if (p == null) return;
+    name = p.name;
+    gender = p.gender;
+    if (p.dateOfBirth != null) {
+      dateOfBirth = DateTime.tryParse(p.dateOfBirth!);
+      confirmedAge18 = true;
+    }
+    if (p.currentCity != null || p.currentCountry != null) {
+      location = [
+        p.currentCity,
+        p.currentCountry,
+      ].whereType<String>().join(', ');
+    }
+    hometown = p.originCity ?? '';
+    if (p.originCountry != null && p.originCountry!.isNotEmpty) {
+      if (hometown.isNotEmpty) hometown += ', ';
+      hometown += p.originCountry!;
+    }
+    motherTongue = p.motherTongue;
+    languagesSpoken = p.languagesSpoken.isNotEmpty
+        ? p.languagesSpoken.join(', ')
+        : null;
+    bio = p.aboutMe;
+    selectedInterests = List<String>.from(p.interests);
+    photos = List<String>.from(p.photoUrls);
+    creationLat = p.creationLat;
+    creationLng = p.creationLng;
+    creationAt = p.creationAt;
+    creationAddress = p.creationAddress;
+
+    final mat = p.matrimonyExtensions;
+    if (mat != null) {
+      religion = mat.religion;
+      community = mat.casteOrCommunity;
+      if (mat.motherTongue != null) motherTongue = mat.motherTongue;
+      maritalStatus = mat.maritalStatus;
+      heightCm = mat.heightCm?.toString();
+      education = mat.educationDegree;
+      occupation = mat.occupation;
+      company = mat.employer;
+      sector = mat.industry;
+      if (mat.incomeRange != null) {
+        income = [
+          mat.incomeRange!.minLabel,
+          mat.incomeRange!.maxLabel,
+          mat.incomeRange!.currency,
+        ].whereType<String>().join(' ');
+      }
+      diet = mat.diet;
+      drinking = mat.drinking;
+      smoking = mat.smoking;
+      final fam = mat.familyDetails;
+      if (fam != null) {
+        familyType = fam.familyType;
+        familyValues = fam.familyValues;
+        fatherOccupation = fam.fatherOccupation;
+        motherOccupation = fam.motherOccupation;
+        if (fam.siblingsCount != null) siblings = fam.siblingsCount.toString();
+      }
+      final hor = mat.horoscope;
+      if (hor != null) {
+        manglik = hor.manglik;
+        nakshatra = hor.nakshatra;
+        birthTime = hor.timeOfBirth;
+        birthPlace = hor.birthPlace;
+        if (hor.dateOfBirth != null) {
+          final dob = DateTime.tryParse(hor.dateOfBirth!);
+          if (dob != null) dateOfBirth ??= dob;
+        }
+      }
+      if (mat.educationDegree != null || mat.educationInstitution != null) {
+        educationEntries = [
+          EducationEntry(
+            degree: mat.educationDegree,
+            institution: mat.educationInstitution,
+          ),
+        ];
+      }
+    }
+
+    final dat = p.datingExtensions;
+    if (dat != null) {
+      datingIntent = dat.datingIntent;
+      if (dat.prompts != null && dat.prompts!.isNotEmpty) {
+        promptAnswer = dat.prompts!.map((e) => e.answer).join('\n');
+      }
+    }
+
+    final prefs = p.partnerPreferences;
+    if (prefs != null) {
+      interestedIn = prefs.genderPreference;
+      prefAgeMin = prefs.ageMin;
+      prefAgeMax = prefs.ageMax;
+      prefReligion = prefs.preferredReligions?.isNotEmpty == true
+          ? prefs.preferredReligions!.first
+          : null;
+      prefMotherTongue = prefs.preferredMotherTongues?.isNotEmpty == true
+          ? prefs.preferredMotherTongues!.first
+          : null;
+      prefEducation = prefs.educationPreference;
+      prefMaritalStatus = prefs.maritalStatusPreference?.isNotEmpty == true
+          ? prefs.maritalStatusPreference!.first
+          : null;
+      prefDiet = prefs.dietPreference;
+      prefIncome = prefs.incomePreference;
+      prefDrink = prefs.drinkingPreference;
+      prefSmoke = prefs.smokingPreference;
+      prefSettledAbroad = prefs.settledAbroadPreference;
+      prefCityMode = prefs.cityPreferenceMode;
+      if (prefs.preferredLocations != null &&
+          prefs.preferredLocations!.isNotEmpty) {
+        preferredCities = List<String>.from(prefs.preferredLocations!);
+      }
+      if (prefs.preferredCountries != null &&
+          prefs.preferredCountries!.isNotEmpty) {
+        preferredCountries = List<String>.from(prefs.preferredCountries!);
+      }
+    }
+  }
 
   String get subjectName {
     if (creatingFor == null) return '';
     switch (creatingFor) {
-      case 'son': return 'your son';
-      case 'daughter': return 'your daughter';
-      case 'brother': return 'your brother';
-      case 'sister': return 'your sister';
-      case 'friend': return 'your friend';
-      case 'relative': return 'your relative';
-      default: return '';
+      case 'son':
+        return 'your son';
+      case 'daughter':
+        return 'your daughter';
+      case 'brother':
+        return 'your brother';
+      case 'sister':
+        return 'your sister';
+      case 'friend':
+        return 'your friend';
+      case 'relative':
+        return 'your relative';
+      default:
+        return '';
     }
   }
 
@@ -518,7 +895,11 @@ class ProfileFormData {
 
   /// Name must have at least 2 words, each word starting with an uppercase letter.
   static bool isNameValid(String name) {
-    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.length < 2) return false;
     for (final w in words) {
       if (w.isEmpty || w[0] != w[0].toUpperCase()) return false;
@@ -537,10 +918,15 @@ class ProfileFormData {
   /// Format name as title case (first letter of each word uppercase).
   static String toTitleCase(String name) {
     if (name.trim().isEmpty) return name;
-    return name.trim().split(RegExp(r'\s+')).map((w) {
-      if (w.isEmpty) return w;
-      return w[0].toUpperCase() + (w.length > 1 ? w.substring(1).toLowerCase() : '');
-    }).join(' ');
+    return name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .map((w) {
+          if (w.isEmpty) return w;
+          return w[0].toUpperCase() +
+              (w.length > 1 ? w.substring(1).toLowerCase() : '');
+        })
+        .join(' ');
   }
 
   String get subjectPossessive {
@@ -555,5 +941,231 @@ class ProfileFormData {
       default:
         return 'Their';
     }
+  }
+
+  List<String> get _parsedLocation {
+    return location
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  List<String> get _parsedHometown {
+    return hometown
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  List<String> get _parsedLanguages {
+    return languagesSpoken
+            ?.split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        [];
+  }
+
+  /// Map UI role labels to backend enum values.
+  /// UI: null (self), son, daughter, brother, sister, friend, relative
+  /// Backend: self, parent, guardian, sibling, friend
+  static String _mapRoleForBackend(String uiValue) {
+    switch (uiValue) {
+      case 'son':
+      case 'daughter':
+        return 'parent';
+      case 'brother':
+      case 'sister':
+        return 'sibling';
+      case 'relative':
+        return 'guardian';
+      case 'friend':
+        return 'friend';
+      default:
+        return 'self';
+    }
+  }
+
+  /// Build a complete JSON payload from ALL form fields.
+  /// This bypasses the UserProfile model to ensure every field is sent.
+  Map<String, dynamic> toFullJson() {
+    final loc = _parsedLocation;
+    final ht = _parsedHometown;
+
+    final json = <String, dynamic>{
+      'name': name,
+      if (gender != null) 'gender': gender,
+      if (dateOfBirth != null)
+        'dateOfBirth': dateOfBirth!.toIso8601String().split('T').first,
+      if (bio.isNotEmpty) 'aboutMe': bio,
+      if (loc.isNotEmpty) 'currentCity': loc[0],
+      if (loc.length > 1) 'currentCountry': loc[1],
+      if (ht.isNotEmpty) 'originCity': ht[0],
+      if (ht.length > 1) 'originCountry': ht[1],
+      if (motherTongue != null) 'motherTongue': motherTongue,
+      if (_parsedLanguages.isNotEmpty) 'languagesSpoken': _parsedLanguages,
+      if (photos.isNotEmpty) 'photoUrls': photos,
+      if (selectedInterests.isNotEmpty) 'interests': selectedInterests,
+      if (creationLat != null) 'creationLat': creationLat,
+      if (creationLng != null) 'creationLng': creationLng,
+      if (creationAt != null) 'creationAt': creationAt!.toIso8601String(),
+      if (creationAddress != null) 'creationAddress': creationAddress,
+    };
+
+    // ── Matrimony extensions ──
+    final mat = <String, dynamic>{};
+    if (creatingFor != null) {
+      mat['roleManagingProfile'] = _mapRoleForBackend(creatingFor!);
+    }
+    if (religion != null) mat['religion'] = religion;
+    if (community != null) mat['casteOrCommunity'] = community;
+    if (motherTongue != null) mat['motherTongue'] = motherTongue;
+    if (maritalStatus != null) mat['maritalStatus'] = maritalStatus;
+    if (heightCm != null) mat['heightCm'] = int.tryParse(heightCm!) ?? heightCm;
+    if (bodyType != null) mat['bodyType'] = bodyType;
+    if (complexion != null) mat['complexion'] = complexion;
+    if (disability != null) mat['disability'] = disability;
+    final deg =
+        education ??
+        (educationEntries.isNotEmpty ? educationEntries.first.degree : null);
+    if (deg != null) mat['educationDegree'] = deg;
+    if (educationEntries.isNotEmpty &&
+        educationEntries.first.institution != null) {
+      mat['educationInstitution'] = educationEntries.first.institution;
+    }
+    if (occupation != null) mat['occupation'] = occupation;
+    if (company != null) mat['employer'] = company;
+    if (sector != null) mat['industry'] = sector;
+    if (workLocation != null) mat['workLocation'] = workLocation;
+    if (settledAbroad != null) mat['settledAbroad'] = settledAbroad;
+    if (willingToRelocate != null) mat['willingToRelocate'] = willingToRelocate;
+    if (income != null) mat['incomeRange'] = {'minLabel': income};
+    if (diet != null) mat['diet'] = diet;
+    if (drinking != null) mat['drinking'] = drinking;
+    if (smoking != null) mat['smoking'] = smoking;
+    if (exercise != null) mat['exercise'] = exercise;
+    if (pets != null) mat['pets'] = pets;
+
+    // Family
+    final fam = <String, dynamic>{};
+    if (familyType != null) fam['familyType'] = familyType;
+    if (familyValues != null) fam['familyValues'] = familyValues;
+    if (fatherOccupation != null) fam['fatherOccupation'] = fatherOccupation;
+    if (motherOccupation != null) fam['motherOccupation'] = motherOccupation;
+    if (fatherAge != null) fam['fatherAge'] = fatherAge;
+    if (motherAge != null) fam['motherAge'] = motherAge;
+    if (familyLocation != null) fam['familyLocation'] = familyLocation;
+    if (familyBasedOutOfCountry != null)
+      fam['familyBasedOutOfCountry'] = familyBasedOutOfCountry;
+    if (householdIncome != null) fam['householdIncome'] = householdIncome;
+    final sibCount = _computeSiblings();
+    if (sibCount != null) fam['siblingsCount'] = sibCount;
+    if (siblingBrothers != null) fam['brothers'] = siblingBrothers;
+    if (siblingSisters != null) fam['sisters'] = siblingSisters;
+    if (fam.isNotEmpty) mat['familyDetails'] = fam;
+
+    // Horoscope — only include if user actually filled horoscope fields
+    final hor = <String, dynamic>{};
+    if (manglik != null) hor['manglik'] = manglik;
+    if (rashi != null) hor['rashi'] = rashi;
+    if (nakshatra != null) hor['nakshatra'] = nakshatra;
+    if (gotra != null) hor['gotra'] = gotra;
+    if (birthTime != null) hor['timeOfBirth'] = birthTime;
+    if (birthPlace != null) hor['birthPlace'] = birthPlace;
+    if (hor.isNotEmpty && dateOfBirth != null) {
+      hor['dateOfBirth'] = dateOfBirth!.toIso8601String().split('T').first;
+    }
+    if (hor.isNotEmpty) mat['horoscope'] = hor;
+
+    // About fields (education & career free-text)
+    if (aboutEducation != null && aboutEducation!.isNotEmpty) {
+      mat['aboutEducation'] = aboutEducation;
+    }
+    if (aboutCareer != null && aboutCareer!.isNotEmpty) {
+      mat['aboutCareer'] = aboutCareer;
+    }
+
+    // Education entries — only include entries that have at least a degree
+    final validEntries = educationEntries
+        .map(
+          (e) => <String, dynamic>{
+            if (e.degree != null) 'degree': e.degree,
+            if (e.institution != null) 'institution': e.institution,
+            if (e.graduationYear != null) 'graduationYear': e.graduationYear,
+            if (e.scoreCountry != null) 'scoreCountry': e.scoreCountry,
+            if (e.scoreType != null) 'scoreType': e.scoreType,
+          },
+        )
+        .where((m) => m.isNotEmpty)
+        .toList();
+    if (validEntries.isNotEmpty) {
+      mat['educationEntries'] = validEntries;
+    }
+
+    if (mat.isNotEmpty) json['matrimonyExtensions'] = mat;
+
+    // ── Dating extensions ──
+    final dat = <String, dynamic>{};
+    if (datingIntent != null) dat['datingIntent'] = datingIntent;
+    if (promptAnswer.isNotEmpty) {
+      dat['prompts'] = [
+        {
+          'questionId': 'default',
+          'questionText': 'About me',
+          'answer': promptAnswer,
+        },
+      ];
+    }
+    if (dat.isNotEmpty) json['datingExtensions'] = dat;
+
+    // ── Partner preferences ──
+    final pref = <String, dynamic>{};
+    if (interestedIn != null) pref['genderPreference'] = interestedIn;
+    if (prefAgeMin != null) pref['ageMin'] = prefAgeMin;
+    if (prefAgeMax != null) pref['ageMax'] = prefAgeMax;
+    if (prefReligion != null) pref['preferredReligions'] = [prefReligion];
+    if (prefMotherTongue != null)
+      pref['preferredMotherTongues'] = [prefMotherTongue];
+    if (prefEducation != null) pref['educationPreference'] = prefEducation;
+    if (prefMaritalStatus != null)
+      pref['maritalStatusPreference'] = [prefMaritalStatus];
+    if (prefDiet != null) pref['dietPreference'] = prefDiet;
+    if (prefIncome != null) pref['incomePreference'] = prefIncome;
+    if (prefDrink != null) pref['drinkingPreference'] = prefDrink;
+    if (prefSmoke != null) pref['smokingPreference'] = prefSmoke;
+    if (prefSettledAbroad != null)
+      pref['settledAbroadPreference'] = prefSettledAbroad;
+    if (prefCityMode != null) pref['cityPreferenceMode'] = prefCityMode;
+    if (preferredCities.isNotEmpty)
+      pref['preferredLocations'] = preferredCities;
+    if (preferredCountries.isNotEmpty)
+      pref['preferredCountries'] = preferredCountries;
+
+    // Strict filters
+    final strict = <String, dynamic>{};
+    if (prefReligionStrict) strict['religion'] = true;
+    if (prefMotherTongueStrict) strict['motherTongue'] = true;
+    if (prefEducationStrict) strict['education'] = true;
+    if (prefMaritalStatusStrict) strict['maritalStatus'] = true;
+    if (prefIncomeStrict) strict['income'] = true;
+    if (prefDietStrict) strict['diet'] = true;
+    if (prefDrinkStrict) strict['drinking'] = true;
+    if (prefSmokeStrict) strict['smoking'] = true;
+    if (prefSettledAbroadStrict) strict['settledAbroad'] = true;
+    if (strict.isNotEmpty) pref['strictFilters'] = strict;
+
+    if (pref.isNotEmpty) json['partnerPreferences'] = pref;
+
+    return json;
+  }
+
+  int? _computeSiblings() {
+    final b = siblingBrothers != null ? int.tryParse(siblingBrothers!) : null;
+    final s = siblingSisters != null ? int.tryParse(siblingSisters!) : null;
+    if (b == null && s == null)
+      return siblings != null ? int.tryParse(siblings!) : null;
+    return (b ?? 0) + (s ?? 0);
   }
 }

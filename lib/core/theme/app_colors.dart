@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// DesiLink design system — Indian flag colors blended for a premium look.
+/// saathi design system — Indian flag colors blended for a premium look.
 /// Saffron (primary), India green (secondary/success), Navy (chakra), White.
 class AppColors {
   AppColors._();
@@ -21,9 +21,13 @@ class AppColors {
   static const Color navyLight = Color(0xFF2E4A9E);
 
   // ——— Light mode ———
-  static const Color lightBackground = Color(0xFFFFFBF7); // warm off-white (saffron tint)
+  static const Color lightBackground = Color(
+    0xFFFFFBF7,
+  ); // warm off-white (saffron tint)
   static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightSurfaceVariant = Color(0xFFFFF5EB); // very light saffron
+  static const Color lightSurfaceVariant = Color(
+    0xFFFFF5EB,
+  ); // very light saffron
   static const Color lightAccent = saffron;
   static const Color lightAccentLight = saffronLight;
   static const Color lightAccentDark = saffronDark;
@@ -62,13 +66,10 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
   /// Subtle flag-inspired gradient (saffron → white → green) for hero/splash.
   static const LinearGradient flagGradient = LinearGradient(
-    colors: [
-      Color(0xFFFF9933),
-      Color(0xFFFFFFFF),
-      Color(0xFF138808),
-    ],
+    colors: [Color(0xFFFF9933), Color(0xFFFFFFFF), Color(0xFF138808)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     stops: [0.0, 0.5, 1.0],

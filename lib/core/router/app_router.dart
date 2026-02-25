@@ -13,6 +13,7 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/screens/profile_wizard_screen.dart';
 import '../../features/profile_setup/screens/profile_setup_screen.dart';
 import '../../features/profile/screens/full_profile_screen.dart';
+import '../../features/profile/screens/profile_view_screen.dart';
 import '../../features/premium/screens/paywall_screen.dart';
 import '../../features/verification/screens/verification_screen.dart';
 import '../../features/verification/screens/photo_verification_screen.dart';
@@ -67,7 +68,8 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/otp',
         builder: (_, state) {
           final phone = state.uri.queryParameters['phone'];
-          return OtpScreen(phone: phone);
+          final vid = state.uri.queryParameters['vid'];
+          return OtpScreen(phone: phone, verificationId: vid);
         },
       ),
       GoRoute(
@@ -83,8 +85,16 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const ProfileWizardScreen(),
       ),
       GoRoute(
+        path: '/profile-view',
+        builder: (_, __) => const ProfileViewScreen(),
+      ),
+      GoRoute(
         path: '/profile-setup',
-        builder: (_, __) => const ProfileSetupScreen(),
+        builder: (_, state) {
+          final editing = state.uri.queryParameters['edit'] == 'true';
+          final step = int.tryParse(state.uri.queryParameters['step'] ?? '');
+          return ProfileSetupScreen(isEditing: editing, initialStep: step);
+        },
       ),
       GoRoute(
         path: '/paywall',
@@ -117,7 +127,8 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/chat/:threadId',
         builder: (_, state) {
           final id = state.pathParameters['threadId'] ?? '';
-          return ChatThreadScreen(threadId: id);
+          final otherUserId = state.uri.queryParameters['otherUserId'];
+          return ChatThreadScreen(threadId: id, otherUserId: otherUserId);
         },
       ),
       StatefulShellRoute.indexedStack(

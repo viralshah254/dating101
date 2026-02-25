@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
 class ReferralScreen extends StatelessWidget {
@@ -10,7 +9,6 @@ class ReferralScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = Theme.of(context).colorScheme.primary;
     const inviteCode = 'DESI-XXXX';
 
@@ -81,7 +79,7 @@ class ReferralScreen extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       await Share.share(
-                        'Join me on DesiLink — sophisticated dating, globally. Use my code: $inviteCode',
+                        'Join me on saathi — sophisticated dating, globally. Use my code: $inviteCode',
                       );
                     },
                     icon: const Icon(Icons.share),
@@ -93,7 +91,7 @@ class ReferralScreen extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => Clipboard.setData(
                       const ClipboardData(
-                        text: 'https://desilink.app/i/$inviteCode',
+                        text: 'https://saathi.app/i/$inviteCode',
                       ),
                     ),
                     icon: const Icon(Icons.link),
