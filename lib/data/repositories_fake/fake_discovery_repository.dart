@@ -33,6 +33,39 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   }
 
   @override
+  Future<List<ProfileSummary>> getExplore({
+    required AppMode mode,
+    int? ageMin,
+    int? ageMax,
+    String? city,
+    String? religion,
+    String? education,
+    int? heightMinCm,
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final hasFilters = ageMin != null ||
+        ageMax != null ||
+        (city != null && city.isNotEmpty) ||
+        (religion != null && religion.isNotEmpty) ||
+        (education != null && education.isNotEmpty) ||
+        heightMinCm != null;
+    if (hasFilters) {
+      return search(
+        ageMin: ageMin,
+        ageMax: ageMax,
+        city: city,
+        religion: religion,
+        education: education,
+        heightMinCm: heightMinCm,
+        limit: limit,
+        cursor: cursor,
+      );
+    }
+    return getRecommended(mode: mode, limit: limit, cursor: cursor);
+  }
+
+  @override
   Future<List<ProfileSummary>> search({
     required int? ageMin,
     required int? ageMax,

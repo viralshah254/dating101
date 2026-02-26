@@ -35,7 +35,10 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<List<ChatThreadSummary>> getThreads({int limit = 50, String? mode}) async {
+  Future<List<ChatThreadSummary>> getThreads({
+    int limit = 50,
+    String? mode,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 100));
     return _threadSummaries(mode: mode).take(limit).toList();
   }
@@ -49,12 +52,34 @@ class FakeChatRepository implements ChatRepository {
   @override
   Stream<List<ChatMessage>> watchMessages(String threadId) async* {
     await Future.delayed(const Duration(milliseconds: 50));
-    final list = _threads[threadId] ?? [
-      ChatMessage(id: 'm1', senderId: 'me', text: "Hey! Loved your prompt about Sundays.", sentAt: DateTime(2025, 1, 1, 10, 2)),
-      ChatMessage(id: 'm2', senderId: threadId, text: "Thanks! What are you up to this weekend?", sentAt: DateTime(2025, 1, 1, 10, 5)),
-      ChatMessage(id: 'm3', senderId: 'me', text: "Thinking of a walk and brunch. You?", sentAt: DateTime(2025, 1, 1, 10, 6)),
-      ChatMessage(id: 'm4', senderId: threadId, text: "That sounds great! How about Saturday?", sentAt: DateTime(2025, 1, 1, 10, 8)),
-    ];
+    final list =
+        _threads[threadId] ??
+        [
+          ChatMessage(
+            id: 'm1',
+            senderId: 'me',
+            text: "Hey! Loved your prompt about Sundays.",
+            sentAt: DateTime(2025, 1, 1, 10, 2),
+          ),
+          ChatMessage(
+            id: 'm2',
+            senderId: threadId,
+            text: "Thanks! What are you up to this weekend?",
+            sentAt: DateTime(2025, 1, 1, 10, 5),
+          ),
+          ChatMessage(
+            id: 'm3',
+            senderId: 'me',
+            text: "Thinking of a walk and brunch. You?",
+            sentAt: DateTime(2025, 1, 1, 10, 6),
+          ),
+          ChatMessage(
+            id: 'm4',
+            senderId: threadId,
+            text: "That sounds great! How about Saturday?",
+            sentAt: DateTime(2025, 1, 1, 10, 8),
+          ),
+        ];
     _threads[threadId] = list;
     yield list;
   }
@@ -63,12 +88,14 @@ class FakeChatRepository implements ChatRepository {
   Future<void> sendMessage(String threadId, String text) async {
     await Future.delayed(const Duration(milliseconds: 50));
     final list = _threads[threadId] ?? [];
-    list.add(ChatMessage(
-      id: _nextMessageId(),
-      senderId: 'me',
-      text: text,
-      sentAt: DateTime.now(),
-    ));
+    list.add(
+      ChatMessage(
+        id: _nextMessageId(),
+        senderId: 'me',
+        text: text,
+        sentAt: DateTime.now(),
+      ),
+    );
     _threads[threadId] = list;
   }
 

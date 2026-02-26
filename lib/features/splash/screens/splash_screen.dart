@@ -82,16 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   end: Alignment.bottomRight,
                   colors: [bg, AppColors.darkSurface, bg],
                 )
-              : LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.saffron.withValues(alpha: 0.08),
-                    bg,
-                    AppColors.indiaGreen.withValues(alpha: 0.06),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
+              : AppColors.splashGradient,
         ),
         child: SafeArea(
           child: Column(

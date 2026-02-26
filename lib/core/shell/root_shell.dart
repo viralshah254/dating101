@@ -14,7 +14,7 @@ import '../../l10n/app_localizations.dart';
 
 /// Mode-aware root shell: 5 tabs with labels/icons for Dating or Matrimony.
 /// Dating: Discover, Map, Chats, Communities, Profile.
-/// Matrimony: Matches, Requests, Shortlist, Chats, Profile.
+/// Matrimony: Discover, Requests, Shortlist, Chats, Profile.
 class RootShell extends ConsumerWidget {
   const RootShell({super.key, required this.navigationShell});
 
@@ -22,7 +22,11 @@ class RootShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.read(recordSecurityLocationProvider)();
+    // Defer side effects so we don't modify provider state during build
+    Future.microtask(() {
+      ref.read(recordSecurityLocationProvider)();
+      ref.read(registerFcmTokenProvider);
+    });
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final l = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -37,10 +41,16 @@ class RootShell extends ConsumerWidget {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppColors.darkDivider : AppColors.splashPeach.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
               offset: const Offset(0, -4),
             ),
           ],
@@ -95,9 +105,9 @@ class RootShell extends ConsumerWidget {
       ];
     }
     return [
-      _NavItemData(Icons.favorite_border, Icons.favorite, l.navMatches),
+      _NavItemData(Icons.explore_outlined, Icons.explore, l.navDiscover),
       _NavItemData(Icons.mail_outline, Icons.mail, l.navRequests),
-      _NavItemData(Icons.bookmark_border, Icons.bookmark, l.navShortlist),
+      _NavItemData(Icons.star_border_rounded, Icons.star_rounded, l.navShortlist),
       _NavItemData(Icons.chat_bubble_outline, Icons.chat_bubble, l.navChats),
       _NavItemData(Icons.person_outline, Icons.person, l.navProfile),
     ];

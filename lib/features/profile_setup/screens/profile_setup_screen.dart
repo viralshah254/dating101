@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/api/api_client.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
@@ -124,7 +125,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to save: $e'),
+                content: Text(_profileSaveErrorMessage(e)),
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
             );
@@ -178,7 +179,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to save profile: $e'),
+              content: Text(_profileSaveErrorMessage(e)),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
@@ -223,7 +224,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save: $e'),
+            content: Text(_profileSaveErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -244,6 +245,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     } else {
       context.pop();
     }
+  }
+
+  /// User-friendly message for save/upload errors (e.g. photo upload credentials).
+  static String _profileSaveErrorMessage(Object e) {
+    if (e is ApiException) {
+      if (e.code == 'INTERNAL_ERROR' &&
+          e.message.toLowerCase().contains('credentials')) {
+        return 'Profile saved. Photo upload is temporarily unavailable—please try adding photos later from profile settings.';
+      }
+      return 'Failed to save: ${e.message}';
+    }
+    return 'Failed to save: $e';
   }
 
   /// Upload any local-file photos to S3, replacing paths with CDN URLs.

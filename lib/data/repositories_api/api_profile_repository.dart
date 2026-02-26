@@ -473,6 +473,20 @@ class ApiProfileRepository implements ProfileRepository {
     return Map<String, dynamic>.from(body);
   }
 
+  @override
+  Future<void> registerFcmToken(String fcmToken) async {
+    await api.post('/profile/me/fcm-token', body: {'fcmToken': fcmToken});
+  }
+
+  @override
+  Future<void> deleteFcmToken() async {
+    try {
+      await api.delete('/profile/me/fcm-token');
+    } on ApiException catch (_) {
+      // Optional: backend may not implement DELETE; ignore so sign-out still completes
+    }
+  }
+
   static List<String> _strList(dynamic v) {
     if (v == null) return [];
     if (v is List) return v.map((e) => e.toString()).toList();

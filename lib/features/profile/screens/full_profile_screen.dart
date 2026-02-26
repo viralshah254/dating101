@@ -261,7 +261,7 @@ class _FloatingActionBar extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               _FloatingIconBtn(
-                icon: Icons.bookmark_border,
+                icon: Icons.star_border_rounded,
                 accent: accent,
                 onTap: () => _onShortlist(context, ref),
               ),
@@ -329,6 +329,15 @@ class _FloatingActionBar extends ConsumerWidget {
       final threadId = await ref.read(chatRepositoryProvider).createThread(profileId, mode: modeStr);
       if (!context.mounted) return;
       context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(profileId)}');
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.code == 'CONNECTION_REQUIRED' ? 'Send or accept an interest first' : e.message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/chats');
     } catch (_) {
       if (!context.mounted) return;
       context.push('/chats');
@@ -655,7 +664,7 @@ class _DatingFloatingBar extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               _FloatingIconBtn(
-                icon: Icons.bookmark_border,
+                icon: Icons.star_border_rounded,
                 accent: primary,
                 onTap: () => _onShortlist(context, ref),
               ),

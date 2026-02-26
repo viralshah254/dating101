@@ -1,4 +1,4 @@
-package com.saathi.saathi
+package com.dvtechventures.saathi
 
 import io.flutter.embedding.android.FlutterActivity
 

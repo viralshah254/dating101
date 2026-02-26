@@ -32,7 +32,7 @@ class DiscoveryPreferences {
 
 /// Discovery (dating) / Matches (matrimony) feed and search.
 abstract class DiscoveryRepository {
-  /// Recommended profiles with ML compatibility scores.
+  /// Recommended profiles with ML compatibility scores (uses saved preferences).
   Future<List<ProfileSummary>> getRecommended({
     required AppMode mode,
     String? city,
@@ -40,7 +40,20 @@ abstract class DiscoveryRepository {
     String? cursor,
   });
 
-  /// Search with filters (age, city, religion, etc.).
+  /// Explore: everyone in mode, optionally filtered. No filters = show everyone. Same response shape as recommended.
+  Future<List<ProfileSummary>> getExplore({
+    required AppMode mode,
+    int? ageMin,
+    int? ageMax,
+    String? city,
+    String? religion,
+    String? education,
+    int? heightMinCm,
+    int limit = 20,
+    String? cursor,
+  });
+
+  /// Search with filters (age, city, religion, etc.). Prefer [getExplore] when backend supports it.
   Future<List<ProfileSummary>> search({
     required int? ageMin,
     required int? ageMax,

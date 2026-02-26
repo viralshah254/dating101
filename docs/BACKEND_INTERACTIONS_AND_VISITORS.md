@@ -670,9 +670,12 @@ PATCH /profile/me/notifications
   "interestAccepted": true,
   "interestDeclined": false,
   "mutualMatch": true,
-  "profileVisited": true
+  "profileVisited": true,
+  "newMessage": true
 }
 ```
+
+See [BACKEND_PUSH_NOTIFICATIONS.md](./BACKEND_PUSH_NOTIFICATIONS.md) for FCM token registration, payload format, and deep links.
 
 ---
 

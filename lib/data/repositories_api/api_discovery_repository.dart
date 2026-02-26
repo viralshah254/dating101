@@ -30,6 +30,34 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }
 
   @override
+  Future<List<ProfileSummary>> getExplore({
+    required AppMode mode,
+    int? ageMin,
+    int? ageMax,
+    String? city,
+    String? religion,
+    String? education,
+    int? heightMinCm,
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final query = <String, String>{
+      'mode': mode.isMatrimony ? 'matrimony' : 'dating',
+      'limit': '$limit',
+    };
+    if (ageMin != null) query['ageMin'] = '$ageMin';
+    if (ageMax != null) query['ageMax'] = '$ageMax';
+    if (city != null && city.isNotEmpty) query['city'] = city;
+    if (religion != null && religion.isNotEmpty) query['religion'] = religion;
+    if (education != null && education.isNotEmpty) query['education'] = education;
+    if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+
+    final body = await api.get('/discovery/explore', query: query);
+    return _parseProfiles(body);
+  }
+
+  @override
   Future<List<ProfileSummary>> search({
     required int? ageMin,
     required int? ageMax,

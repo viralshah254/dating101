@@ -19,14 +19,14 @@ class AppCopy {
     }
   }
 
-  /// Discovery / Matches tab title.
+  /// Discovery tab title (nav and screen header).
   static String discoveryTitle(BuildContext context, AppMode mode) {
     final l = AppLocalizations.of(context)!;
     switch (mode) {
       case AppMode.dating:
         return l.discoverTitle;
       case AppMode.matrimony:
-        return l.navMatches;
+        return l.navDiscover;
     }
   }
 

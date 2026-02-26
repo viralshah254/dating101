@@ -34,7 +34,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -57,7 +57,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = AppColors.lightAccent;
 
     return Scaffold(
       body: NestedScrollView(
@@ -67,7 +67,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             snap: true,
             pinned: true,
             title: Text(
-              l.navMatches,
+              l.navDiscover,
               style: AppTypography.headlineSmall.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w700,
@@ -116,6 +116,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               onShortlist: _onShortlist,
               onMessage: _onMessage,
               onUpgrade: _onUpgrade,
+            ),
+            _MatchesTab(
+              onTapProfile: _openProfile,
+              onMessage: _onMessage,
             ),
           ],
         ),
@@ -215,6 +219,15 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       final threadId = await ref.read(chatRepositoryProvider).createThread(p.id, mode: modeStr);
       if (!mounted) return;
       context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.code == 'CONNECTION_REQUIRED' ? 'Send or accept an interest first' : e.message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/chats');
     } catch (_) {
       if (!mounted) return;
       context.push('/chats');
@@ -226,7 +239,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   void _showFilterSheet(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = AppColors.lightAccent;
     final surface = Theme.of(context).colorScheme.surface;
 
     final filterOptionsAsync = ref.read(filterOptionsProvider);
@@ -467,7 +480,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                               );
                               _updateFilterCount();
                               if (_activeFilterCount > 0) {
-                                _tabController.animateTo(1);
+                                _tabController.animateTo(2); // Switch to Explore tab
                               }
                             });
                             Navigator.pop(ctx);
@@ -533,6 +546,7 @@ class _TabBarSection extends StatelessWidget {
           Tab(text: 'For You', height: 38),
           Tab(text: 'Visitors', height: 38),
           Tab(text: 'Explore', height: 38),
+          Tab(text: 'Matches', height: 38),
         ],
       ),
     );
@@ -562,10 +576,13 @@ class _RecommendedTab extends ConsumerWidget {
     final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
     final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final async = ref.watch(matchesRecommendedProvider);
     return async.when(
-      data: (profiles) => _ProfileList(
-        profiles: profiles,
+      data: (profiles) {
+        final filtered = profiles.where((p) => !matchedIds.contains(p.id)).toList();
+        return _ProfileList(
+        profiles: filtered,
         shortlistedIds: shortlistedIds,
         sentInterestIds: sentInterestIds,
         sentPriorityInterestIds: sentPriorityIds,
@@ -578,7 +595,8 @@ class _RecommendedTab extends ConsumerWidget {
         emptyIcon: Icons.diversity_3_rounded,
         emptyTitle: 'No recommendations yet',
         emptyBody: 'Complete your profile and preferences to get AI-powered matches.',
-      ),
+        );
+      },
       loading: () => const _ShimmerList(),
       error: (_, __) => _ErrorState(onRetry: () => ref.invalidate(matchesRecommendedProvider)),
     );
@@ -608,10 +626,13 @@ class _VisitorsTab extends ConsumerWidget {
     final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
     final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final async = ref.watch(visitorsProvider);
     return async.when(
-      data: (profiles) => _ProfileList(
-        profiles: profiles,
+      data: (profiles) {
+        final filtered = profiles.where((p) => !matchedIds.contains(p.id)).toList();
+        return _ProfileList(
+        profiles: filtered,
         shortlistedIds: shortlistedIds,
         sentInterestIds: sentInterestIds,
         sentPriorityInterestIds: sentPriorityIds,
@@ -624,7 +645,8 @@ class _VisitorsTab extends ConsumerWidget {
         emptyIcon: Icons.visibility_outlined,
         emptyTitle: 'No visitors yet',
         emptyBody: 'Profiles who viewed you will appear here. Complete your profile to get noticed.',
-      ),
+        );
+      },
       loading: () => const _ShimmerList(),
       error: (_, __) => _ErrorState(onRetry: () => ref.invalidate(visitorsProvider)),
     );
@@ -653,27 +675,26 @@ class _ExploreTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+    final exploreArgs = (mode: mode, filters: filters);
+
+    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
+
     final hasFilters = filters.ageMin != null ||
         filters.ageMax != null ||
         (filters.city != null && filters.city!.isNotEmpty) ||
         (filters.religion != null && filters.religion!.isNotEmpty) ||
         (filters.education != null && filters.education!.isNotEmpty);
 
-    if (!hasFilters) {
-      return const _EmptyState(
-        icon: Icons.explore_outlined,
-        title: 'Explore profiles',
-        body: 'Use the filter icon above to search by age, city, religion, education and more.',
-      );
-    }
-
-    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
-    final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final async = ref.watch(matchesSearchProvider(filters));
+    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final async = ref.watch(matchesExploreProvider(exploreArgs));
     return async.when(
-      data: (profiles) => _ProfileList(
-        profiles: profiles,
+      data: (profiles) {
+        final filtered = profiles.where((p) => !matchedIds.contains(p.id)).toList();
+        return _ProfileList(
+        profiles: filtered,
         shortlistedIds: shortlistedIds,
         sentInterestIds: sentInterestIds,
         sentPriorityInterestIds: sentPriorityIds,
@@ -683,14 +704,130 @@ class _ExploreTab extends ConsumerWidget {
         onShortlist: onShortlist,
         onMessage: onMessage,
         onUpgrade: onUpgrade,
-        emptyIcon: Icons.search_off,
-        emptyTitle: 'No matches found',
-        emptyBody: 'Try adjusting your filters for more results.',
-      ),
+        emptyIcon: hasFilters ? Icons.search_off : Icons.explore_outlined,
+        emptyTitle: hasFilters ? 'No matches found' : 'Explore profiles',
+        emptyBody: hasFilters
+            ? 'Try adjusting your filters for more results.'
+            : 'Use the filter icon above to search by age, city, religion, education and more.',
+        );
+      },
       loading: () => const _ShimmerList(),
       error: (_, __) => _ErrorState(
-        onRetry: () => ref.invalidate(matchesSearchProvider(filters)),
+        onRetry: () => ref.invalidate(matchesExploreProvider(exploreArgs)),
       ),
+    );
+  }
+}
+
+// ─── Matches tab (mutual matches from GET /matches) ───────────────────────
+
+class _MatchesTab extends ConsumerWidget {
+  const _MatchesTab({
+    required this.onTapProfile,
+    required this.onMessage,
+  });
+  final void Function(ProfileSummary) onTapProfile;
+  final void Function(ProfileSummary) onMessage;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(mutualMatchesProvider);
+    return async.when(
+      data: (entries) {
+        if (entries.isEmpty) {
+          return _EmptyState(
+            icon: Icons.favorite_border_rounded,
+            title: 'No matches yet',
+            body: 'When you and someone else both express interest, you\'ll match and appear here.',
+          );
+        }
+        final onSurface = Theme.of(context).colorScheme.onSurface;
+        final accent = AppColors.lightAccent;
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          itemCount: entries.length,
+          itemBuilder: (context, i) {
+            final entry = entries[i];
+            final p = entry.profile;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: onSurface.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: () => onTapProfile(p),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: onSurface.withValues(alpha: 0.1),
+                          backgroundImage: p.imageUrl != null && p.imageUrl!.isNotEmpty
+                              ? NetworkImage(p.imageUrl!)
+                              : null,
+                          child: p.imageUrl == null || p.imageUrl!.isEmpty
+                              ? Text(
+                                  (p.name.isNotEmpty ? p.name[0] : '?').toUpperCase(),
+                                  style: AppTypography.titleMedium.copyWith(color: onSurface.withValues(alpha: 0.6)),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                p.name,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (p.age != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${p.age} yrs',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: onSurface.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ],
+                              if (entry.lastMessage != null && entry.lastMessage!.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  entry.lastMessage!,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: onSurface.withValues(alpha: 0.5),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => onMessage(p),
+                          icon: Icon(Icons.chat_bubble_outline_rounded, color: accent),
+                          tooltip: 'Message',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const _ShimmerList(),
+      error: (_, __) => _ErrorState(onRetry: () => ref.invalidate(mutualMatchesProvider)),
     );
   }
 }
@@ -732,8 +869,13 @@ class _ProfileList extends StatelessWidget {
     if (profiles.isEmpty) {
       return _EmptyState(icon: emptyIcon, title: emptyTitle, body: emptyBody);
     }
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final cardHeight = (viewportHeight * 0.78).clamp(380.0, 520.0);
+    const horizontalPadding = 12.0;
+    const peekGap = 12.0;
+
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(horizontalPadding, 12, horizontalPadding, 24),
       itemCount: profiles.length,
       itemBuilder: (context, i) {
         final p = profiles[i];
@@ -741,19 +883,22 @@ class _ProfileList extends StatelessWidget {
         final isInterested = sentInterestIds?.contains(p.id) ?? false;
         final isPriorityInterested = sentPriorityInterestIds?.contains(p.id) ?? false;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: MatchProfileCard(
-            profile: p,
-            isShortlisted: isShortlisted,
-            isInterested: isInterested,
-            isPriorityInterested: isPriorityInterested,
-            onTap: () => onTap(p),
-            onLike: () => onLike(p),
-            onSuperLike: () => onSuperLike(p),
-            onShortlist: () => onShortlist(p),
-            onMessage: () => onMessage(p),
-            onUpgrade: onUpgrade,
-          ).animate().fadeIn(delay: (40 * i).ms).slideY(begin: 0.04, end: 0),
+          padding: const EdgeInsets.only(bottom: peekGap),
+          child: SizedBox(
+            height: cardHeight,
+            child: MatchProfileCard(
+              profile: p,
+              isShortlisted: isShortlisted,
+              isInterested: isInterested,
+              isPriorityInterested: isPriorityInterested,
+              onTap: () => onTap(p),
+              onLike: () => onLike(p),
+              onSuperLike: () => onSuperLike(p),
+              onShortlist: () => onShortlist(p),
+              onMessage: () => onMessage(p),
+              onUpgrade: onUpgrade,
+            ).animate().fadeIn(delay: (40 * i).ms).slideY(begin: 0.04, end: 0),
+          ),
         );
       },
     );
@@ -773,22 +918,31 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = AppColors.lightAccent;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkAccent : accent;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.08),
+                color: bgColor.withValues(alpha: isDark ? 0.2 : 0.12),
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: bgColor.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              child: Icon(icon, size: 48, color: accent.withValues(alpha: 0.6)),
+              child: Icon(icon, size: 52, color: bgColor.withValues(alpha: isDark ? 0.9 : 0.75)),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Text(
               title,
               style: AppTypography.titleLarge.copyWith(
@@ -797,12 +951,12 @@ class _EmptyState extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               body,
               style: AppTypography.bodyMedium.copyWith(
-                color: onSurface.withValues(alpha: 0.6),
-                height: 1.4,
+                color: onSurface.withValues(alpha: 0.65),
+                height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
@@ -830,7 +984,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: onRetry,
-              style: FilledButton.styleFrom(backgroundColor: AppColors.indiaGreen),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.lightAccent),
               child: Text(l.retry),
             ),
           ],
@@ -1024,54 +1178,135 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final surface = Theme.of(context).colorScheme.surface;
     final accent = AppColors.saffron;
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.star_rounded, color: accent, size: 28),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Priority interest',
-              style: AppTypography.titleLarge.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    final width = MediaQuery.sizeOf(context).width;
+    final dialogWidth = (width * 0.9).clamp(320.0, 420.0);
+    final warmBg = Color.lerp(surface, accent, 0.03) ?? surface;
+    final warmFill = Color.lerp(surface, accent, 0.06) ?? surface;
+
+    final name = widget.profileName.split(' ').first;
+    final greeting = name.isNotEmpty ? 'Say hi to $name' : 'Send a personal note';
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: (width - dialogWidth) / 2),
+      child: Material(
+        borderRadius: BorderRadius.circular(28),
+        color: warmBg,
+        elevation: 12,
+        shadowColor: accent.withValues(alpha: 0.15),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: dialogWidth),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(26, 30, 26, 26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            accent.withValues(alpha: 0.2),
+                            accent.withValues(alpha: 0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(Icons.auto_awesome, color: accent, size: 28),
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Text(
+                        'Priority interest',
+                        style: AppTypography.titleLarge.copyWith(
+                          color: onSurface,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  greeting,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: onSurface.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'A short note goes a long way — optional, but they\'ll love it.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: onSurface.withValues(alpha: 0.6),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                TextField(
+                  controller: _controller,
+                  maxLines: 4,
+                  minLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Hi! Something in your profile caught my eye...',
+                    hintStyle: TextStyle(
+                      color: onSurface.withValues(alpha: 0.4),
+                      fontWeight: FontWeight.w400,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: onSurface.withValues(alpha: 0.12)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: accent, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: warmFill,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  ),
+                ),
+                const SizedBox(height: 26),
+                FilledButton(
+                  onPressed: () {
+                    final text = _controller.text.trim();
+                    Navigator.of(context).pop(text.isEmpty ? null : text);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Send your note'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  style: TextButton.styleFrom(
+                    foregroundColor: onSurface.withValues(alpha: 0.55),
+                  ),
+                  child: const Text('Skip for now'),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Add a message to stand out (optional)',
-            style: AppTypography.bodyMedium.copyWith(color: onSurface.withValues(alpha: 0.8)),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _controller,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'e.g. Hi! I loved your profile...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              filled: true,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: Text('Skip', style: TextStyle(color: onSurface.withValues(alpha: 0.7))),
         ),
-        FilledButton(
-          onPressed: () {
-            final text = _controller.text.trim();
-            Navigator.of(context).pop(text.isEmpty ? null : text);
-          },
-          style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: Colors.white),
-          child: const Text('Send priority interest'),
-        ),
-      ],
+      ),
     );
   }
 }

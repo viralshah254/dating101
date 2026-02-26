@@ -41,6 +41,7 @@ This document lists **all endpoints** the Saathi frontend expects the backend to
 | DELETE | `/profile/me/photos/:key` | Yes | Delete photo by S3 key. |
 | PATCH | `/profile/me/privacy` | Yes | Privacy (e.g. `showInVisitors`). |
 | PATCH | `/profile/me/notifications` | Yes | Notification preferences. |
+| POST | `/profile/me/fcm-token` | Yes | Register FCM device token for push. Body: `{ "fcmToken": "..." }`. See [BACKEND_PUSH_NOTIFICATIONS.md](./BACKEND_PUSH_NOTIFICATIONS.md). |
 
 ---
 

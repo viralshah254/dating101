@@ -48,8 +48,18 @@ class ApiChatRepository implements ChatRepository {
 
   Future<List<ChatMessage>> _fetchMessages(String threadId) async {
     final body = await api.get('/chat/threads/$threadId/messages', query: {'limit': '50'});
-    final list = body['messages'] as List? ?? [];
-    return list.map((e) => _parseMessage(e as Map<String, dynamic>)).toList();
+    final raw = body['messages'] ?? body['data'];
+    final list = raw is List ? raw : <dynamic>[];
+    final out = <ChatMessage>[];
+    for (final e in list) {
+      if (e is! Map<String, dynamic>) continue;
+      try {
+        out.add(_parseMessage(e));
+      } catch (_) {
+        // skip malformed message
+      }
+    }
+    return out;
   }
 
   @override
@@ -59,30 +69,40 @@ class ApiChatRepository implements ChatRepository {
 
   @override
   Future<void> markThreadRead(String threadId) async {
-    await api.post('/chat/threads/$threadId/read');
+    await api.post('/chat/threads/$threadId/read', body: <String, dynamic>{});
   }
 
   static ChatThreadSummary _parseThread(Map<String, dynamic> j) {
+    final unreadRaw = j['unreadCount'] ?? j['unread_count'];
+    final unreadCount = unreadRaw is int ? unreadRaw : (int.tryParse('$unreadRaw') ?? 0);
     return ChatThreadSummary(
       id: j['id'] as String? ?? '',
-      otherUserId: j['otherUserId'] as String? ?? '',
-      otherName: j['otherName'] as String? ?? '',
-      lastMessage: j['lastMessage'] as String?,
-      lastMessageAt: j['lastMessageAt'] != null
-          ? DateTime.tryParse(j['lastMessageAt'] as String)
-          : null,
-      unreadCount: j['unreadCount'] as int? ?? 0,
+      otherUserId: j['otherUserId'] as String? ?? j['other_user_id'] as String? ?? '',
+      otherName: j['otherName'] as String? ?? j['other_name'] as String? ?? '',
+      lastMessage: j['lastMessage'] as String? ?? j['last_message'] as String?,
+      lastMessageAt: _parseOptDateTime(j['lastMessageAt'] ?? j['last_message_at']),
+      unreadCount: unreadCount,
       mode: j['mode'] as String?,
     );
   }
 
+  static DateTime? _parseOptDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
   static ChatMessage _parseMessage(Map<String, dynamic> j) {
+    final sentAtRaw = j['sentAt'] ?? j['createdAt'] ?? j['timestamp'];
+    final sentAt = sentAtRaw is String
+        ? DateTime.tryParse(sentAtRaw) ?? DateTime.now()
+        : DateTime.now();
     return ChatMessage(
       id: j['id'] as String? ?? '',
-      senderId: j['senderId'] as String? ?? '',
-      text: j['text'] as String? ?? '',
-      sentAt: DateTime.parse(j['sentAt'] as String),
-      isVoiceNote: j['isVoiceNote'] as bool? ?? false,
+      senderId: j['senderId'] as String? ?? j['sender_id'] as String? ?? '',
+      text: j['text'] as String? ?? j['content'] as String? ?? '',
+      sentAt: sentAt,
+      isVoiceNote: j['isVoiceNote'] as bool? ?? j['is_voice_note'] as bool? ?? false,
     );
   }
 }

@@ -119,6 +119,15 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       final threadId = await ref.read(chatRepositoryProvider).createThread(p.id, mode: modeStr);
       if (!mounted) return;
       context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.code == 'CONNECTION_REQUIRED' ? 'Send or accept an interest first' : e.message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/chats');
     } catch (_) {
       if (!mounted) return;
       context.push('/chats');
@@ -133,23 +142,49 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     return async.when(
       data: (profiles) {
         if (profiles.isEmpty) {
+          final accent = Theme.of(context).colorScheme.primary;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bookmark_border_rounded, size: 48, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
-                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: isDark ? 0.2 : 0.12),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withValues(alpha: 0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.star_border_rounded,
+                      size: 52,
+                      color: accent.withValues(alpha: isDark ? 0.9 : 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
                   Text(
                     l.shortlistEmpty,
-                    style: AppTypography.titleMedium,
+                    style: AppTypography.titleLarge.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     l.shortlistEmptyHint,
-                    style: AppTypography.bodySmall,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                      height: 1.5,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -167,21 +202,25 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
             itemCount: profiles.length,
             itemBuilder: (context, index) {
               final p = profiles[index];
+              final cardHeight = (MediaQuery.sizeOf(context).height * 0.78).clamp(380.0, 520.0);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: MatchProfileCard(
-                  profile: p,
-                  isShortlisted: true,
-                  onTap: () => context.push('/profile/${p.id}'),
-                  onLike: () => _onLike(p),
-                  onSuperLike: () => _onSuperLike(p),
-                  onShortlist: () async {
-                    await ref.read(shortlistRepositoryProvider).removeFromShortlist(p.id);
-                    ref.invalidate(shortlistProvider);
-                    ref.invalidate(shortlistedIdsProvider);
-                  },
-                  onMessage: () => _onMessage(p),
-                  onUpgrade: () => context.push('/paywall'),
+                child: SizedBox(
+                  height: cardHeight,
+                  child: MatchProfileCard(
+                    profile: p,
+                    isShortlisted: true,
+                    onTap: () => context.push('/profile/${p.id}'),
+                    onLike: () => _onLike(p),
+                    onSuperLike: () => _onSuperLike(p),
+                    onShortlist: () async {
+                      await ref.read(shortlistRepositoryProvider).removeFromShortlist(p.id);
+                      ref.invalidate(shortlistProvider);
+                      ref.invalidate(shortlistedIdsProvider);
+                    },
+                    onMessage: () => _onMessage(p),
+                    onUpgrade: () => context.push('/paywall'),
+                  ),
                 ),
               );
             },
@@ -277,7 +316,7 @@ class _WhoShortlistedMeContent extends StatelessWidget {
                   color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.bookmark_rounded, size: 18, color: accent),
+                child: Icon(Icons.star_rounded, size: 18, color: accent),
               ),
               const SizedBox(width: 10),
               Text(

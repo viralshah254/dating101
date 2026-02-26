@@ -16,21 +16,17 @@ class DynamicGradientBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final defaultGradient = gradient ??
-        LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
+        (isDark
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
                   AppColors.darkBackground,
                   AppColors.darkSurface,
                   AppColors.darkBackground,
-                ]
-              : [
-                  AppColors.lightBackground,
-                  AppColors.lightSurfaceVariant.withValues(alpha: 0.3),
-                  AppColors.lightBackground,
                 ],
-        );
+              )
+            : AppColors.splashGradient);
 
     return Container(
       width: double.infinity,

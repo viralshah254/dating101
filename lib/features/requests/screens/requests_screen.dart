@@ -517,30 +517,49 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final accent = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 56,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: isDark ? 0.2 : 0.12),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                icon,
+                size: 52,
+                color: accent.withValues(alpha: isDark ? 0.9 : 0.7),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             Text(
               title,
-              style: AppTypography.titleMedium.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+              style: AppTypography.titleLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
             Text(
               hint,
-              style: AppTypography.bodySmall.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+              style: AppTypography.bodyMedium.copyWith(
+                color: onSurface.withValues(alpha: 0.65),
+                height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),

@@ -107,4 +107,14 @@ class FakeProfileRepository implements ProfileRepository {
     await Future.delayed(const Duration(milliseconds: 50));
     return Map<String, dynamic>.from(preferences);
   }
+
+  @override
+  Future<void> registerFcmToken(String fcmToken) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
+
+  @override
+  Future<void> deleteFcmToken() async {
+    await Future.delayed(const Duration(milliseconds: 20));
+  }
 }

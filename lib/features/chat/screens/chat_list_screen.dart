@@ -11,6 +11,7 @@ import '../../../data/api/api_client.dart';
 import '../../../domain/models/interaction_models.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../domain/repositories/chat_repository.dart';
+import '../../discovery/providers/discovery_providers.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../providers/chat_providers.dart';
 
@@ -101,7 +102,10 @@ class _ChatsTab extends ConsumerWidget {
               final t = threads[i];
               return _ChatThreadTile(
                 thread: t,
-                onTap: () => context.push('/chat/${t.id}?otherUserId=${Uri.encodeComponent(t.otherUserId)}'),
+                onTap: () async {
+                  await context.push('/chat/${t.id}?otherUserId=${Uri.encodeComponent(t.otherUserId)}');
+                  if (context.mounted) ref.invalidate(chatThreadsProvider);
+                },
               );
             },
           ),
@@ -233,15 +237,18 @@ class _GroupedRequest {
 
 // ─── Thread tile (chats tab) ───────────────────────────────────────────────
 
-class _ChatThreadTile extends StatelessWidget {
+class _ChatThreadTile extends ConsumerWidget {
   const _ChatThreadTile({required this.thread, required this.onTap});
   final ChatThreadSummary thread;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final timeStr = _timeAgo(thread.lastMessageAt);
+    final profileAsync = ref.watch(profileSummaryProvider(thread.otherUserId));
+    final imageUrl = profileAsync.valueOrNull?.imageUrl;
+    final initial = thread.otherName.isNotEmpty ? thread.otherName[0].toUpperCase() : '?';
 
     return Material(
       color: Colors.transparent,
@@ -254,10 +261,15 @@ class _ChatThreadTile extends StatelessWidget {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: AppColors.saffron.withValues(alpha: 0.2),
-                child: Text(
-                  thread.otherName.isNotEmpty ? thread.otherName[0].toUpperCase() : '?',
-                  style: AppTypography.titleLarge.copyWith(color: AppColors.saffron, fontWeight: FontWeight.w600),
-                ),
+                backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                    ? NetworkImage(imageUrl)
+                    : null,
+                child: imageUrl == null || imageUrl.isEmpty
+                    ? Text(
+                        initial,
+                        style: AppTypography.titleLarge.copyWith(color: AppColors.saffron, fontWeight: FontWeight.w600),
+                      )
+                    : null,
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -285,7 +297,13 @@ class _ChatThreadTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (thread.unreadCount > 0)
+                  if (timeStr != null)
+                    Text(
+                      timeStr,
+                      style: AppTypography.caption.copyWith(color: onSurface.withValues(alpha: 0.5)),
+                    ),
+                  if (thread.unreadCount > 0) ...[
+                    if (timeStr != null) const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -296,12 +314,8 @@ class _ChatThreadTile extends StatelessWidget {
                         '${thread.unreadCount}',
                         style: AppTypography.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                       ),
-                    )
-                  else if (timeStr != null)
-                    Text(
-                      timeStr,
-                      style: AppTypography.caption.copyWith(color: onSurface.withValues(alpha: 0.5)),
                     ),
+                  ],
                 ],
               ),
             ],

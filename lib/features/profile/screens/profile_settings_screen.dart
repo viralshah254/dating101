@@ -160,6 +160,10 @@ class ProfileSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           OutlinedButton.icon(
             onPressed: () async {
+              await ref.read(notificationServiceProvider).onLogout();
+              try {
+                await ref.read(profileRepositoryProvider).deleteFcmToken();
+              } catch (_) {}
               final authRepo = ref.read(authRepositoryProvider);
               await authRepo.signOut();
               if (context.mounted) context.go('/login');
@@ -197,6 +201,7 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) {
     'interestDeclined': false,
     'mutualMatch': true,
     'profileVisited': true,
+    'newMessage': true,
   };
 
   showModalBottomSheet(
@@ -214,6 +219,7 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) {
           'interestDeclined': 'Interest declined',
           'mutualMatch': 'Mutual match',
           'profileVisited': 'Profile visited',
+          'newMessage': 'New message',
         };
         return SafeArea(
           child: Padding(

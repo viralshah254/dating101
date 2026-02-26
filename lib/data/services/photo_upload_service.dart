@@ -28,13 +28,19 @@ class PhotoUploadService {
       'count': 1,
     });
 
-    final uploads = (response['uploads'] as List);
+    // Backend may return "urls" or "uploads"
+    final list = response['urls'] ?? response['uploads'];
+    final uploads = list is List ? list : <dynamic>[];
     if (uploads.isEmpty) throw Exception('No upload URL returned');
 
     final upload = uploads[0] as Map<String, dynamic>;
-    final uploadUrl = upload['uploadUrl'] as String;
-    final photoUrl = upload['photoUrl'] as String;
-    final key = upload['key'] as String;
+    final rawUploadUrl = upload['uploadUrl'] ?? upload['upload_url'];
+    final uploadUrl = rawUploadUrl is String ? rawUploadUrl : null;
+    if (uploadUrl == null || uploadUrl.isEmpty) throw Exception('Missing uploadUrl in response');
+    final key = (upload['key'] as String?) ?? '';
+    // photoUrl may be omitted; fallback to uploadUrl without query string for display
+    final rawPhotoUrl = upload['photoUrl'] ?? upload['photo_url'];
+    final photoUrl = rawPhotoUrl is String ? rawPhotoUrl : uploadUrl.split('?').first;
 
     debugPrint('[PhotoUpload] Uploading to S3: ${file.lengthSync()} bytes');
     final bytes = await file.readAsBytes();

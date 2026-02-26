@@ -18,19 +18,16 @@ class TaglineScreen extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [
+          gradient: isDark
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
                     AppColors.darkBackground,
                     AppColors.darkSurface,
-                  ]
-                : [
-                    AppColors.lightBackground,
-                    AppColors.lightSurfaceVariant.withValues(alpha: 0.4),
                   ],
-          ),
+                )
+              : AppColors.splashGradient,
         ),
         child: SafeArea(
           child: Padding(

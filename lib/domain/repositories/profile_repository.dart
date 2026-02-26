@@ -39,4 +39,10 @@ abstract class ProfileRepository {
 
   /// Update notification preferences (PATCH /profile/me/notifications).
   Future<Map<String, dynamic>> updateNotificationPreferences(Map<String, dynamic> preferences);
+
+  /// Register FCM device token for push (POST /profile/me/fcm-token).
+  Future<void> registerFcmToken(String fcmToken);
+
+  /// Remove FCM token on sign out (DELETE /profile/me/fcm-token). Optional; call before sign-out while still authenticated.
+  Future<void> deleteFcmToken();
 }

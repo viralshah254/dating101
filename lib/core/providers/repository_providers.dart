@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/location/app_location_service.dart';
+import '../../core/notifications/notification_service.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/api_config.dart';
 import '../../data/api/token_storage.dart';
@@ -120,6 +122,29 @@ final securityServiceProvider = Provider<SecurityService>((ref) {
   return SecurityService(api: ref.watch(apiClientProvider));
 });
 
+/// FCM push notification service. Initialize via [NotificationService.initialize] and
+/// set tap callback from app startup; register token when user is logged in.
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  final profileRepo = ref.watch(profileRepositoryProvider);
+  return FirebaseNotificationService(
+    onRegisterToken: (token) => profileRepo.registerFcmToken(token),
+    onLogoutCallback:
+        null, // Backend can optionally support DELETE device token on logout
+  );
+});
+
+/// One-shot: when read (e.g. from shell), registers FCM token with backend if user is logged in.
+final registerFcmTokenProvider = FutureProvider<void>((ref) async {
+  final tokenStorage = ref.read(tokenStorageProvider);
+  if (!tokenStorage.isLoggedIn) return;
+  final service = ref.read(notificationServiceProvider);
+  final token = await service.getToken();
+  if (token != null) {
+    await service.registerTokenWithBackend(token);
+    if (kDebugMode) debugPrint('[FCM] Token registered with backend');
+  }
+});
+
 /// Tracks whether we have already fired the security location record this session.
 final recordLocationFiredProvider = StateProvider<bool>((ref) => false);
 
@@ -132,9 +157,12 @@ final recordSecurityLocationProvider = Provider<void Function()>((ref) {
       final userId = ref.read(authRepositoryProvider).currentUserId;
       if (userId == null) return;
       ref.read(recordLocationFiredProvider.notifier).state = true;
-      final loc = await AppLocationService.instance.getCurrentCreationLocation();
+      final loc = await AppLocationService.instance
+          .getCurrentCreationLocation();
       if (loc == null) return;
-      await ref.read(securityServiceProvider).recordLocation(
+      await ref
+          .read(securityServiceProvider)
+          .recordLocation(
             lat: loc.latitude,
             lng: loc.longitude,
             address: loc.address,

@@ -364,6 +364,19 @@ The presigned URL expires in **15 minutes**. The app should:
 |------|------|------|
 | 400 | VALIDATION_ERROR | Invalid content type or count |
 | 429 | RATE_LIMITED | Too many upload requests |
+| 500 | INTERNAL_ERROR | Often **"Could not load credentials from any providers"** — see below. |
+
+**Backend configuration (required for photo upload)**
+
+To generate presigned S3 URLs, the backend must have **AWS credentials** available. If they are missing, the endpoint returns **500** with `INTERNAL_ERROR` and message *"Could not load credentials from any providers"*.
+
+- **Local development:** Set environment variables before starting the server:
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
+  - `AWS_REGION` (e.g. `us-east-1`)
+  - `S3_BUCKET` (or your app’s bucket env name)
+- **Hosted (e.g. EC2/ECS/Lambda):** Use an IAM role with `s3:PutObject` (and optionally `s3:DeleteObject`) on the bucket, or set the same env vars.
+- Ensure the bucket exists and the credentials have permission to create presigned URLs for that bucket.
 
 ---
 

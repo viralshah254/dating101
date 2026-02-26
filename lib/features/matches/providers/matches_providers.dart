@@ -5,6 +5,7 @@ import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../domain/models/mutual_match_entry.dart';
 import '../../../domain/models/profile_summary.dart';
 
 final matchesRecommendedProvider =
@@ -16,6 +17,46 @@ final matchesRecommendedProvider =
   debugPrint('[Matches] Got ${results.length} recommended profiles');
   return results;
 });
+
+/// Mutual matches (GET /matches). Used for Matches tab and to exclude from Explore.
+final mutualMatchesProvider =
+    FutureProvider.autoDispose<List<MutualMatchEntry>>((ref) async {
+  final repo = ref.watch(matchesRepositoryProvider);
+  return repo.getMatches(page: 1, limit: 100);
+});
+
+/// Set of user IDs we are already matched with. Use to hide them from Explore.
+final matchedUserIdsProvider = FutureProvider.autoDispose<Set<String>>((ref) async {
+  final list = await ref.watch(mutualMatchesProvider.future);
+  return list.map((e) => e.profile.id).toSet();
+});
+
+/// Explore tab: GET /discovery/explore with mode + optional filters. No filters = everyone in mode.
+final matchesExploreProvider = FutureProvider.autoDispose
+    .family<List<ProfileSummary>, ({AppMode mode, MatchesSearchFilters filters})>((ref, args) async {
+  final repo = ref.watch(discoveryRepositoryProvider);
+  debugPrint('[Matches] Fetching explore (mode=${args.mode}, hasFilters=${_hasFilters(args.filters)})...');
+  final results = await repo.getExplore(
+    mode: args.mode,
+    ageMin: args.filters.ageMin,
+    ageMax: args.filters.ageMax,
+    city: args.filters.city,
+    religion: args.filters.religion,
+    education: args.filters.education,
+    heightMinCm: args.filters.heightMinCm,
+    limit: 20,
+  );
+  debugPrint('[Matches] Explore got ${results.length} profiles');
+  return results;
+});
+
+bool _hasFilters(MatchesSearchFilters f) =>
+    f.ageMin != null ||
+    f.ageMax != null ||
+    (f.city != null && f.city!.isNotEmpty) ||
+    (f.religion != null && f.religion!.isNotEmpty) ||
+    (f.education != null && f.education!.isNotEmpty) ||
+    f.heightMinCm != null;
 
 final matchesSearchProvider = FutureProvider.autoDispose
     .family<List<ProfileSummary>, MatchesSearchFilters>((ref, filters) async {

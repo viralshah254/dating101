@@ -938,120 +938,33 @@ class _DateOfBirthPicker extends StatelessWidget {
     );
   }
 
-  /// Efficient picker: year and month via dropdowns, day in a grid or dropdown.
+  /// Uses the platform calendar date picker for a clearer, more intuitive experience.
   static Future<DateTime?> _showEfficientDatePicker({
     required BuildContext context,
     required DateTime initial,
     required DateTime lastDate,
   }) {
-    final l = AppLocalizations.of(context)!;
     final firstDate = DateTime(1950, 1, 1);
-    int year = initial.year.clamp(firstDate.year, lastDate.year);
-    int month = initial.month.clamp(1, 12);
-    int day = initial.day;
-
-    return showDialog<DateTime>(
+    final initialDate = DateTime(
+      initial.year.clamp(firstDate.year, lastDate.year),
+      initial.month.clamp(1, 12),
+      initial.day.clamp(1, DateTime(initial.year, initial.month + 1, 0).day),
+    );
+    return showDatePicker(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            int daysInMonth = DateTime(year, month + 1, 0).day;
-            int dayClamped = day.clamp(1, daysInMonth);
-
-            final years = List.generate(lastDate.year - firstDate.year + 1, (i) => lastDate.year - i);
-            const months = [
-              'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-            ];
-
-            return AlertDialog(
-              title: Text(l.selectDate),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: year,
-                            decoration: InputDecoration(
-                              labelText: 'Year',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            isExpanded: true,
-                            items: years.map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                year = v;
-                                daysInMonth = DateTime(year, month + 1, 0).day;
-                                if (day > daysInMonth) day = daysInMonth;
-                                setState(() {});
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: month,
-                            decoration: InputDecoration(
-                              labelText: 'Month',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            isExpanded: true,
-                            items: List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(value: m, child: Text(months[m - 1]))).toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                month = v;
-                                daysInMonth = DateTime(year, month + 1, 0).day;
-                                if (day > daysInMonth) day = daysInMonth;
-                                setState(() {});
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      initialValue: dayClamped,
-                      decoration: InputDecoration(
-                        labelText: 'Day',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
-                      isExpanded: true,
-                      items: List.generate(daysInMonth, (i) => i + 1).map((d) => DropdownMenuItem(value: d, child: Text('$d'))).toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          day = v;
-                          setState(() {});
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text(l.cancel),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final d = day.clamp(1, DateTime(year, month + 1, 0).day);
-                    final picked = DateTime(year, month, d);
-                    Navigator.of(ctx).pop(picked);
-                  },
-                  child: Text(l.ok),
-                ),
-              ],
-            );
-          },
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      helpText: AppLocalizations.of(context)!.selectDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).colorScheme.primary,
+              surface: Theme.of(context).colorScheme.surface,
+            ),
+          ),
+          child: child!,
         );
       },
     );
