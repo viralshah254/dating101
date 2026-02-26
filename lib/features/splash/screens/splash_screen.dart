@@ -108,7 +108,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Image.asset(
-                          'assets/images/shubhmilan_logo.png',
+                          'assets/images/saathi_logo.png',
                           width: 338,
                           fit: BoxFit.contain,
                         ),

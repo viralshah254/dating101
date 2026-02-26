@@ -15,9 +15,15 @@ import '../../data/repositories_api/api_interactions_repository.dart';
 import '../../data/repositories_api/api_interests_repository.dart';
 import '../../data/repositories_api/api_matches_repository.dart';
 import '../../data/repositories_api/api_profile_repository.dart';
+import '../../data/repositories_api/api_safety_repository.dart';
 import '../../data/repositories_api/api_shortlist_repository.dart';
 import '../../data/repositories_api/api_subscription_repository.dart';
+import '../../data/repositories_api/api_account_repository.dart';
+import '../../data/repositories_api/api_contact_request_repository.dart';
 import '../../data/repositories_api/api_visits_repository.dart';
+import '../../data/repositories_api/api_referral_repository.dart';
+import '../../data/repositories_api/api_verification_repository.dart';
+import '../../data/repositories_fake/fake_account_repository.dart';
 import '../../data/repositories_fake/fake_auth_repository.dart';
 import '../../data/repositories_fake/fake_chat_repository.dart';
 import '../../data/repositories_fake/fake_discovery_repository.dart';
@@ -25,19 +31,28 @@ import '../../data/repositories_fake/fake_interactions_repository.dart';
 import '../../data/repositories_fake/fake_interests_repository.dart';
 import '../../data/repositories_fake/fake_matches_repository.dart';
 import '../../data/repositories_fake/fake_profile_repository.dart';
+import '../../data/repositories_fake/fake_safety_repository.dart';
 import '../../data/repositories_fake/fake_shortlist_repository.dart';
 import '../../data/repositories_fake/fake_subscription_repository.dart';
+import '../../data/repositories_fake/fake_contact_request_repository.dart';
 import '../../data/repositories_fake/fake_visits_repository.dart';
+import '../../data/repositories_fake/fake_referral_repository.dart';
+import '../../data/repositories_fake/fake_verification_repository.dart';
+import '../../domain/repositories/account_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/repositories/contact_request_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/discovery_repository.dart';
 import '../../domain/repositories/interactions_repository.dart';
 import '../../domain/repositories/interests_repository.dart';
 import '../../domain/repositories/matches_repository.dart';
 import '../../domain/repositories/profile_repository.dart';
+import '../../domain/repositories/safety_repository.dart';
 import '../../domain/repositories/shortlist_repository.dart';
 import '../../domain/repositories/subscription_repository.dart';
 import '../../domain/repositories/visits_repository.dart';
+import '../../domain/repositories/referral_repository.dart';
+import '../../domain/repositories/verification_repository.dart';
 
 // ── Configuration ────────────────────────────────────────────────────────
 
@@ -71,6 +86,11 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return ApiProfileRepository(api: ref.watch(apiClientProvider));
 });
 
+final accountRepositoryProvider = Provider<AccountRepository>((ref) {
+  if (_config.useFakeBackend) return FakeAccountRepository();
+  return ApiAccountRepository(api: ref.watch(apiClientProvider));
+});
+
 final discoveryRepositoryProvider = Provider<DiscoveryRepository>((ref) {
   if (_config.useFakeBackend) {
     final profileRepo = ref.watch(profileRepositoryProvider);
@@ -99,6 +119,11 @@ final shortlistRepositoryProvider = Provider<ShortlistRepository>((ref) {
   return ApiShortlistRepository(api: ref.watch(apiClientProvider));
 });
 
+final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
+  if (_config.useFakeBackend) return FakeSafetyRepository();
+  return ApiSafetyRepository(api: ref.watch(apiClientProvider));
+});
+
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   if (_config.useFakeBackend) return FakeChatRepository();
   return ApiChatRepository(api: ref.watch(apiClientProvider));
@@ -112,6 +137,25 @@ final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
 final visitsRepositoryProvider = Provider<VisitsRepository>((ref) {
   if (_config.useFakeBackend) return FakeVisitsRepository();
   return ApiVisitsRepository(api: ref.watch(apiClientProvider));
+});
+
+final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
+  if (_config.useFakeBackend) return FakeReferralRepository();
+  return ApiReferralRepository(api: ref.watch(apiClientProvider));
+});
+
+final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
+  if (_config.useFakeBackend) return FakeVerificationRepository();
+  return ApiVerificationRepository(api: ref.watch(apiClientProvider));
+});
+
+final contactRequestRepositoryProvider = Provider<ContactRequestRepository>((ref) {
+  if (_config.useFakeBackend) {
+    final repo = FakeContactRequestRepository();
+    repo.seedReceivedRequests();
+    return repo;
+  }
+  return ApiContactRequestRepository(api: ref.watch(apiClientProvider));
 });
 
 final photoUploadServiceProvider = Provider<PhotoUploadService>((ref) {

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/locale/app_locale_provider.dart';
 import 'core/providers/repository_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -41,12 +42,15 @@ class _SaathiAppState extends ConsumerState<SaathiApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
+    final localeCode = ref.watch(appLocaleProvider);
+    final locale = localeCode != null ? Locale(localeCode) : null;
     return MaterialApp.router(
       title: 'saathi',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
+      locale: locale,
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

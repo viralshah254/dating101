@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../core/mode/app_mode.dart';
 import '../../domain/models/filter_options.dart';
 import '../../domain/models/profile_summary.dart';
+import '../../domain/models/saved_search.dart';
 import '../../domain/repositories/discovery_repository.dart';
 import '../api/api_client.dart';
 import 'api_profile_repository.dart';
@@ -49,7 +50,8 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (ageMax != null) query['ageMax'] = '$ageMax';
     if (city != null && city.isNotEmpty) query['city'] = city;
     if (religion != null && religion.isNotEmpty) query['religion'] = religion;
-    if (education != null && education.isNotEmpty) query['education'] = education;
+    if (education != null && education.isNotEmpty)
+      query['education'] = education;
     if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
 
@@ -108,9 +110,10 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     final breakdown = (body['breakdown'] as Map<String, dynamic>? ?? {}).map(
       (k, v) => MapEntry(k, (v as num).toDouble()),
     );
-    final alignment = (body['preferenceAlignment'] as Map<String, dynamic>? ?? {}).map(
-      (k, v) => MapEntry(k, v as String),
-    );
+    final alignment =
+        (body['preferenceAlignment'] as Map<String, dynamic>? ?? {}).map(
+          (k, v) => MapEntry(k, v as String),
+        );
     return CompatibilityDetail(
       candidateId: body['candidateId'] as String? ?? candidateId,
       compatibilityScore: (body['compatibilityScore'] as num?)?.toDouble() ?? 0,
@@ -127,14 +130,20 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     required String action,
     int? timeSpentMs,
     String? source,
+    String? reason,
+    String? details,
   }) async {
-    debugPrint('[Discovery] sendFeedback($candidateId, $action)');
+    debugPrint(
+      '[Discovery] sendFeedback($candidateId, $action, reason: $reason)',
+    );
     final payload = <String, dynamic>{
       'candidateId': candidateId,
       'action': action,
     };
     if (timeSpentMs != null) payload['timeSpentMs'] = timeSpentMs;
     if (source != null) payload['source'] = source;
+    if (reason != null) payload['reason'] = reason;
+    if (details != null) payload['details'] = details;
     await api.post('/discovery/feedback', body: payload);
   }
 
@@ -143,7 +152,8 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     debugPrint('[Discovery] getDiscoveryPreferences()');
     final body = await api.get('/discovery/preferences');
     final current = body['current'] as Map<String, dynamic>? ?? {};
-    final suggestions = (body['suggestions'] as List?)
+    final suggestions =
+        (body['suggestions'] as List?)
             ?.map((e) => e as Map<String, dynamic>)
             .toList() ??
         [];
@@ -155,6 +165,76 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     debugPrint('[Discovery] getFilterOptions()');
     final body = await api.get('/discovery/filter-options');
     return _parseFilterOptions(body);
+  }
+
+  @override
+  Future<List<SavedSearch>> getSavedSearches() async {
+    final body = await api.get('/discovery/saved-searches');
+    final list = body['savedSearches'] as List? ?? [];
+    return list
+        .map((e) => _parseSavedSearch(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<SavedSearch> createSavedSearch(
+    Map<String, dynamic> filters, {
+    String? name,
+    bool notifyOnNewMatch = true,
+  }) async {
+    final payload = <String, dynamic>{
+      'filters': filters,
+      'notifyOnNewMatch': notifyOnNewMatch,
+    };
+    if (name != null && name.isNotEmpty) payload['name'] = name;
+    final body = await api.post('/discovery/saved-searches', body: payload);
+    return _parseSavedSearch(body);
+  }
+
+  @override
+  Future<SavedSearch> updateSavedSearch(
+    String id, {
+    String? name,
+    bool? notifyOnNewMatch,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (name != null) payload['name'] = name;
+    if (notifyOnNewMatch != null) payload['notifyOnNewMatch'] = notifyOnNewMatch;
+    if (payload.isEmpty) {
+      final body = await api.get('/discovery/saved-searches');
+      final list = (body['savedSearches'] as List? ?? [])
+          .map((e) => e as Map<String, dynamic>)
+          .where((e) => e['id'] == id);
+      if (list.isEmpty) throw StateError('Saved search $id not found');
+      return _parseSavedSearch(list.first);
+    }
+    final body = await api.patch('/discovery/saved-searches/$id', body: payload);
+    return _parseSavedSearch(body);
+  }
+
+  @override
+  Future<void> deleteSavedSearch(String id) async {
+    await api.delete('/discovery/saved-searches/$id');
+  }
+
+  @override
+  Future<void> markSavedSearchViewed(String id) async {
+    await api.post('/discovery/saved-searches/$id/viewed');
+  }
+
+  static SavedSearch _parseSavedSearch(Map<String, dynamic> j) {
+    final filters = j['filters'] as Map<String, dynamic>? ?? {};
+    DateTime? createdAt;
+    final createdStr = j['createdAt'] as String?;
+    if (createdStr != null) createdAt = DateTime.tryParse(createdStr);
+    return SavedSearch(
+      id: j['id'] as String? ?? '',
+      name: j['name'] as String?,
+      filters: Map<String, dynamic>.from(filters),
+      createdAt: createdAt,
+      notifyOnNewMatch: j['notifyOnNewMatch'] as bool? ?? true,
+      newMatchCount: j['newMatchCount'] as int? ?? 0,
+    );
   }
 
   static FilterOptions _parseFilterOptions(Map<String, dynamic> j) {
@@ -192,7 +272,9 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
         ),
         height: null,
         diet: null,
-        maritalStatus: (options['maritalStatuses'] as List?)?.cast<String>().isNotEmpty == true
+        maritalStatus:
+            (options['maritalStatuses'] as List?)?.cast<String>().isNotEmpty ==
+                true
             ? FilterDimension(
                 options: (options['maritalStatuses'] as List?)!.cast<String>(),
                 strict: false,
@@ -217,7 +299,9 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
       education: _parseDimension(educationMap),
       height: _parseHeight(j['height'] as Map<String, dynamic>?),
       diet: _parseDimensionOpt(j['diet'] as Map<String, dynamic>?),
-      maritalStatus: _parseDimensionOpt(j['maritalStatus'] as Map<String, dynamic>?),
+      maritalStatus: _parseDimensionOpt(
+        j['maritalStatus'] as Map<String, dynamic>?,
+      ),
     );
   }
 
@@ -248,7 +332,11 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   static List<ProfileSummary> _parseProfiles(Map<String, dynamic> body) {
     final list = body['profiles'] as List? ?? [];
     return list
-        .map((e) => ApiProfileRepository.parseSummaryPublic(e as Map<String, dynamic>))
+        .map(
+          (e) => ApiProfileRepository.parseSummaryPublic(
+            e as Map<String, dynamic>,
+          ),
+        )
         .toList();
   }
 }

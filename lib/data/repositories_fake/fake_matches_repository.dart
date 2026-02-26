@@ -18,6 +18,7 @@ class FakeMatchesRepository implements MatchesRepository {
         matchedAt: DateTime.now().subtract(Duration(days: i)),
         chatThreadId: 'thread_$i',
         lastMessage: i == 0 ? 'Hi!' : null,
+        lastMessageAt: i == 0 ? DateTime.now().subtract(const Duration(minutes: 5)) : null,
       ));
       i++;
     }

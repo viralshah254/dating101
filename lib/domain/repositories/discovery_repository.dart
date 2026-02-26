@@ -1,6 +1,7 @@
 import '../../core/mode/app_mode.dart';
 import '../models/filter_options.dart';
 import '../models/profile_summary.dart';
+import '../models/saved_search.dart';
 
 /// Full compatibility breakdown for a specific candidate.
 class CompatibilityDetail {
@@ -78,11 +79,14 @@ abstract class DiscoveryRepository {
   Future<CompatibilityDetail> getCompatibility(String candidateId);
 
   /// Record a user interaction (like, pass, superlike, block, report, view).
+  /// For action 'block' or 'report', pass [reason] (required by backend for safety). For report, [details] is optional.
   Future<void> sendFeedback({
     required String candidateId,
     required String action,
     int? timeSpentMs,
     String? source,
+    String? reason,
+    String? details,
   });
 
   /// Current matching preferences + AI suggestions.
@@ -90,4 +94,29 @@ abstract class DiscoveryRepository {
 
   /// Filter options and defaults for Explore tab (respects strict preferences).
   Future<FilterOptions> getFilterOptions();
+
+  // --- Saved searches (matrimony) ---
+
+  /// List saved searches; each may include [SavedSearch.newMatchCount] for badge.
+  Future<List<SavedSearch>> getSavedSearches();
+
+  /// Create a saved search from current filters. [filters] same shape as explore (ageMin, ageMax, city, religion, education, heightMinCm, diet, etc.).
+  Future<SavedSearch> createSavedSearch(
+    Map<String, dynamic> filters, {
+    String? name,
+    bool notifyOnNewMatch = true,
+  });
+
+  /// Update name and/or notify flag.
+  Future<SavedSearch> updateSavedSearch(
+    String id, {
+    String? name,
+    bool? notifyOnNewMatch,
+  });
+
+  /// Delete a saved search.
+  Future<void> deleteSavedSearch(String id);
+
+  /// Mark saved search as viewed; resets new-match count for that search.
+  Future<void> markSavedSearchViewed(String id);
 }

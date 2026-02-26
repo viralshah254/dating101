@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design/design.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/interaction_models.dart';
 import '../../../domain/models/profile_summary.dart';
@@ -83,13 +85,18 @@ class ChatListScreen extends ConsumerWidget {
 class _ChatsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final async = ref.watch(chatThreadsProvider);
 
     return async.when(
       data: (threads) {
         if (threads.isEmpty) {
-          return _ChatEmptyState(
-            onRetry: () => ref.invalidate(chatThreadsProvider),
+          return EmptyState(
+            icon: Icons.chat_bubble_outline_rounded,
+            title: 'No conversations yet',
+            body: 'When you match with someone, your chats will appear here.',
+            ctaLabel: l.retry,
+            onCta: () => ref.invalidate(chatThreadsProvider),
           );
         }
         return RefreshIndicator(
@@ -111,10 +118,11 @@ class _ChatsTab extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => _ChatErrorState(
-        message: err.toString(),
+      loading: () => loadingSpinner(context),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
         onRetry: () => ref.invalidate(chatThreadsProvider),
+        retryLabel: l.retry,
       ),
     );
   }
@@ -124,14 +132,19 @@ class _ChatsTab extends ConsumerWidget {
 class _ChatRequestsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final async = ref.watch(receivedInteractionsProvider);
 
     return async.when(
       data: (items) {
         final groups = _groupByUser(items);
         if (groups.isEmpty) {
-          return _RequestsEmptyState(
-            onRetry: () {
+          return EmptyState(
+            icon: Icons.mail_outline_rounded,
+            title: 'No chat requests',
+            body: 'When someone sends you an interest, you can accept here to start chatting.',
+            ctaLabel: l.retry,
+            onCta: () {
               ref.invalidate(receivedInteractionsProvider);
               ref.invalidate(receivedRequestsCountProvider);
             },
@@ -158,13 +171,14 @@ class _ChatRequestsTab extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => _ChatErrorState(
-        message: err.toString(),
+      loading: () => loadingSpinner(context),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
         onRetry: () {
           ref.invalidate(receivedInteractionsProvider);
           ref.invalidate(receivedRequestsCountProvider);
         },
+        retryLabel: l.retry,
       ),
     );
   }
@@ -188,9 +202,7 @@ class _ChatRequestsTab extends ConsumerWidget {
       }
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating, backgroundColor: Theme.of(context).colorScheme.error),
-      );
+      showErrorToast(context, e.message);
     }
   }
 
@@ -205,9 +217,7 @@ class _ChatRequestsTab extends ConsumerWidget {
       ref.invalidate(receivedRequestsCountProvider);
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating, backgroundColor: Theme.of(context).colorScheme.error),
-      );
+      showErrorToast(context, e.message);
     }
   }
 }
@@ -422,91 +432,3 @@ class _ChatRequestCard extends StatelessWidget {
   }
 }
 
-// ─── Empty & error states ───────────────────────────────────────────────────
-
-class _ChatEmptyState extends StatelessWidget {
-  const _ChatEmptyState({this.onRetry});
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_outline_rounded, size: 64, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2)),
-            const SizedBox(height: 20),
-            Text(
-              'No conversations yet',
-              style: AppTypography.titleMedium.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85)),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'When you match with someone, your chats will appear here.',
-              style: AppTypography.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RequestsEmptyState extends StatelessWidget {
-  const _RequestsEmptyState({this.onRetry});
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.mail_outline_rounded, size: 64, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2)),
-            const SizedBox(height: 20),
-            Text(
-              'No chat requests',
-              style: AppTypography.titleMedium.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85)),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'When someone sends you an interest, you can accept here to start chatting.',
-              style: AppTypography.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatErrorState extends StatelessWidget {
-  const _ChatErrorState({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(message, textAlign: TextAlign.center, style: AppTypography.bodyMedium),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: onRetry, style: FilledButton.styleFrom(backgroundColor: AppColors.saffron), child: const Text('Retry')),
-          ],
-        ),
-      ),
-    );
-  }
-}

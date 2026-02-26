@@ -104,7 +104,17 @@ class ProfileCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (profile.matchReason != null && profile.matchReason!.isNotEmpty) ...[
+              if (profile.matchReasons.isNotEmpty) ...[
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: profile.matchReasons
+                      .take(3)
+                      .map((r) => MatchReasonChip(reason: r))
+                      .toList(),
+                ),
+                const SizedBox(height: 12),
+              ] else if (profile.matchReason != null && profile.matchReason!.isNotEmpty) ...[
                 MatchReasonChip(reason: profile.matchReason!),
                 const SizedBox(height: 12),
               ],

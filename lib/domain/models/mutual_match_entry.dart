@@ -8,10 +8,12 @@ class MutualMatchEntry {
     required this.matchedAt,
     this.chatThreadId,
     this.lastMessage,
+    this.lastMessageAt,
   });
   final String matchId;
   final ProfileSummary profile;
   final DateTime matchedAt;
   final String? chatThreadId;
   final String? lastMessage;
+  final DateTime? lastMessageAt;
 }

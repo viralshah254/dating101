@@ -13,6 +13,7 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/screens/profile_wizard_screen.dart';
 import '../../features/profile_setup/screens/profile_setup_screen.dart';
 import '../../features/profile/screens/full_profile_screen.dart';
+import '../../features/profile/screens/blocked_users_screen.dart';
 import '../../features/profile/screens/profile_view_screen.dart';
 import '../../features/premium/screens/paywall_screen.dart';
 import '../../features/verification/screens/verification_screen.dart';
@@ -31,7 +32,8 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     redirect: (context, state) async {
       final loc = state.matchedLocation;
-      final isShellRoute = loc == '/' ||
+      final isShellRoute =
+          loc == '/' ||
           loc.startsWith('/map') ||
           loc.startsWith('/chats') ||
           loc.startsWith('/community') ||
@@ -45,14 +47,8 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (_, __) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: '/tagline',
-        builder: (_, __) => const TaglineScreen(),
-      ),
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/tagline', builder: (_, __) => const TaglineScreen()),
       GoRoute(
         path: '/location-required',
         builder: (_, state) {
@@ -60,10 +56,7 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           return LocationRequiredScreen(thenPath: thenPath);
         },
       ),
-      GoRoute(
-        path: '/login',
-        builder: (_, __) => const LoginScreen(),
-      ),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
         path: '/otp',
         builder: (_, state) {
@@ -96,10 +89,7 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           return ProfileSetupScreen(isEditing: editing, initialStep: step);
         },
       ),
-      GoRoute(
-        path: '/paywall',
-        builder: (_, __) => const PaywallScreen(),
-      ),
+      GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
       GoRoute(
         path: '/verification',
         builder: (_, __) => const VerificationScreen(),
@@ -112,9 +102,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/identity',
         builder: (_, __) => const IdentityOnboardingScreen(),
       ),
+      GoRoute(path: '/referral', builder: (_, __) => const ReferralScreen()),
       GoRoute(
-        path: '/referral',
-        builder: (_, __) => const ReferralScreen(),
+        path: '/blocked-users',
+        builder: (_, __) => const BlockedUsersScreen(),
       ),
       GoRoute(
         path: '/profile/:id',

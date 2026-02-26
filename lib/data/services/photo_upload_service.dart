@@ -1,9 +1,16 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 
 import '../api/api_client.dart';
+
+/// Max dimension for uploaded images; larger images are scaled down.
+const int _kMaxImageDimension = 1200;
+
+/// JPEG quality for compressed uploads (0–100).
+const int _kUploadJpegQuality = 85;
 
 class UploadResult {
   const UploadResult({required this.photoUrl, required this.key});
@@ -15,18 +22,41 @@ class PhotoUploadService {
   PhotoUploadService({required this.api});
   final ApiClient api;
 
+  /// Compresses an image file for upload (JPEG, max dimension and quality capped).
+  /// Returns compressed bytes, or original file bytes if compression fails.
+  Future<List<int>> _compressImage(String localPath) async {
+    try {
+      final compressed = await FlutterImageCompress.compressWithFile(
+        localPath,
+        minWidth: _kMaxImageDimension,
+        minHeight: _kMaxImageDimension,
+        quality: _kUploadJpegQuality,
+        format: CompressFormat.jpeg,
+      );
+      if (compressed != null && compressed.isNotEmpty) {
+        debugPrint(
+          '[PhotoUpload] Compressed ${File(localPath).lengthSync()} → ${compressed.length} bytes',
+        );
+        return compressed;
+      }
+    } catch (e) {
+      debugPrint('[PhotoUpload] Compression failed, using original: $e');
+    }
+    return await File(localPath).readAsBytes();
+  }
+
   /// Upload a local image file to S3 via presigned URL.
+  /// Images are compressed (JPEG, max 1200px, quality 85) before upload.
   /// Returns the CDN URL to store in `photoUrls`.
   Future<UploadResult> uploadPhoto(String localPath) async {
-    final file = File(localPath);
-    final ext = localPath.split('.').last.toLowerCase();
-    final contentType = ext == 'png' ? 'image/png' : 'image/jpeg';
+    // Always request JPEG; we compress to JPEG for smaller uploads.
+    const contentType = 'image/jpeg';
 
     debugPrint('[PhotoUpload] Requesting presigned URL for $contentType');
-    final response = await api.post('/profile/me/photos/upload-url', body: {
-      'contentType': contentType,
-      'count': 1,
-    });
+    final response = await api.post(
+      '/profile/me/photos/upload-url',
+      body: {'contentType': contentType, 'count': 1},
+    );
 
     // Backend may return "urls" or "uploads"
     final list = response['urls'] ?? response['uploads'];
@@ -36,14 +66,17 @@ class PhotoUploadService {
     final upload = uploads[0] as Map<String, dynamic>;
     final rawUploadUrl = upload['uploadUrl'] ?? upload['upload_url'];
     final uploadUrl = rawUploadUrl is String ? rawUploadUrl : null;
-    if (uploadUrl == null || uploadUrl.isEmpty) throw Exception('Missing uploadUrl in response');
+    if (uploadUrl == null || uploadUrl.isEmpty)
+      throw Exception('Missing uploadUrl in response');
     final key = (upload['key'] as String?) ?? '';
     // photoUrl may be omitted; fallback to uploadUrl without query string for display
     final rawPhotoUrl = upload['photoUrl'] ?? upload['photo_url'];
-    final photoUrl = rawPhotoUrl is String ? rawPhotoUrl : uploadUrl.split('?').first;
+    final photoUrl = rawPhotoUrl is String
+        ? rawPhotoUrl
+        : uploadUrl.split('?').first;
 
-    debugPrint('[PhotoUpload] Uploading to S3: ${file.lengthSync()} bytes');
-    final bytes = await file.readAsBytes();
+    final bytes = await _compressImage(localPath);
+    debugPrint('[PhotoUpload] Uploading to S3: ${bytes.length} bytes');
     final s3Response = await http.put(
       Uri.parse(uploadUrl),
       headers: {'Content-Type': contentType},
@@ -51,7 +84,9 @@ class PhotoUploadService {
     );
 
     if (s3Response.statusCode != 200) {
-      debugPrint('[PhotoUpload] S3 upload failed: ${s3Response.statusCode} ${s3Response.body}');
+      debugPrint(
+        '[PhotoUpload] S3 upload failed: ${s3Response.statusCode} ${s3Response.body}',
+      );
       throw Exception('S3 upload failed: ${s3Response.statusCode}');
     }
 

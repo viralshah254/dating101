@@ -72,7 +72,7 @@ This doc tracks progress against [saathi-Frontend-MegaSpec.md](/Users/v/Desktop/
 - Privacy controls and language selector in Settings; mode switch in Settings.
 - Notification settings UI.
 - Advanced filters, “Why recommended” chips, saved searches (matrimony).
-- Design system components (AppScaffold, PrimaryButton, SectionCard, EmptyState, etc.).
+- **Design system (done):** Shared components in `lib/core/design/`: AppScaffold, PrimaryButton, SecondaryButton, SectionCard, EmptyState, ErrorState, SkeletonCardList, loadingSpinner, loadingInline, showSuccessToast, showErrorToast. Discovery, matches, requests, shortlist, and chat list use them; loading and error states standardized.
 - Analytics events and subscription state provider.
 
 ---

@@ -44,6 +44,6 @@ class ApiVisitsRepository implements VisitsRepository {
 
   @override
   Future<void> markVisitorsSeen() async {
-    await api.post('/visits/mark-seen');
+    await api.post('/visits/mark-seen', body: <String, dynamic>{});
   }
 }

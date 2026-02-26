@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design/design.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
+import '../../../domain/models/contact_request_status.dart';
 import '../../../domain/models/interaction_models.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
@@ -50,7 +52,7 @@ class RequestsScreen extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -67,6 +69,7 @@ class RequestsScreen extends ConsumerWidget {
             tabs: [
               Tab(text: l.requestsReceived),
               Tab(text: l.requestsSent),
+              const Tab(text: 'Contact requests'),
             ],
           ),
         ),
@@ -74,6 +77,7 @@ class RequestsScreen extends ConsumerWidget {
           children: [
             _ReceivedTab(),
             _SentTab(),
+            _ContactRequestsTab(),
           ],
         ),
       ),
@@ -92,11 +96,12 @@ class _ReceivedTab extends ConsumerWidget {
       data: (items) {
         final groups = _groupByUser(items);
         if (groups.isEmpty) {
-          return _EmptyState(
+          return EmptyState(
             icon: Icons.inbox_outlined,
             title: l.requestsEmpty,
-            hint: l.requestsEmptyHint,
-            onRetry: () {
+            body: l.requestsEmptyHint,
+            ctaLabel: l.retry,
+            onCta: () {
               ref.invalidate(receivedInteractionsProvider);
               ref.invalidate(receivedRequestsCountProvider);
             },
@@ -123,13 +128,14 @@ class _ReceivedTab extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => _ErrorState(
-        message: err.toString(),
+      loading: () => loadingSpinner(context),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
         onRetry: () {
           ref.invalidate(receivedInteractionsProvider);
           ref.invalidate(receivedRequestsCountProvider);
         },
+        retryLabel: l.retry,
       ),
     );
   }
@@ -155,34 +161,35 @@ class _ReceivedTab extends ConsumerWidget {
       }
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      showErrorToast(context, e.message);
     }
   }
 
   Future<void> _declineAll(BuildContext context, WidgetRef ref, _GroupedRequest group) async {
+    final result = await showDialog<_DeclineResult>(
+      context: context,
+      builder: (ctx) => _DeclineDialog(
+        onDecline: (message, reasonId) => Navigator.pop(ctx, _DeclineResult(message: message, reasonId: reasonId)),
+        onCancel: () => Navigator.pop(ctx),
+      ),
+    );
+    if (result == null || !context.mounted) return;
     final repo = ref.read(interactionsRepositoryProvider);
     try {
       for (final item in group.items) {
-        await repo.respondToInterest(item.interactionId, accept: false);
+        await repo.respondToInterest(
+          item.interactionId,
+          accept: false,
+          declineMessage: result.message,
+          declineReasonId: result.reasonId,
+        );
       }
       if (!context.mounted) return;
       ref.invalidate(receivedInteractionsProvider);
       ref.invalidate(receivedRequestsCountProvider);
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      showErrorToast(context, e.message);
     }
   }
 }
@@ -198,11 +205,12 @@ class _SentTab extends ConsumerWidget {
       data: (items) {
         final groups = _groupByUser(items);
         if (groups.isEmpty) {
-          return _EmptyState(
+          return EmptyState(
             icon: Icons.send_outlined,
             title: l.requestsEmpty,
-            hint: l.requestsEmptyHint,
-            onRetry: () => ref.invalidate(sentInteractionsProvider),
+            body: l.requestsEmptyHint,
+            ctaLabel: l.retry,
+            onCta: () => ref.invalidate(sentInteractionsProvider),
           );
         }
         return RefreshIndicator(
@@ -227,10 +235,11 @@ class _SentTab extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => _ErrorState(
-        message: err.toString(),
+      loading: () => loadingSpinner(context),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
         onRetry: () => ref.invalidate(sentInteractionsProvider),
+        retryLabel: l.retry,
       ),
     );
   }
@@ -274,6 +283,206 @@ class _SentTab extends ConsumerWidget {
         ),
       );
     }
+  }
+}
+
+/// Contact requests tab: people who requested my contact. Accept / Decline.
+class _ContactRequestsTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final async = ref.watch(receivedContactRequestsProvider);
+
+    return async.when(
+      data: (requests) {
+        if (requests.isEmpty) {
+          return EmptyState(
+            icon: Icons.phone_in_talk_outlined,
+            title: 'No contact requests',
+            body: 'When someone requests your contact, you can accept or decline here.',
+            ctaLabel: l.retry,
+            onCta: () => ref.invalidate(receivedContactRequestsProvider),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(receivedContactRequestsProvider);
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              final r = requests[index];
+              return _ContactRequestCard(
+                request: r,
+                onAccept: () => _accept(context, ref, r.requestId),
+                onDecline: () => _decline(context, ref, r.requestId),
+                onTap: () => context.push('/profile/${r.fromUser.id}'),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => loadingSpinner(context),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
+        onRetry: () => ref.invalidate(receivedContactRequestsProvider),
+        retryLabel: l.retry,
+      ),
+    );
+  }
+
+  Future<void> _accept(BuildContext context, WidgetRef ref, String requestId) async {
+    try {
+      await ref.read(contactRequestRepositoryProvider).acceptContactRequest(requestId);
+      if (!context.mounted) return;
+      ref.invalidate(receivedContactRequestsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact shared. They can now call or message you.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not accept: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _decline(BuildContext context, WidgetRef ref, String requestId) async {
+    try {
+      await ref.read(contactRequestRepositoryProvider).declineContactRequest(requestId);
+      if (!context.mounted) return;
+      ref.invalidate(receivedContactRequestsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Request declined'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not decline: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+}
+
+/// One card for a received contact request: avatar, name, "Requested your contact", Accept / Decline.
+class _ContactRequestCard extends StatelessWidget {
+  const _ContactRequestCard({
+    required this.request,
+    required this.onAccept,
+    required this.onDecline,
+    required this.onTap,
+  });
+  final ReceivedContactRequest request;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = request.fromUser;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: onSurface.withValues(alpha: 0.08)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: onTap,
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.saffron.withValues(alpha: 0.15),
+                      backgroundImage: p.imageUrl != null && p.imageUrl!.isNotEmpty
+                          ? NetworkImage(p.imageUrl!)
+                          : null,
+                      child: p.imageUrl == null || p.imageUrl!.isEmpty
+                          ? Text(
+                              p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: AppColors.saffron,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Requested your contact',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: onSurface.withValues(alpha: 0.65),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: onDecline,
+                    child: Text(
+                      'Decline',
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: onAccept,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.saffron,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    child: const Text('Accept'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -360,6 +569,7 @@ class _GroupedRequestCard extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 6,
                           children: [
+                            _StatusChip(status: group.items.first.status),
                             if (group.hasInterest)
                               _Chip(
                                 icon: Icons.favorite_border_rounded,
@@ -373,6 +583,18 @@ class _GroupedRequestCard extends StatelessWidget {
                                 color: AppColors.saffron,
                               ),
                           ],
+                        ),
+                        const SizedBox(height: 6),
+                        TextButton.icon(
+                          onPressed: onTap,
+                          icon: const Icon(Icons.person_outline, size: 18),
+                          label: const Text('View profile'),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            foregroundColor: AppColors.indiaGreen,
+                          ),
                         ),
                       ],
                     ),
@@ -503,100 +725,128 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.hint,
-    this.onRetry,
-  });
-  final IconData icon;
-  final String title;
-  final String hint;
-  final VoidCallback? onRetry;
+/// Status label: Pending / Accepted / Declined / Withdrawn
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+  final String status;
+
+  static String _label(String s) {
+    switch (s.toLowerCase()) {
+      case 'accepted':
+        return 'Accepted';
+      case 'declined':
+        return 'Declined';
+      case 'withdrawn':
+        return 'Withdrawn';
+      default:
+        return 'Pending';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final color = status.toLowerCase() == 'accepted'
+        ? AppColors.indiaGreen
+        : status.toLowerCase() == 'declined' || status.toLowerCase() == 'withdrawn'
+            ? Colors.grey
+            : AppColors.saffron;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        _label(status),
+        style: AppTypography.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _DeclineResult {
+  _DeclineResult({this.message, this.reasonId});
+  final String? message;
+  final String? reasonId;
+}
+
+/// Optional decline message or canned reason to soften rejection.
+class _DeclineDialog extends StatefulWidget {
+  const _DeclineDialog({required this.onDecline, required this.onCancel});
+  final void Function(String? message, String? reasonId) onDecline;
+  final VoidCallback onCancel;
+
+  static const _cannedReasons = [
+    ('not_right_match', 'Not the right match'),
+    ('not_ready', 'Not ready to proceed'),
+    ('family_decided', 'Family decided otherwise'),
+    ('other', 'Other'),
+  ];
+
+  @override
+  State<_DeclineDialog> createState() => _DeclineDialogState();
+}
+
+class _DeclineDialogState extends State<_DeclineDialog> {
+  String? _reasonId;
+  final _messageController = TextEditingController();
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
+
+    return AlertDialog(
+      title: const Text('Decline request'),
+      content: SingleChildScrollView(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: isDark ? 0.2 : 0.12),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Icon(
-                icon,
-                size: 52,
-                color: accent.withValues(alpha: isDark ? 0.9 : 0.7),
-              ),
-            ),
-            const SizedBox(height: 28),
             Text(
-              title,
-              style: AppTypography.titleLarge.copyWith(
-                color: onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
+              'You can optionally add a message or choose a reason (they may not see it, depending on settings).',
+              style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.8)),
             ),
-            const SizedBox(height: 10),
-            Text(
-              hint,
-              style: AppTypography.bodyMedium.copyWith(
-                color: onSurface.withValues(alpha: 0.65),
-                height: 1.5,
+            const SizedBox(height: 12),
+            ..._DeclineDialog._cannedReasons.map((e) => RadioListTile<String>(
+                  title: Text(e.$2, style: AppTypography.bodyMedium),
+                  value: e.$1,
+                  groupValue: _reasonId,
+                  onChanged: (v) => setState(() => _reasonId = v),
+                )),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _messageController,
+              decoration: const InputDecoration(
+                labelText: 'Short message (optional)',
+                border: OutlineInputBorder(),
+                hintText: 'e.g. Best wishes for your search',
               ),
-              textAlign: TextAlign.center,
+              maxLines: 2,
+              maxLength: 200,
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(message, textAlign: TextAlign.center, style: AppTypography.bodyMedium),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: onRetry,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.saffron,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
+      actions: [
+        TextButton(onPressed: widget.onCancel, child: Text(l.cancel)),
+        FilledButton(
+          onPressed: () {
+            final msg = _messageController.text.trim();
+            widget.onDecline(msg.isEmpty ? null : msg, _reasonId);
+          },
+          style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+          child: const Text('Decline'),
         ),
-      ),
+      ],
     );
   }
 }
+

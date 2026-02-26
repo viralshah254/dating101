@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design/design.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
+import '../../../domain/models/shortlist_entry.dart';
 import '../../../domain/models/who_shortlisted_me_entry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
@@ -37,6 +40,20 @@ class ShortlistScreen extends ConsumerWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.sort_rounded),
+              tooltip: 'Sort',
+              onSelected: (value) {
+                ref.read(shortlistSortProvider.notifier).state = value;
+                ref.invalidate(shortlistProvider);
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'recent', child: Text('Most recent')),
+                const PopupMenuItem(value: 'most_interested', child: Text('Most interested')),
+              ],
+            ),
+          ],
           bottom: TabBar(
             labelColor: AppColors.indiaGreen,
             unselectedLabelColor: onSurface.withValues(alpha: 0.6),
@@ -69,23 +86,18 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     try {
       final result = await ref.read(interactionsRepositoryProvider).expressInterest(p.id, source: 'shortlist');
       if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       ref.invalidate(matchesRecommendedProvider);
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('It\'s a match with ${p.name}!'), behavior: SnackBarBehavior.floating),
-        );
+        showSuccessToast(context, l.toastMatchWith(p.name));
         context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Interest sent to ${p.name}'), behavior: SnackBarBehavior.floating),
-        );
+        showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
+      showErrorToast(context, e.message);
     }
   }
 
@@ -93,22 +105,17 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     try {
       final result = await ref.read(interactionsRepositoryProvider).expressPriorityInterest(p.id, source: 'shortlist');
       if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('It\'s a match with ${p.name}!'), behavior: SnackBarBehavior.floating),
-        );
+        showSuccessToast(context, l.toastMatchWith(p.name));
         context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Priority interest sent to ${p.name}'), behavior: SnackBarBehavior.floating),
-        );
+        showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
+      showErrorToast(context, e.message);
     }
   }
 
@@ -134,62 +141,136 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     }
   }
 
+  Future<void> _onBlock(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
+    final reason = await showBlockReasonPicker(context);
+    if (reason == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.block),
+        content: Text(
+          '${l.block} ${p.name}? They won\'t be able to see your profile or contact you.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: Text(l.block),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(safetyRepositoryProvider).block(
+        p.id,
+        reason,
+        source: 'shortlist',
+      );
+      if (!mounted) return;
+      ref.invalidate(shortlistProvider);
+      ref.invalidate(shortlistedIdsProvider);
+      ref.invalidate(mutualMatchesProvider);
+      ref.invalidate(matchedUserIdsProvider);
+      showSuccessToast(context, l.toastBlocked(p.name));
+    } catch (_) {
+      if (!mounted) return;
+      showErrorToast(context, l.toastErrorGeneric);
+    }
+  }
+
+  Future<void> _showEditNoteDialog(BuildContext context, WidgetRef ref, ShortlistEntry entry) async {
+    if (entry.shortlistId == null) return;
+    final controller = TextEditingController(text: entry.note ?? '');
+    final l = AppLocalizations.of(context)!;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Note'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Family liked, Call next week',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+          maxLength: 500,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.save),
+          ),
+        ],
+      ),
+    );
+    if (result != true || !mounted) return;
+    try {
+      await ref.read(shortlistRepositoryProvider).updateShortlistEntry(
+        entry.shortlistId!,
+        note: controller.text.trim().isEmpty ? null : controller.text.trim(),
+      );
+      if (!mounted) return;
+      ref.invalidate(shortlistProvider);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showErrorToast(context, e.message);
+    }
+  }
+
+  Future<void> _onReport(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
+    final result = await showReportReasonPicker(context);
+    if (result == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.report),
+        content: Text(
+          '${l.report} ${p.name}? We take safety seriously and will review this profile.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: Text(l.report),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(safetyRepositoryProvider).report(
+        p.id,
+        result.reason,
+        details: result.details,
+        source: 'shortlist',
+      );
+      if (!mounted) return;
+      showSuccessToast(context, l.toastReportSubmitted);
+    } catch (_) {
+      if (!mounted) return;
+      showErrorToast(context, l.toastErrorGeneric);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final async = ref.watch(shortlistProvider);
+    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
 
     return async.when(
-      data: (profiles) {
-        if (profiles.isEmpty) {
-          final accent = Theme.of(context).colorScheme.primary;
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: isDark ? 0.2 : 0.12),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: accent.withValues(alpha: 0.08),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.star_border_rounded,
-                      size: 52,
-                      color: accent.withValues(alpha: isDark ? 0.9 : 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    l.shortlistEmpty,
-                    style: AppTypography.titleLarge.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    l.shortlistEmptyHint,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
+      data: (entries) {
+        if (entries.isEmpty) {
+          return EmptyState(
+            icon: Icons.star_border_rounded,
+            title: l.shortlistEmpty,
+            body: l.shortlistEmptyHint,
           );
         }
         return RefreshIndicator(
@@ -199,50 +280,87 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
           },
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: profiles.length,
+            itemCount: entries.length,
             itemBuilder: (context, index) {
-              final p = profiles[index];
+              final entry = entries[index];
+              final p = entry.profile;
               final cardHeight = (MediaQuery.sizeOf(context).height * 0.78).clamp(380.0, 520.0);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: SizedBox(
-                  height: cardHeight,
-                  child: MatchProfileCard(
-                    profile: p,
-                    isShortlisted: true,
-                    onTap: () => context.push('/profile/${p.id}'),
-                    onLike: () => _onLike(p),
-                    onSuperLike: () => _onSuperLike(p),
-                    onShortlist: () async {
-                      await ref.read(shortlistRepositoryProvider).removeFromShortlist(p.id);
-                      ref.invalidate(shortlistProvider);
-                      ref.invalidate(shortlistedIdsProvider);
-                    },
-                    onMessage: () => _onMessage(p),
-                    onUpgrade: () => context.push('/paywall'),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: entry.shortlistId != null
+                                  ? () => _showEditNoteDialog(context, ref, entry)
+                                  : null,
+                              child: Text(
+                                entry.note != null && entry.note!.isNotEmpty
+                                    ? entry.note!
+                                    : 'Add note (e.g. Family liked, Call next week)',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(
+                                    alpha: entry.note != null && entry.note!.isNotEmpty ? 0.7 : 0.5,
+                                  ),
+                                  fontStyle: entry.note != null && entry.note!.isNotEmpty
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          if (entry.shortlistId != null)
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              onPressed: () => _showEditNoteDialog(context, ref, entry),
+                              style: IconButton.styleFrom(
+                                padding: const EdgeInsets.all(4),
+                                minimumSize: const Size(36, 36),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: cardHeight,
+                      child: MatchProfileCard(
+                        profile: p,
+                        isShortlisted: true,
+                        messageUnlockedByMatch: matchedIds.contains(p.id),
+                        onTap: () => context.push('/profile/${p.id}'),
+                        onLike: () => _onLike(p),
+                        onSuperLike: () => _onSuperLike(p),
+                        onShortlist: () async {
+                          await ref.read(shortlistRepositoryProvider).removeFromShortlist(p.id);
+                          ref.invalidate(shortlistProvider);
+                          ref.invalidate(shortlistedIdsProvider);
+                        },
+                        onMessage: () => _onMessage(p),
+                        onUpgrade: () => context.push('/paywall'),
+                        onBlock: () => _onBlock(p),
+                        onReport: () => _onReport(p),
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(err.toString(), style: AppTypography.bodySmall, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => ref.invalidate(shortlistProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+      loading: () => loadingSpinner(context),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
+        onRetry: () => ref.invalidate(shortlistProvider),
+        retryLabel: l.retry,
       ),
     );
   }

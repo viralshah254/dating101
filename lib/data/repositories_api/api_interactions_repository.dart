@@ -68,11 +68,18 @@ class ApiInteractionsRepository implements InteractionsRepository {
   }
 
   @override
-  Future<ExpressInterestResult> respondToInterest(String interactionId, {required bool accept}) async {
-    final res = await api.patch(
-      '/interactions/$interactionId',
-      body: {'action': accept ? 'accept' : 'decline'},
-    );
+  Future<ExpressInterestResult> respondToInterest(
+    String interactionId, {
+    required bool accept,
+    String? declineMessage,
+    String? declineReasonId,
+  }) async {
+    final body = <String, dynamic>{'action': accept ? 'accept' : 'decline'};
+    if (!accept) {
+      if (declineMessage != null && declineMessage.isNotEmpty) body['message'] = declineMessage;
+      if (declineReasonId != null && declineReasonId.isNotEmpty) body['reasonId'] = declineReasonId;
+    }
+    final res = await api.patch('/interactions/$interactionId', body: body);
     return _parseResult(res);
   }
 

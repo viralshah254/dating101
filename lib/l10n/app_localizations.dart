@@ -2552,6 +2552,54 @@ abstract class AppLocalizations {
   /// **'Loading'**
   String get loading;
 
+  /// No description provided for @toastInterestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Interest sent'**
+  String get toastInterestSent;
+
+  /// No description provided for @toastInterestSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Interest sent to {name}'**
+  String toastInterestSentTo(Object name);
+
+  /// No description provided for @toastAddedToShortlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to shortlist'**
+  String get toastAddedToShortlist;
+
+  /// No description provided for @toastRemovedFromShortlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from shortlist'**
+  String get toastRemovedFromShortlist;
+
+  /// No description provided for @toastMatchWith.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s a match with {name}!'**
+  String toastMatchWith(Object name);
+
+  /// No description provided for @toastBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} blocked'**
+  String toastBlocked(Object name);
+
+  /// No description provided for @toastReportSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Report submitted. Thank you.'**
+  String get toastReportSubmitted;
+
+  /// No description provided for @toastErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get toastErrorGeneric;
+
   /// No description provided for @activeNow.
   ///
   /// In en, this message translates to:

@@ -6,6 +6,7 @@ ProfileSummary profileToSummary(
   UserProfile p, {
   double? distanceKm,
   String? matchReason,
+  List<String>? matchReasons,
   List<String>? sharedInterests,
 }) {
   final photoUrl = p.photoUrls.isNotEmpty ? p.photoUrls.first : null;
@@ -18,6 +19,7 @@ ProfileSummary profileToSummary(
       incomeLabel = '${inc.currency ?? ''} ${parts.join(' – ')}'.trim();
     }
   }
+  final reasons = matchReasons ?? (matchReason != null ? [matchReason] : <String>[]);
 
   return ProfileSummary(
     id: p.id,
@@ -28,6 +30,7 @@ ProfileSummary profileToSummary(
     distanceKm: distanceKm,
     verified: p.isVerified,
     matchReason: matchReason,
+    matchReasons: reasons,
     bio: p.aboutMe,
     promptAnswer: p.datingExtensions?.prompts?.isNotEmpty == true
         ? p.datingExtensions!.prompts!.first.answer

@@ -54,6 +54,7 @@ dependencies:
   # UI & design
   google_fonts: ^6.2.1
   flutter_animate: ^4.5.0
+  emoji_picker_flutter: ^4.4.0
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
   flutter_svg: ^2.0.10+1
@@ -61,6 +62,7 @@ dependencies:
 
   # Forms & media
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
   camera: ^0.11.0+2
   file_picker: ^8.1.4
   permission_handler: ^11.3.1

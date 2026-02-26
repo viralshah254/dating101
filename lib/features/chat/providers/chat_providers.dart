@@ -19,3 +19,12 @@ final chatUnreadTotalProvider = FutureProvider.autoDispose<int>((ref) async {
   return threads.fold<int>(0, (sum, t) => sum + t.unreadCount);
 });
 
+/// GET /chat/suggestions?mode=... — icebreaker chips. Fallback to static list if empty.
+final chatSuggestionsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+  final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+  final repo = ref.watch(chatRepositoryProvider);
+  final list = await repo.getSuggestions(mode: modeStr);
+  return list.isNotEmpty ? list : ['Hi!', 'How are you?', 'What brings you here?', 'Tell me about yourself'];
+});
+

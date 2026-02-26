@@ -8,6 +8,19 @@ class ApiChatRepository implements ChatRepository {
   final ApiClient api;
 
   @override
+  Future<List<String>> getSuggestions({String? mode}) async {
+    try {
+      final query = mode != null && mode.isNotEmpty ? {'mode': mode} : null;
+      final body = await api.get('/chat/suggestions', query: query);
+      final list = body['suggestions'] as List? ?? [];
+      return list.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return [];
+      rethrow;
+    }
+  }
+
+  @override
   Future<List<ChatThreadSummary>> getThreads({int limit = 50, String? mode}) async {
     final query = <String, String>{'limit': '$limit'};
     if (mode != null && mode.isNotEmpty) query['mode'] = mode;

@@ -5,6 +5,7 @@ import '../../../core/entitlements/entitlements.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/profile_summary.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Treats obvious placeholder/junk data as hidden (e.g. "1111111", "n/a", all digits).
 bool _isPlaceholder(String? s) {
@@ -28,9 +29,12 @@ class MatchProfileCard extends ConsumerWidget {
     required this.onShortlist,
     required this.onMessage,
     required this.onUpgrade,
+    required this.onBlock,
+    required this.onReport,
     this.isShortlisted = false,
     this.isInterested = false,
     this.isPriorityInterested = false,
+    this.messageUnlockedByMatch = false,
   });
 
   final ProfileSummary profile;
@@ -40,9 +44,13 @@ class MatchProfileCard extends ConsumerWidget {
   final VoidCallback onShortlist;
   final VoidCallback onMessage;
   final VoidCallback onUpgrade;
+  final VoidCallback onBlock;
+  final VoidCallback onReport;
   final bool isShortlisted;
   final bool isInterested;
   final bool isPriorityInterested;
+  /// When true (e.g. on Matches tab), Message is unlocked even without premium.
+  final bool messageUnlockedByMatch;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,7 +76,15 @@ class MatchProfileCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 3, child: _PhotoHeader(profile: profile, accent: accent)),
+            Expanded(
+              flex: 3,
+              child: _PhotoHeader(
+                profile: profile,
+                accent: accent,
+                onBlock: onBlock,
+                onReport: onReport,
+              ),
+            ),
             Expanded(
               flex: 2,
               child: SingleChildScrollView(
@@ -78,21 +94,28 @@ class MatchProfileCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _NameRow(profile: profile, onSurface: onSurface),
-                    if (profile.city != null && !_isPlaceholder(profile.city)) ...[
+                    if (profile.city != null &&
+                        !_isPlaceholder(profile.city)) ...[
                       const SizedBox(height: 2),
                       _LocationRow(city: profile.city!, onSurface: onSurface),
                     ],
-                    if (profile.occupation != null && !_isPlaceholder(profile.occupation)) ...[
+                    if (profile.occupation != null &&
+                        !_isPlaceholder(profile.occupation)) ...[
                       const SizedBox(height: 2),
                       _SubtitleRow(profile: profile, onSurface: onSurface),
                     ],
-                    if (profile.bio.isNotEmpty && !_isPlaceholder(profile.bio)) ...[
+                    if (profile.bio.isNotEmpty &&
+                        !_isPlaceholder(profile.bio)) ...[
                       const SizedBox(height: 6),
                       _BioLine(bio: profile.bio, onSurface: onSurface),
                     ],
                     if (_hasKeyDetails) ...[
                       const SizedBox(height: 8),
-                      _QuickDetails(profile: profile, accent: accent, onSurface: onSurface),
+                      _QuickDetails(
+                        profile: profile,
+                        accent: accent,
+                        onSurface: onSurface,
+                      ),
                     ],
                     if (profile.interests.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -119,6 +142,7 @@ class MatchProfileCard extends ConsumerWidget {
               isShortlisted: isShortlisted,
               isInterested: isInterested,
               isPriorityInterested: isPriorityInterested,
+              messageUnlockedByMatch: messageUnlockedByMatch,
             ),
           ],
         ),
@@ -136,15 +160,23 @@ class MatchProfileCard extends ConsumerWidget {
 // ── Photo header with match badge overlay ────────────────────────────────
 
 class _PhotoHeader extends StatelessWidget {
-  const _PhotoHeader({required this.profile, required this.accent});
+  const _PhotoHeader({
+    required this.profile,
+    required this.accent,
+    required this.onBlock,
+    required this.onReport,
+  });
   final ProfileSummary profile;
   final Color accent;
+  final VoidCallback onBlock;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
     final score = profile.compatibilityScore != null
         ? (profile.compatibilityScore! * 100).round()
         : null;
+    final l = AppLocalizations.of(context)!;
 
     return SizedBox.expand(
       child: Stack(
@@ -156,7 +188,8 @@ class _PhotoHeader extends StatelessWidget {
                 ? Image.network(
                     profile.imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _AvatarPlaceholder(profile: profile, accent: accent),
+                    errorBuilder: (_, __, ___) =>
+                        _AvatarPlaceholder(profile: profile, accent: accent),
                   )
                 : _AvatarPlaceholder(profile: profile, accent: accent),
           ),
@@ -168,11 +201,16 @@ class _PhotoHeader extends StatelessWidget {
             height: 80,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(0)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(0),
+                ),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.5)],
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.5),
+                  ],
                 ),
               ),
             ),
@@ -192,34 +230,110 @@ class _PhotoHeader extends StatelessWidget {
                   children: [
                     Icon(Icons.verified, size: 14, color: Colors.white),
                     SizedBox(width: 4),
-                    Text('Verified', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-          if (profile.photoCount > 1)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.photo_library, size: 13, color: Colors.white),
-                    const SizedBox(width: 4),
                     Text(
-                      '${profile.photoCount}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                      'Verified',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
+          // Safety menu (3-dots) + optional photo count
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (profile.photoCount > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.photo_library,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${profile.photoCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                Material(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(20),
+                  child: PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onSelected: (v) {
+                      if (v == 'block') onBlock();
+                      if (v == 'report') onReport();
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'block',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.block,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(l.block),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'report',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.flag_outlined,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(l.report),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (score != null)
             Positioned(
               bottom: 10,
@@ -268,7 +382,9 @@ class _MatchBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = score >= 70 ? accent : (score >= 45 ? AppColors.saffron : Colors.grey);
+    final color = score >= 70
+        ? accent
+        : (score >= 45 ? AppColors.saffron : Colors.grey);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
@@ -276,7 +392,10 @@ class _MatchBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+          ),
         ],
       ),
       child: Row(
@@ -307,7 +426,11 @@ class _MatchBadge extends StatelessWidget {
               ),
               Text(
                 'Match',
-                style: TextStyle(color: color.withValues(alpha: 0.75), fontSize: 9, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: color.withValues(alpha: 0.75),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -347,12 +470,18 @@ class _LocationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.location_on_outlined, size: 14, color: onSurface.withValues(alpha: 0.5)),
+        Icon(
+          Icons.location_on_outlined,
+          size: 14,
+          color: onSurface.withValues(alpha: 0.5),
+        ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             city,
-            style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.65)),
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.65),
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -371,12 +500,18 @@ class _SubtitleRow extends StatelessWidget {
     if (profile.occupation == null) return const SizedBox.shrink();
     return Row(
       children: [
-        Icon(Icons.work_outline, size: 14, color: onSurface.withValues(alpha: 0.45)),
+        Icon(
+          Icons.work_outline,
+          size: 14,
+          color: onSurface.withValues(alpha: 0.45),
+        ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             profile.occupation!,
-            style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.65)),
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.65),
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -414,7 +549,11 @@ class _BioLine extends StatelessWidget {
 // ── Quick detail pills ───────────────────────────────────────────────────
 
 class _QuickDetails extends StatelessWidget {
-  const _QuickDetails({required this.profile, required this.accent, required this.onSurface});
+  const _QuickDetails({
+    required this.profile,
+    required this.accent,
+    required this.onSurface,
+  });
   final ProfileSummary profile;
   final Color accent;
   final Color onSurface;
@@ -422,35 +561,44 @@ class _QuickDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pills = <_PillData>[];
-    if (profile.religion != null && !_isPlaceholder(profile.religion)) pills.add(_PillData(profile.religion!));
-    if (profile.educationDegree != null && !_isPlaceholder(profile.educationDegree)) pills.add(_PillData(profile.educationDegree!));
+    if (profile.religion != null && !_isPlaceholder(profile.religion))
+      pills.add(_PillData(profile.religion!));
+    if (profile.educationDegree != null &&
+        !_isPlaceholder(profile.educationDegree))
+      pills.add(_PillData(profile.educationDegree!));
     if (profile.heightCm != null) {
       final ft = profile.heightCm! ~/ 30.48;
       final inches = ((profile.heightCm! % 30.48) / 2.54).round();
       pills.add(_PillData('$ft\'$inches"'));
     }
-    if (profile.maritalStatus != null && !_isPlaceholder(profile.maritalStatus)) pills.add(_PillData(profile.maritalStatus!));
-    if (profile.motherTongue != null && !_isPlaceholder(profile.motherTongue)) pills.add(_PillData(profile.motherTongue!));
+    if (profile.maritalStatus != null && !_isPlaceholder(profile.maritalStatus))
+      pills.add(_PillData(profile.maritalStatus!));
+    if (profile.motherTongue != null && !_isPlaceholder(profile.motherTongue))
+      pills.add(_PillData(profile.motherTongue!));
 
     if (pills.isEmpty) return const SizedBox.shrink();
 
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: pills.map((p) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: accent.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          p.label,
-          style: AppTypography.caption.copyWith(
-            color: onSurface.withValues(alpha: 0.75),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      )).toList(),
+      children: pills
+          .map(
+            (p) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                p.label,
+                style: AppTypography.caption.copyWith(
+                  color: onSurface.withValues(alpha: 0.75),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -500,9 +648,7 @@ class _InterestRow extends StatelessWidget {
               Text(
                 i,
                 style: AppTypography.caption.copyWith(
-                  color: isShared
-                      ? accent
-                      : onSurface.withValues(alpha: 0.7),
+                  color: isShared ? accent : onSurface.withValues(alpha: 0.7),
                   fontWeight: isShared ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
@@ -528,6 +674,7 @@ class _ActionBar extends StatelessWidget {
     this.isShortlisted = false,
     this.isInterested = false,
     this.isPriorityInterested = false,
+    this.messageUnlockedByMatch = false,
   });
   final Entitlements ent;
   final Color accent;
@@ -539,10 +686,12 @@ class _ActionBar extends StatelessWidget {
   final bool isShortlisted;
   final bool isInterested;
   final bool isPriorityInterested;
+  final bool messageUnlockedByMatch;
 
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final canMessage = ent.canSendMessage || messageUnlockedByMatch;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Row(
@@ -554,23 +703,29 @@ class _ActionBar extends StatelessWidget {
             onTap: onLike,
           ),
           _ActionButton(
-            icon: isPriorityInterested ? Icons.chat_bubble_rounded : Icons.star_border_rounded,
+            icon: isPriorityInterested
+                ? Icons.chat_bubble_rounded
+                : Icons.star_border_rounded,
             label: isPriorityInterested ? 'Message' : 'Priority interest',
             color: isPriorityInterested ? accent : AppColors.saffron,
             onTap: isPriorityInterested ? onMessage : onSuperLike,
           ),
           _ActionButton(
-            icon: isShortlisted ? Icons.star_rounded : Icons.star_border_rounded,
+            icon: isShortlisted
+                ? Icons.star_rounded
+                : Icons.star_border_rounded,
             label: isShortlisted ? 'Saved' : 'Save',
             color: isShortlisted ? accent : onSurface.withValues(alpha: 0.6),
             onTap: onShortlist,
           ),
           _ActionButton(
-            icon: ent.canSendMessage ? Icons.chat_bubble_outline : Icons.lock_outline,
-            label: ent.canSendMessage ? 'Message' : 'Premium',
-            color: ent.canSendMessage ? accent : Colors.grey,
-            onTap: ent.canSendMessage ? onMessage : onUpgrade,
-            showBadge: !ent.canSendMessage,
+            icon: canMessage
+                ? Icons.chat_bubble_outline
+                : Icons.lock_outline,
+            label: canMessage ? 'Message' : 'Premium',
+            color: canMessage ? accent : Colors.grey,
+            onTap: canMessage ? onMessage : onUpgrade,
+            showBadge: !canMessage,
           ),
         ],
       ),

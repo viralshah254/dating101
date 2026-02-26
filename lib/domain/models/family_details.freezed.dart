@@ -26,6 +26,9 @@ mixin _$FamilyDetails {
   int? get siblingsCount => throw _privateConstructorUsedError;
   int? get siblingsMarried => throw _privateConstructorUsedError;
 
+  /// Optional; show "Family expectations" subsection when backend provides it.
+  String? get familyExpectations => throw _privateConstructorUsedError;
+
   /// Create a copy of FamilyDetails
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -47,6 +50,7 @@ abstract class $FamilyDetailsCopyWith<$Res> {
     String? motherOccupation,
     int? siblingsCount,
     int? siblingsMarried,
+    String? familyExpectations,
   });
 }
 
@@ -71,6 +75,7 @@ class _$FamilyDetailsCopyWithImpl<$Res, $Val extends FamilyDetails>
     Object? motherOccupation = freezed,
     Object? siblingsCount = freezed,
     Object? siblingsMarried = freezed,
+    Object? familyExpectations = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -98,6 +103,10 @@ class _$FamilyDetailsCopyWithImpl<$Res, $Val extends FamilyDetails>
                 ? _value.siblingsMarried
                 : siblingsMarried // ignore: cast_nullable_to_non_nullable
                       as int?,
+            familyExpectations: freezed == familyExpectations
+                ? _value.familyExpectations
+                : familyExpectations // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -120,6 +129,7 @@ abstract class _$$FamilyDetailsImplCopyWith<$Res>
     String? motherOccupation,
     int? siblingsCount,
     int? siblingsMarried,
+    String? familyExpectations,
   });
 }
 
@@ -143,6 +153,7 @@ class __$$FamilyDetailsImplCopyWithImpl<$Res>
     Object? motherOccupation = freezed,
     Object? siblingsCount = freezed,
     Object? siblingsMarried = freezed,
+    Object? familyExpectations = freezed,
   }) {
     return _then(
       _$FamilyDetailsImpl(
@@ -170,6 +181,10 @@ class __$$FamilyDetailsImplCopyWithImpl<$Res>
             ? _value.siblingsMarried
             : siblingsMarried // ignore: cast_nullable_to_non_nullable
                   as int?,
+        familyExpectations: freezed == familyExpectations
+            ? _value.familyExpectations
+            : familyExpectations // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -185,6 +200,7 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
     this.motherOccupation,
     this.siblingsCount,
     this.siblingsMarried,
+    this.familyExpectations,
   });
 
   @override
@@ -202,9 +218,13 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
   @override
   final int? siblingsMarried;
 
+  /// Optional; show "Family expectations" subsection when backend provides it.
+  @override
+  final String? familyExpectations;
+
   @override
   String toString() {
-    return 'FamilyDetails(familyType: $familyType, familyValues: $familyValues, fatherOccupation: $fatherOccupation, motherOccupation: $motherOccupation, siblingsCount: $siblingsCount, siblingsMarried: $siblingsMarried)';
+    return 'FamilyDetails(familyType: $familyType, familyValues: $familyValues, fatherOccupation: $fatherOccupation, motherOccupation: $motherOccupation, siblingsCount: $siblingsCount, siblingsMarried: $siblingsMarried, familyExpectations: $familyExpectations)';
   }
 
   @override
@@ -223,7 +243,9 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
             (identical(other.siblingsCount, siblingsCount) ||
                 other.siblingsCount == siblingsCount) &&
             (identical(other.siblingsMarried, siblingsMarried) ||
-                other.siblingsMarried == siblingsMarried));
+                other.siblingsMarried == siblingsMarried) &&
+            (identical(other.familyExpectations, familyExpectations) ||
+                other.familyExpectations == familyExpectations));
   }
 
   @override
@@ -235,6 +257,7 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
     motherOccupation,
     siblingsCount,
     siblingsMarried,
+    familyExpectations,
   );
 
   /// Create a copy of FamilyDetails
@@ -254,6 +277,7 @@ abstract class _FamilyDetails implements FamilyDetails {
     final String? motherOccupation,
     final int? siblingsCount,
     final int? siblingsMarried,
+    final String? familyExpectations,
   }) = _$FamilyDetailsImpl;
 
   @override
@@ -268,6 +292,10 @@ abstract class _FamilyDetails implements FamilyDetails {
   int? get siblingsCount;
   @override
   int? get siblingsMarried;
+
+  /// Optional; show "Family expectations" subsection when backend provides it.
+  @override
+  String? get familyExpectations;
 
   /// Create a copy of FamilyDetails
   /// with the given fields replaced by the non-null parameter values.

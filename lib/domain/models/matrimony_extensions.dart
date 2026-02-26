@@ -22,6 +22,8 @@ class MatrimonyExtensions with _$MatrimonyExtensions {
     String? motherTongue,
     String? maritalStatus,
     int? heightCm,
+    String? bodyType,
+    String? complexion,
     String? educationDegree,
     String? educationInstitution,
     String? occupation,

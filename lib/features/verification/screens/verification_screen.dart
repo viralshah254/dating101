@@ -1,15 +1,31 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/constants/app_ctas.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
-class VerificationScreen extends StatelessWidget {
+import '../../../core/constants/app_ctas.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/verification_status.dart';
+
+final _myProfileForVerificationProvider = FutureProvider((ref) async {
+  final repo = ref.watch(profileRepositoryProvider);
+  return repo.getMyProfile();
+});
+
+/// Verification hub: ID, face match, LinkedIn, education. Uses [VerificationStatus]
+/// from GET /profile/me for tile state and safety score. See docs/BACKEND_VERIFICATION.md.
+class VerificationScreen extends ConsumerWidget {
   const VerificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final accent = Theme.of(context).colorScheme.primary;
+    final profileAsync = ref.watch(_myProfileForVerificationProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -19,80 +35,122 @@ class VerificationScreen extends StatelessWidget {
         ),
         title: const Text('Verification'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              AppCTAs.verifyPriority,
-              style: AppTypography.headlineMedium,
-            ).animate().fadeIn().slideY(begin: -0.05, end: 0),
-            const SizedBox(height: 8),
-            Text(
-              'Verified profiles get more matches. Add one or more verifications below.',
-              style: AppTypography.bodyMedium,
-            ).animate().fadeIn(delay: 80.ms),
-            const SizedBox(height: 32),
-            _VerificationTile(
-              icon: Icons.badge_outlined,
-              title: 'ID verification',
-              subtitle: 'Upload a government ID. We match it to your photo.',
-              status: VerificationStatus.pending,
-              onTap: () => _showIdUpload(context),
-              accent: accent,
-            ).animate().fadeIn(delay: 120.ms),
-            const SizedBox(height: 12),
-            _VerificationTile(
-              icon: Icons.face_retouching_natural,
-              title: 'Face match',
-              subtitle: 'Selfie matched to your ID photo.',
-              status: VerificationStatus.pending,
-              onTap: () {},
-              accent: accent,
-            ).animate().fadeIn(delay: 160.ms),
-            const SizedBox(height: 12),
-            _VerificationTile(
-              icon: Icons.work_outline,
-              title: 'LinkedIn',
-              subtitle: 'Connect your LinkedIn to verify work.',
-              status: VerificationStatus.pending,
-              onTap: () {},
-              accent: accent,
-            ).animate().fadeIn(delay: 200.ms),
-            const SizedBox(height: 12),
-            _VerificationTile(
-              icon: Icons.school_outlined,
-              title: 'Education',
-              subtitle: 'Verify your university or college.',
-              status: VerificationStatus.pending,
-              onTap: () {},
-              accent: accent,
-            ).animate().fadeIn(delay: 240.ms),
-            const SizedBox(height: 32),
-            Text(
-              'Safety score',
-              style: AppTypography.labelLarge,
+      body: profileAsync.when(
+        data: (profile) {
+          final vs = profile?.verificationStatus ?? const VerificationStatus();
+          final score = vs.score.clamp(0.0, 1.0);
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(_myProfileForVerificationProvider),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    AppCTAs.verifyPriority,
+                    style: AppTypography.headlineMedium,
+                  ).animate().fadeIn().slideY(begin: -0.05, end: 0),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Verified profiles get more matches. Add one or more verifications below.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ).animate().fadeIn(delay: 80.ms),
+                  const SizedBox(height: 32),
+                  _VerificationTile(
+                    icon: Icons.badge_outlined,
+                    title: 'ID verification',
+                    subtitle: 'Upload a government ID. We match it to your photo.',
+                    status: vs.idVerified ? VerificationTileStatus.verified : VerificationTileStatus.pending,
+                    onTap: () => _showIdUpload(context, ref),
+                    accent: accent,
+                  ).animate().fadeIn(delay: 120.ms),
+                  const SizedBox(height: 12),
+                  _VerificationTile(
+                    icon: Icons.face_retouching_natural,
+                    title: 'Face match',
+                    subtitle: 'Selfie matched to your ID photo.',
+                    status: vs.photoVerified ? VerificationTileStatus.verified : VerificationTileStatus.pending,
+                    onTap: () => context.push('/photo-verification'),
+                    accent: accent,
+                  ).animate().fadeIn(delay: 160.ms),
+                  const SizedBox(height: 12),
+                  _VerificationTile(
+                    icon: Icons.work_outline,
+                    title: 'LinkedIn',
+                    subtitle: 'Connect your LinkedIn to verify work.',
+                    status: vs.linkedInVerified ? VerificationTileStatus.verified : VerificationTileStatus.pending,
+                    onTap: () => _showComingSoon(context, 'LinkedIn'),
+                    accent: accent,
+                  ).animate().fadeIn(delay: 200.ms),
+                  const SizedBox(height: 12),
+                  _VerificationTile(
+                    icon: Icons.school_outlined,
+                    title: 'Education',
+                    subtitle: 'Verify your university or college.',
+                    status: vs.educationVerified ? VerificationTileStatus.verified : VerificationTileStatus.pending,
+                    onTap: () => _showComingSoon(context, 'Education'),
+                    accent: accent,
+                  ).animate().fadeIn(delay: 240.ms),
+                  const SizedBox(height: 32),
+                  Text(
+                    'Safety score',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: score,
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Complete verifications to increase your safety score and visibility.',
+                    style: AppTypography.caption.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: 0.2,
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation<Color>(accent),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(err.toString(), textAlign: TextAlign.center, style: AppTypography.bodySmall),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => ref.invalidate(_myProfileForVerificationProvider),
+                  child: const Text('Retry'),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Complete verifications to increase your safety score and visibility.',
-              style: AppTypography.caption,
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _showIdUpload(BuildContext context) {
+  static void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature verification coming soon'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  static void _showIdUpload(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -104,12 +162,60 @@ class VerificationScreen extends StatelessWidget {
             children: [
               Text('ID verification', style: AppTypography.headlineSmall),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Upload a clear photo of your passport or driving licence. We\'ll compare it to your profile photo.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
               ),
               const SizedBox(height: 24),
               OutlinedButton.icon(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () async {
+                  final navigator = Navigator.of(ctx);
+                  try {
+                    final picker = ImagePicker();
+                    final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+                    if (xfile == null || !ctx.mounted) return;
+                    final bytes = await File(xfile.path).readAsBytes();
+                    final verificationRepo = ref.read(verificationRepositoryProvider);
+                    final result = await verificationRepo.getIdUploadUrl();
+                    if (result.uploadUrl.isEmpty || result.key.isEmpty) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(content: Text('Upload URL not available'), behavior: SnackBarBehavior.floating),
+                        );
+                      }
+                      return;
+                    }
+                    final uploadResponse = await http.put(
+                      Uri.parse(result.uploadUrl),
+                      body: bytes,
+                      headers: {'Content-Type': 'image/jpeg'},
+                    );
+                    if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text('Upload failed: ${uploadResponse.statusCode}'), behavior: SnackBarBehavior.floating),
+                        );
+                      }
+                      return;
+                    }
+                    await verificationRepo.submitIdVerification(result.key);
+                    ref.invalidate(_myProfileForVerificationProvider);
+                    navigator.pop();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('ID submitted. We\'ll notify you when verification is complete.'), behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Failed: $e'), behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  }
+                },
                 icon: const Icon(Icons.upload_file),
                 label: const Text('Choose file'),
               ),
@@ -126,7 +232,8 @@ class VerificationScreen extends StatelessWidget {
   }
 }
 
-enum VerificationStatus { pending, inReview, verified, failed }
+/// UI state for a single verification tile (not the domain VerificationStatus).
+enum VerificationTileStatus { pending, verified }
 
 class _VerificationTile extends StatelessWidget {
   const _VerificationTile({
@@ -140,7 +247,7 @@ class _VerificationTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VerificationStatus status;
+  final VerificationTileStatus status;
   final VoidCallback onTap;
   final Color accent;
 
@@ -157,8 +264,13 @@ class _VerificationTile extends StatelessWidget {
           child: Icon(icon, color: accent),
         ),
         title: Text(title, style: AppTypography.titleMedium),
-        subtitle: Text(subtitle, style: AppTypography.bodySmall),
-        trailing: status == VerificationStatus.verified
+        subtitle: Text(
+          subtitle,
+          style: AppTypography.bodySmall.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+          ),
+        ),
+        trailing: status == VerificationTileStatus.verified
             ? Icon(Icons.check_circle, color: accent)
             : const Icon(Icons.chevron_right),
         onTap: onTap,

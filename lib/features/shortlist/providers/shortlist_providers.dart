@@ -1,13 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/repository_providers.dart';
-import '../../../domain/models/profile_summary.dart';
+import '../../../domain/models/shortlist_entry.dart';
 import '../../../domain/models/who_shortlisted_me_entry.dart';
 
+/// Current sort for shortlist: 'recent' or 'most_interested' (when backend supports).
+final shortlistSortProvider = StateProvider.autoDispose<String>((ref) => 'recent');
+
 final shortlistProvider =
-    FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
+    FutureProvider.autoDispose<List<ShortlistEntry>>((ref) async {
   final repo = ref.watch(shortlistRepositoryProvider);
-  return repo.getShortlist(limit: 50);
+  final sort = ref.watch(shortlistSortProvider);
+  return repo.getShortlist(limit: 50, sort: sort);
 });
 
 /// Set of profile IDs currently in the user's shortlist. Use to highlight Save on cards.
@@ -15,7 +19,7 @@ final shortlistProvider =
 final shortlistedIdsProvider =
     FutureProvider.autoDispose<Set<String>>((ref) async {
   final list = await ref.watch(shortlistProvider.future);
-  return list.map((p) => p.id).toSet();
+  return list.map((e) => e.profile.id).toSet();
 });
 
 /// People who shortlisted the current user (GET /shortlist/received).

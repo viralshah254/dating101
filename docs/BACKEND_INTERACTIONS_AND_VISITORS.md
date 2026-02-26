@@ -479,9 +479,12 @@ GET /visits/received?page=1&limit=20
 
 ```
 POST /visits/mark-seen
+Content-Type: application/json
 ```
 
-Called when user opens the Visitors tab. Resets `newCount` to 0.
+Called when the user opens the Visitors tab. Resets `newCount` to 0 for the next `GET /visits/received`.
+
+**Request body:** Optional. The client may send an empty JSON object `{}` (some servers require a body when `Content-Type: application/json` is set). **Backend must accept** either no body or `{}` and return 200.
 
 **Response `200 OK`:**
 

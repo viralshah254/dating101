@@ -7,6 +7,7 @@ import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../domain/models/mutual_match_entry.dart';
 import '../../../domain/models/profile_summary.dart';
+import '../../../domain/models/saved_search.dart';
 
 final matchesRecommendedProvider =
     FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
@@ -97,6 +98,13 @@ final recordProfileVisitProvider =
   await repo.recordVisit(profileId, source: 'profile_view');
 });
 
+/// Saved searches (matrimony). GET /discovery/saved-searches.
+final savedSearchesProvider =
+    FutureProvider.autoDispose<List<SavedSearch>>((ref) async {
+  final repo = ref.watch(discoveryRepositoryProvider);
+  return repo.getSavedSearches();
+});
+
 class MatchesSearchFilters {
   const MatchesSearchFilters({
     this.ageMin,
@@ -145,4 +153,29 @@ class MatchesSearchFilters {
 
   @override
   int get hashCode => Object.hash(ageMin, ageMax, city, religion, education, heightMinCm);
+
+  /// Convert to map for saved-search API (only non-null fields).
+  Map<String, dynamic> toMap() {
+    final m = <String, dynamic>{};
+    if (ageMin != null) m['ageMin'] = ageMin;
+    if (ageMax != null) m['ageMax'] = ageMax;
+    if (city != null && city!.isNotEmpty) m['city'] = city;
+    if (religion != null && religion!.isNotEmpty) m['religion'] = religion;
+    if (education != null && education!.isNotEmpty) m['education'] = education;
+    if (heightMinCm != null) m['heightMinCm'] = heightMinCm;
+    return m;
+  }
+
+  /// Create from saved-search filters map (e.g. from API).
+  static MatchesSearchFilters fromMap(Map<String, dynamic>? m) {
+    if (m == null || m.isEmpty) return const MatchesSearchFilters();
+    return MatchesSearchFilters(
+      ageMin: m['ageMin'] as int?,
+      ageMax: m['ageMax'] as int?,
+      city: m['city'] as String?,
+      religion: m['religion'] as String?,
+      education: m['education'] as String?,
+      heightMinCm: m['heightMinCm'] as int?,
+    );
+  }
 }

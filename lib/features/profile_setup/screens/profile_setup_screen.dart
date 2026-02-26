@@ -236,6 +236,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (!mounted) return;
     setState(() => _isSaving = false);
 
+    // Section edit from profile view: save and close (do not advance to next step).
+    if (widget.isEditing && widget.initialStep != null) {
+      if (mounted) context.pop();
+      return;
+    }
+
     if (_currentStep < _steps.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
@@ -374,7 +380,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 child: Column(
                   children: [
                     if (widget.isEditing) ...[
-                      // Edit mode: single button that saves and advances
+                      // Edit mode: save and close when editing one section; else save and continue
                       SizedBox(
                         width: double.infinity,
                         height: 54,
@@ -398,15 +404,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      _currentStep < _steps.length - 1
-                                          ? 'Save & continue'
-                                          : 'Save & close',
+                                      (widget.initialStep != null) ||
+                                              _currentStep >= _steps.length - 1
+                                          ? 'Save & close'
+                                          : 'Save & continue',
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    if (_currentStep < _steps.length - 1) ...[
+                                    if ((widget.initialStep == null) &&
+                                        _currentStep < _steps.length - 1) ...[
                                       const SizedBox(width: 6),
                                       const Icon(Icons.arrow_forward, size: 18),
                                     ],
@@ -801,6 +809,8 @@ class ProfileFormData {
       if (mat.motherTongue != null) motherTongue = mat.motherTongue;
       maritalStatus = mat.maritalStatus;
       heightCm = mat.heightCm?.toString();
+      bodyType = mat.bodyType;
+      complexion = mat.complexion;
       education = mat.educationDegree;
       occupation = mat.occupation;
       company = mat.employer;

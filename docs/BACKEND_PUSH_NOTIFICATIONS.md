@@ -105,7 +105,7 @@ Use **data-only** or **notification + data** messages so the Flutter app can ope
 
 ### Deep link paths (Flutter app)
 
-The app uses these paths. Build `data` so the client can build the same path.
+The app uses these paths. Build `data` so the client can build the same path. When the user taps a notification, the app calls `router.go(path)` so that **shell routes** (`/chats`, `/community`, `/`, `/profile-settings`) switch to the correct tab; use the paths above so the correct branch is selected.
 
 | Intent | Path | data suggestion |
 |--------|------|------------------|

@@ -3,9 +3,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design/design.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
@@ -99,6 +101,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               onShortlist: _onShortlist,
               onMessage: _onMessage,
               onUpgrade: _onUpgrade,
+              onBlock: _onBlock,
+              onReport: _onReport,
             ),
             _VisitorsTab(
               onTapProfile: _openProfile,
@@ -107,6 +111,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               onShortlist: _onShortlist,
               onMessage: _onMessage,
               onUpgrade: _onUpgrade,
+              onBlock: _onBlock,
+              onReport: _onReport,
             ),
             _ExploreTab(
               filters: _filters,
@@ -116,10 +122,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               onShortlist: _onShortlist,
               onMessage: _onMessage,
               onUpgrade: _onUpgrade,
+              onBlock: _onBlock,
+              onReport: _onReport,
             ),
             _MatchesTab(
               onTapProfile: _openProfile,
               onMessage: _onMessage,
+              onBlock: _onBlock,
+              onReport: _onReport,
             ),
           ],
         ),
@@ -236,6 +246,111 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   void _onUpgrade() => context.push('/paywall');
 
+  Future<void> _onBlock(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
+    final reason = await showBlockReasonPicker(context);
+    if (reason == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.block),
+        content: Text(
+          '${l.block} ${p.name}? They won\'t be able to see your profile or contact you.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: Text(l.block),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(safetyRepositoryProvider).block(
+            p.id,
+            reason,
+            source: 'discover',
+          );
+      if (!mounted) return;
+      ref.invalidate(matchesRecommendedProvider);
+      ref.invalidate(matchesExploreProvider);
+      ref.invalidate(mutualMatchesProvider);
+      ref.invalidate(matchedUserIdsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${p.name} ${l.block.toLowerCase()}ed'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Something went wrong. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onReport(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
+    final result = await showReportReasonPicker(context);
+    if (result == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.report),
+        content: Text(
+          '${l.report} ${p.name}? We take safety seriously and will review this profile.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: Text(l.report),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(safetyRepositoryProvider).report(
+            p.id,
+            result.reason,
+            details: result.details,
+            source: 'discover',
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Report submitted. Thank you.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Something went wrong. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   void _showFilterSheet(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
@@ -351,6 +466,56 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Consumer(
+                            builder: (ctx, ref, _) {
+                              final savedAsync = ref.watch(savedSearchesProvider);
+                              return savedAsync.when(
+                                data: (list) {
+                                  if (list.isEmpty) return const SizedBox.shrink();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _FilterSection(
+                                      label: 'Saved searches',
+                                      onSurface: onSurface,
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: list.map((ss) {
+                                          return ActionChip(
+                                            avatar: ss.newMatchCount > 0
+                                                ? CircleAvatar(
+                                                    backgroundColor: accent,
+                                                    child: Text(
+                                                      '${ss.newMatchCount}',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : null,
+                                            label: Text(ss.displayName),
+                                            onPressed: () {
+                                              setState(() {
+                                                _filters = MatchesSearchFilters.fromMap(ss.filters);
+                                                _updateFilterCount();
+                                              });
+                                              ref.read(discoveryRepositoryProvider).markSavedSearchViewed(ss.id);
+                                              ref.invalidate(savedSearchesProvider);
+                                              _tabController.animateTo(2);
+                                              Navigator.pop(ctx);
+                                            },
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, __) => const SizedBox.shrink(),
+                              );
+                            },
+                          ),
                           _FilterSection(
                             label: 'Age range',
                             onSurface: onSurface,
@@ -464,41 +629,78 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                     ),
                     child: SafeArea(
                       top: false,
-                      child: SizedBox(
-                        height: 52,
-                        child: FilledButton(
-                          onPressed: () {
-                            setState(() {
-                              final ageMinVal = ageRange.start.round();
-                              final ageMaxVal = ageRange.end.round();
-                              _filters = MatchesSearchFilters(
-                                ageMin: ageMinVal == defaultAgeMin ? null : ageMinVal,
-                                ageMax: ageMaxVal == defaultAgeMax ? null : ageMaxVal,
-                                city: city,
-                                religion: religion,
-                                education: education,
-                              );
-                              _updateFilterCount();
-                              if (_activeFilterCount > 0) {
-                                _tabController.animateTo(2); // Switch to Explore tab
+                      child: Row(
+                        children: [
+                          OutlinedButton(
+                            onPressed: () async {
+                              final filters = <String, dynamic>{
+                                'ageMin': ageRange.start.round(),
+                                'ageMax': ageRange.end.round(),
+                              };
+                              if (city != null && city!.isNotEmpty) filters['city'] = city!;
+                              if (religion != null && religion!.isNotEmpty) filters['religion'] = religion!;
+                              if (education != null && education!.isNotEmpty) filters['education'] = education!;
+                              try {
+                                await ref.read(discoveryRepositoryProvider).createSavedSearch(filters);
+                                if (!ctx.mounted) return;
+                                ref.invalidate(savedSearchesProvider);
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(content: Text('Search saved')),
+                                );
+                              } catch (_) {
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(content: Text('Could not save search')),
+                                  );
+                                }
                               }
-                            });
-                            Navigator.pop(ctx);
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: accent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: accent,
+                              side: BorderSide(color: accent),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text('Save search'),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () {
+                                setState(() {
+                                  final ageMinVal = ageRange.start.round();
+                                  final ageMaxVal = ageRange.end.round();
+                                  _filters = MatchesSearchFilters(
+                                    ageMin: ageMinVal == defaultAgeMin ? null : ageMinVal,
+                                    ageMax: ageMaxVal == defaultAgeMax ? null : ageMaxVal,
+                                    city: city,
+                                    religion: religion,
+                                    education: education,
+                                  );
+                                  _updateFilterCount();
+                                  if (_activeFilterCount > 0) {
+                                    _tabController.animateTo(2); // Switch to Explore tab
+                                  }
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: accent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                l.apply,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           ),
-                          child: Text(
-                            l.apply,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -543,9 +745,9 @@ class _TabBarSection extends StatelessWidget {
         labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
         unselectedLabelStyle: AppTypography.labelLarge,
         tabs: const [
-          Tab(text: 'For You', height: 38),
+          Tab(text: 'Recommended', height: 38),
           Tab(text: 'Visitors', height: 38),
-          Tab(text: 'Explore', height: 38),
+          Tab(text: 'Search', height: 38),
           Tab(text: 'Matches', height: 38),
         ],
       ),
@@ -563,6 +765,8 @@ class _RecommendedTab extends ConsumerWidget {
     required this.onShortlist,
     required this.onMessage,
     required this.onUpgrade,
+    required this.onBlock,
+    required this.onReport,
   });
   final void Function(ProfileSummary) onTapProfile;
   final void Function(ProfileSummary) onLike;
@@ -570,9 +774,12 @@ class _RecommendedTab extends ConsumerWidget {
   final void Function(ProfileSummary) onShortlist;
   final void Function(ProfileSummary) onMessage;
   final VoidCallback onUpgrade;
+  final void Function(ProfileSummary) onBlock;
+  final void Function(ProfileSummary) onReport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
     final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
@@ -592,13 +799,19 @@ class _RecommendedTab extends ConsumerWidget {
         onShortlist: onShortlist,
         onMessage: onMessage,
         onUpgrade: onUpgrade,
+        onBlock: onBlock,
+        onReport: onReport,
         emptyIcon: Icons.diversity_3_rounded,
         emptyTitle: 'No recommendations yet',
         emptyBody: 'Complete your profile and preferences to get AI-powered matches.',
         );
       },
-      loading: () => const _ShimmerList(),
-      error: (_, __) => _ErrorState(onRetry: () => ref.invalidate(matchesRecommendedProvider)),
+      loading: () => const SkeletonCardList(),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
+        onRetry: () => ref.invalidate(matchesRecommendedProvider),
+        retryLabel: l.retry,
+      ),
     );
   }
 }
@@ -613,6 +826,8 @@ class _VisitorsTab extends ConsumerWidget {
     required this.onShortlist,
     required this.onMessage,
     required this.onUpgrade,
+    required this.onBlock,
+    required this.onReport,
   });
   final void Function(ProfileSummary) onTapProfile;
   final void Function(ProfileSummary) onLike;
@@ -620,9 +835,12 @@ class _VisitorsTab extends ConsumerWidget {
   final void Function(ProfileSummary) onShortlist;
   final void Function(ProfileSummary) onMessage;
   final VoidCallback onUpgrade;
+  final void Function(ProfileSummary) onBlock;
+  final void Function(ProfileSummary) onReport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
     final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
@@ -645,10 +863,16 @@ class _VisitorsTab extends ConsumerWidget {
         emptyIcon: Icons.visibility_outlined,
         emptyTitle: 'No visitors yet',
         emptyBody: 'Profiles who viewed you will appear here. Complete your profile to get noticed.',
+        onBlock: onBlock,
+        onReport: onReport,
         );
       },
-      loading: () => const _ShimmerList(),
-      error: (_, __) => _ErrorState(onRetry: () => ref.invalidate(visitorsProvider)),
+      loading: () => const SkeletonCardList(),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
+        onRetry: () => ref.invalidate(visitorsProvider),
+        retryLabel: l.retry,
+      ),
     );
   }
 }
@@ -664,6 +888,8 @@ class _ExploreTab extends ConsumerWidget {
     required this.onShortlist,
     required this.onMessage,
     required this.onUpgrade,
+    required this.onBlock,
+    required this.onReport,
   });
   final MatchesSearchFilters filters;
   final void Function(ProfileSummary) onTapProfile;
@@ -672,9 +898,12 @@ class _ExploreTab extends ConsumerWidget {
   final void Function(ProfileSummary) onShortlist;
   final void Function(ProfileSummary) onMessage;
   final VoidCallback onUpgrade;
+  final void Function(ProfileSummary) onBlock;
+  final void Function(ProfileSummary) onReport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final exploreArgs = (mode: mode, filters: filters);
 
@@ -709,11 +938,15 @@ class _ExploreTab extends ConsumerWidget {
         emptyBody: hasFilters
             ? 'Try adjusting your filters for more results.'
             : 'Use the filter icon above to search by age, city, religion, education and more.',
+        onBlock: onBlock,
+        onReport: onReport,
         );
       },
-      loading: () => const _ShimmerList(),
-      error: (_, __) => _ErrorState(
+      loading: () => const SkeletonCardList(),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
         onRetry: () => ref.invalidate(matchesExploreProvider(exploreArgs)),
+        retryLabel: l.retry,
       ),
     );
   }
@@ -725,17 +958,22 @@ class _MatchesTab extends ConsumerWidget {
   const _MatchesTab({
     required this.onTapProfile,
     required this.onMessage,
+    required this.onBlock,
+    required this.onReport,
   });
   final void Function(ProfileSummary) onTapProfile;
   final void Function(ProfileSummary) onMessage;
+  final void Function(ProfileSummary) onBlock;
+  final void Function(ProfileSummary) onReport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(mutualMatchesProvider);
+    final l = AppLocalizations.of(context)!;
     return async.when(
       data: (entries) {
         if (entries.isEmpty) {
-          return _EmptyState(
+          return EmptyState(
             icon: Icons.favorite_border_rounded,
             title: 'No matches yet',
             body: 'When you and someone else both express interest, you\'ll match and appear here.',
@@ -817,6 +1055,37 @@ class _MatchesTab extends ConsumerWidget {
                           icon: Icon(Icons.chat_bubble_outline_rounded, color: accent),
                           tooltip: 'Message',
                         ),
+                        PopupMenuButton<String>(
+                          icon: Icon(Icons.more_vert, color: onSurface.withValues(alpha: 0.6)),
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          onSelected: (v) {
+                            if (v == 'block') onBlock(p);
+                            if (v == 'report') onReport(p);
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: 'block',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.block, size: 20, color: Theme.of(context).colorScheme.error),
+                                  const SizedBox(width: 12),
+                                  Text(l.block),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'report',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.flag_outlined, size: 20, color: Theme.of(context).colorScheme.error),
+                                  const SizedBox(width: 12),
+                                  Text(l.report),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -826,8 +1095,12 @@ class _MatchesTab extends ConsumerWidget {
           },
         );
       },
-      loading: () => const _ShimmerList(),
-      error: (_, __) => _ErrorState(onRetry: () => ref.invalidate(mutualMatchesProvider)),
+      loading: () => const SkeletonCardList(),
+      error: (_, __) => ErrorState(
+        message: l.errorGeneric,
+        onRetry: () => ref.invalidate(mutualMatchesProvider),
+        retryLabel: l.retry,
+      ),
     );
   }
 }
@@ -846,6 +1119,8 @@ class _ProfileList extends StatelessWidget {
     required this.onShortlist,
     required this.onMessage,
     required this.onUpgrade,
+    required this.onBlock,
+    required this.onReport,
     required this.emptyIcon,
     required this.emptyTitle,
     required this.emptyBody,
@@ -860,6 +1135,8 @@ class _ProfileList extends StatelessWidget {
   final void Function(ProfileSummary) onShortlist;
   final void Function(ProfileSummary) onMessage;
   final VoidCallback onUpgrade;
+  final void Function(ProfileSummary) onBlock;
+  final void Function(ProfileSummary) onReport;
   final IconData emptyIcon;
   final String emptyTitle;
   final String emptyBody;
@@ -867,7 +1144,7 @@ class _ProfileList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (profiles.isEmpty) {
-      return _EmptyState(icon: emptyIcon, title: emptyTitle, body: emptyBody);
+      return EmptyState(icon: emptyIcon, title: emptyTitle, body: emptyBody);
     }
     final viewportHeight = MediaQuery.sizeOf(context).height;
     final cardHeight = (viewportHeight * 0.78).clamp(380.0, 520.0);
@@ -891,130 +1168,19 @@ class _ProfileList extends StatelessWidget {
               isShortlisted: isShortlisted,
               isInterested: isInterested,
               isPriorityInterested: isPriorityInterested,
+              messageUnlockedByMatch: true,
               onTap: () => onTap(p),
               onLike: () => onLike(p),
               onSuperLike: () => onSuperLike(p),
               onShortlist: () => onShortlist(p),
               onMessage: () => onMessage(p),
               onUpgrade: onUpgrade,
+              onBlock: () => onBlock(p),
+              onReport: () => onReport(p),
             ).animate().fadeIn(delay: (40 * i).ms).slideY(begin: 0.04, end: 0),
           ),
         );
       },
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.body,
-  });
-  final IconData icon;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.lightAccent;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkAccent : accent;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: bgColor.withValues(alpha: isDark ? 0.2 : 0.12),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: bgColor.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Icon(icon, size: 52, color: bgColor.withValues(alpha: isDark ? 0.9 : 0.75)),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              title,
-              style: AppTypography.titleLarge.copyWith(
-                color: onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              body,
-              style: AppTypography.bodyMedium.copyWith(
-                color: onSurface.withValues(alpha: 0.65),
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.onRetry});
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(l.errorGeneric, style: AppTypography.bodyLarge, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: onRetry,
-              style: FilledButton.styleFrom(backgroundColor: AppColors.lightAccent),
-              child: Text(l.retry),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ShimmerList extends StatelessWidget {
-  const _ShimmerList();
-
-  @override
-  Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      itemCount: 4,
-      itemBuilder: (_, i) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          height: 160,
-          decoration: BoxDecoration(
-            color: onSurface.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(16),
-          ),
-        )
-            .animate(onPlay: (c) => c.repeat())
-            .shimmer(duration: 1200.ms, color: onSurface.withValues(alpha: 0.06)),
-      ),
     );
   }
 }
@@ -1031,50 +1197,58 @@ class _FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: activeCount > 0
-                    ? accent.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.tune_rounded,
-                color: activeCount > 0 ? accent : null,
-              ),
+      child: Tooltip(
+        message: 'Refine by age, city, religion, education and more',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: activeCount > 0
+                  ? accent.withValues(alpha: 0.12)
+                  : onSurface.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
             ),
-            if (activeCount > 0)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: accent,
-                    shape: BoxShape.circle,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  size: 20,
+                  color: activeCount > 0 ? accent : onSurface.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Refine',
+                  style: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: activeCount > 0 ? accent : onSurface.withValues(alpha: 0.85),
                   ),
-                  child: Center(
+                ),
+                if (activeCount > 0) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: Text(
                       '$activeCount',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                ),
-              ),
-          ],
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

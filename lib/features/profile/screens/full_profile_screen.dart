@@ -1,23 +1,31 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/feature_flags/feature_flags.dart';
 import '../../../core/i18n/app_copy.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
+import '../../../domain/models/contact_request_status.dart';
+import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../domain/repositories/discovery_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../ai/widgets/match_reason_chip.dart';
 import '../../discovery/providers/discovery_providers.dart';
 import '../../matches/providers/matches_providers.dart';
+import '../../requests/providers/requests_providers.dart';
+import '../../shortlist/providers/shortlist_providers.dart';
 
 class FullProfileScreen extends ConsumerWidget {
   const FullProfileScreen({super.key, required this.profileId});
@@ -92,11 +100,19 @@ class _MatrimonyProfileContent extends ConsumerWidget {
     final mat = profile.matrimonyExtensions;
     final prefs = profile.partnerPreferences;
     final ent = ref.watch(entitlementsProvider);
+    final flags = ref.watch(featureFlagsProvider);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _HeroAppBar(profile: profile, accent: accent),
+          _HeroAppBar(
+            profile: profile,
+            accent: accent,
+            onBlock: () =>
+                _showBlockConfirm(context, ref, profile.id, profile.name),
+            onReport: () =>
+                _showReportConfirm(context, ref, profile.id, profile.name),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -109,9 +125,20 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                   const SizedBox(height: 4),
                   _LocationRow(profile: profile, onSurface: onSurface),
 
+                  if (flags.parentGuardianRole &&
+                      mat != null &&
+                      mat.roleManagingProfile != ProfileRole.self) ...[
+                    const SizedBox(height: 10),
+                    _ManagedByBanner(role: mat.roleManagingProfile, onSurface: onSurface),
+                  ],
+
                   const SizedBox(height: 16),
 
-                  _CompatibilityCard(profile: profile, accent: accent, profileId: profile.id),
+                  _CompatibilityCard(
+                    profile: profile,
+                    accent: accent,
+                    profileId: profile.id,
+                  ),
 
                   const SizedBox(height: 20),
 
@@ -135,7 +162,9 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: profile.interests
-                          .map<Widget>((i) => _InterestChip(label: i, accent: accent))
+                          .map<Widget>(
+                            (i) => _InterestChip(label: i, accent: accent),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: 20),
@@ -150,31 +179,56 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                     const SizedBox(height: 20),
                   ],
 
-                  _BasicDetailsCard(profile: profile, mat: mat, onSurface: onSurface, accent: accent),
+                  _BasicDetailsCard(
+                    profile: profile,
+                    mat: mat,
+                    onSurface: onSurface,
+                    accent: accent,
+                  ),
                   const SizedBox(height: 14),
 
                   if (mat != null) ...[
-                    _EducationCareerCard(mat: mat, onSurface: onSurface, accent: accent),
+                    _EducationCareerCard(
+                      mat: mat,
+                      onSurface: onSurface,
+                      accent: accent,
+                    ),
                     const SizedBox(height: 14),
                   ],
 
                   if (mat?.familyDetails != null) ...[
-                    _FamilyCard(mat: mat!, onSurface: onSurface, accent: accent),
+                    _FamilyCard(
+                      mat: mat!,
+                      onSurface: onSurface,
+                      accent: accent,
+                    ),
                     const SizedBox(height: 14),
                   ],
 
                   if (mat != null) ...[
-                    _LifestyleCard(mat: mat, onSurface: onSurface, accent: accent),
+                    _LifestyleCard(
+                      mat: mat,
+                      onSurface: onSurface,
+                      accent: accent,
+                    ),
                     const SizedBox(height: 14),
                   ],
 
-                  if (mat?.horoscope != null) ...[
-                    _HoroscopeCard(mat: mat!, onSurface: onSurface, accent: accent),
+                  if (flags.horoscope && mat?.horoscope != null) ...[
+                    _HoroscopeCard(
+                      mat: mat!,
+                      onSurface: onSurface,
+                      accent: accent,
+                    ),
                     const SizedBox(height: 14),
                   ],
 
                   if (prefs != null) ...[
-                    _PartnerPrefsCard(prefs: prefs, onSurface: onSurface, accent: accent),
+                    _PartnerPrefsCard(
+                      prefs: prefs,
+                      onSurface: onSurface,
+                      accent: accent,
+                    ),
                     const SizedBox(height: 14),
                   ],
 
@@ -186,12 +240,6 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                     ),
                     const SizedBox(height: 14),
                   ],
-
-                  _PreferenceAlignmentSection(
-                    profileId: profile.id,
-                    accent: accent,
-                    onSurface: onSurface,
-                  ),
 
                   // Space for floating bottom bar
                   const SizedBox(height: 100),
@@ -207,6 +255,7 @@ class _MatrimonyProfileContent extends ConsumerWidget {
         l: l,
         profileName: profile.name,
         profileId: profile.id,
+        profile: profile,
       ),
     );
   }
@@ -219,15 +268,27 @@ class _FloatingActionBar extends ConsumerWidget {
     required this.l,
     required this.profileName,
     required this.profileId,
+    required this.profile,
   });
   final Entitlements ent;
   final Color accent;
   final AppLocalizations l;
   final String profileName;
   final String profileId;
+  final UserProfile profile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final flags = ref.watch(featureFlagsProvider);
+    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final isMatched = matchedIds.contains(profileId);
+    final isShortlisted = shortlistedIds.contains(profileId);
+    final contactGatingOn = flags.contactRequestGating;
+    final canRequestContactNow = !contactGatingOn || isMatched || ent.canRequestContact;
+    // Once matched, messaging is unlocked for this profile (no premium required).
+    final canMessageThisProfile = ent.canSendMessage || isMatched;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -243,41 +304,71 @@ class _FloatingActionBar extends ConsumerWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => _onExpressInterest(context, ref),
-                  icon: const Icon(Icons.favorite_border, size: 20),
-                  label: Text(l.ctaSendInterest),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: accent,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+              Row(
+                children: [
+                  Expanded(
+                    child: isMatched
+                        ? FilledButton.icon(
+                            onPressed: () => _onMessage(context, ref),
+                            icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                            label: Text(l.ctaSendMessage),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: accent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          )
+                        : FilledButton.icon(
+                            onPressed: () => _onExpressInterest(context, ref),
+                            icon: const Icon(Icons.favorite_border, size: 20),
+                            label: Text(l.ctaSendInterest),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: accent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
                   ),
+                  const SizedBox(width: 10),
+                  _FloatingIconBtn(
+                    icon: isShortlisted ? Icons.star_rounded : Icons.star_border_rounded,
+                    accent: accent,
+                    onTap: () => _onShortlist(context, ref, isShortlisted),
+                  ),
+                  const SizedBox(width: 8),
+                  _FloatingIconBtn(
+                    icon: canMessageThisProfile
+                        ? Icons.chat_bubble_outline
+                        : Icons.lock_outline,
+                    accent: canMessageThisProfile ? accent : Colors.grey,
+                    showPremiumDot: !canMessageThisProfile,
+                    onTap: () {
+                      if (canMessageThisProfile) {
+                        _onMessage(context, ref);
+                      } else {
+                        _showPremiumPrompt(context, ent);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              if (contactGatingOn) ...[
+                const SizedBox(height: 8),
+                _RequestContactRow(
+                  profileId: profileId,
+                  canRequest: canRequestContactNow,
+                  isMatched: isMatched,
+                  ent: ent,
+                  accent: accent,
                 ),
-              ),
-              const SizedBox(width: 10),
-              _FloatingIconBtn(
-                icon: Icons.star_border_rounded,
-                accent: accent,
-                onTap: () => _onShortlist(context, ref),
-              ),
-              const SizedBox(width: 8),
-              _FloatingIconBtn(
-                icon: ent.canSendMessage ? Icons.chat_bubble_outline : Icons.lock_outline,
-                accent: ent.canSendMessage ? accent : Colors.grey,
-                showPremiumDot: !ent.canSendMessage,
-                onTap: () {
-                  if (ent.canSendMessage) {
-                    _onMessage(context, ref);
-                  } else {
-                    _showPremiumPrompt(context, ent);
-                  }
-                },
-              ),
+              ],
             ],
           ),
         ),
@@ -287,16 +378,26 @@ class _FloatingActionBar extends ConsumerWidget {
 
   Future<void> _onExpressInterest(BuildContext context, WidgetRef ref) async {
     try {
-      final result = await ref.read(interactionsRepositoryProvider).expressInterest(profileId, source: 'profile');
+      final result = await ref
+          .read(interactionsRepositoryProvider)
+          .expressInterest(profileId, source: 'profile');
       if (!context.mounted) return;
       if (result.mutualMatch && result.chatThreadId != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('It\'s a match with $profileName!'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('It\'s a match with $profileName!'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profileId)}');
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profileId)}',
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Interest sent to $profileName'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('Interest sent to $profileName'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ApiException catch (e) {
@@ -307,13 +408,29 @@ class _FloatingActionBar extends ConsumerWidget {
     }
   }
 
-  Future<void> _onShortlist(BuildContext context, WidgetRef ref) async {
+  Future<void> _onShortlist(BuildContext context, WidgetRef ref, bool currentlyShortlisted) async {
     try {
-      await ref.read(shortlistRepositoryProvider).addToShortlist(profileId);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$profileName added to shortlist'), behavior: SnackBarBehavior.floating),
-      );
+      if (currentlyShortlisted) {
+        await ref.read(shortlistRepositoryProvider).removeFromShortlist(profileId);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$profileName removed from shortlist'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        await ref.read(shortlistRepositoryProvider).addToShortlist(profileId);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$profileName added to shortlist'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      ref.invalidate(shortlistProvider);
+      ref.invalidate(shortlistedIdsProvider);
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -326,14 +443,22 @@ class _FloatingActionBar extends ConsumerWidget {
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
-      final threadId = await ref.read(chatRepositoryProvider).createThread(profileId, mode: modeStr);
+      final threadId = await ref
+          .read(chatRepositoryProvider)
+          .createThread(profileId, mode: modeStr);
       if (!context.mounted) return;
-      context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(profileId)}');
+      context.push(
+        '/chat/$threadId?otherUserId=${Uri.encodeComponent(profileId)}',
+      );
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.code == 'CONNECTION_REQUIRED' ? 'Send or accept an interest first' : e.message),
+          content: Text(
+            e.code == 'CONNECTION_REQUIRED'
+                ? 'Send or accept an interest first'
+                : e.message,
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -343,80 +468,307 @@ class _FloatingActionBar extends ConsumerWidget {
       context.push('/chats');
     }
   }
+}
 
-  void _showPremiumPrompt(BuildContext context, Entitlements ent) {
-    final l = AppLocalizations.of(context)!;
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+/// When contactRequestGating is on: Request contact / Pending / View contacts (Call, WhatsApp) / disabled.
+class _RequestContactRow extends ConsumerWidget {
+  const _RequestContactRow({
+    required this.profileId,
+    required this.canRequest,
+    required this.isMatched,
+    required this.ent,
+    required this.accent,
+  });
+  final String profileId;
+  final bool canRequest;
+  final bool isMatched;
+  final Entitlements ent;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final statusAsync = ref.watch(contactRequestStatusProvider(profileId));
+
+    if (!canRequest) {
+      return Tooltip(
+        message: isMatched
+            ? 'Request contact is available for matched profiles.'
+            : ent.canRequestContact
+                ? 'Request contact is available after you both express interest.'
+                : 'Request contact is available after mutual interest or with premium.',
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.saffron.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.workspace_premium, size: 40, color: AppColors.saffron),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l.premiumRequired,
-                style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                ent.upgradeReason,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7),
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    context.push('/paywall');
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.saffron,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+              Icon(Icons.info_outline, size: 16, color: onSurface.withValues(alpha: 0.5)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Request contact is available after you both express interest or with premium.',
+                  style: AppTypography.caption.copyWith(
+                    color: onSurface.withValues(alpha: 0.6),
                   ),
-                  child: Text(l.ctaUpgradeToPremium),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(l.notNow),
               ),
             ],
           ),
+        ),
+      );
+    }
+
+    return statusAsync.when(
+      data: (status) {
+        final s = status as ContactRequestStatus;
+        if (s.state == ContactRequestState.accepted && s.canViewContacts) {
+          return _ViewContactsRow(
+            phone: s.sharedPhone!,
+            accent: accent,
+          );
+        }
+        if (s.state == ContactRequestState.pending) {
+          return SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: null,
+              icon: Icon(Icons.schedule, size: 18, color: onSurface.withValues(alpha: 0.6)),
+              label: Text(
+                'Request pending',
+                style: TextStyle(color: onSurface.withValues(alpha: 0.6)),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: onSurface.withValues(alpha: 0.2)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          );
+        }
+        if (s.state == ContactRequestState.declined) {
+          return SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _sendContactRequest(context, ref, profileId),
+              icon: const Icon(Icons.phone_outlined, size: 18),
+              label: const Text('Request again'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: accent,
+                side: BorderSide(color: accent.withValues(alpha: 0.6)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          );
+        }
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _sendContactRequest(context, ref, profileId),
+            icon: const Icon(Icons.phone_outlined, size: 18),
+            label: const Text('Request contact'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: accent,
+              side: BorderSide(color: accent.withValues(alpha: 0.6)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+            ),
+          ),
         );
       },
+      loading: () => SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: null,
+          icon: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: accent),
+          ),
+          label: const Text('Request contact'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: accent,
+            side: BorderSide(color: accent.withValues(alpha: 0.6)),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
+      error: (_, __) => SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () => _sendContactRequest(context, ref, profileId),
+          icon: const Icon(Icons.phone_outlined, size: 18),
+          label: const Text('Request contact'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: accent,
+            side: BorderSide(color: accent.withValues(alpha: 0.6)),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
     );
   }
+
+  Future<void> _sendContactRequest(BuildContext context, WidgetRef ref, String profileId) async {
+    try {
+      await ref.read(contactRequestRepositoryProvider).sendContactRequest(profileId);
+      if (!context.mounted) return;
+      ref.invalidate(contactRequestStatusProvider(profileId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact request sent'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send request: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
+
+class _ViewContactsRow extends StatelessWidget {
+  const _ViewContactsRow({required this.phone, required this.accent});
+  final String phone;
+  final Color accent;
+
+  Future<void> _launchCall() async {
+    final uri = Uri.parse('tel:${phone.replaceAll(RegExp(r'[^\d+]'), '')}');
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  Future<void> _launchWhatsApp() async {
+    final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    final uri = Uri.parse('https://wa.me/$digits');
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'View contacts',
+          style: AppTypography.labelMedium.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _launchCall,
+                icon: const Icon(Icons.call_outlined, size: 20),
+                label: const Text('Call'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: accent,
+                  side: BorderSide(color: accent.withValues(alpha: 0.6)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _launchWhatsApp,
+                icon: const Icon(Icons.chat_outlined, size: 20),
+                label: const Text('WhatsApp'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: accent,
+                  side: BorderSide(color: accent.withValues(alpha: 0.6)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+void _showPremiumPrompt(BuildContext context, Entitlements ent) {
+  final l = AppLocalizations.of(context)!;
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.saffron.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.workspace_premium,
+                size: 40,
+                color: AppColors.saffron,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l.premiumRequired,
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              ent.upgradeReason,
+              style: AppTypography.bodyMedium.copyWith(
+                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7),
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.push('/paywall');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.saffron,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(l.ctaUpgradeToPremium),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.notNow),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _FloatingIconBtn extends StatelessWidget {
@@ -493,6 +845,50 @@ class _DatingProfileContent extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.pop(),
             ),
+            actions: [
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onSelected: (v) {
+                  if (v == 'block')
+                    _showBlockConfirm(context, ref, profile.id, profile.name);
+                  if (v == 'report')
+                    _showReportConfirm(context, ref, profile.id, profile.name);
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'block',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.block,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(l.block),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.flag_outlined,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(l.report),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: primary.withValues(alpha: 0.15),
@@ -501,8 +897,12 @@ class _DatingProfileContent extends ConsumerWidget {
                     radius: 56,
                     backgroundColor: primary.withValues(alpha: 0.3),
                     child: Text(
-                      profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-                      style: AppTypography.displayMedium.copyWith(color: primary),
+                      profile.name.isNotEmpty
+                          ? profile.name[0].toUpperCase()
+                          : '?',
+                      style: AppTypography.displayMedium.copyWith(
+                        color: primary,
+                      ),
                     ),
                   ),
                 ),
@@ -537,7 +937,17 @@ class _DatingProfileContent extends ConsumerWidget {
                       color: onSurface.withValues(alpha: 0.8),
                     ),
                   ),
-                  if (profile.matchReason != null && profile.matchReason!.isNotEmpty) ...[
+                  if (profile.matchReasons.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: profile.matchReasons
+                          .map((r) => MatchReasonChip(reason: r))
+                          .toList(),
+                    ),
+                  ] else if (profile.matchReason != null &&
+                      profile.matchReason!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     MatchReasonChip(reason: profile.matchReason!),
                   ],
@@ -558,10 +968,12 @@ class _DatingProfileContent extends ConsumerWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: profile.interests
-                          .map<Widget>((i) => Chip(
-                                label: Text(i),
-                                backgroundColor: primary.withValues(alpha: 0.12),
-                              ))
+                          .map<Widget>(
+                            (i) => Chip(
+                              label: Text(i),
+                              backgroundColor: primary.withValues(alpha: 0.12),
+                            ),
+                          )
                           .toList(),
                     ),
                   ],
@@ -575,7 +987,9 @@ class _DatingProfileContent extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primary.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: primary.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Text(
                         profile.promptAnswer!,
@@ -654,7 +1068,9 @@ class _DatingFloatingBar extends ConsumerWidget {
                         : l.ctaUpgradeToPremium,
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: ent.canSendMessage ? primary : AppColors.saffron,
+                    backgroundColor: ent.canSendMessage
+                        ? primary
+                        : AppColors.saffron,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -677,16 +1093,26 @@ class _DatingFloatingBar extends ConsumerWidget {
 
   Future<void> _onSendIntro(BuildContext context, WidgetRef ref) async {
     try {
-      final result = await ref.read(interactionsRepositoryProvider).expressInterest(profileId, source: 'profile');
+      final result = await ref
+          .read(interactionsRepositoryProvider)
+          .expressInterest(profileId, source: 'profile');
       if (!context.mounted) return;
       if (result.mutualMatch && result.chatThreadId != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('It\'s a match with $profileName!'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('It\'s a match with $profileName!'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profileId)}');
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profileId)}',
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Intro sent to $profileName'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('Intro sent to $profileName'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ApiException catch (e) {
@@ -702,7 +1128,10 @@ class _DatingFloatingBar extends ConsumerWidget {
       await ref.read(shortlistRepositoryProvider).addToShortlist(profileId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$profileName saved'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('$profileName saved'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } on ApiException catch (e) {
       if (!context.mounted) return;
@@ -714,17 +1143,145 @@ class _DatingFloatingBar extends ConsumerWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
+//  SAFETY (BLOCK / REPORT)
+// ═════════════════════════════════════════════════════════════════════════
+
+Future<void> _showBlockConfirm(
+  BuildContext context,
+  WidgetRef ref,
+  String profileId,
+  String profileName,
+) async {
+  final l = AppLocalizations.of(context)!;
+  final reason = await showBlockReasonPicker(context);
+  if (reason == null || !context.mounted) return;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.block),
+      content: Text(
+        '$profileName won\'t be able to see your profile or contact you.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: Text(l.block),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await ref.read(safetyRepositoryProvider).block(
+          profileId,
+          reason,
+          source: 'profile',
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$profileName blocked'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    if (context.mounted) context.pop();
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Something went wrong. Please try again.'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+}
+
+Future<void> _showReportConfirm(
+  BuildContext context,
+  WidgetRef ref,
+  String profileId,
+  String profileName,
+) async {
+  final l = AppLocalizations.of(context)!;
+  final result = await showReportReasonPicker(context);
+  if (result == null || !context.mounted) return;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.report),
+      content: Text(
+        'Report $profileName? We take safety seriously and will review this profile.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: Text(l.report),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await ref.read(safetyRepositoryProvider).report(
+          profileId,
+          result.reason,
+          details: result.details,
+          source: 'profile',
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Report submitted. Thank you.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Something went wrong. Please try again.'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
 //  SHARED / WIDGET COMPONENTS
 // ═════════════════════════════════════════════════════════════════════════
 
 class _HeroAppBar extends StatelessWidget {
-  const _HeroAppBar({required this.profile, required this.accent});
+  const _HeroAppBar({
+    required this.profile,
+    required this.accent,
+    required this.onBlock,
+    required this.onReport,
+  });
   final UserProfile profile;
   final Color accent;
+  final VoidCallback onBlock;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
     final hasPhoto = profile.photoUrls.isNotEmpty;
+    final l = AppLocalizations.of(context)!;
     return SliverAppBar(
       expandedHeight: 260,
       pinned: true,
@@ -739,12 +1296,59 @@ class _HeroAppBar extends StatelessWidget {
         ),
         onPressed: () => context.pop(),
       ),
+      actions: [
+        PopupMenuButton<String>(
+          icon: Icon(
+            Icons.more_vert,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          onSelected: (v) {
+            if (v == 'block') onBlock();
+            if (v == 'report') onReport();
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: 'block',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.block,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(l.block),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'report',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(l.report),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: hasPhoto
             ? Image.network(
                 profile.photoUrls.first,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _AvatarFallback(profile: profile, accent: accent),
+                errorBuilder: (_, __, ___) =>
+                    _AvatarFallback(profile: profile, accent: accent),
               )
             : _AvatarFallback(profile: profile, accent: accent),
       ),
@@ -767,7 +1371,10 @@ class _AvatarFallback extends StatelessWidget {
           backgroundColor: accent.withValues(alpha: 0.2),
           child: Text(
             profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-            style: AppTypography.displayLarge.copyWith(color: accent, fontSize: 48),
+            style: AppTypography.displayLarge.copyWith(
+              color: accent,
+              fontSize: 48,
+            ),
           ),
         ),
       ),
@@ -816,11 +1423,17 @@ class _LocationRow extends StatelessWidget {
     if (parts.isEmpty) return const SizedBox.shrink();
     return Row(
       children: [
-        Icon(Icons.location_on_outlined, size: 16, color: onSurface.withValues(alpha: 0.5)),
+        Icon(
+          Icons.location_on_outlined,
+          size: 16,
+          color: onSurface.withValues(alpha: 0.5),
+        ),
         const SizedBox(width: 4),
         Text(
           parts.join(', '),
-          style: AppTypography.bodyMedium.copyWith(color: onSurface.withValues(alpha: 0.65)),
+          style: AppTypography.bodyMedium.copyWith(
+            color: onSurface.withValues(alpha: 0.65),
+          ),
         ),
       ],
     );
@@ -866,7 +1479,10 @@ class _CompatibilityCard extends ConsumerWidget {
       score = (compat.compatibilityScore * 100).round();
       label = compat.compatibilityLabel;
       breakdown = compat.breakdown.entries
-          .map((e) => _CompatDimension(_prettifyKey(e.key), (e.value * 100).round()))
+          .map(
+            (e) =>
+                _CompatDimension(_prettifyKey(e.key), (e.value * 100).round()),
+          )
           .toList();
       matchReasons = compat.matchReasons;
     } else {
@@ -876,59 +1492,65 @@ class _CompatibilityCard extends ConsumerWidget {
       label = score >= 80
           ? 'Excellent match'
           : score >= 60
-              ? 'Good match'
-              : score >= 40
-                  ? 'Fair match'
-                  : 'Low match';
+          ? 'Good match'
+          : score >= 40
+          ? 'Fair match'
+          : 'Low match';
       matchReasons = [];
     }
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [accent.withValues(alpha: 0.08), accent.withValues(alpha: 0.02)],
+          colors: [
+            accent.withValues(alpha: 0.12),
+            accent.withValues(alpha: 0.04),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: 0.15)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header: "Compatibility with you"
           Row(
             children: [
-              if (loading)
-                SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 5,
-                    backgroundColor: accent.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
-                  ),
-                )
-              else
-                _ScoreRing(score: score, accent: accent),
-              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.favorite_rounded, size: 22, color: accent),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Compatibility',
+                      'Compatibility with you',
                       style: AppTypography.titleMedium.copyWith(
                         color: onSurface,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      loading ? 'Calculating...' : label,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w600,
+                      loading ? 'Calculating...' : 'How close they are to what you\'re looking for',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: onSurface.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
@@ -936,18 +1558,67 @@ class _CompatibilityCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          ...breakdown.map((b) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+          const SizedBox(height: 20),
+          // Hero: overall score
+          Center(
+            child: Column(
+              children: [
+                if (loading)
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 6,
+                      backgroundColor: accent.withValues(alpha: 0.12),
+                      valueColor: AlwaysStoppedAnimation<Color>(accent),
+                    ),
+                  )
+                else
+                  _ScoreRing(score: score, accent: accent),
+                const SizedBox(height: 10),
+                if (!loading)
+                  Text(
+                    label,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (breakdown.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Icon(Icons.bar_chart_rounded, size: 18, color: onSurface.withValues(alpha: 0.7)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Closeness by dimension',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: onSurface.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...breakdown.map(
+              (b) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
                 child: _BreakdownRow(
                   label: b.label,
                   score: b.score,
                   accent: accent,
                   onSurface: onSurface,
                 ),
-              )),
+              ),
+            ),
+          ],
           if (matchReasons.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -975,28 +1646,42 @@ class _ScoreRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final progress = (score / 100).clamp(0.0, 1.0);
     return SizedBox(
-      width: 64,
-      height: 64,
+      width: 100,
+      height: 100,
       child: Stack(
         alignment: Alignment.center,
         children: [
           SizedBox(
-            width: 64,
-            height: 64,
+            width: 100,
+            height: 100,
             child: CircularProgressIndicator(
-              value: score / 100,
-              strokeWidth: 5,
+              value: progress,
+              strokeWidth: 8,
               backgroundColor: accent.withValues(alpha: 0.12),
               valueColor: AlwaysStoppedAnimation<Color>(accent),
             ),
           ),
-          Text(
-            '$score%',
-            style: AppTypography.titleMedium.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w800,
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$score',
+                style: AppTypography.headlineMedium.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                ),
+              ),
+              Text(
+                '%',
+                style: AppTypography.titleSmall.copyWith(
+                  color: accent.withValues(alpha: 0.9),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1018,39 +1703,43 @@ class _BreakdownRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final progress = (score / 100).clamp(0.0, 1.0);
+    final barColor = score >= 75
+        ? accent
+        : (score >= 50 ? AppColors.saffron : onSurface.withValues(alpha: 0.4));
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          flex: 2,
           child: Text(
             label,
-            style: AppTypography.bodySmall.copyWith(
-              color: onSurface.withValues(alpha: 0.7),
+            style: AppTypography.bodyMedium.copyWith(
+              color: onSurface.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
+        const SizedBox(width: 12),
         Expanded(
-          flex: 3,
+          flex: 2,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: score / 100,
-              minHeight: 6,
+              value: progress,
+              minHeight: 10,
               backgroundColor: accent.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                score >= 70 ? accent : (score >= 40 ? AppColors.saffron : Colors.grey),
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         SizedBox(
-          width: 32,
+          width: 40,
           child: Text(
             '$score%',
-            style: AppTypography.caption.copyWith(
-              color: onSurface.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w600,
+            style: AppTypography.titleSmall.copyWith(
+              color: barColor,
+              fontWeight: FontWeight.w700,
             ),
             textAlign: TextAlign.right,
           ),
@@ -1257,13 +1946,22 @@ class _BasicDetailsCard extends StatelessWidget {
     final rows = <_DetailRow>[];
 
     if (profile.gender != null) rows.add(_DetailRow('Gender', profile.gender!));
-    if (profile.age != null) rows.add(_DetailRow('Age', '${profile.age} years'));
-    if (profile.dateOfBirth != null) rows.add(_DetailRow('Date of birth', profile.dateOfBirth!));
-    if (mat?.heightCm != null) rows.add(_DetailRow('Height', _formatHeight(mat.heightCm as int)));
-    if (mat?.maritalStatus != null) rows.add(_DetailRow('Marital status', _titleCase(mat.maritalStatus as String)));
-    if (mat?.religion != null) rows.add(_DetailRow('Religion', mat.religion as String));
-    if (mat?.casteOrCommunity != null) rows.add(_DetailRow('Community', mat.casteOrCommunity as String));
-    if (profile.motherTongue != null) rows.add(_DetailRow('Mother tongue', profile.motherTongue!));
+    if (profile.age != null)
+      rows.add(_DetailRow('Age', '${profile.age} years'));
+    if (profile.dateOfBirth != null)
+      rows.add(_DetailRow('Date of birth', profile.dateOfBirth!));
+    if (mat?.heightCm != null)
+      rows.add(_DetailRow('Height', _formatHeight(mat.heightCm as int)));
+    if (mat?.maritalStatus != null)
+      rows.add(
+        _DetailRow('Marital status', _titleCase(mat.maritalStatus as String)),
+      );
+    if (mat?.religion != null)
+      rows.add(_DetailRow('Religion', mat.religion as String));
+    if (mat?.casteOrCommunity != null)
+      rows.add(_DetailRow('Community', mat.casteOrCommunity as String));
+    if (profile.motherTongue != null)
+      rows.add(_DetailRow('Mother tongue', profile.motherTongue!));
     if (profile.languagesSpoken.isNotEmpty) {
       rows.add(_DetailRow('Languages', profile.languagesSpoken.join(', ')));
     }
@@ -1271,12 +1969,21 @@ class _BasicDetailsCard extends StatelessWidget {
       rows.add(_DetailRow('Location', profile.displayLocation));
     }
     if (profile.originCity != null || profile.originCountry != null) {
-      final parts = [profile.originCity, profile.originCountry].whereType<String>().where((s) => s.isNotEmpty);
+      final parts = [
+        profile.originCity,
+        profile.originCountry,
+      ].whereType<String>().where((s) => s.isNotEmpty);
       if (parts.isNotEmpty) rows.add(_DetailRow('Origin', parts.join(', ')));
     }
 
     if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(title: 'Basic details', icon: Icons.person_outline, rows: rows, accent: accent, onSurface: onSurface);
+    return _InfoCard(
+      title: 'Basic details',
+      icon: Icons.person_outline,
+      rows: rows,
+      accent: accent,
+      onSurface: onSurface,
+    );
   }
 
   static String _formatHeight(int cm) {
@@ -1292,7 +1999,11 @@ class _BasicDetailsCard extends StatelessWidget {
 }
 
 class _EducationCareerCard extends StatelessWidget {
-  const _EducationCareerCard({required this.mat, required this.onSurface, required this.accent});
+  const _EducationCareerCard({
+    required this.mat,
+    required this.onSurface,
+    required this.accent,
+  });
   final dynamic mat;
   final Color onSurface;
   final Color accent;
@@ -1300,23 +2011,89 @@ class _EducationCareerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <_DetailRow>[];
-    if (mat.educationDegree != null) rows.add(_DetailRow('Education', mat.educationDegree));
-    if (mat.educationInstitution != null) rows.add(_DetailRow('Institution', mat.educationInstitution));
-    if (mat.occupation != null) rows.add(_DetailRow('Occupation', mat.occupation));
+    if (mat.educationDegree != null)
+      rows.add(_DetailRow('Education', mat.educationDegree));
+    if (mat.educationInstitution != null)
+      rows.add(_DetailRow('Institution', mat.educationInstitution));
+    if (mat.occupation != null)
+      rows.add(_DetailRow('Occupation', mat.occupation));
     if (mat.employer != null) rows.add(_DetailRow('Employer', mat.employer));
     if (mat.industry != null) rows.add(_DetailRow('Industry', mat.industry));
     if (mat.incomeRange != null) {
       final inc = mat.incomeRange;
-      final label = [inc.minLabel, inc.maxLabel].whereType<String>().join(' – ');
-      if (label.isNotEmpty) rows.add(_DetailRow('Income', '${inc.currency ?? ''} $label'.trim()));
+      final label = [
+        inc.minLabel,
+        inc.maxLabel,
+      ].whereType<String>().join(' – ');
+      if (label.isNotEmpty)
+        rows.add(_DetailRow('Income', '${inc.currency ?? ''} $label'.trim()));
     }
     if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(title: 'Education & career', icon: Icons.school_outlined, rows: rows, accent: accent, onSurface: onSurface);
+    return _InfoCard(
+      title: 'Education & career',
+      icon: Icons.school_outlined,
+      rows: rows,
+      accent: accent,
+      onSurface: onSurface,
+    );
+  }
+}
+
+/// When parentGuardianRole flag is on: show that profile is managed by parent/guardian/etc.
+class _ManagedByBanner extends StatelessWidget {
+  const _ManagedByBanner({required this.role, required this.onSurface});
+  final ProfileRole role;
+  final Color onSurface;
+
+  static String _label(ProfileRole r) {
+    switch (r) {
+      case ProfileRole.parent:
+        return 'Profile managed by parent';
+      case ProfileRole.guardian:
+        return 'Profile managed by guardian';
+      case ProfileRole.sibling:
+        return 'Profile managed by sibling';
+      case ProfileRole.friend:
+        return 'Profile managed by friend';
+      case ProfileRole.self:
+        return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _label(role);
+    if (label.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: onSurface.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: onSurface.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.family_restroom, size: 18, color: onSurface.withValues(alpha: 0.6)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class _FamilyCard extends StatelessWidget {
-  const _FamilyCard({required this.mat, required this.onSurface, required this.accent});
+  const _FamilyCard({
+    required this.mat,
+    required this.onSurface,
+    required this.accent,
+  });
   final dynamic mat;
   final Color onSurface;
   final Color accent;
@@ -1325,10 +2102,14 @@ class _FamilyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final fam = mat.familyDetails;
     final rows = <_DetailRow>[];
-    if (fam.familyType != null) rows.add(_DetailRow('Family type', fam.familyType));
-    if (fam.familyValues != null) rows.add(_DetailRow('Family values', fam.familyValues));
-    if (fam.fatherOccupation != null) rows.add(_DetailRow('Father\'s occupation', fam.fatherOccupation));
-    if (fam.motherOccupation != null) rows.add(_DetailRow('Mother\'s occupation', fam.motherOccupation));
+    if (fam.familyType != null)
+      rows.add(_DetailRow('Family type', fam.familyType));
+    if (fam.familyValues != null)
+      rows.add(_DetailRow('Family values', fam.familyValues));
+    if (fam.fatherOccupation != null)
+      rows.add(_DetailRow('Father\'s occupation', fam.fatherOccupation));
+    if (fam.motherOccupation != null)
+      rows.add(_DetailRow('Mother\'s occupation', fam.motherOccupation));
     if (fam.siblingsCount != null) {
       final married = fam.siblingsMarried;
       final siblingsText = married != null
@@ -1336,13 +2117,25 @@ class _FamilyCard extends StatelessWidget {
           : '${fam.siblingsCount}';
       rows.add(_DetailRow('Siblings', siblingsText));
     }
+    if (fam.familyExpectations != null && fam.familyExpectations!.isNotEmpty)
+      rows.add(_DetailRow('Family expectations', fam.familyExpectations!));
     if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(title: 'Family', icon: Icons.family_restroom, rows: rows, accent: accent, onSurface: onSurface);
+    return _InfoCard(
+      title: 'Family',
+      icon: Icons.family_restroom,
+      rows: rows,
+      accent: accent,
+      onSurface: onSurface,
+    );
   }
 }
 
 class _LifestyleCard extends StatelessWidget {
-  const _LifestyleCard({required this.mat, required this.onSurface, required this.accent});
+  const _LifestyleCard({
+    required this.mat,
+    required this.onSurface,
+    required this.accent,
+  });
   final dynamic mat;
   final Color onSurface;
   final Color accent;
@@ -1354,12 +2147,22 @@ class _LifestyleCard extends StatelessWidget {
     if (mat.drinking != null) rows.add(_DetailRow('Drinking', mat.drinking));
     if (mat.smoking != null) rows.add(_DetailRow('Smoking', mat.smoking));
     if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(title: 'Lifestyle', icon: Icons.spa_outlined, rows: rows, accent: accent, onSurface: onSurface);
+    return _InfoCard(
+      title: 'Lifestyle',
+      icon: Icons.spa_outlined,
+      rows: rows,
+      accent: accent,
+      onSurface: onSurface,
+    );
   }
 }
 
 class _HoroscopeCard extends StatelessWidget {
-  const _HoroscopeCard({required this.mat, required this.onSurface, required this.accent});
+  const _HoroscopeCard({
+    required this.mat,
+    required this.onSurface,
+    required this.accent,
+  });
   final dynamic mat;
   final Color onSurface;
   final Color accent;
@@ -1368,19 +2171,33 @@ class _HoroscopeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hor = mat.horoscope;
     final rows = <_DetailRow>[];
-    if (hor.dateOfBirth != null) rows.add(_DetailRow('Date of birth', hor.dateOfBirth));
-    if (hor.timeOfBirth != null) rows.add(_DetailRow('Birth time', hor.timeOfBirth));
-    if (hor.birthPlace != null) rows.add(_DetailRow('Birth place', hor.birthPlace));
+    if (hor.dateOfBirth != null)
+      rows.add(_DetailRow('Date of birth', hor.dateOfBirth));
+    if (hor.timeOfBirth != null)
+      rows.add(_DetailRow('Birth time', hor.timeOfBirth));
+    if (hor.birthPlace != null)
+      rows.add(_DetailRow('Birth place', hor.birthPlace));
     if (hor.manglik != null) rows.add(_DetailRow('Manglik', hor.manglik));
     if (hor.nakshatra != null) rows.add(_DetailRow('Nakshatra', hor.nakshatra));
-    if (hor.horoscopeDocUrl != null) rows.add(const _DetailRow('Kundli document', 'Available'));
+    if (hor.horoscopeDocUrl != null)
+      rows.add(const _DetailRow('Kundli document', 'Available'));
     if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(title: 'Horoscope', icon: Icons.auto_awesome, rows: rows, accent: accent, onSurface: onSurface);
+    return _InfoCard(
+      title: 'Horoscope',
+      icon: Icons.auto_awesome,
+      rows: rows,
+      accent: accent,
+      onSurface: onSurface,
+    );
   }
 }
 
 class _PartnerPrefsCard extends StatelessWidget {
-  const _PartnerPrefsCard({required this.prefs, required this.onSurface, required this.accent});
+  const _PartnerPrefsCard({
+    required this.prefs,
+    required this.onSurface,
+    required this.accent,
+  });
   final dynamic prefs;
   final Color onSurface;
   final Color accent;
@@ -1390,38 +2207,83 @@ class _PartnerPrefsCard extends StatelessWidget {
     final rows = <_DetailRow>[];
     rows.add(_DetailRow('Age range', '${prefs.ageMin} – ${prefs.ageMax}'));
     if (prefs.heightMinCm != null || prefs.heightMaxCm != null) {
-      final hMin = prefs.heightMinCm != null ? '${prefs.heightMinCm} cm' : 'Any';
-      final hMax = prefs.heightMaxCm != null ? '${prefs.heightMaxCm} cm' : 'Any';
+      final hMin = prefs.heightMinCm != null
+          ? '${prefs.heightMinCm} cm'
+          : 'Any';
+      final hMax = prefs.heightMaxCm != null
+          ? '${prefs.heightMaxCm} cm'
+          : 'Any';
       rows.add(_DetailRow('Height', '$hMin – $hMax'));
     }
-    if (prefs.preferredReligions != null && (prefs.preferredReligions as List).isNotEmpty) {
-      rows.add(_DetailRow('Religion', (prefs.preferredReligions as List).join(', ')));
+    if (prefs.preferredReligions != null &&
+        (prefs.preferredReligions as List).isNotEmpty) {
+      rows.add(
+        _DetailRow('Religion', (prefs.preferredReligions as List).join(', ')),
+      );
     }
-    if (prefs.preferredCommunities != null && (prefs.preferredCommunities as List).isNotEmpty) {
-      rows.add(_DetailRow('Community', (prefs.preferredCommunities as List).join(', ')));
+    if (prefs.preferredCommunities != null &&
+        (prefs.preferredCommunities as List).isNotEmpty) {
+      rows.add(
+        _DetailRow(
+          'Community',
+          (prefs.preferredCommunities as List).join(', '),
+        ),
+      );
     }
-    if (prefs.preferredMotherTongues != null && (prefs.preferredMotherTongues as List).isNotEmpty) {
-      rows.add(_DetailRow('Mother tongue', (prefs.preferredMotherTongues as List).join(', ')));
+    if (prefs.preferredMotherTongues != null &&
+        (prefs.preferredMotherTongues as List).isNotEmpty) {
+      rows.add(
+        _DetailRow(
+          'Mother tongue',
+          (prefs.preferredMotherTongues as List).join(', '),
+        ),
+      );
     }
-    if (prefs.educationPreference != null) rows.add(_DetailRow('Education', prefs.educationPreference!));
-    if (prefs.occupationPreference != null) rows.add(_DetailRow('Occupation', prefs.occupationPreference!));
-    if (prefs.incomePreference != null) rows.add(_DetailRow('Income', prefs.incomePreference!));
-    if (prefs.maritalStatusPreference != null && (prefs.maritalStatusPreference as List).isNotEmpty) {
-      rows.add(_DetailRow('Marital status', (prefs.maritalStatusPreference as List).join(', ')));
+    if (prefs.educationPreference != null)
+      rows.add(_DetailRow('Education', prefs.educationPreference!));
+    if (prefs.occupationPreference != null)
+      rows.add(_DetailRow('Occupation', prefs.occupationPreference!));
+    if (prefs.incomePreference != null)
+      rows.add(_DetailRow('Income', prefs.incomePreference!));
+    if (prefs.maritalStatusPreference != null &&
+        (prefs.maritalStatusPreference as List).isNotEmpty) {
+      rows.add(
+        _DetailRow(
+          'Marital status',
+          (prefs.maritalStatusPreference as List).join(', '),
+        ),
+      );
     }
-    if (prefs.preferredLocations != null && (prefs.preferredLocations as List).isNotEmpty) {
-      rows.add(_DetailRow('Locations', (prefs.preferredLocations as List).join(', ')));
+    if (prefs.preferredLocations != null &&
+        (prefs.preferredLocations as List).isNotEmpty) {
+      rows.add(
+        _DetailRow('Locations', (prefs.preferredLocations as List).join(', ')),
+      );
     }
-    if (prefs.preferredCountries != null && (prefs.preferredCountries as List).isNotEmpty) {
-      rows.add(_DetailRow('Countries', (prefs.preferredCountries as List).join(', ')));
+    if (prefs.preferredCountries != null &&
+        (prefs.preferredCountries as List).isNotEmpty) {
+      rows.add(
+        _DetailRow('Countries', (prefs.preferredCountries as List).join(', ')),
+      );
     }
-    if (prefs.settledAbroadPreference != null) rows.add(_DetailRow('Settled abroad', prefs.settledAbroadPreference!));
-    if (prefs.dietPreference != null) rows.add(_DetailRow('Diet', prefs.dietPreference!));
-    if (prefs.drinkingPreference != null) rows.add(_DetailRow('Drinking', prefs.drinkingPreference!));
-    if (prefs.smokingPreference != null) rows.add(_DetailRow('Smoking', prefs.smokingPreference!));
-    if (prefs.horoscopeMatchPreferred == true) rows.add(const _DetailRow('Horoscope match', 'Preferred'));
+    if (prefs.settledAbroadPreference != null)
+      rows.add(_DetailRow('Settled abroad', prefs.settledAbroadPreference!));
+    if (prefs.dietPreference != null)
+      rows.add(_DetailRow('Diet', prefs.dietPreference!));
+    if (prefs.drinkingPreference != null)
+      rows.add(_DetailRow('Drinking', prefs.drinkingPreference!));
+    if (prefs.smokingPreference != null)
+      rows.add(_DetailRow('Smoking', prefs.smokingPreference!));
+    if (prefs.horoscopeMatchPreferred == true)
+      rows.add(const _DetailRow('Horoscope match', 'Preferred'));
     if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(title: 'Looking for', icon: Icons.search, rows: rows, accent: accent, onSurface: onSurface);
+    return _InfoCard(
+      title: 'Looking for',
+      icon: Icons.search,
+      rows: rows,
+      accent: accent,
+      onSurface: onSurface,
+    );
   }
 }
 
@@ -1468,32 +2330,34 @@ class _InfoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...rows.map((r) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 120,
-                      child: Text(
-                        r.label,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: onSurface.withValues(alpha: 0.5),
-                        ),
+          ...rows.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      r.label,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: onSurface.withValues(alpha: 0.5),
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        r.value,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: onSurface.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w500,
-                        ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      r.value,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: onSurface.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1636,148 +2500,6 @@ class _ProfileCompletenessRow extends StatelessWidget {
   }
 }
 
-// ── Preference alignment (from compatibility API) ────────────────────────
-
-class _PreferenceAlignmentSection extends ConsumerWidget {
-  const _PreferenceAlignmentSection({
-    required this.profileId,
-    required this.accent,
-    required this.onSurface,
-  });
-  final String profileId;
-  final Color accent;
-  final Color onSurface;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final asyncCompat = ref.watch(compatibilityProvider(profileId));
-    return asyncCompat.when(
-      data: (compat) {
-        if (compat == null || compat.preferenceAlignment.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return _buildAlignment(context, compat.preferenceAlignment);
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildAlignment(BuildContext context, Map<String, String> alignment) {
-    final meaningful = alignment.entries
-        .where((e) => e.value.toLowerCase() != 'no_preference')
-        .toList();
-
-    if (meaningful.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: onSurface.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.tune, size: 20, color: accent),
-              const SizedBox(width: 8),
-              Text(
-                'How they match your preferences',
-                style: AppTypography.titleSmall.copyWith(
-                  color: onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...meaningful.map((e) {
-            final status = _classifyValue(e.value);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Icon(status.icon, size: 18, color: status.color),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _prettifyKey(e.key),
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: onSurface.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: status.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      status.label,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: status.color,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  static _AlignmentStatus _classifyValue(String raw) {
-    final v = raw.toLowerCase().replaceAll('_', ' ').trim();
-    switch (v) {
-      case 'match':
-      case 'yes':
-      case 'exact':
-      case 'same city':
-      case 'same religion':
-        return _AlignmentStatus('Match', Icons.check_circle, AppColors.indiaGreen);
-      case 'within range':
-        return _AlignmentStatus('Within range', Icons.check_circle_outline, AppColors.indiaGreen);
-      case 'close':
-        return _AlignmentStatus('Close', Icons.adjust, AppColors.saffron);
-      case 'partial':
-        return _AlignmentStatus('Partial', Icons.remove_circle_outline, AppColors.saffron);
-      case 'mismatch':
-      case 'no':
-      case 'outside range':
-        return _AlignmentStatus('Mismatch', Icons.highlight_off, Colors.redAccent);
-      default:
-        final display = v[0].toUpperCase() + v.substring(1);
-        return _AlignmentStatus(display, Icons.info_outline, Colors.grey.shade600);
-    }
-  }
-
-  static String _prettifyKey(String key) {
-    final spaced = key
-        .replaceAll('_', ' ')
-        .replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m[0]}')
-        .trim();
-    if (spaced.isEmpty) return key;
-    return spaced[0].toUpperCase() + spaced.substring(1);
-  }
-}
-
-class _AlignmentStatus {
-  const _AlignmentStatus(this.label, this.icon, this.color);
-  final String label;
-  final IconData icon;
-  final Color color;
-}
-
 // ═════════════════════════════════════════════════════════════════════════
 //  COMPATIBILITY SCORING (local fallback when API unavailable)
 // ═════════════════════════════════════════════════════════════════════════
@@ -1796,7 +2518,9 @@ List<_CompatDimension> _computeBreakdown(UserProfile profile) {
   int profileScore = 30 + rng.nextInt(50);
   if (profile.aboutMe.isNotEmpty) profileScore += 10;
   if (profile.photoUrls.length >= 2) profileScore += 10;
-  dims.add(_CompatDimension('Profile completeness', profileScore.clamp(0, 100)));
+  dims.add(
+    _CompatDimension('Profile completeness', profileScore.clamp(0, 100)),
+  );
 
   final mat = profile.matrimonyExtensions;
   if (mat != null) {

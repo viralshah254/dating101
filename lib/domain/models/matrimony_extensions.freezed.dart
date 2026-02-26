@@ -23,6 +23,8 @@ mixin _$MatrimonyExtensions {
   String? get motherTongue => throw _privateConstructorUsedError;
   String? get maritalStatus => throw _privateConstructorUsedError;
   int? get heightCm => throw _privateConstructorUsedError;
+  String? get bodyType => throw _privateConstructorUsedError;
+  String? get complexion => throw _privateConstructorUsedError;
   String? get educationDegree => throw _privateConstructorUsedError;
   String? get educationInstitution => throw _privateConstructorUsedError;
   String? get occupation => throw _privateConstructorUsedError;
@@ -56,6 +58,8 @@ abstract class $MatrimonyExtensionsCopyWith<$Res> {
     String? motherTongue,
     String? maritalStatus,
     int? heightCm,
+    String? bodyType,
+    String? complexion,
     String? educationDegree,
     String? educationInstitution,
     String? occupation,
@@ -95,6 +99,8 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
     Object? motherTongue = freezed,
     Object? maritalStatus = freezed,
     Object? heightCm = freezed,
+    Object? bodyType = freezed,
+    Object? complexion = freezed,
     Object? educationDegree = freezed,
     Object? educationInstitution = freezed,
     Object? occupation = freezed,
@@ -133,6 +139,14 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
                 ? _value.heightCm
                 : heightCm // ignore: cast_nullable_to_non_nullable
                       as int?,
+            bodyType: freezed == bodyType
+                ? _value.bodyType
+                : bodyType // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            complexion: freezed == complexion
+                ? _value.complexion
+                : complexion // ignore: cast_nullable_to_non_nullable
+                      as String?,
             educationDegree: freezed == educationDegree
                 ? _value.educationDegree
                 : educationDegree // ignore: cast_nullable_to_non_nullable
@@ -241,6 +255,8 @@ abstract class _$$MatrimonyExtensionsImplCopyWith<$Res>
     String? motherTongue,
     String? maritalStatus,
     int? heightCm,
+    String? bodyType,
+    String? complexion,
     String? educationDegree,
     String? educationInstitution,
     String? occupation,
@@ -282,6 +298,8 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
     Object? motherTongue = freezed,
     Object? maritalStatus = freezed,
     Object? heightCm = freezed,
+    Object? bodyType = freezed,
+    Object? complexion = freezed,
     Object? educationDegree = freezed,
     Object? educationInstitution = freezed,
     Object? occupation = freezed,
@@ -320,6 +338,14 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
             ? _value.heightCm
             : heightCm // ignore: cast_nullable_to_non_nullable
                   as int?,
+        bodyType: freezed == bodyType
+            ? _value.bodyType
+            : bodyType // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        complexion: freezed == complexion
+            ? _value.complexion
+            : complexion // ignore: cast_nullable_to_non_nullable
+                  as String?,
         educationDegree: freezed == educationDegree
             ? _value.educationDegree
             : educationDegree // ignore: cast_nullable_to_non_nullable
@@ -379,6 +405,8 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     this.motherTongue,
     this.maritalStatus,
     this.heightCm,
+    this.bodyType,
+    this.complexion,
     this.educationDegree,
     this.educationInstitution,
     this.occupation,
@@ -406,6 +434,10 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
   @override
   final int? heightCm;
   @override
+  final String? bodyType;
+  @override
+  final String? complexion;
+  @override
   final String? educationDegree;
   @override
   final String? educationInstitution;
@@ -430,7 +462,7 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
 
   @override
   String toString() {
-    return 'MatrimonyExtensions(roleManagingProfile: $roleManagingProfile, religion: $religion, casteOrCommunity: $casteOrCommunity, motherTongue: $motherTongue, maritalStatus: $maritalStatus, heightCm: $heightCm, educationDegree: $educationDegree, educationInstitution: $educationInstitution, occupation: $occupation, employer: $employer, industry: $industry, incomeRange: $incomeRange, familyDetails: $familyDetails, diet: $diet, drinking: $drinking, smoking: $smoking, horoscope: $horoscope)';
+    return 'MatrimonyExtensions(roleManagingProfile: $roleManagingProfile, religion: $religion, casteOrCommunity: $casteOrCommunity, motherTongue: $motherTongue, maritalStatus: $maritalStatus, heightCm: $heightCm, bodyType: $bodyType, complexion: $complexion, educationDegree: $educationDegree, educationInstitution: $educationInstitution, occupation: $occupation, employer: $employer, industry: $industry, incomeRange: $incomeRange, familyDetails: $familyDetails, diet: $diet, drinking: $drinking, smoking: $smoking, horoscope: $horoscope)';
   }
 
   @override
@@ -450,6 +482,10 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
                 other.maritalStatus == maritalStatus) &&
             (identical(other.heightCm, heightCm) ||
                 other.heightCm == heightCm) &&
+            (identical(other.bodyType, bodyType) ||
+                other.bodyType == bodyType) &&
+            (identical(other.complexion, complexion) ||
+                other.complexion == complexion) &&
             (identical(other.educationDegree, educationDegree) ||
                 other.educationDegree == educationDegree) &&
             (identical(other.educationInstitution, educationInstitution) ||
@@ -473,7 +509,7 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     roleManagingProfile,
     religion,
@@ -481,6 +517,8 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     motherTongue,
     maritalStatus,
     heightCm,
+    bodyType,
+    complexion,
     educationDegree,
     educationInstitution,
     occupation,
@@ -492,7 +530,7 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     drinking,
     smoking,
     horoscope,
-  );
+  ]);
 
   /// Create a copy of MatrimonyExtensions
   /// with the given fields replaced by the non-null parameter values.
@@ -514,6 +552,8 @@ abstract class _MatrimonyExtensions implements MatrimonyExtensions {
     final String? motherTongue,
     final String? maritalStatus,
     final int? heightCm,
+    final String? bodyType,
+    final String? complexion,
     final String? educationDegree,
     final String? educationInstitution,
     final String? occupation,
@@ -539,6 +579,10 @@ abstract class _MatrimonyExtensions implements MatrimonyExtensions {
   String? get maritalStatus;
   @override
   int? get heightCm;
+  @override
+  String? get bodyType;
+  @override
+  String? get complexion;
   @override
   String? get educationDegree;
   @override

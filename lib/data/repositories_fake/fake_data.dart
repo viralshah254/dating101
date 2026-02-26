@@ -111,6 +111,15 @@ class FakeData {
     '5': 'Shared values: family, career',
   };
 
+  /// Multiple match reasons per profile for "Why recommended" chips.
+  static Map<String, List<String>> get matchReasonsList => {
+    '1': ['Lives in London', 'Same religion — Hindu', 'Shares 2 interests with you'],
+    '2': ['Similar education background', 'Both love arts & chai', 'Detailed profile'],
+    '3': ['Works in tech', 'Shared career ambitions', 'Verified profile'],
+    '4': ['Same dietary preference', 'Similar lifestyle: fitness, food', 'Lives nearby'],
+    '5': ['Similar family values', 'Shared values: family, career', 'From same city'],
+  };
+
   static Map<String, UserProfile> get allProfiles => {
     '1': _priya,
     '2': _ananya,

@@ -1,12 +1,17 @@
 import '../models/profile_summary.dart';
+import '../models/shortlist_entry.dart';
 import '../models/who_shortlisted_me_entry.dart';
 
 /// Matrimony: shortlist (saved profiles) and who shortlisted me.
 abstract class ShortlistRepository {
-  Future<List<ProfileSummary>> getShortlist({int limit = 100, int page = 1});
+  /// [sort] e.g. 'recent' (default) or 'most_interested' when backend supports.
+  Future<List<ShortlistEntry>> getShortlist({int limit = 100, int page = 1, String? sort});
 
   /// [note] is an optional private note (matrimony).
   Future<void> addToShortlist(String profileId, {String? note});
+
+  /// Update note and/or sortOrder for an entry (PATCH /shortlist/:shortlistId). No-op if backend does not support.
+  Future<void> updateShortlistEntry(String shortlistId, {String? note, int? sortOrder});
 
   Future<void> removeFromShortlist(String userId);
 

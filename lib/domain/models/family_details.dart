@@ -11,5 +11,7 @@ class FamilyDetails with _$FamilyDetails {
     String? motherOccupation,
     int? siblingsCount,
     int? siblingsMarried,
+    /// Optional; show "Family expectations" subsection when backend provides it.
+    String? familyExpectations,
   }) = _FamilyDetails;
 }

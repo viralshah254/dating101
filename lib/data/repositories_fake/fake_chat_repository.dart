@@ -35,6 +35,12 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Future<List<String>> getSuggestions({String? mode}) async {
+    await Future.delayed(const Duration(milliseconds: 30));
+    return ['Hi!', 'How are you?', 'What brings you here?', 'Tell me about yourself'];
+  }
+
+  @override
   Future<List<ChatThreadSummary>> getThreads({
     int limit = 50,
     String? mode,

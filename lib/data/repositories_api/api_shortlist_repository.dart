@@ -1,4 +1,4 @@
-import '../../domain/models/profile_summary.dart';
+import '../../domain/models/shortlist_entry.dart';
 import '../../domain/models/who_shortlisted_me_entry.dart';
 import '../../domain/repositories/shortlist_repository.dart';
 import '../api/api_client.dart';
@@ -9,16 +9,22 @@ class ApiShortlistRepository implements ShortlistRepository {
   final ApiClient api;
 
   @override
-  Future<List<ProfileSummary>> getShortlist({int limit = 100, int page = 1}) async {
-    final body = await api.get('/shortlist', query: {'page': '$page', 'limit': '$limit'});
+  Future<List<ShortlistEntry>> getShortlist({int limit = 100, int page = 1, String? sort}) async {
+    final query = <String, String>{'page': '$page', 'limit': '$limit'};
+    if (sort != null && sort.isNotEmpty) query['sort'] = sort;
+    final body = await api.get('/shortlist', query: query);
     final list = body['profiles'] as List? ?? [];
-    return list
-        .map((e) {
-          final entry = e as Map<String, dynamic>;
-          final profile = entry['profile'] as Map<String, dynamic>? ?? entry;
-          return ApiProfileRepository.parseSummaryPublic(profile);
-        })
-        .toList();
+    return list.map((e) {
+      final entry = e as Map<String, dynamic>;
+      final profileMap = entry['profile'] as Map<String, dynamic>? ?? entry;
+      final profile = ApiProfileRepository.parseSummaryPublic(profileMap);
+      return ShortlistEntry(
+        profile: profile,
+        note: entry['note'] as String?,
+        shortlistId: entry['shortlistId'] as String?,
+        createdAt: DateTime.tryParse(entry['createdAt'] as String? ?? ''),
+      );
+    }).toList();
   }
 
   @override
@@ -26,6 +32,15 @@ class ApiShortlistRepository implements ShortlistRepository {
     final payload = <String, dynamic>{'profileId': profileId};
     if (note != null && note.isNotEmpty) payload['note'] = note;
     await api.post('/shortlist', body: payload);
+  }
+
+  @override
+  Future<void> updateShortlistEntry(String shortlistId, {String? note, int? sortOrder}) async {
+    final body = <String, dynamic>{};
+    if (note != null) body['note'] = note;
+    if (sortOrder != null) body['sortOrder'] = sortOrder;
+    if (body.isEmpty) return;
+    await api.patch('/shortlist/$shortlistId', body: body);
   }
 
   @override

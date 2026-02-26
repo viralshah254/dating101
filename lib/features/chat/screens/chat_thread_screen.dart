@@ -1,9 +1,12 @@
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
@@ -21,6 +24,13 @@ class ChatThreadScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<ChatThreadScreen> createState() => _ChatThreadScreenState();
 }
+
+const _icebreakerSuggestions = [
+  'Hi!',
+  'How are you?',
+  'What brings you here?',
+  'Tell me about yourself',
+];
 
 class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   /// Optimistic messages we just sent; shown until server list includes them.
@@ -42,7 +52,74 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     super.dispose();
   }
 
-  void _showMoreOptions(BuildContext context, WidgetRef ref, String? otherUserId) {
+  Future<void> _sendMessageText(
+    BuildContext context,
+    WidgetRef ref,
+    String text,
+  ) async {
+    final chatRepo = ref.read(chatRepositoryProvider);
+    final me = ref.read(authRepositoryProvider).currentUserId;
+    setState(() {
+      _pendingSent.add(
+        ChatMessage(
+          id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
+          senderId: me ?? 'me',
+          text: text,
+          sentAt: DateTime.now(),
+        ),
+      );
+    });
+    try {
+      await chatRepo.sendMessage(widget.threadId, text);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(
+          () => _pendingSent.removeWhere((m) => m.text == text),
+        );
+        final showUpgrade =
+            e.code == 'PREMIUM_REQUIRED' || e.code == 'INTRO_LIMIT';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.code == 'INTRO_LIMIT'
+                  ? 'Match to continue or upgrade'
+                  : e.message,
+            ),
+            behavior: SnackBarBehavior.floating,
+            action: showUpgrade
+                ? SnackBarAction(
+                    label: 'Upgrade',
+                    onPressed: () => context.push('/paywall'),
+                  )
+                : null,
+          ),
+        );
+      }
+      return;
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _pendingSent.removeWhere((m) => m.text == text),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to send. Try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    ref.invalidate(_threadMessagesProvider(widget.threadId));
+    ref.invalidate(chatThreadsProvider);
+  }
+
+  void _showMoreOptions(
+    BuildContext context,
+    WidgetRef ref,
+    String? otherUserId,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -53,7 +130,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(height: 16),
             if (otherUserId != null)
               ListTile(
@@ -66,20 +150,32 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               ),
             ListTile(
               leading: const Icon(Icons.block, color: Colors.red),
-              title: const Text('Block user', style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Block user',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () async {
                 Navigator.pop(ctx);
                 if (otherUserId == null) return;
+                final reason = await showBlockReasonPicker(context);
+                if (reason == null || !mounted) return;
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (d) => AlertDialog(
                     title: const Text('Block user?'),
-                    content: const Text('They won\'t be able to contact you anymore.'),
+                    content: const Text(
+                      'They won\'t be able to contact you anymore.',
+                    ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(d, false),
+                        child: const Text('Cancel'),
+                      ),
                       FilledButton(
                         onPressed: () => Navigator.pop(d, true),
-                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
                         child: const Text('Block'),
                       ),
                     ],
@@ -87,7 +183,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                 );
                 if (confirmed != true || !mounted) return;
                 try {
-                  await ref.read(discoveryRepositoryProvider).sendFeedback(candidateId: otherUserId, action: 'block');
+                  await ref.read(safetyRepositoryProvider).block(
+                        otherUserId,
+                        reason,
+                        source: 'chat',
+                      );
                   if (mounted) context.pop();
                 } catch (_) {}
               },
@@ -98,11 +198,44 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               onTap: () async {
                 Navigator.pop(ctx);
                 if (otherUserId == null) return;
+                final result = await showReportReasonPicker(context);
+                if (result == null || !mounted) return;
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (d) => AlertDialog(
+                    title: const Text('Report user?'),
+                    content: const Text(
+                      'We take safety seriously and will review this report.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(d, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(d, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                        ),
+                        child: const Text('Report'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !mounted) return;
                 try {
-                  await ref.read(discoveryRepositoryProvider).sendFeedback(candidateId: otherUserId, action: 'report');
+                  await ref.read(safetyRepositoryProvider).report(
+                        otherUserId,
+                        result.reason,
+                        details: result.details,
+                        source: 'chat',
+                      );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Report submitted. Thank you.'), behavior: SnackBarBehavior.floating),
+                      const SnackBar(
+                        content: Text('Report submitted. Thank you.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                   }
                 } catch (_) {}
@@ -116,13 +249,18 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   }
 
   /// Merge server messages with pending sent, deduping so we don't show the same message twice.
-  List<ChatMessage> _mergeMessages(List<ChatMessage> server, String? currentUserId) {
+  List<ChatMessage> _mergeMessages(
+    List<ChatMessage> server,
+    String? currentUserId,
+  ) {
     final merged = List<ChatMessage>.from(server);
     for (final p in _pendingSent) {
-      final match = merged.any((m) =>
-          m.senderId == p.senderId &&
-          m.text == p.text &&
-          (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120));
+      final match = merged.any(
+        (m) =>
+            m.senderId == p.senderId &&
+            m.text == p.text &&
+            (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120),
+      );
       if (!match) merged.add(p);
     }
     merged.sort((a, b) => a.sentAt.compareTo(b.sentAt));
@@ -131,20 +269,28 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final chatRepo = ref.watch(chatRepositoryProvider);
     final currentUserId = ref.watch(authRepositoryProvider).currentUserId;
     final messagesAsync = ref.watch(_threadMessagesProvider(widget.threadId));
+    final suggestionsAsync = ref.watch(chatSuggestionsProvider);
+    final icebreakerList = suggestionsAsync.valueOrNull ?? _icebreakerSuggestions;
     final otherUserId = widget.otherUserId;
-    final profileAsync = otherUserId != null ? ref.watch(profileSummaryProvider(otherUserId)) : null;
+    final profileAsync = otherUserId != null
+        ? ref.watch(profileSummaryProvider(otherUserId))
+        : null;
 
     ref.listen(_threadMessagesProvider(widget.threadId), (prev, next) {
       if (!next.hasValue || _pendingSent.isEmpty) return;
       if (!mounted) return;
       final list = next.value!;
       setState(() {
-        _pendingSent.removeWhere((p) => list.any((m) =>
-            m.senderId == p.senderId && m.text == p.text &&
-            (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120)));
+        _pendingSent.removeWhere(
+          (p) => list.any(
+            (m) =>
+                m.senderId == p.senderId &&
+                m.text == p.text &&
+                (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120),
+          ),
+        );
       });
     });
 
@@ -154,7 +300,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final scoreLabel = compatibilityScore != null
         ? '${(compatibilityScore * 100).round()}% match'
         : null;
-    final subtitle = scoreLabel ?? (profile?.city != null ? '${profile!.city!} · Active now' : 'Active now');
+    final subtitle =
+        scoreLabel ??
+        (profile?.city != null
+            ? '${profile!.city!} · Active now'
+            : 'Active now');
 
     final avatarUrl = profile?.imageUrl;
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
@@ -203,7 +353,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                     Text(
                       subtitle,
                       style: AppTypography.caption.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -211,7 +363,13 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                 ),
                 if (otherUserId != null) ...[
                   const SizedBox(width: 4),
-                  Icon(Icons.chevron_right_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
                 ],
               ],
             ),
@@ -228,127 +386,128 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         children: [
           Expanded(
             child: Container(
-              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
               child: messagesAsync.when(
-              data: (serverMessages) {
-                final messages = _mergeMessages(serverMessages, currentUserId);
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            size: 56,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No messages yet',
-                            style: AppTypography.titleSmall.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Say hi to start the conversation!',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
+                data: (serverMessages) {
+                  final messages = _mergeMessages(
+                    serverMessages,
+                    currentUserId,
                   );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, i) {
-                    final m = messages[messages.length - 1 - i];
-                    final isMe = currentUserId != null && m.senderId == currentUserId;
-                    return _MessageBubble(
-                      text: m.text,
-                      sentAt: m.sentAt,
-                      isMe: isMe,
-                      isVoiceNote: m.isVoiceNote,
-                    ).animate().fadeIn(delay: (20 * i).ms).slideY(begin: 0.03, end: 0);
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(err.toString(), textAlign: TextAlign.center, style: AppTypography.bodySmall),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => ref.invalidate(_threadMessagesProvider(widget.threadId)),
-                        child: const Text('Retry'),
+                  if (messages.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppColors.saffron.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.waving_hand_rounded,
+                                size: 48,
+                                color: AppColors.saffron.withValues(alpha: 0.8),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Start the conversation!',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Say hi, send an emoji — break the ice.',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: icebreakerList.map((s) {
+                                return ActionChip(
+                                  label: Text(s),
+                                  onPressed: () => _sendMessageText(context, ref, s),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
+                    );
+                  }
+                  final reversed = messages.reversed.toList();
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    reverse: true,
+                    itemCount: reversed.length,
+                    itemBuilder: (context, i) {
+                      final m = reversed[i];
+                      final isMe =
+                          currentUserId != null && m.senderId == currentUserId;
+                      final showDateSeparator = i == 0 ||
+                          !_isSameDay(m.sentAt, reversed[i - 1].sentAt);
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showDateSeparator) _DateSeparator(sentAt: m.sentAt),
+                          _MessageBubble(
+                            text: m.text,
+                            sentAt: m.sentAt,
+                            isMe: isMe,
+                            isVoiceNote: m.isVoiceNote,
+                          )
+                              .animate()
+                              .fadeIn(delay: (20 * i).ms)
+                              .slideY(begin: 0.03, end: 0),
+                        ],
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          err.toString(),
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => ref.invalidate(
+                            _threadMessagesProvider(widget.threadId),
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-            ),
           ),
           _TypingBar(
-            onSend: (text) async {
-              final me = ref.read(authRepositoryProvider).currentUserId;
-              setState(() {
-                _pendingSent.add(ChatMessage(
-                  id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
-                  senderId: me ?? 'me',
-                  text: text,
-                  sentAt: DateTime.now(),
-                ));
-              });
-              try {
-                await chatRepo.sendMessage(widget.threadId, text);
-              } on ApiException catch (e) {
-                if (mounted) {
-                  setState(() => _pendingSent.removeWhere((m) => m.text == text));
-                  final showUpgrade = e.code == 'PREMIUM_REQUIRED' || e.code == 'INTRO_LIMIT';
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.code == 'INTRO_LIMIT' ? 'Match to continue or upgrade' : e.message),
-                      behavior: SnackBarBehavior.floating,
-                      action: showUpgrade
-                          ? SnackBarAction(
-                              label: 'Upgrade',
-                              onPressed: () => context.push('/paywall'),
-                            )
-                          : null,
-                    ),
-                  );
-                }
-                return;
-              } catch (_) {
-                if (mounted) {
-                  setState(() => _pendingSent.removeWhere((m) => m.text == text));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to send. Try again.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-                return;
-              }
-              if (!mounted) return;
-              ref.invalidate(_threadMessagesProvider(widget.threadId));
-              ref.invalidate(chatThreadsProvider);
-            },
-            onVoice: () {},
+            onSend: (text) => _sendMessageText(context, ref, text),
           ),
         ],
       ),
@@ -356,9 +515,53 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   }
 }
 
-final _threadMessagesProvider = StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, threadId) {
-  return ref.watch(chatRepositoryProvider).watchMessages(threadId);
-});
+final _threadMessagesProvider = StreamProvider.autoDispose
+    .family<List<ChatMessage>, String>((ref, threadId) {
+      return ref.watch(chatRepositoryProvider).watchMessages(threadId);
+    });
+
+bool _isSameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.sentAt});
+  final DateTime sentAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDay = DateTime(sentAt.year, sentAt.month, sentAt.day);
+    String label;
+    if (messageDay == today) {
+      label = 'Today';
+    } else if (messageDay == today.subtract(const Duration(days: 1))) {
+      label = 'Yesterday';
+    } else {
+      label = DateFormat.MMMd().format(sentAt);
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
@@ -381,14 +584,18 @@ class _MessageBubble extends StatelessWidget {
         ? AppColors.saffron.withValues(alpha: 0.2)
         : theme.colorScheme.surfaceContainerHighest;
     final textColor = isMe ? const Color(0xFF5C3400) : onSurface;
-    final timeColor = isMe ? const Color(0xFF8B5A00).withValues(alpha: 0.85) : onSurface.withValues(alpha: 0.55);
+    final timeColor = isMe
+        ? const Color(0xFF8B5A00).withValues(alpha: 0.85)
+        : onSurface.withValues(alpha: 0.55);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+        ),
         decoration: BoxDecoration(
           color: bubbleBg,
           borderRadius: BorderRadius.only(
@@ -397,7 +604,9 @@ class _MessageBubble extends StatelessWidget {
             bottomLeft: Radius.circular(isMe ? 18 : 6),
             bottomRight: Radius.circular(isMe ? 6 : 18),
           ),
-          border: isMe ? Border.all(color: AppColors.saffron.withValues(alpha: 0.35)) : null,
+          border: isMe
+              ? Border.all(color: AppColors.saffron.withValues(alpha: 0.35))
+              : null,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -414,9 +623,16 @@ class _MessageBubble extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.mic_rounded, size: 18, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.mic_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 6),
-                  Text('0:12', style: AppTypography.caption.copyWith(color: textColor)),
+                  Text(
+                    '0:12',
+                    style: AppTypography.caption.copyWith(color: textColor),
+                  ),
                 ],
               )
             else
@@ -430,7 +646,10 @@ class _MessageBubble extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               timeStr,
-              style: AppTypography.caption.copyWith(color: timeColor, fontSize: 11),
+              style: AppTypography.caption.copyWith(
+                color: timeColor,
+                fontSize: 11,
+              ),
             ),
           ],
         ),
@@ -440,17 +659,24 @@ class _MessageBubble extends StatelessWidget {
 
   static String _formatTime(DateTime d) {
     final now = DateTime.now();
+    final diff = now.difference(d);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (d.day == now.day && d.month == now.month && d.year == now.year) {
-      return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+      return DateFormat.jm().format(d);
     }
-    return '${d.day}/${d.month} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (d.day == yesterday.day && d.month == yesterday.month && d.year == yesterday.year) {
+      return 'Yesterday ${DateFormat.jm().format(d)}';
+    }
+    if (diff.inDays < 7) return DateFormat.E().add_jm().format(d);
+    return DateFormat.MMMd().add_jm().format(d);
   }
 }
 
 class _TypingBar extends StatefulWidget {
-  const _TypingBar({required this.onSend, required this.onVoice});
+  const _TypingBar({required this.onSend});
   final ValueChanged<String> onSend;
-  final VoidCallback onVoice;
 
   @override
   State<_TypingBar> createState() => _TypingBarState();
@@ -458,6 +684,57 @@ class _TypingBar extends StatefulWidget {
 
 class _TypingBarState extends State<_TypingBar> {
   final _controller = TextEditingController();
+
+  void _showEmojiPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(ctx).size.height * 0.5,
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Expanded(
+              child: EmojiPicker(
+                textEditingController: _controller,
+                config: Config(
+                  height: 256,
+                  emojiViewConfig: EmojiViewConfig(
+                    emojiSizeMax: 28,
+                    backgroundColor: Theme.of(ctx).colorScheme.surface,
+                  ),
+                  categoryViewConfig: CategoryViewConfig(
+                    backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    indicatorColor: AppColors.saffron,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -470,12 +747,17 @@ class _TypingBarState extends State<_TypingBar> {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             IconButton(
-              icon: Icon(Icons.mic_rounded, color: onSurface.withValues(alpha: 0.6)),
-              onPressed: widget.onVoice,
+              icon: Icon(
+                Icons.emoji_emotions_outlined,
+                color: onSurface.withValues(alpha: 0.6),
+              ),
+              onPressed: _showEmojiPicker,
+              tooltip: 'Emoji',
             ),
             Expanded(
               child: TextField(
@@ -488,9 +770,13 @@ class _TypingBarState extends State<_TypingBar> {
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                 ),
-                maxLines: null,
+                maxLines: 5,
+                minLines: 1,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (v) {
                   if (v.trim().isNotEmpty) {

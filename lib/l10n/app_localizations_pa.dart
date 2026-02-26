@@ -1301,6 +1301,36 @@ class AppLocalizationsPa extends AppLocalizations {
   String get loading => 'Loading';
 
   @override
+  String get toastInterestSent => 'Interest sent';
+
+  @override
+  String toastInterestSentTo(Object name) {
+    return 'Interest sent to $name';
+  }
+
+  @override
+  String get toastAddedToShortlist => 'Added to shortlist';
+
+  @override
+  String get toastRemovedFromShortlist => 'Removed from shortlist';
+
+  @override
+  String toastMatchWith(Object name) {
+    return 'It\'s a match with $name!';
+  }
+
+  @override
+  String toastBlocked(Object name) {
+    return '$name blocked';
+  }
+
+  @override
+  String get toastReportSubmitted => 'Report submitted. Thank you.';
+
+  @override
+  String get toastErrorGeneric => 'Something went wrong. Please try again.';
+
+  @override
   String get activeNow => 'Active now';
 
   @override

@@ -41,6 +41,9 @@ abstract class ChatRepository {
   /// List threads for the given [mode] (`dating` or `matrimony`). Only threads for that mode are returned.
   Future<List<ChatThreadSummary>> getThreads({int limit = 50, String? mode});
 
+  /// GET /chat/suggestions?mode=... — Icebreaker suggestion strings for first message. Returns empty list if 404.
+  Future<List<String>> getSuggestions({String? mode});
+
   /// Create (or get existing) thread with another user for the given [mode]. Returns thread ID.
   Future<String> createThread(String otherUserId, {String? mode});
 

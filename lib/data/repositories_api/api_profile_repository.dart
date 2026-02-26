@@ -47,7 +47,9 @@ class ApiProfileRepository implements ProfileRepository {
     final body = await api.put('/profile/me', body: json);
     _cached = _parseProfile(body);
     _controller.add(_cached);
-    debugPrint('[Profile] Profile created ✓ id=${_cached!.id}, name=${_cached!.name}');
+    debugPrint(
+      '[Profile] Profile created ✓ id=${_cached!.id}, name=${_cached!.name}',
+    );
     return _cached!;
   }
 
@@ -62,8 +64,13 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> saveProfileJson(Map<String, dynamic> json, {bool create = false}) async {
-    debugPrint('[Profile] saveProfileJson (create=$create) keys=${json.keys.toList()}');
+  Future<void> saveProfileJson(
+    Map<String, dynamic> json, {
+    bool create = false,
+  }) async {
+    debugPrint(
+      '[Profile] saveProfileJson (create=$create) keys=${json.keys.toList()}',
+    );
     if (create) {
       final body = await api.put('/profile/me', body: json);
       _cached = _parseProfile(body);
@@ -86,8 +93,13 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<PartnerPreferences> updatePartnerPreferences(PartnerPreferences prefs) async {
-    final body = await api.put('/profile/me/preferences', body: _prefsToJson(prefs));
+  Future<PartnerPreferences> updatePartnerPreferences(
+    PartnerPreferences prefs,
+  ) async {
+    final body = await api.put(
+      '/profile/me/preferences',
+      body: _prefsToJson(prefs),
+    );
     return _parsePreferences(body);
   }
 
@@ -167,9 +179,12 @@ class ApiProfileRepository implements ProfileRepository {
       verificationStatus: j['verificationStatus'] != null
           ? _parseVerification(j['verificationStatus'] as Map<String, dynamic>)
           : const VerificationStatus(),
-      profileCompleteness: (j['profileCompleteness'] as num?)?.toDouble() ?? 0.0,
+      profileCompleteness:
+          (j['profileCompleteness'] as num?)?.toDouble() ?? 0.0,
       privacySettings: j['privacySettings'] != null
-          ? (j['privacySettings'] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as bool))
+          ? (j['privacySettings'] as Map<String, dynamic>).map(
+              (k, v) => MapEntry(k, v as bool),
+            )
           : null,
       datingExtensions: j['datingExtensions'] != null
           ? _parseDating(j['datingExtensions'] as Map<String, dynamic>)
@@ -180,10 +195,14 @@ class ApiProfileRepository implements ProfileRepository {
       partnerPreferences: j['partnerPreferences'] != null
           ? _parsePreferences(j['partnerPreferences'] as Map<String, dynamic>)
           : null,
-      lastActiveAt: j['lastActiveAt'] != null ? DateTime.tryParse(j['lastActiveAt'] as String) : null,
+      lastActiveAt: j['lastActiveAt'] != null
+          ? DateTime.tryParse(j['lastActiveAt'] as String)
+          : null,
       creationLat: (j['creationLat'] as num?)?.toDouble(),
       creationLng: (j['creationLng'] as num?)?.toDouble(),
-      creationAt: j['creationAt'] != null ? DateTime.tryParse(j['creationAt'] as String) : null,
+      creationAt: j['creationAt'] != null
+          ? DateTime.tryParse(j['creationAt'] as String)
+          : null,
       creationAddress: j['creationAddress'] as String?,
     );
   }
@@ -217,9 +236,16 @@ class ApiProfileRepository implements ProfileRepository {
           ? DiscoveryPreferences(
               ageMin: j['discoveryPreferences']['ageMin'] as int? ?? 18,
               ageMax: j['discoveryPreferences']['ageMax'] as int? ?? 99,
-              maxDistanceKm: (j['discoveryPreferences']['maxDistanceKm'] as num?)?.toDouble() ?? 50,
-              preferredCities: _strList(j['discoveryPreferences']['preferredCities']),
-              travelModeEnabled: j['discoveryPreferences']['travelModeEnabled'] as bool? ?? false,
+              maxDistanceKm:
+                  (j['discoveryPreferences']['maxDistanceKm'] as num?)
+                      ?.toDouble() ??
+                  50,
+              preferredCities: _strList(
+                j['discoveryPreferences']['preferredCities'],
+              ),
+              travelModeEnabled:
+                  j['discoveryPreferences']['travelModeEnabled'] as bool? ??
+                  false,
             )
           : null,
     );
@@ -232,6 +258,8 @@ class ApiProfileRepository implements ProfileRepository {
       motherTongue: j['motherTongue'] as String?,
       maritalStatus: j['maritalStatus'] as String?,
       heightCm: j['heightCm'] as int?,
+      bodyType: j['bodyType'] as String?,
+      complexion: j['complexion'] as String?,
       educationDegree: j['educationDegree'] as String?,
       educationInstitution: j['educationInstitution'] as String?,
       occupation: j['occupation'] as String?,
@@ -247,11 +275,16 @@ class ApiProfileRepository implements ProfileRepository {
       familyDetails: j['familyDetails'] != null
           ? FamilyDetails(
               familyType: (j['familyDetails'] as Map)['familyType'] as String?,
-              familyValues: (j['familyDetails'] as Map)['familyValues'] as String?,
-              fatherOccupation: (j['familyDetails'] as Map)['fatherOccupation'] as String?,
-              motherOccupation: (j['familyDetails'] as Map)['motherOccupation'] as String?,
-              siblingsCount: (j['familyDetails'] as Map)['siblingsCount'] as int?,
-              siblingsMarried: (j['familyDetails'] as Map)['siblingsMarried'] as int?,
+              familyValues:
+                  (j['familyDetails'] as Map)['familyValues'] as String?,
+              fatherOccupation:
+                  (j['familyDetails'] as Map)['fatherOccupation'] as String?,
+              motherOccupation:
+                  (j['familyDetails'] as Map)['motherOccupation'] as String?,
+              siblingsCount:
+                  (j['familyDetails'] as Map)['siblingsCount'] as int?,
+              siblingsMarried:
+                  (j['familyDetails'] as Map)['siblingsMarried'] as int?,
             )
           : null,
       diet: j['diet'] as String?,
@@ -264,7 +297,8 @@ class ApiProfileRepository implements ProfileRepository {
               birthPlace: (j['horoscope'] as Map)['birthPlace'] as String?,
               manglik: (j['horoscope'] as Map)['manglik'] as String?,
               nakshatra: (j['horoscope'] as Map)['nakshatra'] as String?,
-              horoscopeDocUrl: (j['horoscope'] as Map)['horoscopeDocUrl'] as String?,
+              horoscopeDocUrl:
+                  (j['horoscope'] as Map)['horoscopeDocUrl'] as String?,
             )
           : null,
     );
@@ -297,7 +331,8 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   /// Public for reuse by other API repos (discovery, shortlist, etc.).
-  static ProfileSummary parseSummaryPublic(Map<String, dynamic> j) => _parseSummary(j);
+  static ProfileSummary parseSummaryPublic(Map<String, dynamic> j) =>
+      _parseSummary(j);
 
   static ProfileSummary _parseSummary(Map<String, dynamic> j) {
     Map<String, double>? breakdown;
@@ -376,100 +411,176 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   static Map<String, dynamic> _matrimonyToJson(MatrimonyExtensions m) => {
-        if (m.religion != null) 'religion': m.religion,
-        if (m.casteOrCommunity != null) 'casteOrCommunity': m.casteOrCommunity,
-        if (m.motherTongue != null) 'motherTongue': m.motherTongue,
-        if (m.maritalStatus != null) 'maritalStatus': m.maritalStatus,
-        if (m.heightCm != null) 'heightCm': m.heightCm,
-        if (m.educationDegree != null) 'educationDegree': m.educationDegree,
-        if (m.educationInstitution != null) 'educationInstitution': m.educationInstitution,
-        if (m.occupation != null) 'occupation': m.occupation,
-        if (m.employer != null) 'employer': m.employer,
-        if (m.industry != null) 'industry': m.industry,
-        if (m.incomeRange != null)
-          'incomeRange': {
-            'minLabel': m.incomeRange!.minLabel,
-            'maxLabel': m.incomeRange!.maxLabel,
-            'currency': m.incomeRange!.currency,
-          },
-        if (m.familyDetails != null)
-          'familyDetails': {
-            'familyType': m.familyDetails!.familyType,
-            'familyValues': m.familyDetails!.familyValues,
-            'fatherOccupation': m.familyDetails!.fatherOccupation,
-            'motherOccupation': m.familyDetails!.motherOccupation,
-            'siblingsCount': m.familyDetails!.siblingsCount,
-            'siblingsMarried': m.familyDetails!.siblingsMarried,
-          },
-        if (m.diet != null) 'diet': m.diet,
-        if (m.drinking != null) 'drinking': m.drinking,
-        if (m.smoking != null) 'smoking': m.smoking,
-        if (m.horoscope != null)
-          'horoscope': {
-            'dateOfBirth': m.horoscope!.dateOfBirth,
-            'timeOfBirth': m.horoscope!.timeOfBirth,
-            'birthPlace': m.horoscope!.birthPlace,
-            'manglik': m.horoscope!.manglik,
-            'nakshatra': m.horoscope!.nakshatra,
-            'horoscopeDocUrl': m.horoscope!.horoscopeDocUrl,
-          },
-      };
+    if (m.religion != null) 'religion': m.religion,
+    if (m.casteOrCommunity != null) 'casteOrCommunity': m.casteOrCommunity,
+    if (m.motherTongue != null) 'motherTongue': m.motherTongue,
+    if (m.maritalStatus != null) 'maritalStatus': m.maritalStatus,
+    if (m.heightCm != null) 'heightCm': m.heightCm,
+    if (m.bodyType != null) 'bodyType': m.bodyType,
+    if (m.complexion != null) 'complexion': m.complexion,
+    if (m.educationDegree != null) 'educationDegree': m.educationDegree,
+    if (m.educationInstitution != null)
+      'educationInstitution': m.educationInstitution,
+    if (m.occupation != null) 'occupation': m.occupation,
+    if (m.employer != null) 'employer': m.employer,
+    if (m.industry != null) 'industry': m.industry,
+    if (m.incomeRange != null)
+      'incomeRange': {
+        'minLabel': m.incomeRange!.minLabel,
+        'maxLabel': m.incomeRange!.maxLabel,
+        'currency': m.incomeRange!.currency,
+      },
+    if (m.familyDetails != null)
+      'familyDetails': {
+        'familyType': m.familyDetails!.familyType,
+        'familyValues': m.familyDetails!.familyValues,
+        'fatherOccupation': m.familyDetails!.fatherOccupation,
+        'motherOccupation': m.familyDetails!.motherOccupation,
+        'siblingsCount': m.familyDetails!.siblingsCount,
+        'siblingsMarried': m.familyDetails!.siblingsMarried,
+      },
+    if (m.diet != null) 'diet': m.diet,
+    if (m.drinking != null) 'drinking': m.drinking,
+    if (m.smoking != null) 'smoking': m.smoking,
+    if (m.horoscope != null)
+      'horoscope': {
+        'dateOfBirth': m.horoscope!.dateOfBirth,
+        'timeOfBirth': m.horoscope!.timeOfBirth,
+        'birthPlace': m.horoscope!.birthPlace,
+        'manglik': m.horoscope!.manglik,
+        'nakshatra': m.horoscope!.nakshatra,
+        'horoscopeDocUrl': m.horoscope!.horoscopeDocUrl,
+      },
+  };
 
   static Map<String, dynamic> _datingToJson(DatingExtensions d) => {
-        if (d.datingIntent != null) 'datingIntent': d.datingIntent,
-        if (d.prompts != null)
-          'prompts': d.prompts!
-              .map((p) => {
-                    'questionId': p.questionId,
-                    'questionText': p.questionText,
-                    'answer': p.answer,
-                  })
-              .toList(),
-        if (d.voiceIntroUrl != null) 'voiceIntroUrl': d.voiceIntroUrl,
-        'travelModeEnabled': d.travelModeEnabled,
-        if (d.discoveryPreferences != null)
-          'discoveryPreferences': {
-            'ageMin': d.discoveryPreferences!.ageMin,
-            'ageMax': d.discoveryPreferences!.ageMax,
-            'maxDistanceKm': d.discoveryPreferences!.maxDistanceKm,
-            'preferredCities': d.discoveryPreferences!.preferredCities,
-            'travelModeEnabled': d.discoveryPreferences!.travelModeEnabled,
-          },
-      };
+    if (d.datingIntent != null) 'datingIntent': d.datingIntent,
+    if (d.prompts != null)
+      'prompts': d.prompts!
+          .map(
+            (p) => {
+              'questionId': p.questionId,
+              'questionText': p.questionText,
+              'answer': p.answer,
+            },
+          )
+          .toList(),
+    if (d.voiceIntroUrl != null) 'voiceIntroUrl': d.voiceIntroUrl,
+    'travelModeEnabled': d.travelModeEnabled,
+    if (d.discoveryPreferences != null)
+      'discoveryPreferences': {
+        'ageMin': d.discoveryPreferences!.ageMin,
+        'ageMax': d.discoveryPreferences!.ageMax,
+        'maxDistanceKm': d.discoveryPreferences!.maxDistanceKm,
+        'preferredCities': d.discoveryPreferences!.preferredCities,
+        'travelModeEnabled': d.discoveryPreferences!.travelModeEnabled,
+      },
+  };
 
   static Map<String, dynamic> _prefsToJson(PartnerPreferences p) => {
-        if (p.genderPreference != null) 'genderPreference': p.genderPreference,
-        'ageMin': p.ageMin,
-        'ageMax': p.ageMax,
-        if (p.heightMinCm != null) 'heightMinCm': p.heightMinCm,
-        if (p.heightMaxCm != null) 'heightMaxCm': p.heightMaxCm,
-        if (p.preferredLocations != null) 'preferredLocations': p.preferredLocations,
-        if (p.preferredReligions != null) 'preferredReligions': p.preferredReligions,
-        if (p.preferredCommunities != null) 'preferredCommunities': p.preferredCommunities,
-        if (p.preferredMotherTongues != null) 'preferredMotherTongues': p.preferredMotherTongues,
-        if (p.educationPreference != null) 'educationPreference': p.educationPreference,
-        if (p.occupationPreference != null) 'occupationPreference': p.occupationPreference,
-        if (p.maritalStatusPreference != null) 'maritalStatusPreference': p.maritalStatusPreference,
-        if (p.dietPreference != null) 'dietPreference': p.dietPreference,
-        if (p.incomePreference != null) 'incomePreference': p.incomePreference,
-        if (p.drinkingPreference != null) 'drinkingPreference': p.drinkingPreference,
-        if (p.smokingPreference != null) 'smokingPreference': p.smokingPreference,
-        if (p.settledAbroadPreference != null) 'settledAbroadPreference': p.settledAbroadPreference,
-        if (p.preferredCountries != null) 'preferredCountries': p.preferredCountries,
-        if (p.cityPreferenceMode != null) 'cityPreferenceMode': p.cityPreferenceMode,
-        if (p.distanceMaxKm != null) 'distanceMaxKm': p.distanceMaxKm,
-        if (p.horoscopeMatchPreferred != null) 'horoscopeMatchPreferred': p.horoscopeMatchPreferred,
+    if (p.genderPreference != null) 'genderPreference': p.genderPreference,
+    'ageMin': p.ageMin,
+    'ageMax': p.ageMax,
+    if (p.heightMinCm != null) 'heightMinCm': p.heightMinCm,
+    if (p.heightMaxCm != null) 'heightMaxCm': p.heightMaxCm,
+    if (p.preferredLocations != null)
+      'preferredLocations': p.preferredLocations,
+    if (p.preferredReligions != null)
+      'preferredReligions': p.preferredReligions,
+    if (p.preferredCommunities != null)
+      'preferredCommunities': p.preferredCommunities,
+    if (p.preferredMotherTongues != null)
+      'preferredMotherTongues': p.preferredMotherTongues,
+    if (p.educationPreference != null)
+      'educationPreference': p.educationPreference,
+    if (p.occupationPreference != null)
+      'occupationPreference': p.occupationPreference,
+    if (p.maritalStatusPreference != null)
+      'maritalStatusPreference': p.maritalStatusPreference,
+    if (p.dietPreference != null) 'dietPreference': p.dietPreference,
+    if (p.incomePreference != null) 'incomePreference': p.incomePreference,
+    if (p.drinkingPreference != null)
+      'drinkingPreference': p.drinkingPreference,
+    if (p.smokingPreference != null) 'smokingPreference': p.smokingPreference,
+    if (p.settledAbroadPreference != null)
+      'settledAbroadPreference': p.settledAbroadPreference,
+    if (p.preferredCountries != null)
+      'preferredCountries': p.preferredCountries,
+    if (p.cityPreferenceMode != null)
+      'cityPreferenceMode': p.cityPreferenceMode,
+    if (p.distanceMaxKm != null) 'distanceMaxKm': p.distanceMaxKm,
+    if (p.horoscopeMatchPreferred != null)
+      'horoscopeMatchPreferred': p.horoscopeMatchPreferred,
+  };
+
+  static Map<String, dynamic> _defaultPrivacy() => {
+        'showInVisitors': true,
+        'profileVisibility': 'everyone',
+        'hideFromDiscovery': false,
       };
 
   @override
-  Future<Map<String, dynamic>> updatePrivacy(Map<String, dynamic> privacy) async {
+  Future<Map<String, dynamic>> getPrivacy() async {
+    try {
+      final body = await api.get('/profile/me/privacy');
+      final map = Map<String, dynamic>.from(body);
+      return _defaultPrivacy()..addAll(map);
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return _defaultPrivacy();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> updatePrivacy(
+    Map<String, dynamic> privacy,
+  ) async {
     final body = await api.patch('/profile/me/privacy', body: privacy);
     return Map<String, dynamic>.from(body);
   }
 
   @override
-  Future<Map<String, dynamic>> updateNotificationPreferences(Map<String, dynamic> preferences) async {
-    final body = await api.patch('/profile/me/notifications', body: preferences);
+  Future<DateTime?> startProfileBoost({int durationHours = 24}) async {
+    final body = await api.post(
+      '/profile/me/boost',
+      body: {'durationHours': durationHours},
+    );
+    final until = body['boostedUntil'] as String?;
+    return until != null ? DateTime.tryParse(until) : null;
+  }
+
+  static Map<String, dynamic> _defaultNotificationPreferences() => {
+        'interestReceived': true,
+        'priorityInterestReceived': true,
+        'interestAccepted': true,
+        'interestDeclined': false,
+        'mutualMatch': true,
+        'profileVisited': true,
+        'newMessage': true,
+        'contactRequestAccepted': true,
+        'contactRequestDeclined': false,
+      };
+
+  @override
+  Future<Map<String, dynamic>> getNotificationPreferences() async {
+    try {
+      final body = await api.get('/profile/me/notifications');
+      final map = Map<String, dynamic>.from(body);
+      return _defaultNotificationPreferences()..addAll(map);
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return _defaultNotificationPreferences();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateNotificationPreferences(
+    Map<String, dynamic> preferences,
+  ) async {
+    final body = await api.patch(
+      '/profile/me/notifications',
+      body: preferences,
+    );
     return Map<String, dynamic>.from(body);
   }
 

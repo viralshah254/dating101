@@ -34,7 +34,13 @@ abstract class InteractionsRepository {
   });
 
   /// Accept or decline an interest (PATCH /interactions/:id). Returns result with mutualMatch/chatThreadId on accept.
-  Future<ExpressInterestResult> respondToInterest(String interactionId, {required bool accept});
+  /// When [accept] is false, optionally pass [declineMessage] or [declineReasonId] to soften rejection.
+  Future<ExpressInterestResult> respondToInterest(
+    String interactionId, {
+    required bool accept,
+    String? declineMessage,
+    String? declineReasonId,
+  });
 
   /// Withdraw a pending interest (DELETE /interactions/:id). Only sender, only when pending.
   Future<void> withdrawInteraction(String interactionId);

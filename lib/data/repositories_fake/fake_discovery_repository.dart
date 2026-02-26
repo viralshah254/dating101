@@ -1,6 +1,7 @@
 import '../../core/mode/app_mode.dart';
 import '../../domain/models/filter_options.dart';
 import '../../domain/models/profile_summary.dart';
+import '../../domain/models/saved_search.dart';
 import '../../domain/repositories/discovery_repository.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../mappers/profile_mapper.dart';
@@ -8,6 +9,9 @@ import 'fake_data.dart';
 
 class FakeDiscoveryRepository implements DiscoveryRepository {
   FakeDiscoveryRepository(ProfileRepository profileRepo);
+
+  final List<SavedSearch> _savedSearches = [];
+  var _savedSearchIdCounter = 0;
 
   @override
   Future<List<ProfileSummary>> getRecommended({
@@ -24,9 +28,18 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       final p = FakeData.allProfiles[id]!;
       final distanceKm = (i + 1) * 2.0;
       final reason = FakeData.matchReasons[id];
-      final shared = _sharedInterests(FakeData.myProfile.interests, p.interests);
+      final shared = _sharedInterests(
+        FakeData.myProfile.interests,
+        p.interests,
+      );
       list.add(
-        profileToSummary(p, distanceKm: distanceKm, matchReason: reason, sharedInterests: shared),
+        profileToSummary(
+          p,
+          distanceKm: distanceKm,
+          matchReason: reason,
+          matchReasons: FakeData.matchReasonsList[id] ?? (reason != null ? [reason] : []),
+          sharedInterests: shared,
+        ),
       );
     }
     return list;
@@ -44,7 +57,8 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     int limit = 20,
     String? cursor,
   }) async {
-    final hasFilters = ageMin != null ||
+    final hasFilters =
+        ageMin != null ||
         ageMax != null ||
         (city != null && city.isNotEmpty) ||
         (religion != null && religion.isNotEmpty) ||
@@ -86,9 +100,17 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       if (city != null &&
           !(p.currentCity ?? '').toLowerCase().contains(city.toLowerCase()))
         continue;
-      final shared = _sharedInterests(FakeData.myProfile.interests, p.interests);
+      final shared = _sharedInterests(
+        FakeData.myProfile.interests,
+        p.interests,
+      );
       list.add(
-        profileToSummary(p, matchReason: FakeData.matchReasons[entry.key], sharedInterests: shared),
+        profileToSummary(
+          p,
+          matchReason: FakeData.matchReasons[entry.key],
+          matchReasons: FakeData.matchReasonsList[entry.key] ?? const [],
+          sharedInterests: shared,
+        ),
       );
     }
     return list;
@@ -137,6 +159,8 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     required String action,
     int? timeSpentMs,
     String? source,
+    String? reason,
+    String? details,
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
   }
@@ -145,6 +169,77 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   Future<DiscoveryPreferences> getDiscoveryPreferences() async {
     await Future.delayed(const Duration(milliseconds: 100));
     return const DiscoveryPreferences(current: {'ageMin': 21, 'ageMax': 35});
+  }
+
+  @override
+  Future<List<SavedSearch>> getSavedSearches() async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    return List.from(_savedSearches);
+  }
+
+  @override
+  Future<SavedSearch> createSavedSearch(
+    Map<String, dynamic> filters, {
+    String? name,
+    bool notifyOnNewMatch = true,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    final id = 'ss_${++_savedSearchIdCounter}';
+    final entry = SavedSearch(
+      id: id,
+      name: name,
+      filters: Map<String, dynamic>.from(filters),
+      createdAt: DateTime.now(),
+      notifyOnNewMatch: notifyOnNewMatch,
+      newMatchCount: 0,
+    );
+    _savedSearches.add(entry);
+    return entry;
+  }
+
+  @override
+  Future<SavedSearch> updateSavedSearch(
+    String id, {
+    String? name,
+    bool? notifyOnNewMatch,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    final i = _savedSearches.indexWhere((e) => e.id == id);
+    if (i < 0) throw StateError('Saved search $id not found');
+    final old = _savedSearches[i];
+    final updated = SavedSearch(
+      id: old.id,
+      name: name ?? old.name,
+      filters: old.filters,
+      createdAt: old.createdAt,
+      notifyOnNewMatch: notifyOnNewMatch ?? old.notifyOnNewMatch,
+      newMatchCount: old.newMatchCount,
+    );
+    _savedSearches[i] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deleteSavedSearch(String id) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    _savedSearches.removeWhere((e) => e.id == id);
+  }
+
+  @override
+  Future<void> markSavedSearchViewed(String id) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    final i = _savedSearches.indexWhere((e) => e.id == id);
+    if (i >= 0) {
+      final old = _savedSearches[i];
+      _savedSearches[i] = SavedSearch(
+        id: old.id,
+        name: old.name,
+        filters: old.filters,
+        createdAt: old.createdAt,
+        notifyOnNewMatch: old.notifyOnNewMatch,
+        newMatchCount: 0,
+      );
+    }
   }
 
   @override
@@ -160,17 +255,39 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       ),
       cities: FilterDimension(
         options: [
-          'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Hyderabad', 'Pune',
-          'London', 'Dubai', 'New York', 'Singapore',
+          'Mumbai',
+          'Delhi',
+          'Bangalore',
+          'Chennai',
+          'Hyderabad',
+          'Pune',
+          'London',
+          'Dubai',
+          'New York',
+          'Singapore',
         ],
         strict: false,
       ),
       religions: FilterDimension(
-        options: ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist', 'Other'],
+        options: [
+          'Hindu',
+          'Muslim',
+          'Christian',
+          'Sikh',
+          'Jain',
+          'Buddhist',
+          'Other',
+        ],
         strict: false,
       ),
       education: FilterDimension(
-        options: ["High School", "Diploma", "Bachelor's", "Master's", "Doctorate"],
+        options: [
+          "High School",
+          "Diploma",
+          "Bachelor's",
+          "Master's",
+          "Doctorate",
+        ],
         strict: false,
       ),
     );

@@ -97,9 +97,37 @@ class FakeProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> getPrivacy() async {
+    await Future.delayed(const Duration(milliseconds: 30));
+    return {'showInVisitors': true, 'profileVisibility': 'everyone', 'hideFromDiscovery': false};
+  }
+
+  @override
   Future<Map<String, dynamic>> updatePrivacy(Map<String, dynamic> privacy) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return Map<String, dynamic>.from(privacy);
+  }
+
+  @override
+  Future<DateTime?> startProfileBoost({int durationHours = 24}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return DateTime.now().add(Duration(hours: durationHours));
+  }
+
+  static final _defaultNotificationPreferences = <String, bool>{
+    'interestReceived': true,
+    'priorityInterestReceived': true,
+    'interestAccepted': true,
+    'interestDeclined': false,
+    'mutualMatch': true,
+    'profileVisited': true,
+    'newMessage': true,
+  };
+
+  @override
+  Future<Map<String, dynamic>> getNotificationPreferences() async {
+    await Future.delayed(const Duration(milliseconds: 30));
+    return Map<String, dynamic>.from(_defaultNotificationPreferences);
   }
 
   @override

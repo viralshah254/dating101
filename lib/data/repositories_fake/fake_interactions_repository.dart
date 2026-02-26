@@ -75,7 +75,12 @@ class FakeInteractionsRepository implements InteractionsRepository {
   }
 
   @override
-  Future<ExpressInterestResult> respondToInterest(String interactionId, {required bool accept}) async {
+  Future<ExpressInterestResult> respondToInterest(
+    String interactionId, {
+    required bool accept,
+    String? declineMessage,
+    String? declineReasonId,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 80));
     return ExpressInterestResult(
       interactionId: interactionId,

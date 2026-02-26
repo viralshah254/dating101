@@ -90,11 +90,12 @@ class _ProfileBody extends StatelessWidget {
               onTap: () => _editSection(context, 0),
             ),
           ),
-        // Sections
+        // Sections — generous spacing so each section reads as its own block
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
+              const SizedBox(height: 8),
               _buildBasicDetailsSection(context),
               if (mode.isMatrimony) _buildReligionSection(context),
               _buildPhysicalSection(context),
@@ -106,7 +107,7 @@ class _ProfileBody extends StatelessWidget {
               _buildAboutMeSection(context),
               if (mode.isMatrimony) _buildPreferencesSection(context),
               _buildPhotosSection(context),
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
             ]),
           ),
         ),
@@ -217,242 +218,197 @@ class _ProfileBody extends StatelessWidget {
     );
   }
 
-  // ── Sections ──────────────────────────────────────────────────────
+  // ── Per-section completion (0–100) ─────────────────────────────────
+
+  int _sectionPctBasic() {
+    int filled = 0;
+    if (profile.gender != null) filled++;
+    if (profile.dateOfBirth != null) filled++;
+    if (profile.displayLocation.isNotEmpty) filled++;
+    if (profile.originCity != null) filled++;
+    if (profile.motherTongue != null) filled++;
+    if (profile.languagesSpoken.isNotEmpty) filled++;
+    return (filled * 100 / 6).round().clamp(0, 100);
+  }
+
+  int _sectionPctReligion() {
+    final mat = profile.matrimonyExtensions;
+    if (mat == null) return 0;
+    int filled = 0;
+    if (mat.religion != null) filled++;
+    if (mat.casteOrCommunity != null) filled++;
+    if (mat.maritalStatus != null) filled++;
+    return (filled * 100 / 3).round().clamp(0, 100);
+  }
+
+  int _sectionPctPhysical() {
+    final mat = profile.matrimonyExtensions;
+    return (mat?.heightCm != null) ? 100 : 0;
+  }
+
+  int _sectionPctEducationCareer() {
+    final mat = profile.matrimonyExtensions;
+    if (mat == null) return 0;
+    int filled = 0;
+    if (mat.educationDegree != null) filled++;
+    if (mat.educationInstitution != null) filled++;
+    if (mat.occupation != null) filled++;
+    if (mat.employer != null) filled++;
+    if (mat.industry != null) filled++;
+    if (mat.incomeRange != null) filled++;
+    return (filled * 100 / 6).round().clamp(0, 100);
+  }
+
+  int _sectionPctLifestyle() {
+    final mat = profile.matrimonyExtensions;
+    if (mat == null) return 0;
+    int filled = 0;
+    if (mat.diet != null) filled++;
+    if (mat.drinking != null) filled++;
+    if (mat.smoking != null) filled++;
+    return (filled * 100 / 3).round().clamp(0, 100);
+  }
+
+  int _sectionPctInterests() => profile.interests.isNotEmpty ? 100 : 0;
+
+  int _sectionPctFamily() {
+    final fam = profile.matrimonyExtensions?.familyDetails;
+    if (fam == null) return 0;
+    int filled = 0;
+    if (fam.familyType != null) filled++;
+    if (fam.familyValues != null) filled++;
+    if (fam.fatherOccupation != null) filled++;
+    if (fam.motherOccupation != null) filled++;
+    if (fam.siblingsCount != null) filled++;
+    return (filled * 100 / 5).round().clamp(0, 100);
+  }
+
+  int _sectionPctHoroscope() {
+    final hor = profile.matrimonyExtensions?.horoscope;
+    if (hor == null) return 0;
+    int filled = 0;
+    if (hor.manglik != null) filled++;
+    if (hor.nakshatra != null) filled++;
+    if (hor.timeOfBirth != null) filled++;
+    if (hor.birthPlace != null) filled++;
+    return (filled * 100 / 4).round().clamp(0, 100);
+  }
+
+  int _sectionPctAboutMe() => profile.aboutMe.isNotEmpty ? 100 : 0;
+
+  int _sectionPctPreferences() {
+    final prefs = profile.partnerPreferences;
+    if (prefs == null) return 0;
+    int filled = 0;
+    if (prefs.ageMin != 0 || prefs.ageMax != 0) filled++;
+    if (prefs.preferredReligions?.isNotEmpty == true) filled++;
+    if (prefs.educationPreference != null) filled++;
+    if (prefs.maritalStatusPreference?.isNotEmpty == true) filled++;
+    if (prefs.dietPreference != null) filled++;
+    if (prefs.preferredLocations?.isNotEmpty == true) filled++;
+    return (filled * 100 / 6).round().clamp(0, 100);
+  }
+
+  int _sectionPctPhotos() => profile.photoUrls.isNotEmpty ? 100 : 0;
+
+  // ── Sections (compact: title + % complete + edit) ────────────────────
 
   Widget _buildBasicDetailsSection(BuildContext context) {
-    final age = _computeAge(profile.dateOfBirth);
-    final items = <_DetailItem>[
-      if (profile.gender != null) _DetailItem(Icons.person_outline, 'Gender', profile.gender!),
-      if (age != null) _DetailItem(Icons.cake_outlined, 'Age', '$age years'),
-      if (profile.dateOfBirth != null) _DetailItem(Icons.calendar_today_outlined, 'Date of birth', _formatDate(profile.dateOfBirth!)),
-      if (profile.displayLocation.isNotEmpty) _DetailItem(Icons.location_on_outlined, 'Living in', profile.displayLocation),
-      if (profile.originCity != null) _DetailItem(Icons.home_outlined, 'From', [profile.originCity, profile.originCountry].whereType<String>().join(', ')),
-      if (profile.motherTongue != null) _DetailItem(Icons.translate, 'Mother tongue', profile.motherTongue!),
-      if (profile.languagesSpoken.isNotEmpty) _DetailItem(Icons.language, 'Languages', profile.languagesSpoken.join(', ')),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Basic Details',
       icon: Icons.badge_outlined,
-      editStep: 0,
-      items: items,
+      pct: _sectionPctBasic(),
       onEdit: () => _editSection(context, 0),
     );
   }
 
   Widget _buildReligionSection(BuildContext context) {
-    final mat = profile.matrimonyExtensions;
-    final items = <_DetailItem>[
-      if (mat?.religion != null) _DetailItem(Icons.temple_hindu_outlined, 'Religion', mat!.religion!),
-      if (mat?.casteOrCommunity != null) _DetailItem(Icons.groups_outlined, 'Community', mat!.casteOrCommunity!),
-      if (mat?.maritalStatus != null) _DetailItem(Icons.favorite_border, 'Marital status', mat!.maritalStatus!),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Religion & Community',
       icon: Icons.temple_hindu_outlined,
-      items: items,
-      onEdit: () => _editSection(context, 0),
+      pct: _sectionPctReligion(),
+      onEdit: () => _editSection(context, 5),
     );
   }
 
   Widget _buildPhysicalSection(BuildContext context) {
-    final mat = profile.matrimonyExtensions;
-    final items = <_DetailItem>[
-      if (mat?.heightCm != null) _DetailItem(Icons.height, 'Height', '${mat!.heightCm} cm'),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Physical Attributes',
       icon: Icons.accessibility_new_outlined,
-      items: items,
-      onEdit: () => _editSection(context, 0),
+      pct: _sectionPctPhysical(),
+      onEdit: () => _editSection(context, 5),
     );
   }
 
   Widget _buildEducationCareerSection(BuildContext context) {
-    final mat = profile.matrimonyExtensions;
-    final items = <_DetailItem>[
-      if (mat?.educationDegree != null) _DetailItem(Icons.school_outlined, 'Education', mat!.educationDegree!),
-      if (mat?.educationInstitution != null) _DetailItem(Icons.account_balance_outlined, 'Institution', mat!.educationInstitution!),
-      if (mat?.occupation != null) _DetailItem(Icons.work_outline, 'Occupation', mat!.occupation!),
-      if (mat?.employer != null) _DetailItem(Icons.business_outlined, 'Company', mat!.employer!),
-      if (mat?.industry != null) _DetailItem(Icons.category_outlined, 'Sector', mat!.industry!),
-      if (mat?.incomeRange != null) _DetailItem(Icons.currency_rupee, 'Income', mat!.incomeRange!.minLabel ?? ''),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Education & Career',
       icon: Icons.school_outlined,
-      items: items,
+      pct: _sectionPctEducationCareer(),
       onEdit: () => _editSection(context, 3),
     );
   }
 
   Widget _buildLifestyleSection(BuildContext context) {
-    final mat = profile.matrimonyExtensions;
-    final chips = <_ChipData>[];
-    if (mat?.diet != null) chips.add(_ChipData(Icons.restaurant_outlined, mat!.diet!));
-    if (mat?.drinking != null) chips.add(_ChipData(Icons.local_bar_outlined, mat!.drinking!));
-    if (mat?.smoking != null) chips.add(_ChipData(Icons.smoke_free, mat!.smoking!));
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Lifestyle & Habits',
       icon: Icons.self_improvement_outlined,
-      chips: chips,
-      items: const [],
+      pct: _sectionPctLifestyle(),
       onEdit: () => _editSection(context, 5),
     );
   }
 
   Widget _buildInterestsSection(BuildContext context) {
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Interests & Hobbies',
       icon: Icons.interests_outlined,
-      tags: profile.interests,
-      items: const [],
+      pct: _sectionPctInterests(),
       onEdit: () => _editSection(context, 1),
     );
   }
 
   Widget _buildFamilySection(BuildContext context) {
-    final fam = profile.matrimonyExtensions?.familyDetails;
-    final items = <_DetailItem>[
-      if (fam?.familyType != null) _DetailItem(Icons.family_restroom, 'Family type', fam!.familyType!),
-      if (fam?.familyValues != null) _DetailItem(Icons.diversity_1_outlined, 'Family values', fam!.familyValues!),
-      if (fam?.fatherOccupation != null) _DetailItem(Icons.person_outline, "Father's occupation", fam!.fatherOccupation!),
-      if (fam?.motherOccupation != null) _DetailItem(Icons.person_outline, "Mother's occupation", fam!.motherOccupation!),
-      if (fam?.siblingsCount != null) _DetailItem(Icons.people_outline, 'Siblings', '${fam!.siblingsCount}'),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Family',
       icon: Icons.family_restroom,
-      items: items,
+      pct: _sectionPctFamily(),
       onEdit: () => _editSection(context, 5),
     );
   }
 
   Widget _buildHoroscopeSection(BuildContext context) {
-    final hor = profile.matrimonyExtensions?.horoscope;
-    final items = <_DetailItem>[
-      if (hor?.manglik != null) _DetailItem(Icons.auto_awesome_outlined, 'Manglik', hor!.manglik!),
-      if (hor?.nakshatra != null) _DetailItem(Icons.star_outline, 'Nakshatra', hor!.nakshatra!),
-      if (hor?.timeOfBirth != null) _DetailItem(Icons.access_time, 'Birth time', hor!.timeOfBirth!),
-      if (hor?.birthPlace != null) _DetailItem(Icons.place_outlined, 'Birth place', hor!.birthPlace!),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Horoscope',
       icon: Icons.auto_awesome_outlined,
-      items: items,
+      pct: _sectionPctHoroscope(),
       onEdit: () => _editSection(context, 5),
     );
   }
 
   Widget _buildAboutMeSection(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final hasAbout = profile.aboutMe.isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SectionHeader(
-              title: 'About Me',
-              icon: Icons.edit_note_outlined,
-              onEdit: () => _editSection(context, 0),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(
-                hasAbout ? profile.aboutMe : 'Tell others about yourself...',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: hasAbout ? cs.onSurface : cs.onSurface.withValues(alpha: 0.4),
-                  fontStyle: hasAbout ? FontStyle.normal : FontStyle.italic,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _SectionSummaryCard(
+      title: 'About Me',
+      icon: Icons.edit_note_outlined,
+      pct: _sectionPctAboutMe(),
+      onEdit: () => _editSection(context, 0),
     );
   }
 
   Widget _buildPreferencesSection(BuildContext context) {
-    final prefs = profile.partnerPreferences;
-    final items = <_DetailItem>[
-      if (prefs != null) _DetailItem(Icons.calendar_today_outlined, 'Age range', '${prefs.ageMin} – ${prefs.ageMax} years'),
-      if (prefs?.preferredReligions?.isNotEmpty == true)
-        _DetailItem(Icons.temple_hindu_outlined, 'Religion', prefs!.preferredReligions!.join(', ')),
-      if (prefs?.educationPreference != null)
-        _DetailItem(Icons.school_outlined, 'Education', prefs!.educationPreference!),
-      if (prefs?.maritalStatusPreference?.isNotEmpty == true)
-        _DetailItem(Icons.favorite_border, 'Marital status', prefs!.maritalStatusPreference!.join(', ')),
-      if (prefs?.dietPreference != null)
-        _DetailItem(Icons.restaurant_outlined, 'Diet', prefs!.dietPreference!),
-      if (prefs?.preferredLocations?.isNotEmpty == true)
-        _DetailItem(Icons.location_on_outlined, 'Preferred locations', prefs!.preferredLocations!.join(', ')),
-    ];
-    return _SectionCard(
+    return _SectionSummaryCard(
       title: 'Partner Preferences',
       icon: Icons.tune,
-      items: items,
+      pct: _sectionPctPreferences(),
       onEdit: () => _editSection(context, 6),
     );
   }
 
   Widget _buildPhotosSection(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SectionHeader(
-              title: 'Photos',
-              icon: Icons.photo_library_outlined,
-              onEdit: () => _editSection(context, 2),
-              trailing: '${profile.photoUrls.length} photos',
-            ),
-            if (profile.photoUrls.isNotEmpty)
-              SizedBox(
-                height: 120,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: profile.photoUrls.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) => ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      width: 90,
-                      height: 120,
-                      child: _buildImage(profile.photoUrls[i]),
-                    ),
-                  ),
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Text(
-                  'Add photos to get more matches',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.4),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return _SectionSummaryCard(
+      title: 'Photos',
+      icon: Icons.photo_library_outlined,
+      pct: _sectionPctPhotos(),
+      onEdit: () => _editSection(context, 2),
     );
   }
 
@@ -470,23 +426,6 @@ class _ProfileBody extends StatelessWidget {
       return Image.network(url, fit: BoxFit.cover);
     }
     return Image.file(File(url), fit: BoxFit.cover);
-  }
-
-  int? _computeAge(String? dateOfBirth) {
-    if (dateOfBirth == null) return null;
-    final dob = DateTime.tryParse(dateOfBirth);
-    if (dob == null) return null;
-    final now = DateTime.now();
-    int age = now.year - dob.year;
-    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) age--;
-    return age;
-  }
-
-  String _formatDate(String isoDate) {
-    final dt = DateTime.tryParse(isoDate);
-    if (dt == null) return isoDate;
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
   static List<String> _computeMissing(UserProfile p, AppMode mode) {
@@ -515,242 +454,83 @@ class _ProfileBody extends StatelessWidget {
   }
 }
 
-// ── Reusable section card ─────────────────────────────────────────
+// ── Section summary card (title + % complete + edit) ─────────────────
 
-class _DetailItem {
-  const _DetailItem(this.icon, this.label, this.value);
-  final IconData icon;
-  final String label;
-  final String value;
-}
-
-class _ChipData {
-  const _ChipData(this.icon, this.label);
-  final IconData icon;
-  final String label;
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
+class _SectionSummaryCard extends StatelessWidget {
+  const _SectionSummaryCard({
     required this.title,
     required this.icon,
-    required this.items,
+    required this.pct,
     required this.onEdit,
-    this.editStep,
-    this.chips,
-    this.tags,
   });
 
   final String title;
   final IconData icon;
-  final List<_DetailItem> items;
+  final int pct;
   final VoidCallback onEdit;
-  final int? editStep;
-  final List<_ChipData>? chips;
-  final List<String>? tags;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isEmpty = items.isEmpty && (chips == null || chips!.isEmpty) && (tags == null || tags!.isEmpty);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
+      child: Material(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        child: InkWell(
+          onTap: onEdit,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SectionHeader(title: title, icon: icon, onEdit: onEdit),
-            if (isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: GestureDetector(
-                  onTap: onEdit,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.saffron.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.saffron.withValues(alpha: 0.2),
-                        style: BorderStyle.solid,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_circle_outline, size: 18, color: AppColors.saffron),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Add $title',
-                          style: AppTypography.labelLarge.copyWith(color: AppColors.saffron),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            if (items.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  children: items.map((item) => _buildDetailRow(context, item)).toList(),
-                ),
-              ),
-            if (chips != null && chips!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: chips!.map((c) => _buildChip(context, c)).toList(),
-                ),
-              ),
-            if (tags != null && tags!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: tags!.map((t) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.saffron.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      t,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.saffronDark,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )).toList(),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(BuildContext context, _DetailItem item) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: AppColors.saffron.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
             ),
-            child: Icon(item.icon, size: 18, color: AppColors.saffron),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  item.label,
-                  style: AppTypography.caption.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.5),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.saffron.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 22, color: AppColors.saffron),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface,
+                    ),
                   ),
                 ),
-                Text(
-                  item.value,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w500,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: pct >= 100
+                        ? AppColors.indiaGreen.withValues(alpha: 0.12)
+                        : AppColors.saffron.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$pct%',
+                    style: AppTypography.labelMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: pct >= 100 ? AppColors.indiaGreen : AppColors.saffronDark,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, size: 22, color: cs.onSurface.withValues(alpha: 0.4)),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChip(BuildContext context, _ChipData chip) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(chip.icon, size: 18, color: cs.onSurface.withValues(alpha: 0.7)),
-          const SizedBox(width: 8),
-          Text(
-            chip.label,
-            style: AppTypography.bodySmall.copyWith(
-              color: cs.onSurface,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.icon,
-    required this.onEdit,
-    this.trailing,
-  });
-
-  final String title;
-  final IconData icon;
-  final VoidCallback onEdit;
-  final String? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.saffron),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-          if (trailing != null) ...[
-            Text(
-              trailing!,
-              style: AppTypography.caption.copyWith(color: cs.onSurface.withValues(alpha: 0.5)),
-            ),
-            const SizedBox(width: 4),
-          ],
-          IconButton(
-            icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.saffron),
-            onPressed: onEdit,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
-        ],
+        ),
       ),
     );
   }
