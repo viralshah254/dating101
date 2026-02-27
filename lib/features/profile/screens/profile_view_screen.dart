@@ -10,6 +10,7 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
+import '../../../l10n/app_localizations.dart';
 
 final _profileProvider = FutureProvider<UserProfile?>((ref) async {
   final repo = ref.watch(profileRepositoryProvider);
@@ -28,21 +29,109 @@ class ProfileViewScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: cs.surface,
       body: profileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error loading profile: $e')),
-        data: (profile) {
-          if (profile == null) {
-            return Center(
+        loading: () => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: cs.primary),
+              const SizedBox(height: 20),
+              Text(
+                'Loading profile…',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: cs.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+        error: (e, _) {
+          final l = AppLocalizations.of(context)!;
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('No profile yet', style: AppTypography.headlineMedium),
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: cs.error.withValues(alpha: 0.8),
+                  ),
                   const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => context.push('/profile-setup'),
-                    child: const Text('Create profile'),
+                  Text(
+                    l.errorLoadingProfile('$e'),
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: cs.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => ref.invalidate(_profileProvider),
+                    icon: const Icon(Icons.refresh, size: 20),
+                    label: Text(l.retry),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                   ),
                 ],
+              ),
+            ),
+          );
+        },
+        data: (profile) {
+          if (profile == null) {
+            final l = AppLocalizations.of(context)!;
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_add_rounded,
+                      size: 64,
+                      color: cs.primary.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      l.noProfileYet,
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Create your profile to get started.',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.65),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 28),
+                    FilledButton(
+                      onPressed: () => context.push('/profile-setup'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(l.createProfile),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -78,24 +167,22 @@ class _ProfileBody extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         // Header with photo + name
-        SliverToBoxAdapter(
-          child: _buildHeader(context, cs, pct),
-        ),
+        SliverToBoxAdapter(child: _buildHeader(context, cs, pct)),
         // Completeness card
         if (pct < 100)
           SliverToBoxAdapter(
             child: _CompletenessCard(
               pct: pct,
               missing: missing,
-              onTap: () => _editSection(context, 0),
+              onTap: () => _editSection(context, 'basic'),
             ),
           ),
-        // Sections — generous spacing so each section reads as its own block
+        // Sections — generous spacing, same padding as completeness card
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               _buildBasicDetailsSection(context),
               if (mode.isMatrimony) _buildReligionSection(context),
               _buildPhysicalSection(context),
@@ -117,101 +204,146 @@ class _ProfileBody extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, ColorScheme cs, int pct) {
     final hasPhoto = profile.photoUrls.isNotEmpty;
+    final progressColor = pct >= 80 ? AppColors.indiaGreen : AppColors.saffron;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.saffron.withValues(alpha: 0.15),
-            cs.surface,
-          ],
+          colors: [AppColors.splashPeach.withValues(alpha: 0.5), cs.surface],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
+          stops: const [0.0, 0.6],
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Nav bar
+            // Nav bar — minimal, centered edit
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back),
+                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const Spacer(),
-                  TextButton.icon(
-                    onPressed: () => _editSection(context, 0),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit all'),
+                  Text(
+                    'My profile',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => _editSection(context, 'basic'),
+                    icon: const Icon(Icons.edit_outlined, size: 22),
                   ),
                 ],
               ),
             ),
-            // Avatar
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.saffron, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.saffron.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: hasPhoto
-                    ? _buildImage(profile.photoUrls.first)
-                    : Container(
-                        color: AppColors.saffron.withValues(alpha: 0.15),
-                        child: Icon(Icons.person, size: 50, color: AppColors.saffron),
+            // Avatar with completion ring
+            SizedBox(
+              width: 112,
+              height: 112,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 112,
+                    height: 112,
+                    child: CircularProgressIndicator(
+                      value: pct / 100,
+                      strokeWidth: 3,
+                      backgroundColor: cs.outlineVariant.withValues(
+                        alpha: 0.25,
                       ),
+                      valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                    ),
+                  ),
+                  Container(
+                    width: 98,
+                    height: 98,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: progressColor.withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: progressColor.withValues(alpha: 0.15),
+                          blurRadius: 16,
+                          spreadRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: hasPhoto
+                          ? _buildImage(profile.photoUrls.first)
+                          : Container(
+                              color: AppColors.saffron.withValues(alpha: 0.12),
+                              child: Icon(
+                                Icons.person_rounded,
+                                size: 48,
+                                color: AppColors.saffron,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               profile.name,
-              style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w700),
+              style: AppTypography.headlineMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             if (profile.displayLocation.isNotEmpty)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.location_on_outlined, size: 14, color: cs.onSurface.withValues(alpha: 0.6)),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 6),
                   Text(
                     profile.displayLocation,
-                    style: AppTypography.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.6)),
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.65),
+                    ),
                   ),
                 ],
               ),
-            const SizedBox(height: 8),
-            // Completeness badge
+            const SizedBox(height: 12),
+            // Completeness pill
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: pct >= 80
-                    ? AppColors.indiaGreen.withValues(alpha: 0.1)
-                    : AppColors.saffron.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: progressColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: progressColor.withValues(alpha: 0.25),
+                ),
               ),
               child: Text(
                 '$pct% complete',
-                style: AppTypography.labelMedium.copyWith(
-                  color: pct >= 80 ? AppColors.indiaGreen : AppColors.saffronDark,
-                  fontWeight: FontWeight.w600,
+                style: AppTypography.labelLarge.copyWith(
+                  color: progressColor,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -315,107 +447,114 @@ class _ProfileBody extends StatelessWidget {
 
   Widget _buildBasicDetailsSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Basic Details',
+      title: AppLocalizations.of(context)!.basicDetails,
       icon: Icons.badge_outlined,
       pct: _sectionPctBasic(),
-      onEdit: () => _editSection(context, 0),
+      onEdit: () => _editSection(context, 'basic'),
     );
   }
 
   Widget _buildReligionSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Religion & Community',
+      title: AppLocalizations.of(context)!.religionAndCommunity,
       icon: Icons.temple_hindu_outlined,
       pct: _sectionPctReligion(),
-      onEdit: () => _editSection(context, 5),
+      onEdit: () => _editSection(context, 'religion'),
     );
   }
 
   Widget _buildPhysicalSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Physical Attributes',
+      title: AppLocalizations.of(context)!.physicalAttributes,
       icon: Icons.accessibility_new_outlined,
       pct: _sectionPctPhysical(),
-      onEdit: () => _editSection(context, 5),
+      onEdit: () => _editSection(context, 'physical'),
     );
   }
 
   Widget _buildEducationCareerSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Education & Career',
+      title: AppLocalizations.of(context)!.educationAndCareer,
       icon: Icons.school_outlined,
       pct: _sectionPctEducationCareer(),
-      onEdit: () => _editSection(context, 3),
+      onEdit: () => _editSection(context, 'education-career'),
     );
   }
 
   Widget _buildLifestyleSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Lifestyle & Habits',
+      title: AppLocalizations.of(context)!.lifestyleAndHabits,
       icon: Icons.self_improvement_outlined,
       pct: _sectionPctLifestyle(),
-      onEdit: () => _editSection(context, 5),
+      onEdit: () => _editSection(context, 'lifestyle'),
     );
   }
 
   Widget _buildInterestsSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Interests & Hobbies',
+      title: AppLocalizations.of(context)!.interestsAndHobbiesSection,
       icon: Icons.interests_outlined,
       pct: _sectionPctInterests(),
-      onEdit: () => _editSection(context, 1),
+      onEdit: () => _editSection(context, 'interests'),
     );
   }
 
   Widget _buildFamilySection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Family',
+      title: AppLocalizations.of(context)!.familySection,
       icon: Icons.family_restroom,
       pct: _sectionPctFamily(),
-      onEdit: () => _editSection(context, 5),
+      onEdit: () => _editSection(context, 'family'),
     );
   }
 
   Widget _buildHoroscopeSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Horoscope',
+      title: AppLocalizations.of(context)!.horoscopeSection,
       icon: Icons.auto_awesome_outlined,
       pct: _sectionPctHoroscope(),
-      onEdit: () => _editSection(context, 5),
+      onEdit: () => _editSection(context, 'horoscope'),
     );
   }
 
   Widget _buildAboutMeSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'About Me',
+      title: AppLocalizations.of(context)!.aboutMeSection,
       icon: Icons.edit_note_outlined,
       pct: _sectionPctAboutMe(),
-      onEdit: () => _editSection(context, 0),
+      onEdit: () => _editSection(context, 'about'),
+      subtitle: profile.aboutMe.isNotEmpty
+          ? (profile.aboutMe.length > 80
+                ? '${profile.aboutMe.substring(0, 80).trim()}…'
+                : profile.aboutMe)
+          : null,
     );
   }
 
   Widget _buildPreferencesSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Partner Preferences',
+      title: AppLocalizations.of(context)!.partnerPreferencesSection,
       icon: Icons.tune,
       pct: _sectionPctPreferences(),
-      onEdit: () => _editSection(context, 6),
+      onEdit: () => _editSection(context, 'preferences'),
     );
   }
 
   Widget _buildPhotosSection(BuildContext context) {
     return _SectionSummaryCard(
-      title: 'Photos',
+      title: AppLocalizations.of(context)!.profileBuilderPhotos,
       icon: Icons.photo_library_outlined,
       pct: _sectionPctPhotos(),
-      onEdit: () => _editSection(context, 2),
+      onEdit: () => _editSection(context, 'photos'),
     );
   }
 
   // ── Navigation ────────────────────────────────────────────────────
 
-  Future<void> _editSection(BuildContext context, int step) async {
-    await context.push('/profile-setup?edit=true&step=$step');
+  Future<void> _editSection(BuildContext context, String sectionId) async {
+    await context.push(
+      '/profile-edit?section=${Uri.encodeComponent(sectionId)}',
+    );
     onRefresh();
   }
 
@@ -438,7 +577,13 @@ class _ProfileBody extends StatelessWidget {
     if (mode.isMatrimony) {
       final mat = p.matrimonyExtensions;
       if (mat == null) {
-        missing.addAll(['Religion', 'Education', 'Career', 'Family', 'Horoscope']);
+        missing.addAll([
+          'Religion',
+          'Education',
+          'Career',
+          'Family',
+          'Horoscope',
+        ]);
       } else {
         if (mat.religion == null) missing.add('Religion');
         if (mat.educationDegree == null) missing.add('Education');
@@ -462,6 +607,7 @@ class _SectionSummaryCard extends StatelessWidget {
     required this.icon,
     required this.pct,
     required this.onEdit,
+    this.subtitle,
   });
 
   final String title;
@@ -469,64 +615,93 @@ class _SectionSummaryCard extends StatelessWidget {
   final int pct;
   final VoidCallback onEdit;
 
+  /// Optional preview text (e.g. About Me bio snippet).
+  final String? subtitle;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final accent = pct >= 100 ? AppColors.indiaGreen : AppColors.saffron;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(18),
         elevation: 0,
+        shadowColor: Colors.black.withValues(alpha: 0.06),
         child: InkWell(
           onTap: onEdit,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.2),
+              ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.saffron.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, size: 22, color: AppColors.saffron),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurface,
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(icon, size: 24, color: accent),
                     ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: pct >= 100
-                        ? AppColors.indiaGreen.withValues(alpha: 0.12)
-                        : AppColors.saffron.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$pct%',
-                    style: AppTypography.labelMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: pct >= 100 ? AppColors.indiaGreen : AppColors.saffronDark,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface,
+                        ),
+                      ),
                     ),
-                  ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Text(
+                        '$pct%',
+                        style: AppTypography.labelMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: cs.onSurface.withValues(alpha: 0.35),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Icon(Icons.chevron_right, size: 22, color: cs.onSurface.withValues(alpha: 0.4)),
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    subtitle!,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.7),
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),
@@ -552,73 +727,100 @@ class _CompletenessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final progressColor = pct >= 80 ? AppColors.indiaGreen : AppColors.saffron;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.saffron.withValues(alpha: 0.08),
-                AppColors.indiaGreen.withValues(alpha: 0.04),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  progressColor.withValues(alpha: 0.08),
+                  progressColor.withValues(alpha: 0.03),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: progressColor.withValues(alpha: 0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: progressColor.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.saffron.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 56,
-                height: 56,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CircularProgressIndicator(
-                      value: pct / 100,
-                      strokeWidth: 5,
-                      backgroundColor: cs.outlineVariant.withValues(alpha: 0.3),
-                      color: pct >= 80 ? AppColors.indiaGreen : AppColors.saffron,
-                    ),
-                    Center(
-                      child: Text(
-                        '$pct%',
-                        style: AppTypography.labelLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: pct >= 80 ? AppColors.indiaGreen : AppColors.saffronDark,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CircularProgressIndicator(
+                        value: pct / 100,
+                        strokeWidth: 4,
+                        backgroundColor: cs.outlineVariant.withValues(
+                          alpha: 0.25,
+                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          progressColor,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Complete your profile',
-                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      missing.isEmpty
-                          ? 'Almost there!'
-                          : 'Missing: ${missing.take(3).join(', ')}${missing.length > 3 ? ' +${missing.length - 3} more' : ''}',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.6),
+                      Center(
+                        child: Icon(
+                          pct >= 100
+                              ? Icons.check_circle_rounded
+                              : Icons.person_rounded,
+                          size: 24,
+                          color: progressColor,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: cs.onSurface.withValues(alpha: 0.4)),
-            ],
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        pct >= 100
+                            ? 'Profile complete'
+                            : 'Complete your profile',
+                        style: AppTypography.titleSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        missing.isEmpty
+                            ? (pct >= 100
+                                  ? 'Looking good!'
+                                  : 'Add a few more details for better matches.')
+                            : 'Add: ${missing.take(3).join(', ')}${missing.length > 3 ? '…' : ''}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: cs.onSurface.withValues(alpha: 0.65),
+                          height: 1.35,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.arrow_forward_ios, size: 14, color: progressColor),
+              ],
+            ),
           ),
         ),
       ),

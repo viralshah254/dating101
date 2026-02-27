@@ -37,7 +37,8 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
           p,
           distanceKm: distanceKm,
           matchReason: reason,
-          matchReasons: FakeData.matchReasonsList[id] ?? (reason != null ? [reason] : []),
+          matchReasons:
+              FakeData.matchReasonsList[id] ?? (reason != null ? [reason] : []),
           sharedInterests: shared,
         ),
       );
@@ -54,6 +55,10 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? religion,
     String? education,
     int? heightMinCm,
+    int? heightMaxCm,
+    String? diet,
+    String? bodyType,
+    String? maritalStatus,
     int limit = 20,
     String? cursor,
   }) async {
@@ -63,7 +68,11 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
         (city != null && city.isNotEmpty) ||
         (religion != null && religion.isNotEmpty) ||
         (education != null && education.isNotEmpty) ||
-        heightMinCm != null;
+        heightMinCm != null ||
+        heightMaxCm != null ||
+        (diet != null && diet.isNotEmpty) ||
+        (bodyType != null && bodyType.isNotEmpty) ||
+        (maritalStatus != null && maritalStatus.isNotEmpty);
     if (hasFilters) {
       return search(
         ageMin: ageMin,
@@ -72,6 +81,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
         religion: religion,
         education: education,
         heightMinCm: heightMinCm,
+        diet: diet,
         limit: limit,
         cursor: cursor,
       );
@@ -87,6 +97,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? religion,
     String? education,
     int? heightMinCm,
+    String? diet,
     int limit = 20,
     String? cursor,
   }) async {
@@ -98,8 +109,16 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       if (ageMin != null && (p.age == null || p.age! < ageMin)) continue;
       if (ageMax != null && (p.age == null || p.age! > ageMax)) continue;
       if (city != null &&
-          !(p.currentCity ?? '').toLowerCase().contains(city.toLowerCase()))
+          !(p.currentCity ?? '').toLowerCase().contains(city.toLowerCase())) {
         continue;
+      }
+      if (diet != null && diet.isNotEmpty) {
+        final profileDiet = p.matrimonyExtensions?.diet;
+        if (profileDiet == null ||
+            profileDiet.toLowerCase() != diet.toLowerCase()) {
+          continue;
+        }
+      }
       final shared = _sharedInterests(
         FakeData.myProfile.interests,
         p.interests,

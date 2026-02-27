@@ -20,8 +20,18 @@ class DiscoveryFiltersSheet extends ConsumerStatefulWidget {
   final void Function(DiscoveryFilterParams params) onApply;
 
   @override
-  ConsumerState<DiscoveryFiltersSheet> createState() => _DiscoveryFiltersSheetState();
+  ConsumerState<DiscoveryFiltersSheet> createState() =>
+      _DiscoveryFiltersSheetState();
 }
+
+/// Body type options for discovery filter (align with partner prefs).
+const _bodyTypeOptions = [
+  'Slim',
+  'Average',
+  'Athletic',
+  'Heavyset',
+  'Plus size',
+];
 
 class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
   int? _ageMin;
@@ -30,6 +40,13 @@ class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
   String? _religion;
   String? _education;
   String? _diet;
+  int? _heightMinCm;
+  int? _heightMaxCm;
+  String? _bodyType;
+  String? _maritalStatus;
+
+  static const int _heightMinDefault = 140;
+  static const int _heightMaxDefault = 200;
 
   @override
   void initState() {
@@ -40,6 +57,10 @@ class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
     _religion = widget.initialParams?.religion;
     _education = widget.initialParams?.education;
     _diet = widget.initialParams?.diet;
+    _heightMinCm = widget.initialParams?.heightMinCm;
+    _heightMaxCm = widget.initialParams?.heightMaxCm;
+    _bodyType = widget.initialParams?.bodyType;
+    _maritalStatus = widget.initialParams?.maritalStatus;
   }
 
   @override
@@ -58,9 +79,18 @@ class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
             final effectiveAgeMin = _ageMin ?? opts.age.defaultMin;
             final effectiveAgeMax = _ageMax ?? opts.age.defaultMax;
             final effectiveCity = _city ?? opts.cities.defaultSelected;
-            final effectiveReligion = _religion ?? opts.religions.defaultSelected;
-            final effectiveEducation = _education ?? opts.education.defaultSelected;
+            final effectiveReligion =
+                _religion ?? opts.religions.defaultSelected;
+            final effectiveEducation =
+                _education ?? opts.education.defaultSelected;
             final effectiveDiet = _diet ?? opts.diet?.defaultSelected;
+            final heightOpts = opts.height;
+            final effectiveHeightMin =
+                _heightMinCm ?? heightOpts?.defaultMinCm ?? _heightMinDefault;
+            final effectiveHeightMax =
+                _heightMaxCm ?? heightOpts?.defaultMaxCm ?? _heightMaxDefault;
+            final effectiveMaritalStatus =
+                _maritalStatus ?? opts.maritalStatus?.defaultSelected;
             return _FiltersContent(
               scrollController: scrollController,
               opts: opts,
@@ -70,21 +100,39 @@ class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
               religion: effectiveReligion,
               education: effectiveEducation,
               diet: effectiveDiet,
+              heightMinCm: effectiveHeightMin,
+              heightMaxCm: effectiveHeightMax,
+              bodyType: _bodyType,
+              maritalStatus: effectiveMaritalStatus,
               onAgeMinChanged: (v) => setState(() => _ageMin = v),
               onAgeMaxChanged: (v) => setState(() => _ageMax = v),
               onCityChanged: (v) => setState(() => _city = v),
               onReligionChanged: (v) => setState(() => _religion = v),
               onEducationChanged: (v) => setState(() => _education = v),
               onDietChanged: (v) => setState(() => _diet = v),
+              onHeightMinChanged: (v) => setState(() => _heightMinCm = v),
+              onHeightMaxChanged: (v) => setState(() => _heightMaxCm = v),
+              onBodyTypeChanged: (v) => setState(() => _bodyType = v),
+              onMaritalStatusChanged: (v) => setState(() => _maritalStatus = v),
               onApply: () {
-                widget.onApply(DiscoveryFilterParams(
-                  ageMin: effectiveAgeMin,
-                  ageMax: effectiveAgeMax,
-                  city: effectiveCity?.isNotEmpty == true ? effectiveCity : null,
-                  religion: effectiveReligion?.isNotEmpty == true ? effectiveReligion : null,
-                  education: effectiveEducation?.isNotEmpty == true ? effectiveEducation : null,
-                  diet: effectiveDiet?.isNotEmpty == true ? effectiveDiet : null,
-                ));
+                widget.onApply(
+                  DiscoveryFilterParams(
+                    ageMin: _ageMin,
+                    ageMax: _ageMax,
+                    city: _city?.isNotEmpty == true ? _city : null,
+                    religion: _religion?.isNotEmpty == true ? _religion : null,
+                    education: _education?.isNotEmpty == true
+                        ? _education
+                        : null,
+                    diet: _diet?.isNotEmpty == true ? _diet : null,
+                    heightMinCm: _heightMinCm,
+                    heightMaxCm: _heightMaxCm,
+                    bodyType: _bodyType?.isNotEmpty == true ? _bodyType : null,
+                    maritalStatus: _maritalStatus?.isNotEmpty == true
+                        ? _maritalStatus
+                        : null,
+                  ),
+                );
                 if (context.mounted) Navigator.pop(context);
               },
               onClear: () {
@@ -95,6 +143,10 @@ class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
                   _religion = null;
                   _education = null;
                   _diet = null;
+                  _heightMinCm = null;
+                  _heightMaxCm = null;
+                  _bodyType = null;
+                  _maritalStatus = null;
                 });
               },
             );
@@ -123,7 +175,10 @@ class _DiscoveryFiltersSheetState extends ConsumerState<DiscoveryFiltersSheet> {
                   const SizedBox(height: 16),
                   Text(l.errorGeneric, style: AppTypography.bodyMedium),
                   const SizedBox(height: 16),
-                  TextButton(onPressed: () => Navigator.pop(context), child: Text(l.close)),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(l.close),
+                  ),
                 ],
               ),
             ),
@@ -144,12 +199,20 @@ class _FiltersContent extends StatelessWidget {
     required this.religion,
     required this.education,
     required this.diet,
+    required this.heightMinCm,
+    required this.heightMaxCm,
+    required this.bodyType,
+    this.maritalStatus,
     required this.onAgeMinChanged,
     required this.onAgeMaxChanged,
     required this.onCityChanged,
     required this.onReligionChanged,
     required this.onEducationChanged,
     required this.onDietChanged,
+    required this.onHeightMinChanged,
+    required this.onHeightMaxChanged,
+    required this.onBodyTypeChanged,
+    required this.onMaritalStatusChanged,
     required this.onApply,
     required this.onClear,
   });
@@ -162,19 +225,26 @@ class _FiltersContent extends StatelessWidget {
   final String? religion;
   final String? education;
   final String? diet;
+  final int? heightMinCm;
+  final int? heightMaxCm;
+  final String? bodyType;
+  final String? maritalStatus;
   final void Function(int?) onAgeMinChanged;
   final void Function(int?) onAgeMaxChanged;
   final void Function(String?) onCityChanged;
   final void Function(String?) onReligionChanged;
   final void Function(String?) onEducationChanged;
   final void Function(String?) onDietChanged;
+  final void Function(int?) onHeightMinChanged;
+  final void Function(int?) onHeightMaxChanged;
+  final void Function(String?) onBodyTypeChanged;
+  final void Function(String?) onMaritalStatusChanged;
   final VoidCallback onApply;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return SafeArea(
       child: Column(
@@ -185,7 +255,7 @@ class _FiltersContent extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(l.filters, style: AppTypography.headlineSmall),
-                TextButton(onPressed: onClear, child: const Text('Reset')),
+                TextButton(onPressed: onClear, child: Text(l.reset)),
               ],
             ),
           ),
@@ -194,7 +264,13 @@ class _FiltersContent extends StatelessWidget {
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
               children: [
-                _AgeSection(opts: opts, ageMin: ageMin, ageMax: ageMax, onAgeMinChanged: onAgeMinChanged, onAgeMaxChanged: onAgeMaxChanged),
+                _AgeSection(
+                  opts: opts,
+                  ageMin: ageMin,
+                  ageMax: ageMax,
+                  onAgeMinChanged: onAgeMinChanged,
+                  onAgeMaxChanged: onAgeMaxChanged,
+                ),
                 const SizedBox(height: 20),
                 _DimensionSection(
                   title: l.city,
@@ -225,6 +301,27 @@ class _FiltersContent extends StatelessWidget {
                     onChanged: onDietChanged,
                   ),
                 ],
+                if (opts.height != null) ...[
+                  const SizedBox(height: 16),
+                  _HeightSection(
+                    opts: opts.height!,
+                    heightMinCm: heightMinCm,
+                    heightMaxCm: heightMaxCm,
+                    onHeightMinChanged: onHeightMinChanged,
+                    onHeightMaxChanged: onHeightMaxChanged,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                _BodyTypeSection(value: bodyType, onChanged: onBodyTypeChanged),
+                if (opts.maritalStatus != null) ...[
+                  const SizedBox(height: 16),
+                  _DimensionSection(
+                    title: l.maritalStatus,
+                    dimension: opts.maritalStatus!,
+                    value: maritalStatus,
+                    onChanged: onMaritalStatusChanged,
+                  ),
+                ],
               ],
             ),
           ),
@@ -232,10 +329,7 @@ class _FiltersContent extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: onApply,
-                child: Text(l.apply),
-              ),
+              child: FilledButton(onPressed: onApply, child: Text(l.apply)),
             ),
           ),
         ],
@@ -272,11 +366,14 @@ class _AgeSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(l.ageRange, style: AppTypography.titleSmall.copyWith(color: onSurface, fontWeight: FontWeight.w600)),
-            if (age.strict) ...[
-              const SizedBox(width: 8),
-              _StrictBadge(),
-            ],
+            Text(
+              l.ageRange,
+              style: AppTypography.titleSmall.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (age.strict) ...[const SizedBox(width: 8), _StrictBadge()],
           ],
         ),
         const SizedBox(height: 8),
@@ -285,7 +382,9 @@ class _AgeSection extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '${age.defaultMin} – ${age.defaultMax} years',
-              style: AppTypography.bodyMedium.copyWith(color: onSurface.withValues(alpha: 0.85)),
+              style: AppTypography.bodyMedium.copyWith(
+                color: onSurface.withValues(alpha: 0.85),
+              ),
             ),
           )
         else
@@ -293,22 +392,30 @@ class _AgeSection extends StatelessWidget {
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: minVal.clamp(age.min, age.max),
+                  initialValue: minVal.clamp(age.min, age.max),
                   decoration: const InputDecoration(labelText: 'Min'),
-                  items: List.generate(age.max - age.min + 1, (i) => age.min + i)
-                      .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
-                      .toList(),
+                  items:
+                      List.generate(age.max - age.min + 1, (i) => age.min + i)
+                          .map(
+                            (v) =>
+                                DropdownMenuItem(value: v, child: Text('$v')),
+                          )
+                          .toList(),
                   onChanged: onAgeMinChanged,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: maxVal.clamp(age.min, age.max),
+                  initialValue: maxVal.clamp(age.min, age.max),
                   decoration: const InputDecoration(labelText: 'Max'),
-                  items: List.generate(age.max - age.min + 1, (i) => age.min + i)
-                      .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
-                      .toList(),
+                  items:
+                      List.generate(age.max - age.min + 1, (i) => age.min + i)
+                          .map(
+                            (v) =>
+                                DropdownMenuItem(value: v, child: Text('$v')),
+                          )
+                          .toList(),
                   onChanged: onAgeMaxChanged,
                 ),
               ),
@@ -343,11 +450,14 @@ class _DimensionSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(title, style: AppTypography.titleSmall.copyWith(color: onSurface, fontWeight: FontWeight.w600)),
-            if (dimension.strict) ...[
-              const SizedBox(width: 8),
-              _StrictBadge(),
-            ],
+            Text(
+              title,
+              style: AppTypography.titleSmall.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (dimension.strict) ...[const SizedBox(width: 8), _StrictBadge()],
           ],
         ),
         const SizedBox(height: 8),
@@ -356,14 +466,19 @@ class _DimensionSection extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               dimension.options.first,
-              style: AppTypography.bodyMedium.copyWith(color: onSurface.withValues(alpha: 0.85)),
+              style: AppTypography.bodyMedium.copyWith(
+                color: onSurface.withValues(alpha: 0.85),
+              ),
             ),
           )
         else if (dimension.options.isEmpty)
           const SizedBox.shrink()
         else
           DropdownButtonFormField<String>(
-            value: displayValue != null && dimension.options.contains(displayValue) ? displayValue : dimension.options.first,
+            initialValue:
+                displayValue != null && dimension.options.contains(displayValue)
+                ? displayValue
+                : dimension.options.first,
             decoration: InputDecoration(hintText: title),
             items: dimension.options
                 .map((o) => DropdownMenuItem(value: o, child: Text(o)))
@@ -391,6 +506,139 @@ class _StrictBadge extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+class _HeightSection extends StatelessWidget {
+  const _HeightSection({
+    required this.opts,
+    required this.heightMinCm,
+    required this.heightMaxCm,
+    required this.onHeightMinChanged,
+    required this.onHeightMaxChanged,
+  });
+
+  final FilterHeightRange opts;
+  final int? heightMinCm;
+  final int? heightMaxCm;
+  final void Function(int?) onHeightMinChanged;
+  final void Function(int?) onHeightMaxChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final minVal = heightMinCm ?? opts.defaultMinCm ?? opts.minCm;
+    final maxVal = heightMaxCm ?? opts.defaultMaxCm ?? opts.maxCm;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              l.height,
+              style: AppTypography.titleSmall.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (opts.strict) ...[const SizedBox(width: 8), _StrictBadge()],
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (opts.strict)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              '${opts.defaultMinCm ?? opts.minCm} – ${opts.defaultMaxCm ?? opts.maxCm} cm',
+              style: AppTypography.bodyMedium.copyWith(
+                color: onSurface.withValues(alpha: 0.85),
+              ),
+            ),
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: minVal.clamp(opts.minCm, opts.maxCm),
+                  decoration: const InputDecoration(labelText: 'Min (cm)'),
+                  items:
+                      List.generate(
+                            opts.maxCm - opts.minCm + 1,
+                            (i) => opts.minCm + i,
+                          )
+                          .map(
+                            (v) =>
+                                DropdownMenuItem(value: v, child: Text('$v')),
+                          )
+                          .toList(),
+                  onChanged: onHeightMinChanged,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: maxVal.clamp(opts.minCm, opts.maxCm),
+                  decoration: const InputDecoration(labelText: 'Max (cm)'),
+                  items:
+                      List.generate(
+                            opts.maxCm - opts.minCm + 1,
+                            (i) => opts.minCm + i,
+                          )
+                          .map(
+                            (v) =>
+                                DropdownMenuItem(value: v, child: Text('$v')),
+                          )
+                          .toList(),
+                  onChanged: onHeightMaxChanged,
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _BodyTypeSection extends StatelessWidget {
+  const _BodyTypeSection({required this.value, required this.onChanged});
+
+  final String? value;
+  final void Function(String?) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.bodyTypeQuestion,
+          style: AppTypography.titleSmall.copyWith(
+            color: onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String?>(
+          value: value != null && _bodyTypeOptions.contains(value)
+              ? value
+              : null,
+          decoration: InputDecoration(hintText: l.anyOption),
+          items: [
+            DropdownMenuItem<String?>(value: null, child: Text(l.anyOption)),
+            ..._bodyTypeOptions.map(
+              (o) => DropdownMenuItem<String?>(value: o, child: Text(o)),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }

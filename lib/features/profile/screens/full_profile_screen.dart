@@ -18,6 +18,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/contact_request_status.dart';
 import '../../../domain/models/matrimony_extensions.dart';
+import '../../../domain/models/photo_view_request.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../domain/repositories/discovery_repository.dart';
 import '../../../l10n/app_localizations.dart';
@@ -104,6 +105,9 @@ class _MatrimonyProfileContent extends ConsumerWidget {
 
     return Scaffold(
       body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           _HeroAppBar(
             profile: profile,
@@ -121,16 +125,32 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 20),
 
-                  _NameRow(profile: profile, accent: accent),
-                  const SizedBox(height: 4),
-                  _LocationRow(profile: profile, onSurface: onSurface),
-
-                  if (flags.parentGuardianRole &&
-                      mat != null &&
-                      mat.roleManagingProfile != ProfileRole.self) ...[
-                    const SizedBox(height: 10),
-                    _ManagedByBanner(role: mat.roleManagingProfile, onSurface: onSurface),
-                  ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _NameRow(profile: profile, accent: accent),
+                            const SizedBox(height: 4),
+                            _LocationRow(
+                              profile: profile,
+                              onSurface: onSurface,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (mat != null &&
+                          mat.roleManagingProfile != ProfileRole.self) ...[
+                        const SizedBox(width: 12),
+                        _ManagedByBanner(
+                          role: mat.roleManagingProfile,
+                          onSurface: onSurface,
+                        ),
+                      ],
+                    ],
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -142,16 +162,31 @@ class _MatrimonyProfileContent extends ConsumerWidget {
 
                   const SizedBox(height: 20),
 
-                  if (profile.aboutMe.isNotEmpty) ...[
+                  if (profile.aboutMe.isNotEmpty ||
+                      (mat?.aboutEducation != null &&
+                          mat!.aboutEducation!.isNotEmpty)) ...[
                     _SectionTitle(l.about, onSurface),
                     const SizedBox(height: 6),
-                    Text(
-                      profile.aboutMe,
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: onSurface.withValues(alpha: 0.85),
-                        height: 1.5,
+                    if (profile.aboutMe.isNotEmpty)
+                      Text(
+                        profile.aboutMe,
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: onSurface.withValues(alpha: 0.85),
+                          height: 1.5,
+                        ),
                       ),
-                    ),
+                    if (mat?.aboutEducation != null &&
+                        mat!.aboutEducation!.isNotEmpty) ...[
+                      if (profile.aboutMe.isNotEmpty)
+                        const SizedBox(height: 12),
+                      Text(
+                        mat.aboutEducation!,
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: onSurface.withValues(alpha: 0.85),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
                   ],
 
@@ -170,7 +205,13 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                     const SizedBox(height: 20),
                   ],
 
-                  if (profile.photoUrls.isNotEmpty) ...[
+                  if (profile.photosHidden &&
+                      profile.canViewPhotos != true) ...[
+                    _PhotosLockedSection(profileId: profile.id, accent: accent),
+                    const SizedBox(height: 20),
+                  ] else if ((!profile.photosHidden ||
+                          profile.canViewPhotos == true) &&
+                      profile.photoUrls.isNotEmpty) ...[
                     _PhotosSection(
                       photos: profile.photoUrls,
                       accent: accent,
@@ -280,12 +321,15 @@ class _FloatingActionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final flags = ref.watch(featureFlagsProvider);
-    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
-    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final matchedIds =
+        ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final shortlistedIds =
+        ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final isMatched = matchedIds.contains(profileId);
     final isShortlisted = shortlistedIds.contains(profileId);
     final contactGatingOn = flags.contactRequestGating;
-    final canRequestContactNow = !contactGatingOn || isMatched || ent.canRequestContact;
+    final canRequestContactNow =
+        !contactGatingOn || isMatched || ent.canRequestContact;
     // Once matched, messaging is unlocked for this profile (no premium required).
     final canMessageThisProfile = ent.canSendMessage || isMatched;
 
@@ -313,7 +357,10 @@ class _FloatingActionBar extends ConsumerWidget {
                     child: isMatched
                         ? FilledButton.icon(
                             onPressed: () => _onMessage(context, ref),
-                            icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                            icon: const Icon(
+                              Icons.chat_bubble_outline,
+                              size: 20,
+                            ),
                             label: Text(l.ctaSendMessage),
                             style: FilledButton.styleFrom(
                               backgroundColor: accent,
@@ -338,7 +385,9 @@ class _FloatingActionBar extends ConsumerWidget {
                   ),
                   const SizedBox(width: 10),
                   _FloatingIconBtn(
-                    icon: isShortlisted ? Icons.star_rounded : Icons.star_border_rounded,
+                    icon: isShortlisted
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     accent: accent,
                     onTap: () => _onShortlist(context, ref, isShortlisted),
                   ),
@@ -385,7 +434,9 @@ class _FloatingActionBar extends ConsumerWidget {
       if (result.mutualMatch && result.chatThreadId != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('It\'s a match with $profileName!'),
+            content: Text(
+              AppLocalizations.of(context)!.toastMatchWith(profileName),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -395,7 +446,9 @@ class _FloatingActionBar extends ConsumerWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Interest sent to $profileName'),
+            content: Text(
+              AppLocalizations.of(context)!.toastInterestSentTo(profileName),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -408,14 +461,22 @@ class _FloatingActionBar extends ConsumerWidget {
     }
   }
 
-  Future<void> _onShortlist(BuildContext context, WidgetRef ref, bool currentlyShortlisted) async {
+  Future<void> _onShortlist(
+    BuildContext context,
+    WidgetRef ref,
+    bool currentlyShortlisted,
+  ) async {
     try {
       if (currentlyShortlisted) {
-        await ref.read(shortlistRepositoryProvider).removeFromShortlist(profileId);
+        await ref
+            .read(shortlistRepositoryProvider)
+            .removeFromShortlist(profileId);
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$profileName removed from shortlist'),
+            content: Text(
+              AppLocalizations.of(context)!.toastRemovedFromShortlist,
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -424,7 +485,7 @@ class _FloatingActionBar extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$profileName added to shortlist'),
+            content: Text(AppLocalizations.of(context)!.toastAddedToShortlist),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -495,13 +556,17 @@ class _RequestContactRow extends ConsumerWidget {
         message: isMatched
             ? 'Request contact is available for matched profiles.'
             : ent.canRequestContact
-                ? 'Request contact is available after you both express interest.'
-                : 'Request contact is available after mutual interest or with premium.',
+            ? 'Request contact is available after you both express interest.'
+            : 'Request contact is available after mutual interest or with premium.',
         child: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Row(
             children: [
-              Icon(Icons.info_outline, size: 16, color: onSurface.withValues(alpha: 0.5)),
+              Icon(
+                Icons.info_outline,
+                size: 16,
+                color: onSurface.withValues(alpha: 0.5),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -519,19 +584,20 @@ class _RequestContactRow extends ConsumerWidget {
 
     return statusAsync.when(
       data: (status) {
-        final s = status as ContactRequestStatus;
+        final s = status;
         if (s.state == ContactRequestState.accepted && s.canViewContacts) {
-          return _ViewContactsRow(
-            phone: s.sharedPhone!,
-            accent: accent,
-          );
+          return _ViewContactsRow(phone: s.sharedPhone!, accent: accent);
         }
         if (s.state == ContactRequestState.pending) {
           return SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: null,
-              icon: Icon(Icons.schedule, size: 18, color: onSurface.withValues(alpha: 0.6)),
+              icon: Icon(
+                Icons.schedule,
+                size: 18,
+                color: onSurface.withValues(alpha: 0.6),
+              ),
               label: Text(
                 'Request pending',
                 style: TextStyle(color: onSurface.withValues(alpha: 0.6)),
@@ -549,7 +615,7 @@ class _RequestContactRow extends ConsumerWidget {
             child: OutlinedButton.icon(
               onPressed: () => _sendContactRequest(context, ref, profileId),
               icon: const Icon(Icons.phone_outlined, size: 18),
-              label: const Text('Request again'),
+              label: Text(AppLocalizations.of(context)!.requestAgain),
               style: OutlinedButton.styleFrom(
                 foregroundColor: accent,
                 side: BorderSide(color: accent.withValues(alpha: 0.6)),
@@ -563,7 +629,7 @@ class _RequestContactRow extends ConsumerWidget {
           child: OutlinedButton.icon(
             onPressed: () => _sendContactRequest(context, ref, profileId),
             icon: const Icon(Icons.phone_outlined, size: 18),
-            label: const Text('Request contact'),
+            label: Text(AppLocalizations.of(context)!.requestContact),
             style: OutlinedButton.styleFrom(
               foregroundColor: accent,
               side: BorderSide(color: accent.withValues(alpha: 0.6)),
@@ -581,7 +647,7 @@ class _RequestContactRow extends ConsumerWidget {
             height: 18,
             child: CircularProgressIndicator(strokeWidth: 2, color: accent),
           ),
-          label: const Text('Request contact'),
+          label: Text(AppLocalizations.of(context)!.requestContact),
           style: OutlinedButton.styleFrom(
             foregroundColor: accent,
             side: BorderSide(color: accent.withValues(alpha: 0.6)),
@@ -594,7 +660,7 @@ class _RequestContactRow extends ConsumerWidget {
         child: OutlinedButton.icon(
           onPressed: () => _sendContactRequest(context, ref, profileId),
           icon: const Icon(Icons.phone_outlined, size: 18),
-          label: const Text('Request contact'),
+          label: Text(AppLocalizations.of(context)!.requestContact),
           style: OutlinedButton.styleFrom(
             foregroundColor: accent,
             side: BorderSide(color: accent.withValues(alpha: 0.6)),
@@ -605,14 +671,20 @@ class _RequestContactRow extends ConsumerWidget {
     );
   }
 
-  Future<void> _sendContactRequest(BuildContext context, WidgetRef ref, String profileId) async {
+  Future<void> _sendContactRequest(
+    BuildContext context,
+    WidgetRef ref,
+    String profileId,
+  ) async {
     try {
-      await ref.read(contactRequestRepositoryProvider).sendContactRequest(profileId);
+      await ref
+          .read(contactRequestRepositoryProvider)
+          .sendContactRequest(profileId);
       if (!context.mounted) return;
       ref.invalidate(contactRequestStatusProvider(profileId));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contact request sent'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.contactRequestSent),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -620,7 +692,9 @@ class _RequestContactRow extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not send request: $e'),
+          content: Text(
+            AppLocalizations.of(context)!.couldNotSendRequest('$e'),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -641,7 +715,8 @@ class _ViewContactsRow extends StatelessWidget {
   Future<void> _launchWhatsApp() async {
     final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
     final uri = Uri.parse('https://wa.me/$digits');
-    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (await canLaunchUrl(uri))
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -652,7 +727,9 @@ class _ViewContactsRow extends StatelessWidget {
         Text(
           'View contacts',
           style: AppTypography.labelMedium.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.7),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -663,7 +740,7 @@ class _ViewContactsRow extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: _launchCall,
                 icon: const Icon(Icons.call_outlined, size: 20),
-                label: const Text('Call'),
+                label: Text(AppLocalizations.of(context)!.call),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: accent,
                   side: BorderSide(color: accent.withValues(alpha: 0.6)),
@@ -676,7 +753,7 @@ class _ViewContactsRow extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: _launchWhatsApp,
                 icon: const Icon(Icons.chat_outlined, size: 20),
-                label: const Text('WhatsApp'),
+                label: Text(AppLocalizations.of(context)!.whatsApp),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: accent,
                   side: BorderSide(color: accent.withValues(alpha: 0.6)),
@@ -736,7 +813,9 @@ void _showPremiumPrompt(BuildContext context, Entitlements ent) {
             Text(
               ent.upgradeReason,
               style: AppTypography.bodyMedium.copyWith(
-                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  ctx,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
               textAlign: TextAlign.center,
@@ -837,6 +916,9 @@ class _DatingProfileContent extends ConsumerWidget {
 
     return Scaffold(
       body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           SliverAppBar(
             expandedHeight: 200,
@@ -852,10 +934,12 @@ class _DatingProfileContent extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 onSelected: (v) {
-                  if (v == 'block')
+                  if (v == 'block') {
                     _showBlockConfirm(context, ref, profile.id, profile.name);
-                  if (v == 'report')
+                  }
+                  if (v == 'report') {
                     _showReportConfirm(context, ref, profile.id, profile.name);
+                  }
                 },
                 itemBuilder: (_) => [
                   PopupMenuItem(
@@ -1100,7 +1184,9 @@ class _DatingFloatingBar extends ConsumerWidget {
       if (result.mutualMatch && result.chatThreadId != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('It\'s a match with $profileName!'),
+            content: Text(
+              AppLocalizations.of(context)!.toastMatchWith(profileName),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1110,7 +1196,9 @@ class _DatingFloatingBar extends ConsumerWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Intro sent to $profileName'),
+            content: Text(
+              AppLocalizations.of(context)!.toastInterestSentTo(profileName),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1129,7 +1217,7 @@ class _DatingFloatingBar extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$profileName saved'),
+          content: Text(AppLocalizations.of(context)!.toastAddedToShortlist),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1179,15 +1267,13 @@ Future<void> _showBlockConfirm(
   );
   if (confirmed != true || !context.mounted) return;
   try {
-    await ref.read(safetyRepositoryProvider).block(
-          profileId,
-          reason,
-          source: 'profile',
-        );
+    await ref
+        .read(safetyRepositoryProvider)
+        .block(profileId, reason, source: 'profile');
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$profileName blocked'),
+        content: Text(AppLocalizations.of(context)!.toastBlocked(profileName)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1196,7 +1282,7 @@ Future<void> _showBlockConfirm(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Something went wrong. Please try again.'),
+        content: Text(AppLocalizations.of(context)!.toastErrorGeneric),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Theme.of(context).colorScheme.error,
       ),
@@ -1237,7 +1323,9 @@ Future<void> _showReportConfirm(
   );
   if (confirmed != true || !context.mounted) return;
   try {
-    await ref.read(safetyRepositoryProvider).report(
+    await ref
+        .read(safetyRepositoryProvider)
+        .report(
           profileId,
           result.reason,
           details: result.details,
@@ -1245,8 +1333,8 @@ Future<void> _showReportConfirm(
         );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report submitted. Thank you.'),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.toastReportSubmitted),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1254,7 +1342,7 @@ Future<void> _showReportConfirm(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Something went wrong. Please try again.'),
+        content: Text(AppLocalizations.of(context)!.toastErrorGeneric),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Theme.of(context).colorScheme.error,
       ),
@@ -1280,7 +1368,10 @@ class _HeroAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = profile.photoUrls.isNotEmpty;
+    // Only show profile photo when viewer is allowed (not hidden, or access granted).
+    final canShowPhotos =
+        !profile.photosHidden || profile.canViewPhotos == true;
+    final hasPhoto = canShowPhotos && profile.photoUrls.isNotEmpty;
     final l = AppLocalizations.of(context)!;
     return SliverAppBar(
       expandedHeight: 260,
@@ -1350,9 +1441,136 @@ class _HeroAppBar extends StatelessWidget {
                 errorBuilder: (_, __, ___) =>
                     _AvatarFallback(profile: profile, accent: accent),
               )
+            : (profile.photosHidden && profile.canViewPhotos != true)
+            ? _LockedPhotosHeroBackground(
+                profileId: profile.id,
+                name: profile.name,
+                accent: accent,
+              )
             : _AvatarFallback(profile: profile, accent: accent),
       ),
     );
+  }
+}
+
+/// Blurred-style hero area with "Request to view photos" button when photos are hidden.
+class _LockedPhotosHeroBackground extends ConsumerWidget {
+  const _LockedPhotosHeroBackground({
+    required this.profileId,
+    required this.name,
+    required this.accent,
+  });
+  final String profileId;
+  final String name;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final statusAsync = ref.watch(photoViewStatusProvider(profileId));
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.5),
+            accent.withValues(alpha: 0.15),
+            Colors.black.withValues(alpha: 0.4),
+          ],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(
+            child: Icon(
+              Icons.lock_outline,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 32,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: statusAsync.when(
+                data: (status) {
+                  if (status == PhotoViewStatus.pending) {
+                    return Text(
+                      l.photoViewRequestPending,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: Colors.white.withValues(alpha: 0.95),
+                      ),
+                    );
+                  }
+                  if (status == PhotoViewStatus.accepted ||
+                      status == PhotoViewStatus.declined) {
+                    return const SizedBox.shrink();
+                  }
+                  return FilledButton.icon(
+                    onPressed: () => _requestToViewPhotos(context, ref),
+                    icon: const Icon(Icons.visibility_outlined, size: 20),
+                    label: Text(l.requestToViewPhotos),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                    ),
+                  );
+                },
+                loading: () => const SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white70),
+                  ),
+                ),
+                error: (_, __) => FilledButton.icon(
+                  onPressed: () => _requestToViewPhotos(context, ref),
+                  icon: const Icon(Icons.visibility_outlined, size: 20),
+                  label: Text(l.requestToViewPhotos),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _requestToViewPhotos(BuildContext context, WidgetRef ref) async {
+    final l = AppLocalizations.of(context)!;
+    try {
+      await ref.read(photoViewRequestRepositoryProvider).sendRequest(profileId);
+      if (!context.mounted) return;
+      ref.invalidate(photoViewStatusProvider(profileId));
+      ref.invalidate(fullUserProfileProvider(profileId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.requestToViewPhotosSent),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.errorGeneric),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 }
 
@@ -1422,6 +1640,7 @@ class _LocationRow extends StatelessWidget {
     if (profile.currentCountry != null) parts.add(profile.currentCountry!);
     if (parts.isEmpty) return const SizedBox.shrink();
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           Icons.location_on_outlined,
@@ -1429,10 +1648,15 @@ class _LocationRow extends StatelessWidget {
           color: onSurface.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 4),
-        Text(
-          parts.join(', '),
-          style: AppTypography.bodyMedium.copyWith(
-            color: onSurface.withValues(alpha: 0.65),
+        Expanded(
+          child: Text(
+            parts.join(', '),
+            style: AppTypography.bodyMedium.copyWith(
+              color: onSurface.withValues(alpha: 0.65),
+            ),
+            softWrap: true,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -1548,7 +1772,9 @@ class _CompatibilityCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      loading ? 'Calculating...' : 'How close they are to what you\'re looking for',
+                      loading
+                          ? 'Calculating...'
+                          : 'How close they are to what you\'re looking for',
                       style: AppTypography.bodySmall.copyWith(
                         color: onSurface.withValues(alpha: 0.65),
                       ),
@@ -1593,7 +1819,11 @@ class _CompatibilityCard extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 children: [
-                  Icon(Icons.bar_chart_rounded, size: 18, color: onSurface.withValues(alpha: 0.7)),
+                  Icon(
+                    Icons.bar_chart_rounded,
+                    size: 18,
+                    color: onSurface.withValues(alpha: 0.7),
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Closeness by dimension',
@@ -1750,6 +1980,117 @@ class _BreakdownRow extends StatelessWidget {
 }
 
 // ── Photos section ───────────────────────────────────────────────────────
+
+/// Shown when profile owner has hidden photos and viewer doesn't have access.
+class _PhotosLockedSection extends ConsumerWidget {
+  const _PhotosLockedSection({required this.profileId, required this.accent});
+  final String profileId;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final statusAsync = ref.watch(photoViewStatusProvider(profileId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle('Photos', onSurface),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          decoration: BoxDecoration(
+            color: onSurface.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: onSurface.withValues(alpha: 0.12)),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 40,
+                color: onSurface.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l.photosLocked,
+                style: AppTypography.titleMedium.copyWith(color: onSurface),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l.photosLockedHint,
+                style: AppTypography.bodySmall.copyWith(
+                  color: onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              statusAsync.when(
+                data: (status) {
+                  if (status == PhotoViewStatus.pending) {
+                    return Text(
+                      l.photoViewRequestPending,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  }
+                  if (status == PhotoViewStatus.accepted ||
+                      status == PhotoViewStatus.declined) {
+                    return const SizedBox.shrink();
+                  }
+                  return FilledButton.icon(
+                    onPressed: () => _requestToViewPhotos(context, ref),
+                    icon: const Icon(Icons.visibility_outlined, size: 20),
+                    label: Text(l.requestToViewPhotos),
+                    style: FilledButton.styleFrom(backgroundColor: accent),
+                  );
+                },
+                loading: () => const SizedBox(
+                  height: 40,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, __) => FilledButton.icon(
+                  onPressed: () => _requestToViewPhotos(context, ref),
+                  icon: const Icon(Icons.visibility_outlined, size: 20),
+                  label: Text(l.requestToViewPhotos),
+                  style: FilledButton.styleFrom(backgroundColor: accent),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _requestToViewPhotos(BuildContext context, WidgetRef ref) async {
+    final l = AppLocalizations.of(context)!;
+    try {
+      await ref.read(photoViewRequestRepositoryProvider).sendRequest(profileId);
+      if (!context.mounted) return;
+      ref.invalidate(photoViewStatusProvider(profileId));
+      ref.invalidate(fullUserProfileProvider(profileId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.requestToViewPhotosSent),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.errorGeneric),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+}
 
 class _PhotosSection extends StatelessWidget {
   const _PhotosSection({
@@ -1943,42 +2284,55 @@ class _BasicDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final rows = <_DetailRow>[];
 
-    if (profile.gender != null) rows.add(_DetailRow('Gender', profile.gender!));
-    if (profile.age != null)
-      rows.add(_DetailRow('Age', '${profile.age} years'));
-    if (profile.dateOfBirth != null)
-      rows.add(_DetailRow('Date of birth', profile.dateOfBirth!));
-    if (mat?.heightCm != null)
-      rows.add(_DetailRow('Height', _formatHeight(mat.heightCm as int)));
-    if (mat?.maritalStatus != null)
+    if (profile.gender != null) {
+      rows.add(_DetailRow(l.genderQuestion, profile.gender!));
+    }
+    if (profile.age != null) {
+      rows.add(_DetailRow(l.ageRange, '${profile.age} years'));
+    }
+    if (profile.dateOfBirth != null) {
+      rows.add(_DetailRow(l.dateOfBirth, profile.dateOfBirth!));
+    }
+    if (mat?.heightCm != null) {
+      rows.add(_DetailRow(l.height, _formatHeight(mat.heightCm as int)));
+    }
+    if (mat?.maritalStatus != null) {
       rows.add(
-        _DetailRow('Marital status', _titleCase(mat.maritalStatus as String)),
+        _DetailRow(l.maritalStatus, _titleCase(mat.maritalStatus as String)),
       );
-    if (mat?.religion != null)
-      rows.add(_DetailRow('Religion', mat.religion as String));
-    if (mat?.casteOrCommunity != null)
-      rows.add(_DetailRow('Community', mat.casteOrCommunity as String));
-    if (profile.motherTongue != null)
-      rows.add(_DetailRow('Mother tongue', profile.motherTongue!));
+    }
+    if (mat?.religion != null) {
+      rows.add(_DetailRow(l.religion, mat.religion as String));
+    }
+    if (mat?.casteOrCommunity != null) {
+      rows.add(_DetailRow(l.communityLabel, mat.casteOrCommunity as String));
+    }
+    if (profile.motherTongue != null) {
+      rows.add(_DetailRow(l.motherTongue, profile.motherTongue!));
+    }
     if (profile.languagesSpoken.isNotEmpty) {
-      rows.add(_DetailRow('Languages', profile.languagesSpoken.join(', ')));
+      rows.add(
+        _DetailRow(l.languagesLabel, profile.languagesSpoken.join(', ')),
+      );
     }
     if (profile.currentCity != null || profile.currentCountry != null) {
-      rows.add(_DetailRow('Location', profile.displayLocation));
+      rows.add(_DetailRow(l.locationLabel, profile.displayLocation));
     }
     if (profile.originCity != null || profile.originCountry != null) {
       final parts = [
         profile.originCity,
         profile.originCountry,
       ].whereType<String>().where((s) => s.isNotEmpty);
-      if (parts.isNotEmpty) rows.add(_DetailRow('Origin', parts.join(', ')));
+      if (parts.isNotEmpty)
+        rows.add(_DetailRow(l.originLabel, parts.join(', ')));
     }
 
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: 'Basic details',
+      title: l.basicDetails,
       icon: Icons.person_outline,
       rows: rows,
       accent: accent,
@@ -2010,27 +2364,61 @@ class _EducationCareerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final rows = <_DetailRow>[];
-    if (mat.educationDegree != null)
-      rows.add(_DetailRow('Education', mat.educationDegree));
-    if (mat.educationInstitution != null)
-      rows.add(_DetailRow('Institution', mat.educationInstitution));
-    if (mat.occupation != null)
-      rows.add(_DetailRow('Occupation', mat.occupation));
-    if (mat.employer != null) rows.add(_DetailRow('Employer', mat.employer));
-    if (mat.industry != null) rows.add(_DetailRow('Industry', mat.industry));
+    // Prefer educationEntries (degree, institution, year, grading), then fallback to legacy degree/institution
+    final entries = mat.educationEntries;
+    if (entries != null && entries.isNotEmpty) {
+      for (final e in entries) {
+        if (e.degree != null) {
+          rows.add(_DetailRow(l.degreeLabel, e.degree!));
+        }
+        if (e.institution != null) {
+          rows.add(_DetailRow(l.institutionLabel, e.institution!));
+        }
+        if (e.graduationYear != null) {
+          rows.add(_DetailRow(l.yearOfGraduation, '${e.graduationYear}'));
+        }
+        if (e.scoreCountry != null || e.scoreType != null) {
+          final grade = [
+            e.scoreCountry,
+            e.scoreType,
+          ].whereType<String>().join(' – ');
+          if (grade.isNotEmpty) {
+            rows.add(_DetailRow(l.gradeClassification, grade));
+          }
+        }
+      }
+    } else {
+      if (mat.educationDegree != null) {
+        rows.add(_DetailRow(l.educationLevel, mat.educationDegree));
+      }
+      if (mat.educationInstitution != null) {
+        rows.add(_DetailRow(l.institutionLabel, mat.educationInstitution));
+      }
+    }
+    if (mat.occupation != null) {
+      rows.add(_DetailRow(l.occupation, mat.occupation));
+    }
+    if (mat.employer != null) {
+      rows.add(_DetailRow(l.employer, mat.employer));
+    }
+    if (mat.industry != null) {
+      rows.add(_DetailRow(l.industry, mat.industry));
+    }
     if (mat.incomeRange != null) {
       final inc = mat.incomeRange;
       final label = [
         inc.minLabel,
         inc.maxLabel,
       ].whereType<String>().join(' – ');
-      if (label.isNotEmpty)
-        rows.add(_DetailRow('Income', '${inc.currency ?? ''} $label'.trim()));
+      if (label.isNotEmpty) {
+        rows.add(_DetailRow(l.income, '${inc.currency ?? ''} $label'.trim()));
+      }
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: 'Education & career',
+      title: l.educationAndCareerTitle,
       icon: Icons.school_outlined,
       rows: rows,
       accent: accent,
@@ -2045,16 +2433,17 @@ class _ManagedByBanner extends StatelessWidget {
   final ProfileRole role;
   final Color onSurface;
 
-  static String _label(ProfileRole r) {
+  static String _label(BuildContext context, ProfileRole r) {
+    final l = AppLocalizations.of(context)!;
     switch (r) {
       case ProfileRole.parent:
-        return 'Profile managed by parent';
+        return l.profileManagedByParent;
       case ProfileRole.guardian:
-        return 'Profile managed by guardian';
+        return l.profileManagedByGuardian;
       case ProfileRole.sibling:
-        return 'Profile managed by sibling';
+        return l.profileManagedBySibling;
       case ProfileRole.friend:
-        return 'Profile managed by friend';
+        return l.profileManagedByFriend;
       case ProfileRole.self:
         return '';
     }
@@ -2062,7 +2451,7 @@ class _ManagedByBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = _label(role);
+    final label = _label(context, role);
     if (label.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2073,7 +2462,11 @@ class _ManagedByBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.family_restroom, size: 18, color: onSurface.withValues(alpha: 0.6)),
+          Icon(
+            Icons.family_restroom,
+            size: 18,
+            color: onSurface.withValues(alpha: 0.6),
+          ),
           const SizedBox(width: 8),
           Text(
             label,
@@ -2102,26 +2495,54 @@ class _FamilyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final fam = mat.familyDetails;
     final rows = <_DetailRow>[];
-    if (fam.familyType != null)
+    if (fam.householdIncome != null) {
+      rows.add(_DetailRow('Household income', fam.householdIncome));
+    }
+    if (fam.familyType != null) {
       rows.add(_DetailRow('Family type', fam.familyType));
-    if (fam.familyValues != null)
+    }
+    if (fam.familyValues != null) {
       rows.add(_DetailRow('Family values', fam.familyValues));
-    if (fam.fatherOccupation != null)
+    }
+    if (fam.familyLocation != null) {
+      rows.add(_DetailRow('Family location', fam.familyLocation));
+    }
+    if (fam.fatherOccupation != null) {
       rows.add(_DetailRow('Father\'s occupation', fam.fatherOccupation));
-    if (fam.motherOccupation != null)
+    }
+    if (fam.motherOccupation != null) {
       rows.add(_DetailRow('Mother\'s occupation', fam.motherOccupation));
-    if (fam.siblingsCount != null) {
+    }
+    if (fam.fatherAge != null) {
+      rows.add(_DetailRow('Father\'s age', fam.fatherAge));
+    }
+    if (fam.motherAge != null) {
+      rows.add(_DetailRow('Mother\'s age', fam.motherAge));
+    }
+    if (fam.brothers != null || fam.sisters != null) {
+      final parts = <String>[];
+      if (fam.brothers != null) {
+        parts.add('${fam.brothers} brother(s)');
+      }
+      if (fam.sisters != null) {
+        parts.add('${fam.sisters} sister(s)');
+      }
+      if (parts.isNotEmpty) {
+        rows.add(_DetailRow('Siblings', parts.join(', ')));
+      }
+    } else if (fam.siblingsCount != null) {
       final married = fam.siblingsMarried;
       final siblingsText = married != null
           ? '${fam.siblingsCount} ($married married)'
           : '${fam.siblingsCount}';
       rows.add(_DetailRow('Siblings', siblingsText));
     }
-    if (fam.familyExpectations != null && fam.familyExpectations!.isNotEmpty)
+    if (fam.familyExpectations != null && fam.familyExpectations!.isNotEmpty) {
       rows.add(_DetailRow('Family expectations', fam.familyExpectations!));
+    }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: 'Family',
+      title: AppLocalizations.of(context)!.familyTitle,
       icon: Icons.family_restroom,
       rows: rows,
       accent: accent,
@@ -2143,12 +2564,21 @@ class _LifestyleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <_DetailRow>[];
-    if (mat.diet != null) rows.add(_DetailRow('Diet', mat.diet));
-    if (mat.drinking != null) rows.add(_DetailRow('Drinking', mat.drinking));
-    if (mat.smoking != null) rows.add(_DetailRow('Smoking', mat.smoking));
+    if (mat.diet != null) {
+      rows.add(_DetailRow('Diet', mat.diet));
+    }
+    if (mat.drinking != null) {
+      rows.add(_DetailRow('Drinking', mat.drinking));
+    }
+    if (mat.smoking != null) {
+      rows.add(_DetailRow('Smoking', mat.smoking));
+    }
+    if (mat.exercise != null) {
+      rows.add(_DetailRow('Exercise', mat.exercise));
+    }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: 'Lifestyle',
+      title: AppLocalizations.of(context)!.lifestyleTitleSection,
       icon: Icons.spa_outlined,
       rows: rows,
       accent: accent,
@@ -2171,19 +2601,33 @@ class _HoroscopeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hor = mat.horoscope;
     final rows = <_DetailRow>[];
-    if (hor.dateOfBirth != null)
+    if (hor.dateOfBirth != null) {
       rows.add(_DetailRow('Date of birth', hor.dateOfBirth));
-    if (hor.timeOfBirth != null)
+    }
+    if (hor.timeOfBirth != null) {
       rows.add(_DetailRow('Birth time', hor.timeOfBirth));
-    if (hor.birthPlace != null)
+    }
+    if (hor.birthPlace != null) {
       rows.add(_DetailRow('Birth place', hor.birthPlace));
-    if (hor.manglik != null) rows.add(_DetailRow('Manglik', hor.manglik));
-    if (hor.nakshatra != null) rows.add(_DetailRow('Nakshatra', hor.nakshatra));
-    if (hor.horoscopeDocUrl != null)
+    }
+    if (hor.manglik != null) {
+      rows.add(_DetailRow('Manglik', hor.manglik));
+    }
+    if (hor.rashi != null) {
+      rows.add(_DetailRow('Rashi (Moon sign)', hor.rashi));
+    }
+    if (hor.nakshatra != null) {
+      rows.add(_DetailRow('Nakshatra', hor.nakshatra));
+    }
+    if (hor.gotra != null) {
+      rows.add(_DetailRow('Gotra', hor.gotra));
+    }
+    if (hor.horoscopeDocUrl != null) {
       rows.add(const _DetailRow('Kundli document', 'Available'));
+    }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: 'Horoscope',
+      title: AppLocalizations.of(context)!.horoscopeTitle,
       icon: Icons.auto_awesome,
       rows: rows,
       accent: accent,
@@ -2202,6 +2646,15 @@ class _PartnerPrefsCard extends StatelessWidget {
   final Color onSurface;
   final Color accent;
 
+  static bool _strict(dynamic prefs, String key) {
+    final map = prefs.strictFilters as Map<String, dynamic>?;
+    return map != null && map[key] == true;
+  }
+
+  String _val(String value, String strictKey) {
+    return _strict(prefs, strictKey) ? '$value (Strict)' : value;
+  }
+
   @override
   Widget build(BuildContext context) {
     final rows = <_DetailRow>[];
@@ -2215,10 +2668,18 @@ class _PartnerPrefsCard extends StatelessWidget {
           : 'Any';
       rows.add(_DetailRow('Height', '$hMin – $hMax'));
     }
+    // Always show Body type (Any when not set) so the preference is visible.
+    final bodyVal = (prefs.preferredBodyTypes as List?)?.isNotEmpty == true
+        ? (prefs.preferredBodyTypes as List).join(', ')
+        : 'Any';
+    rows.add(_DetailRow('Body type', _val(bodyVal, 'bodyType')));
     if (prefs.preferredReligions != null &&
         (prefs.preferredReligions as List).isNotEmpty) {
       rows.add(
-        _DetailRow('Religion', (prefs.preferredReligions as List).join(', ')),
+        _DetailRow(
+          'Religion',
+          _val((prefs.preferredReligions as List).join(', '), 'religion'),
+        ),
       );
     }
     if (prefs.preferredCommunities != null &&
@@ -2235,22 +2696,33 @@ class _PartnerPrefsCard extends StatelessWidget {
       rows.add(
         _DetailRow(
           'Mother tongue',
-          (prefs.preferredMotherTongues as List).join(', '),
+          _val(
+            (prefs.preferredMotherTongues as List).join(', '),
+            'motherTongue',
+          ),
         ),
       );
     }
-    if (prefs.educationPreference != null)
-      rows.add(_DetailRow('Education', prefs.educationPreference!));
-    if (prefs.occupationPreference != null)
+    if (prefs.educationPreference != null) {
+      rows.add(
+        _DetailRow('Education', _val(prefs.educationPreference!, 'education')),
+      );
+    }
+    if (prefs.occupationPreference != null) {
       rows.add(_DetailRow('Occupation', prefs.occupationPreference!));
-    if (prefs.incomePreference != null)
-      rows.add(_DetailRow('Income', prefs.incomePreference!));
+    }
+    if (prefs.incomePreference != null) {
+      rows.add(_DetailRow('Income', _val(prefs.incomePreference!, 'income')));
+    }
     if (prefs.maritalStatusPreference != null &&
         (prefs.maritalStatusPreference as List).isNotEmpty) {
       rows.add(
         _DetailRow(
           'Marital status',
-          (prefs.maritalStatusPreference as List).join(', '),
+          _val(
+            (prefs.maritalStatusPreference as List).join(', '),
+            'maritalStatus',
+          ),
         ),
       );
     }
@@ -2266,19 +2738,33 @@ class _PartnerPrefsCard extends StatelessWidget {
         _DetailRow('Countries', (prefs.preferredCountries as List).join(', ')),
       );
     }
-    if (prefs.settledAbroadPreference != null)
-      rows.add(_DetailRow('Settled abroad', prefs.settledAbroadPreference!));
-    if (prefs.dietPreference != null)
-      rows.add(_DetailRow('Diet', prefs.dietPreference!));
-    if (prefs.drinkingPreference != null)
-      rows.add(_DetailRow('Drinking', prefs.drinkingPreference!));
-    if (prefs.smokingPreference != null)
-      rows.add(_DetailRow('Smoking', prefs.smokingPreference!));
-    if (prefs.horoscopeMatchPreferred == true)
+    if (prefs.settledAbroadPreference != null) {
+      rows.add(
+        _DetailRow(
+          'Settled abroad',
+          _val(prefs.settledAbroadPreference!, 'settledAbroad'),
+        ),
+      );
+    }
+    if (prefs.dietPreference != null) {
+      rows.add(_DetailRow('Diet', _val(prefs.dietPreference!, 'diet')));
+    }
+    if (prefs.drinkingPreference != null) {
+      rows.add(
+        _DetailRow('Drinking', _val(prefs.drinkingPreference!, 'drinking')),
+      );
+    }
+    if (prefs.smokingPreference != null) {
+      rows.add(
+        _DetailRow('Smoking', _val(prefs.smokingPreference!, 'smoking')),
+      );
+    }
+    if (prefs.horoscopeMatchPreferred == true) {
       rows.add(const _DetailRow('Horoscope match', 'Preferred'));
+    }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: 'Looking for',
+      title: AppLocalizations.of(context)!.lookingForTitle,
       icon: Icons.search,
       rows: rows,
       accent: accent,

@@ -50,6 +50,10 @@ abstract class DiscoveryRepository {
     String? religion,
     String? education,
     int? heightMinCm,
+    int? heightMaxCm,
+    String? diet,
+    String? bodyType,
+    String? maritalStatus,
     int limit = 20,
     String? cursor,
   });
@@ -62,6 +66,7 @@ abstract class DiscoveryRepository {
     String? religion,
     String? education,
     int? heightMinCm,
+    String? diet,
     int limit = 20,
     String? cursor,
   });

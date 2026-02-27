@@ -20,6 +20,9 @@ class PartnerPreferences with _$PartnerPreferences {
     List<String>? maritalStatusPreference,
     String? dietPreference,
     String? incomePreference,
+
+    /// Preferred partner body type(s), e.g. ["Slim", "Athletic"].
+    List<String>? preferredBodyTypes,
     String? drinkingPreference,
     String? smokingPreference,
     String? settledAbroadPreference,
@@ -27,5 +30,8 @@ class PartnerPreferences with _$PartnerPreferences {
     String? cityPreferenceMode,
     double? distanceMaxKm,
     bool? horoscopeMatchPreferred,
+
+    /// Which dimensions are strict (e.g. {"religion": true, "education": true}).
+    Map<String, bool>? strictFilters,
   }) = _PartnerPreferences;
 }

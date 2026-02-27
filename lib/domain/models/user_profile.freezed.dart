@@ -29,6 +29,12 @@ mixin _$UserProfile {
   List<String> get languagesSpoken => throw _privateConstructorUsedError;
   String? get motherTongue => throw _privateConstructorUsedError;
   List<String> get photoUrls => throw _privateConstructorUsedError;
+
+  /// When true, profile owner has hidden photos; others must request to view.
+  bool get photosHidden => throw _privateConstructorUsedError;
+
+  /// When viewing another user: true if caller is allowed to see their photos.
+  bool? get canViewPhotos => throw _privateConstructorUsedError;
   String get aboutMe => throw _privateConstructorUsedError;
   List<String> get interests => throw _privateConstructorUsedError;
   VerificationStatus get verificationStatus =>
@@ -75,6 +81,8 @@ abstract class $UserProfileCopyWith<$Res> {
     List<String> languagesSpoken,
     String? motherTongue,
     List<String> photoUrls,
+    bool photosHidden,
+    bool? canViewPhotos,
     String aboutMe,
     List<String> interests,
     VerificationStatus verificationStatus,
@@ -123,6 +131,8 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? languagesSpoken = null,
     Object? motherTongue = freezed,
     Object? photoUrls = null,
+    Object? photosHidden = null,
+    Object? canViewPhotos = freezed,
     Object? aboutMe = null,
     Object? interests = null,
     Object? verificationStatus = null,
@@ -187,6 +197,14 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
                 ? _value.photoUrls
                 : photoUrls // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            photosHidden: null == photosHidden
+                ? _value.photosHidden
+                : photosHidden // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            canViewPhotos: freezed == canViewPhotos
+                ? _value.canViewPhotos
+                : canViewPhotos // ignore: cast_nullable_to_non_nullable
+                      as bool?,
             aboutMe: null == aboutMe
                 ? _value.aboutMe
                 : aboutMe // ignore: cast_nullable_to_non_nullable
@@ -325,6 +343,8 @@ abstract class _$$UserProfileImplCopyWith<$Res>
     List<String> languagesSpoken,
     String? motherTongue,
     List<String> photoUrls,
+    bool photosHidden,
+    bool? canViewPhotos,
     String aboutMe,
     List<String> interests,
     VerificationStatus verificationStatus,
@@ -376,6 +396,8 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? languagesSpoken = null,
     Object? motherTongue = freezed,
     Object? photoUrls = null,
+    Object? photosHidden = null,
+    Object? canViewPhotos = freezed,
     Object? aboutMe = null,
     Object? interests = null,
     Object? verificationStatus = null,
@@ -440,6 +462,14 @@ class __$$UserProfileImplCopyWithImpl<$Res>
             ? _value._photoUrls
             : photoUrls // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        photosHidden: null == photosHidden
+            ? _value.photosHidden
+            : photosHidden // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        canViewPhotos: freezed == canViewPhotos
+            ? _value.canViewPhotos
+            : canViewPhotos // ignore: cast_nullable_to_non_nullable
+                  as bool?,
         aboutMe: null == aboutMe
             ? _value.aboutMe
             : aboutMe // ignore: cast_nullable_to_non_nullable
@@ -513,6 +543,8 @@ class _$UserProfileImpl extends _UserProfile {
     final List<String> languagesSpoken = const [],
     this.motherTongue,
     final List<String> photoUrls = const [],
+    this.photosHidden = false,
+    this.canViewPhotos,
     this.aboutMe = '',
     final List<String> interests = const [],
     this.verificationStatus = const VerificationStatus(),
@@ -570,6 +602,14 @@ class _$UserProfileImpl extends _UserProfile {
     return EqualUnmodifiableListView(_photoUrls);
   }
 
+  /// When true, profile owner has hidden photos; others must request to view.
+  @override
+  @JsonKey()
+  final bool photosHidden;
+
+  /// When viewing another user: true if caller is allowed to see their photos.
+  @override
+  final bool? canViewPhotos;
   @override
   @JsonKey()
   final String aboutMe;
@@ -619,7 +659,7 @@ class _$UserProfileImpl extends _UserProfile {
 
   @override
   String toString() {
-    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
+    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
   }
 
   @override
@@ -651,6 +691,10 @@ class _$UserProfileImpl extends _UserProfile {
               other._photoUrls,
               _photoUrls,
             ) &&
+            (identical(other.photosHidden, photosHidden) ||
+                other.photosHidden == photosHidden) &&
+            (identical(other.canViewPhotos, canViewPhotos) ||
+                other.canViewPhotos == canViewPhotos) &&
             (identical(other.aboutMe, aboutMe) || other.aboutMe == aboutMe) &&
             const DeepCollectionEquality().equals(
               other._interests,
@@ -697,6 +741,8 @@ class _$UserProfileImpl extends _UserProfile {
     const DeepCollectionEquality().hash(_languagesSpoken),
     motherTongue,
     const DeepCollectionEquality().hash(_photoUrls),
+    photosHidden,
+    canViewPhotos,
     aboutMe,
     const DeepCollectionEquality().hash(_interests),
     verificationStatus,
@@ -735,6 +781,8 @@ abstract class _UserProfile extends UserProfile {
     final List<String> languagesSpoken,
     final String? motherTongue,
     final List<String> photoUrls,
+    final bool photosHidden,
+    final bool? canViewPhotos,
     final String aboutMe,
     final List<String> interests,
     final VerificationStatus verificationStatus,
@@ -775,6 +823,14 @@ abstract class _UserProfile extends UserProfile {
   String? get motherTongue;
   @override
   List<String> get photoUrls;
+
+  /// When true, profile owner has hidden photos; others must request to view.
+  @override
+  bool get photosHidden;
+
+  /// When viewing another user: true if caller is allowed to see their photos.
+  @override
+  bool? get canViewPhotos;
   @override
   String get aboutMe;
   @override

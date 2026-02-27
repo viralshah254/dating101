@@ -20,10 +20,25 @@ class ApiContactRequestRepository implements ContactRequestRepository {
   }
 
   @override
-  Future<List<ReceivedContactRequest>> getReceivedContactRequests({int page = 1, int limit = 20}) async {
-    final body = await api.get('/contact-requests/received', query: {'page': '$page', 'limit': '$limit'});
+  Future<List<ReceivedContactRequest>> getReceivedContactRequests({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final body = await api.get(
+      '/contact-requests/received',
+      query: {'page': '$page', 'limit': '$limit'},
+    );
     final list = body['requests'] as List? ?? [];
     return list.map((e) => _parseReceived(e as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<int> getReceivedContactRequestsCount() async {
+    final body = await api.get('/contact-requests/received/count');
+    final n = body['count'];
+    if (n is int) return n;
+    if (n is num) return n.toInt();
+    return 0;
   }
 
   @override
@@ -68,7 +83,9 @@ class ApiContactRequestRepository implements ContactRequestRepository {
     return ReceivedContactRequest(
       requestId: j['requestId'] as String? ?? '',
       fromUser: ApiProfileRepository.parseSummaryPublic(from),
-      requestedAt: DateTime.tryParse(j['requestedAt'] as String? ?? '') ?? DateTime.now(),
+      requestedAt:
+          DateTime.tryParse(j['requestedAt'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 }

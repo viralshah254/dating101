@@ -163,6 +163,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navShortlist => 'Shortlist';
 
   @override
+  String get navEvents => 'Events';
+
+  @override
+  String get navVisitors => 'Visitors';
+
+  @override
+  String get refine => 'Refine';
+
+  @override
+  String get refineTooltip =>
+      'Refine by age, city, religion, education and more';
+
+  @override
+  String get noRecommendationsYet => 'No recommendations yet';
+
+  @override
+  String get noRecommendationsYetBody =>
+      'Complete your profile and preferences to get AI-powered matches.';
+
+  @override
+  String get searchWidenedTitle => 'We\'ve widened the search';
+
+  @override
+  String get searchWidenedBody =>
+      'No results matched your current filters. We\'re showing more profiles by reducing some filters.';
+
+  @override
   String get discoverTitle => 'Discover';
 
   @override
@@ -682,7 +709,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currentLocation => 'Where do you live?';
 
   @override
-  String get hometown => 'Where are you from?';
+  String get currentLocationHint => 'e.g. Mumbai, New York';
+
+  @override
+  String get hometown => 'Where were you born?';
+
+  @override
+  String get placeOfBirthHint => 'e.g. Jaipur, Hyderabad';
 
   @override
   String get lookingForPartner => 'Looking for';
@@ -1387,4 +1420,659 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get familyValues => 'Family values';
+
+  @override
+  String get appLanguage => 'App language';
+
+  @override
+  String get chooseAppLanguage => 'Choose app language';
+
+  @override
+  String languageSetTo(Object name) {
+    return 'Language set to $name';
+  }
+
+  @override
+  String get saathiMode => 'saathi mode';
+
+  @override
+  String get accountAndData => 'Account & data';
+
+  @override
+  String get viewProfile => 'View profile';
+
+  @override
+  String get downloadMyData => 'Download my data';
+
+  @override
+  String get requestDataCopy => 'Request a copy of your data';
+
+  @override
+  String get deactivateAccount => 'Deactivate account';
+
+  @override
+  String get deactivateAccountSubtitle => 'Temporarily disable your account';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountSubtitle => 'Permanently delete your account';
+
+  @override
+  String get boostProfile => 'Boost profile';
+
+  @override
+  String get appearMoreInDiscovery => 'Appear more in discovery';
+
+  @override
+  String get verificationSubtitle => 'ID, photo, LinkedIn';
+
+  @override
+  String get blockedUsers => 'Blocked users';
+
+  @override
+  String get blockedUsersSubtitle => 'View and unblock people you\'ve blocked';
+
+  @override
+  String get showInVisitors => 'Show in visitors';
+
+  @override
+  String get whoCanSeeMyProfile => 'Who can see my profile';
+
+  @override
+  String get everyone => 'Everyone';
+
+  @override
+  String get onlyMyMatches => 'Only my matches';
+
+  @override
+  String get onlyAfterInterest => 'Only after interest';
+
+  @override
+  String get hideFromDiscovery => 'Hide from discovery';
+
+  @override
+  String get privacySettingsSaved => 'Privacy settings saved';
+
+  @override
+  String switchToMode(Object mode) {
+    return 'Switch to $mode?';
+  }
+
+  @override
+  String switchToModeLabel(Object mode) {
+    return 'Switch to $mode';
+  }
+
+  @override
+  String get switchButton => 'Switch';
+
+  @override
+  String get requestFailedTryAgain => 'Request failed. Try again later.';
+
+  @override
+  String get deactivateAccountConfirm => 'Deactivate account?';
+
+  @override
+  String get deactivationFailed => 'Deactivation failed. Try again.';
+
+  @override
+  String get deactivate => 'Deactivate';
+
+  @override
+  String get deleteAccountConfirm => 'Delete account permanently?';
+
+  @override
+  String get deleteFailed => 'Delete failed. Try again.';
+
+  @override
+  String get deletePermanently => 'Delete permanently';
+
+  @override
+  String get notificationPreferencesSaved => 'Notification preferences saved';
+
+  @override
+  String get noFcmToken => 'No FCM token (check permission)';
+
+  @override
+  String get copyFcmToken => 'Copy FCM token';
+
+  @override
+  String get linkCopied => 'Link copied';
+
+  @override
+  String errorLoadingProfile(Object error) {
+    return 'Error loading profile: $error';
+  }
+
+  @override
+  String get noProfileYet => 'No profile yet';
+
+  @override
+  String get createProfile => 'Create profile';
+
+  @override
+  String get basicDetails => 'Basic details';
+
+  @override
+  String get religionAndCommunity => 'Religion & Community';
+
+  @override
+  String get physicalAttributes => 'Physical Attributes';
+
+  @override
+  String get educationAndCareer => 'Education & Career';
+
+  @override
+  String get lifestyleAndHabits => 'Lifestyle & Habits';
+
+  @override
+  String get interestsAndHobbiesSection => 'Interests & Hobbies';
+
+  @override
+  String get familySection => 'Family';
+
+  @override
+  String get horoscopeSection => 'Horoscope';
+
+  @override
+  String get aboutMeSection => 'About Me';
+
+  @override
+  String get partnerPreferencesSection => 'Partner preferences';
+
+  @override
+  String get photosSection => 'Photos';
+
+  @override
+  String get languagesLabel => 'Languages';
+
+  @override
+  String get locationLabel => 'Location';
+
+  @override
+  String get originLabel => 'Origin';
+
+  @override
+  String get degreeLabel => 'Degree';
+
+  @override
+  String get institutionLabel => 'Institution';
+
+  @override
+  String get yearOfGraduation => 'Year of graduation';
+
+  @override
+  String get gradeClassification => 'Grade / classification';
+
+  @override
+  String get employer => 'Employer';
+
+  @override
+  String get industry => 'Industry';
+
+  @override
+  String get communityLabel => 'Community';
+
+  @override
+  String get educationAndCareerTitle => 'Education & career';
+
+  @override
+  String get familyTitle => 'Family';
+
+  @override
+  String get lifestyleTitleSection => 'Lifestyle';
+
+  @override
+  String get horoscopeTitle => 'Horoscope';
+
+  @override
+  String get lookingForTitle => 'Looking for';
+
+  @override
+  String get requestAgain => 'Request again';
+
+  @override
+  String get requestContact => 'Request contact';
+
+  @override
+  String get contactRequestSent => 'Contact request sent';
+
+  @override
+  String couldNotSendRequest(Object error) {
+    return 'Could not send request: $error';
+  }
+
+  @override
+  String get call => 'Call';
+
+  @override
+  String get whatsApp => 'WhatsApp';
+
+  @override
+  String get contactShared =>
+      'Contact shared. They can now call or message you.';
+
+  @override
+  String couldNotAccept(Object error) {
+    return 'Could not accept: $error';
+  }
+
+  @override
+  String get requestDeclined => 'Request declined';
+
+  @override
+  String couldNotDecline(Object error) {
+    return 'Could not decline: $error';
+  }
+
+  @override
+  String get interested => 'Interested';
+
+  @override
+  String get priorityInterest => 'Priority interest';
+
+  @override
+  String get withdrawInterest => 'Withdraw interest';
+
+  @override
+  String get declineRequest => 'Decline request';
+
+  @override
+  String get noContactRequests => 'No contact requests';
+
+  @override
+  String get upgrade => 'Upgrade';
+
+  @override
+  String get failedToSendTryAgain => 'Failed to send. Try again.';
+
+  @override
+  String get blockUserConfirm => 'Block user?';
+
+  @override
+  String get reportUser => 'Report user';
+
+  @override
+  String get reportUserConfirm => 'Report user?';
+
+  @override
+  String reportUserMessage(Object name) {
+    return 'Report $name for inappropriate behaviour?';
+  }
+
+  @override
+  String get reportSubmittedThankYou => 'Report submitted. Thank you.';
+
+  @override
+  String get changeCity => 'Change city';
+
+  @override
+  String get yourArea => 'Your area';
+
+  @override
+  String get showProfilesNearYou => 'Show profiles near you';
+
+  @override
+  String unblocked(Object name) {
+    return '$name unblocked';
+  }
+
+  @override
+  String get somethingWentWrong => 'Something went wrong';
+
+  @override
+  String get whyBlocking => 'Why are you blocking?';
+
+  @override
+  String get whyReporting => 'Why are you reporting?';
+
+  @override
+  String get blockedUsersScreenTitle => 'Blocked users';
+
+  @override
+  String get unblock => 'Unblock';
+
+  @override
+  String get noConversationsYet => 'No conversations yet';
+
+  @override
+  String get noChatRequests => 'No chat requests';
+
+  @override
+  String get priority => 'Priority';
+
+  @override
+  String yrs(Object age) {
+    return '$age yrs';
+  }
+
+  @override
+  String get idVerificationSubtitle =>
+      'Upload a government ID. We match it to your photo.';
+
+  @override
+  String get faceMatchSubtitle => 'Selfie matched to your ID photo.';
+
+  @override
+  String get linkedInSubtitle => 'Connect your LinkedIn to verify work.';
+
+  @override
+  String get educationSubtitle => 'Verify your university or college.';
+
+  @override
+  String verificationComingSoon(Object feature) {
+    return '$feature verification coming soon';
+  }
+
+  @override
+  String get uploadUrlNotAvailable => 'Upload URL not available';
+
+  @override
+  String uploadFailed(Object code) {
+    return 'Upload failed: $code';
+  }
+
+  @override
+  String get idSubmittedNotify =>
+      'ID submitted. We\'ll notify you when verification is complete.';
+
+  @override
+  String uploadFailedError(Object error) {
+    return 'Failed: $error';
+  }
+
+  @override
+  String get chooseFile => 'Choose file';
+
+  @override
+  String get photoVerification => 'Photo verification';
+
+  @override
+  String get startVerification => 'Start verification';
+
+  @override
+  String get takePhoto => 'Take photo';
+
+  @override
+  String get imReady => 'I\'m ready';
+
+  @override
+  String get simulateSuccess => 'Simulate success';
+
+  @override
+  String get tryAgain => 'Try again';
+
+  @override
+  String get subscriptionActivated => 'Subscription activated!';
+
+  @override
+  String purchaseFailed(Object error) {
+    return 'Purchase failed: $error';
+  }
+
+  @override
+  String get purchasesRestored => 'Purchases restored!';
+
+  @override
+  String get noActivePurchases => 'No active purchases found.';
+
+  @override
+  String get couldNotRestorePurchases => 'Could not restore purchases.';
+
+  @override
+  String get boostPack => 'Boost pack';
+
+  @override
+  String get mostRecent => 'Most recent';
+
+  @override
+  String get mostInterested => 'Most interested';
+
+  @override
+  String get note => 'Note';
+
+  @override
+  String get noMatchesYet => 'No matches yet';
+
+  @override
+  String get sendYourNote => 'Send your note';
+
+  @override
+  String get savedSearches => 'Saved searches';
+
+  @override
+  String get searchSaved => 'Search saved';
+
+  @override
+  String get couldNotSaveSearch => 'Could not save search';
+
+  @override
+  String get saveSearch => 'Save search';
+
+  @override
+  String get preferredLanguage => 'Preferred language';
+
+  @override
+  String get preferredLanguageSubtitle =>
+      'Optional — we\'ll use this for content and matches.';
+
+  @override
+  String get mapFilters => 'Map filters';
+
+  @override
+  String get join => 'Join';
+
+  @override
+  String get rsvp => 'RSVP';
+
+  @override
+  String rsvpdTo(Object title) {
+    return 'RSVP\'d to $title';
+  }
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get reset => 'Reset';
+
+  @override
+  String get shellRequiresProvider => 'Shell requires Provider';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get conversationStarter => 'Conversation starter';
+
+  @override
+  String switchToModeBody(Object mode) {
+    return 'Your profile info is shared. You can complete or update $mode-specific details anytime.';
+  }
+
+  @override
+  String get exportRequested =>
+      'Export requested. We\'ll email you when ready.';
+
+  @override
+  String get deactivateAccountConfirmBody =>
+      'Your profile will be hidden and you won\'t receive matches or messages. You can reactivate later.';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'This cannot be undone. All your data will be permanently deleted.';
+
+  @override
+  String get showInVisitorsSubtitle =>
+      'When off, your visits are still recorded but you won\'t appear in others\' visitor lists';
+
+  @override
+  String get hideFromDiscoverySubtitle =>
+      'Temporarily hide your profile from discovery and recommendations';
+
+  @override
+  String get hideMyPhotos => 'Hide my photos';
+
+  @override
+  String get hideMyPhotosSubtitle =>
+      'Others must request to view your photos; you approve or decline in Requests.';
+
+  @override
+  String get requestToViewPhotos => 'Request to view photos';
+
+  @override
+  String get requestToViewPhotosSent => 'Request sent';
+
+  @override
+  String get photoViewRequestPending => 'Request pending';
+
+  @override
+  String get requestedToViewYourPhotos => 'Requested to view your photos';
+
+  @override
+  String get noPhotoViewRequests => 'No photo view requests';
+
+  @override
+  String get noPhotoViewRequestsBody =>
+      'When someone requests to view your photos, you can accept or decline here.';
+
+  @override
+  String get photoViewRequestAccepted => 'They can now view your photos.';
+
+  @override
+  String get photoViewRequestsTab => 'Photo view';
+
+  @override
+  String get photosLocked => 'Photos are private';
+
+  @override
+  String get photosLockedHint => 'Request access to view their photos';
+
+  @override
+  String blockUserMessage(Object name) {
+    return '$name won\'t be able to see your profile or contact you.';
+  }
+
+  @override
+  String get yourProfile => 'Your profile';
+
+  @override
+  String get aboutYouShort => 'A few lines about you';
+
+  @override
+  String get recordYourIntro => 'Record your intro';
+
+  @override
+  String get heritageType => 'Heritage / type of Indian';
+
+  @override
+  String get communityTagsOptional => 'Community tags (optional)';
+
+  @override
+  String get communityTagsSubtitle =>
+      'Select any that apply — helps with circles and events.';
+
+  @override
+  String get familyOrientation => 'Family orientation';
+
+  @override
+  String get familyOrientationSubtitle =>
+      'Slide to reflect your preference — no wrong answer.';
+
+  @override
+  String get traditionalLabel => 'Traditional';
+
+  @override
+  String get progressiveLabel => 'Progressive';
+
+  @override
+  String get dietLifestyleTitle => 'Diet / lifestyle';
+
+  @override
+  String get dietLifestyleSubtitle => 'Helps with date ideas and filters.';
+
+  @override
+  String get activeNowOnly => 'Active now only';
+
+  @override
+  String get activeNowOnlySubtitle => 'Show only people active in the last 24h';
+
+  @override
+  String get locationBlur => 'Location blur';
+
+  @override
+  String get locationBlurSubtitle =>
+      'Show approximate area instead of exact pin';
+
+  @override
+  String get verificationTitle => 'Verification';
+
+  @override
+  String get feetUnit => 'ft';
+
+  @override
+  String get inchesUnit => 'in';
+
+  @override
+  String get clearButton => '—';
+
+  @override
+  String yearsFormat(Object age) {
+    return '$age years';
+  }
+
+  @override
+  String get profileManagedByParent => 'Profile managed by parent';
+
+  @override
+  String get profileManagedByGuardian => 'Profile managed by guardian';
+
+  @override
+  String get profileManagedBySibling => 'Profile managed by sibling';
+
+  @override
+  String get profileManagedByFriend => 'Profile managed by friend';
+
+  @override
+  String get blockUserMessageChat =>
+      'They won\'t be able to contact you anymore.';
+
+  @override
+  String get reportUserMessageChat =>
+      'We take safety seriously and will review this report.';
+
+  @override
+  String get blockUser => 'Block user';
+
+  @override
+  String get matchToContinueOrUpgrade => 'Match to continue or upgrade';
+
+  @override
+  String get noConversationsYetBody =>
+      'When you match with someone, your chats will appear here.';
+
+  @override
+  String get noChatRequestsBody =>
+      'When someone sends you an interest, you can accept here to start chatting.';
+
+  @override
+  String get noContactRequestsBody =>
+      'When someone requests your contact, you can accept or decline here.';
+
+  @override
+  String get requestedYourContact => 'Requested your contact';
+
+  @override
+  String get withdrawPriority => 'Withdraw priority';
+
+  @override
+  String get withdrawPriorityAndInterest => 'Withdraw priority (and interest)';
+
+  @override
+  String get additionalDetailsOptional => 'Additional details (optional)';
+
+  @override
+  String get reportDetailsHint => 'Add any context that might help our team';
 }

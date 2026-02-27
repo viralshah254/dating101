@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/app_typography.dart';
 import 'safety_reasons.dart';
 
 /// Shows a dialog to choose a block reason. Returns the selected reason code or null if cancelled.
 Future<String?> showBlockReasonPicker(BuildContext context) async {
+  final l = AppLocalizations.of(context)!;
   String? selected;
   return showDialog<String>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setState) {
         return AlertDialog(
-          title: const Text('Why are you blocking?'),
+          title: Text(l.whyBlocking),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -37,7 +39,7 @@ Future<String?> showBlockReasonPicker(BuildContext context) async {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(l.cancel),
             ),
             FilledButton(
               onPressed: selected == null
@@ -46,7 +48,7 @@ Future<String?> showBlockReasonPicker(BuildContext context) async {
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
-              child: const Text('Continue'),
+              child: Text(l.continueLabel),
             ),
           ],
         );
@@ -64,6 +66,7 @@ class ReportReasonResult {
 
 /// Shows a dialog to choose a report reason and optional details. Returns result or null if cancelled.
 Future<ReportReasonResult?> showReportReasonPicker(BuildContext context) async {
+  final l = AppLocalizations.of(context)!;
   String? selected;
   final detailsController = TextEditingController();
   final result = await showDialog<ReportReasonResult>(
@@ -71,7 +74,7 @@ Future<ReportReasonResult?> showReportReasonPicker(BuildContext context) async {
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setState) {
         return AlertDialog(
-          title: const Text('Why are you reporting?'),
+          title: Text(l.whyReporting),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -93,7 +96,7 @@ Future<ReportReasonResult?> showReportReasonPicker(BuildContext context) async {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Additional details (optional)',
+                  l.additionalDetailsOptional,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -102,8 +105,8 @@ Future<ReportReasonResult?> showReportReasonPicker(BuildContext context) async {
                 TextField(
                   controller: detailsController,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Add any context that might help our team',
+                  decoration: InputDecoration(
+                    hintText: l.reportDetailsHint,
                     border: OutlineInputBorder(),
                     alignLabelWithHint: true,
                   ),
@@ -114,7 +117,7 @@ Future<ReportReasonResult?> showReportReasonPicker(BuildContext context) async {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(l.cancel),
             ),
             FilledButton(
               onPressed: selected == null
@@ -132,7 +135,7 @@ Future<ReportReasonResult?> showReportReasonPicker(BuildContext context) async {
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
-              child: const Text('Continue'),
+              child: Text(l.continueLabel),
             ),
           ],
         );

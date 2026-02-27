@@ -8,6 +8,9 @@ class DiscoveryFilterParams {
     this.education,
     this.diet,
     this.heightMinCm,
+    this.heightMaxCm,
+    this.bodyType,
+    this.maritalStatus,
   });
 
   final int? ageMin;
@@ -17,6 +20,13 @@ class DiscoveryFilterParams {
   final String? education;
   final String? diet;
   final int? heightMinCm;
+  final int? heightMaxCm;
+
+  /// Preferred body type filter, e.g. "Slim", "Athletic".
+  final String? bodyType;
+
+  /// Preferred marital status, e.g. "Never married", "Divorced".
+  final String? maritalStatus;
 
   bool get hasFilters =>
       ageMin != null ||
@@ -25,7 +35,10 @@ class DiscoveryFilterParams {
       (religion != null && religion!.isNotEmpty) ||
       (education != null && education!.isNotEmpty) ||
       (diet != null && diet!.isNotEmpty) ||
-      heightMinCm != null;
+      heightMinCm != null ||
+      heightMaxCm != null ||
+      (bodyType != null && bodyType!.isNotEmpty) ||
+      (maritalStatus != null && maritalStatus!.isNotEmpty);
 
   DiscoveryFilterParams copyWith({
     int? ageMin,
@@ -35,6 +48,9 @@ class DiscoveryFilterParams {
     String? education,
     String? diet,
     int? heightMinCm,
+    int? heightMaxCm,
+    String? bodyType,
+    String? maritalStatus,
   }) {
     return DiscoveryFilterParams(
       ageMin: ageMin ?? this.ageMin,
@@ -44,6 +60,9 @@ class DiscoveryFilterParams {
       education: education ?? this.education,
       diet: diet ?? this.diet,
       heightMinCm: heightMinCm ?? this.heightMinCm,
+      heightMaxCm: heightMaxCm ?? this.heightMaxCm,
+      bodyType: bodyType ?? this.bodyType,
+      maritalStatus: maritalStatus ?? this.maritalStatus,
     );
   }
 }

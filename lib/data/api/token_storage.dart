@@ -1,11 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists auth tokens to disk via SharedPreferences.
-class TokenStorage {
+/// Notifies listeners when tokens are cleared so the router can redirect to login.
+class TokenStorage extends ChangeNotifier {
   static const _keyAccess = 'auth_access_token';
   static const _keyRefresh = 'auth_refresh_token';
   static const _keyUserId = 'auth_user_id';
   static const _keyIsNew = 'auth_is_new_user';
+
+  /// Listen to this (e.g. as GoRouter refreshListenable) to redirect to login when session is cleared.
+  Listenable get authChangeListenable => this;
 
   String? _accessToken;
   String? _refreshToken;
@@ -54,5 +59,6 @@ class TokenStorage {
     await prefs.remove(_keyRefresh);
     await prefs.remove(_keyUserId);
     await prefs.remove(_keyIsNew);
+    notifyListeners();
   }
 }

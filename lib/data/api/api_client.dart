@@ -32,14 +32,17 @@ class ApiClient {
   bool _isRefreshing = false;
 
   Map<String, String> get _headers => {
-        HttpHeaders.contentTypeHeader: 'application/json',
-        if (tokenStorage.accessToken != null)
-          HttpHeaders.authorizationHeader: 'Bearer ${tokenStorage.accessToken}',
-      };
+    HttpHeaders.contentTypeHeader: 'application/json',
+    if (tokenStorage.accessToken != null)
+      HttpHeaders.authorizationHeader: 'Bearer ${tokenStorage.accessToken}',
+  };
 
   // ── Public HTTP methods ──────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> get(String path, {Map<String, String>? query}) async {
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, String>? query,
+  }) async {
     final uri = _buildUri(path, query);
     _log('GET', uri);
     return _sendWithRetry(() => _http.get(uri, headers: _headers));
@@ -49,7 +52,11 @@ class ApiClient {
     final uri = _buildUri(path);
     _log('POST', uri, body);
     return _sendWithRetry(
-      () => _http.post(uri, headers: _headers, body: body != null ? jsonEncode(body) : null),
+      () => _http.post(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
   }
 
@@ -57,7 +64,11 @@ class ApiClient {
     final uri = _buildUri(path);
     _log('PATCH', uri, body);
     return _sendWithRetry(
-      () => _http.patch(uri, headers: _headers, body: body != null ? jsonEncode(body) : null),
+      () => _http.patch(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
   }
 
@@ -65,7 +76,11 @@ class ApiClient {
     final uri = _buildUri(path);
     _log('PUT', uri, body);
     return _sendWithRetry(
-      () => _http.put(uri, headers: _headers, body: body != null ? jsonEncode(body) : null),
+      () => _http.put(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
   }
 
@@ -103,9 +118,13 @@ class ApiClient {
   // ── Internals ────────────────────────────────────────────────────────
 
   Uri _buildUri(String path, [Map<String, String>? query]) {
-    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final base = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
     final fullPath = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$base$fullPath').replace(queryParameters: query?.isNotEmpty == true ? query : null);
+    return Uri.parse(
+      '$base$fullPath',
+    ).replace(queryParameters: query?.isNotEmpty == true ? query : null);
   }
 
   Future<Map<String, dynamic>> _sendWithRetry(
@@ -120,7 +139,11 @@ class ApiClient {
         if (refreshed) {
           debugPrint('[API] Token refreshed, retrying request...');
           resp = await request();
-          _logResponse('${resp.request?.method ?? '?'} (retry)', resp.request?.url, resp);
+          _logResponse(
+            '${resp.request?.method ?? '?'} (retry)',
+            resp.request?.url,
+            resp,
+          );
         }
       }
       return _parseResponse(resp);
@@ -155,6 +178,7 @@ class ApiClient {
   Future<bool> _tryRefresh() async {
     if (tokenStorage.refreshToken == null) {
       debugPrint('[API] No refresh token, cannot refresh');
+      await tokenStorage.clear();
       return false;
     }
     _isRefreshing = true;
@@ -172,9 +196,12 @@ class ApiClient {
         await tokenStorage.updateAccessToken(body['accessToken'] as String);
         return true;
       }
+      debugPrint('[API] Refresh failed, clearing session');
+      await tokenStorage.clear();
       return false;
     } catch (e) {
       debugPrint('[API] Refresh error: $e');
+      await tokenStorage.clear();
       return false;
     } finally {
       _isRefreshing = false;
@@ -187,14 +214,22 @@ class ApiClient {
     debugPrint('[API] ──────────────────────────────────');
     debugPrint('[API] $method $uri');
     if (body != null) {
-      debugPrint('[API] Body: ${const JsonEncoder.withIndent('  ').convert(body)}');
+      debugPrint(
+        '[API] Body: ${const JsonEncoder.withIndent('  ').convert(body)}',
+      );
     }
-    debugPrint('[API] Auth: ${tokenStorage.accessToken != null ? "Bearer ***${tokenStorage.accessToken!.length > 10 ? tokenStorage.accessToken!.substring(tokenStorage.accessToken!.length - 6) : ''}" : "NONE"}');
+    debugPrint(
+      '[API] Auth: ${tokenStorage.accessToken != null ? "Bearer ***${tokenStorage.accessToken!.length > 10 ? tokenStorage.accessToken!.substring(tokenStorage.accessToken!.length - 6) : ''}" : "NONE"}',
+    );
   }
 
   void _logResponse(String method, Object? uri, http.Response resp) {
-    final preview = resp.body.length > 500 ? '${resp.body.substring(0, 500)}...' : resp.body;
-    debugPrint('[API] ← $method ${resp.statusCode} (${resp.body.length} bytes)');
+    final preview = resp.body.length > 500
+        ? '${resp.body.substring(0, 500)}...'
+        : resp.body;
+    debugPrint(
+      '[API] ← $method ${resp.statusCode} (${resp.body.length} bytes)',
+    );
     debugPrint('[API] Response: $preview');
   }
 }

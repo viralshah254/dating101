@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -49,6 +50,7 @@ class MatchProfileCard extends ConsumerWidget {
   final bool isShortlisted;
   final bool isInterested;
   final bool isPriorityInterested;
+
   /// When true (e.g. on Matches tab), Message is unlocked even without premium.
   final bool messageUnlockedByMatch;
 
@@ -94,6 +96,14 @@ class MatchProfileCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _NameRow(profile: profile, onSurface: onSurface),
+                    if (profile.roleManagingProfile != null &&
+                        profile.roleManagingProfile != ProfileRole.self) ...[
+                      const SizedBox(height: 4),
+                      _ManagedByChip(
+                        role: profile.roleManagingProfile!,
+                        onSurface: onSurface,
+                      ),
+                    ],
                     if (profile.city != null &&
                         !_isPlaceholder(profile.city)) ...[
                       const SizedBox(height: 2),
@@ -461,6 +471,64 @@ class _NameRow extends StatelessWidget {
   }
 }
 
+/// Compact "Managed by parent/sibling/..." for discovery cards (matrimony).
+class _ManagedByChip extends StatelessWidget {
+  const _ManagedByChip({required this.role, required this.onSurface});
+  final ProfileRole role;
+  final Color onSurface;
+
+  static String _label(BuildContext context, ProfileRole r) {
+    final l = AppLocalizations.of(context)!;
+    switch (r) {
+      case ProfileRole.parent:
+        return l.profileManagedByParent;
+      case ProfileRole.guardian:
+        return l.profileManagedByGuardian;
+      case ProfileRole.sibling:
+        return l.profileManagedBySibling;
+      case ProfileRole.friend:
+        return l.profileManagedByFriend;
+      case ProfileRole.self:
+        return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _label(context, role);
+    if (label.isEmpty) return const SizedBox.shrink();
+    final accent = AppColors.indiaGreen;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.family_restroom,
+            size: 14,
+            color: accent.withValues(alpha: 0.9),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LocationRow extends StatelessWidget {
   const _LocationRow({required this.city, required this.onSurface});
   final String city;
@@ -561,20 +629,25 @@ class _QuickDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pills = <_PillData>[];
-    if (profile.religion != null && !_isPlaceholder(profile.religion))
+    if (profile.religion != null && !_isPlaceholder(profile.religion)) {
       pills.add(_PillData(profile.religion!));
+    }
     if (profile.educationDegree != null &&
-        !_isPlaceholder(profile.educationDegree))
+        !_isPlaceholder(profile.educationDegree)) {
       pills.add(_PillData(profile.educationDegree!));
+    }
     if (profile.heightCm != null) {
       final ft = profile.heightCm! ~/ 30.48;
       final inches = ((profile.heightCm! % 30.48) / 2.54).round();
       pills.add(_PillData('$ft\'$inches"'));
     }
-    if (profile.maritalStatus != null && !_isPlaceholder(profile.maritalStatus))
+    if (profile.maritalStatus != null &&
+        !_isPlaceholder(profile.maritalStatus)) {
       pills.add(_PillData(profile.maritalStatus!));
-    if (profile.motherTongue != null && !_isPlaceholder(profile.motherTongue))
+    }
+    if (profile.motherTongue != null && !_isPlaceholder(profile.motherTongue)) {
       pills.add(_PillData(profile.motherTongue!));
+    }
 
     if (pills.isEmpty) return const SizedBox.shrink();
 
@@ -719,9 +792,7 @@ class _ActionBar extends StatelessWidget {
             onTap: onShortlist,
           ),
           _ActionButton(
-            icon: canMessage
-                ? Icons.chat_bubble_outline
-                : Icons.lock_outline,
+            icon: canMessage ? Icons.chat_bubble_outline : Icons.lock_outline,
             label: canMessage ? 'Message' : 'Premium',
             color: canMessage ? accent : Colors.grey,
             onTap: canMessage ? onMessage : onUpgrade,

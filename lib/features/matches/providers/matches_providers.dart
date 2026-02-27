@@ -5,51 +5,220 @@ import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../discovery/providers/discovery_providers.dart';
 import '../../../domain/models/mutual_match_entry.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../domain/models/saved_search.dart';
 
+/// Result of a discovery feed that may have used a fallback (widened search).
+class DiscoveryFeedResult {
+  const DiscoveryFeedResult({
+    required this.profiles,
+    this.isWidenedSearch = false,
+  });
+  final List<ProfileSummary> profiles;
+  final bool isWidenedSearch;
+}
+
 final matchesRecommendedProvider =
     FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
-  final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
-  final repo = ref.watch(discoveryRepositoryProvider);
-  debugPrint('[Matches] Fetching recommended profiles (mode=$mode)...');
-  final results = await repo.getRecommended(mode: mode, limit: 20);
-  debugPrint('[Matches] Got ${results.length} recommended profiles');
-  return results;
-});
+      final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+      final repo = ref.watch(discoveryRepositoryProvider);
+      debugPrint('[Matches] Fetching recommended profiles (mode=$mode)...');
+      final results = await repo.getRecommended(mode: mode, limit: 20);
+      debugPrint('[Matches] Got ${results.length} recommended profiles');
+      return results;
+    });
+
+/// Recommendations with fallback: if recommended returns 0, call explore with no filters and show "We've widened the search" banner.
+final matchesRecommendedWithFallbackProvider =
+    FutureProvider.autoDispose<DiscoveryFeedResult>((ref) async {
+      final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+      final repo = ref.watch(discoveryRepositoryProvider);
+      final results = await repo.getRecommended(mode: mode, limit: 20);
+      if (results.isNotEmpty) {
+        return DiscoveryFeedResult(profiles: results);
+      }
+      debugPrint(
+        '[Matches] No recommendations; trying explore with no filters...',
+      );
+      final fallback = await repo.getExplore(mode: mode, limit: 20);
+      return DiscoveryFeedResult(
+        profiles: fallback,
+        isWidenedSearch: fallback.isNotEmpty,
+      );
+    });
 
 /// Mutual matches (GET /matches). Used for Matches tab and to exclude from Explore.
 final mutualMatchesProvider =
     FutureProvider.autoDispose<List<MutualMatchEntry>>((ref) async {
-  final repo = ref.watch(matchesRepositoryProvider);
-  return repo.getMatches(page: 1, limit: 100);
-});
+      final repo = ref.watch(matchesRepositoryProvider);
+      return repo.getMatches(page: 1, limit: 100);
+    });
 
 /// Set of user IDs we are already matched with. Use to hide them from Explore.
-final matchedUserIdsProvider = FutureProvider.autoDispose<Set<String>>((ref) async {
+final matchedUserIdsProvider = FutureProvider.autoDispose<Set<String>>((
+  ref,
+) async {
   final list = await ref.watch(mutualMatchesProvider.future);
   return list.map((e) => e.profile.id).toSet();
 });
 
 /// Explore tab: GET /discovery/explore with mode + optional filters. No filters = everyone in mode.
 final matchesExploreProvider = FutureProvider.autoDispose
-    .family<List<ProfileSummary>, ({AppMode mode, MatchesSearchFilters filters})>((ref, args) async {
-  final repo = ref.watch(discoveryRepositoryProvider);
-  debugPrint('[Matches] Fetching explore (mode=${args.mode}, hasFilters=${_hasFilters(args.filters)})...');
-  final results = await repo.getExplore(
-    mode: args.mode,
-    ageMin: args.filters.ageMin,
-    ageMax: args.filters.ageMax,
-    city: args.filters.city,
-    religion: args.filters.religion,
-    education: args.filters.education,
-    heightMinCm: args.filters.heightMinCm,
-    limit: 20,
-  );
-  debugPrint('[Matches] Explore got ${results.length} profiles');
-  return results;
-});
+    .family<
+      List<ProfileSummary>,
+      ({AppMode mode, MatchesSearchFilters filters})
+    >((ref, args) async {
+      final repo = ref.watch(discoveryRepositoryProvider);
+      debugPrint(
+        '[Matches] Fetching explore (mode=${args.mode}, hasFilters=${_hasFilters(args.filters)})...',
+      );
+      final results = await repo.getExplore(
+        mode: args.mode,
+        ageMin: args.filters.ageMin,
+        ageMax: args.filters.ageMax,
+        city: args.filters.city,
+        religion: args.filters.religion,
+        education: args.filters.education,
+        heightMinCm: args.filters.heightMinCm,
+        diet: args.filters.diet,
+        limit: 20,
+      );
+      debugPrint('[Matches] Explore got ${results.length} profiles');
+      return results;
+    });
+
+/// Explore with fallback: if explore returns 0 with filters, retry with relaxed filters (respecting strict from filter-options) and set isWidenedSearch.
+final matchesExploreWithFallbackProvider = FutureProvider.autoDispose
+    .family<
+      DiscoveryFeedResult,
+      ({AppMode mode, MatchesSearchFilters filters})
+    >((ref, args) async {
+      final repo = ref.watch(discoveryRepositoryProvider);
+      final opts = await ref.watch(filterOptionsProvider.future);
+      final filters = args.filters;
+
+      Future<List<ProfileSummary>> fetch(MatchesSearchFilters f) =>
+          repo.getExplore(
+            mode: args.mode,
+            ageMin: f.ageMin,
+            ageMax: f.ageMax,
+            city: f.city,
+            religion: f.religion,
+            education: f.education,
+            heightMinCm: f.heightMinCm,
+            diet: f.diet,
+            limit: 20,
+          );
+
+      final first = await fetch(filters);
+      if (first.isNotEmpty) return DiscoveryFeedResult(profiles: first);
+
+      if (!_hasFilters(filters)) return DiscoveryFeedResult(profiles: first);
+
+      // Build relaxed filter sets (drop one non-strict dimension at a time). Build explicitly so we can clear a field to null.
+      final candidates = <MatchesSearchFilters>[];
+      if (filters.diet != null &&
+          filters.diet!.isNotEmpty &&
+          opts.diet?.strict != true) {
+        candidates.add(
+          MatchesSearchFilters(
+            ageMin: filters.ageMin,
+            ageMax: filters.ageMax,
+            city: filters.city,
+            religion: filters.religion,
+            education: filters.education,
+            heightMinCm: filters.heightMinCm,
+            diet: null,
+          ),
+        );
+      }
+      if (filters.city != null &&
+          filters.city!.isNotEmpty &&
+          !opts.cities.strict) {
+        candidates.add(
+          MatchesSearchFilters(
+            ageMin: filters.ageMin,
+            ageMax: filters.ageMax,
+            city: null,
+            religion: filters.religion,
+            education: filters.education,
+            heightMinCm: filters.heightMinCm,
+            diet: filters.diet,
+          ),
+        );
+      }
+      if (filters.religion != null &&
+          filters.religion!.isNotEmpty &&
+          !opts.religions.strict) {
+        candidates.add(
+          MatchesSearchFilters(
+            ageMin: filters.ageMin,
+            ageMax: filters.ageMax,
+            city: filters.city,
+            religion: null,
+            education: filters.education,
+            heightMinCm: filters.heightMinCm,
+            diet: filters.diet,
+          ),
+        );
+      }
+      if (filters.education != null &&
+          filters.education!.isNotEmpty &&
+          !opts.education.strict) {
+        candidates.add(
+          MatchesSearchFilters(
+            ageMin: filters.ageMin,
+            ageMax: filters.ageMax,
+            city: filters.city,
+            religion: filters.religion,
+            education: null,
+            heightMinCm: filters.heightMinCm,
+            diet: filters.diet,
+          ),
+        );
+      }
+      if (filters.heightMinCm != null) {
+        candidates.add(
+          MatchesSearchFilters(
+            ageMin: filters.ageMin,
+            ageMax: filters.ageMax,
+            city: filters.city,
+            religion: filters.religion,
+            education: filters.education,
+            heightMinCm: null,
+            diet: filters.diet,
+          ),
+        );
+      }
+      if ((filters.ageMin != null || filters.ageMax != null) &&
+          !opts.age.strict) {
+        candidates.add(
+          MatchesSearchFilters(
+            ageMin: null,
+            ageMax: null,
+            city: filters.city,
+            religion: filters.religion,
+            education: filters.education,
+            heightMinCm: filters.heightMinCm,
+            diet: filters.diet,
+          ),
+        );
+      }
+      candidates.add(const MatchesSearchFilters()); // no filters
+
+      for (final relaxed in candidates) {
+        final results = await fetch(relaxed);
+        if (results.isNotEmpty) {
+          debugPrint(
+            '[Matches] Explore fallback: got ${results.length} with relaxed filters',
+          );
+          return DiscoveryFeedResult(profiles: results, isWidenedSearch: true);
+        }
+      }
+      return DiscoveryFeedResult(profiles: []);
+    });
 
 bool _hasFilters(MatchesSearchFilters f) =>
     f.ageMin != null ||
@@ -57,24 +226,27 @@ bool _hasFilters(MatchesSearchFilters f) =>
     (f.city != null && f.city!.isNotEmpty) ||
     (f.religion != null && f.religion!.isNotEmpty) ||
     (f.education != null && f.education!.isNotEmpty) ||
-    f.heightMinCm != null;
+    f.heightMinCm != null ||
+    (f.diet != null && f.diet!.isNotEmpty);
 
 final matchesSearchProvider = FutureProvider.autoDispose
     .family<List<ProfileSummary>, MatchesSearchFilters>((ref, filters) async {
-  final repo = ref.watch(discoveryRepositoryProvider);
-  return repo.search(
-    ageMin: filters.ageMin,
-    ageMax: filters.ageMax,
-    city: filters.city,
-    religion: filters.religion,
-    education: filters.education,
-    heightMinCm: filters.heightMinCm,
-    limit: 20,
-  );
-});
+      final repo = ref.watch(discoveryRepositoryProvider);
+      return repo.search(
+        ageMin: filters.ageMin,
+        ageMax: filters.ageMax,
+        city: filters.city,
+        religion: filters.religion,
+        education: filters.education,
+        heightMinCm: filters.heightMinCm,
+        diet: filters.diet,
+        limit: 20,
+      );
+    });
 
-final matchesNearbyProvider =
-    FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
+final matchesNearbyProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+  ref,
+) async {
   final repo = ref.watch(discoveryRepositoryProvider);
   final loc = await AppLocationService.instance.getCurrentCreationLocation();
   final lat = loc?.latitude ?? 19.076;
@@ -83,8 +255,9 @@ final matchesNearbyProvider =
 });
 
 /// Visitors (who viewed my profile). Uses GET /visits/received and marks as seen on load.
-final visitorsProvider =
-    FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
+final visitorsProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+  ref,
+) async {
   final repo = ref.watch(visitsRepositoryProvider);
   final result = await repo.getVisitors(page: 1, limit: 50);
   await repo.markVisitorsSeen();
@@ -92,15 +265,16 @@ final visitorsProvider =
 });
 
 /// Records a profile visit when viewing someone's full profile (POST /visits). Fire-and-forget.
-final recordProfileVisitProvider =
-    FutureProvider.autoDispose.family<void, String>((ref, profileId) async {
-  final repo = ref.read(visitsRepositoryProvider);
-  await repo.recordVisit(profileId, source: 'profile_view');
-});
+final recordProfileVisitProvider = FutureProvider.autoDispose
+    .family<void, String>((ref, profileId) async {
+      final repo = ref.read(visitsRepositoryProvider);
+      await repo.recordVisit(profileId, source: 'profile_view');
+    });
 
 /// Saved searches (matrimony). GET /discovery/saved-searches.
-final savedSearchesProvider =
-    FutureProvider.autoDispose<List<SavedSearch>>((ref) async {
+final savedSearchesProvider = FutureProvider.autoDispose<List<SavedSearch>>((
+  ref,
+) async {
   final repo = ref.watch(discoveryRepositoryProvider);
   return repo.getSavedSearches();
 });
@@ -113,6 +287,7 @@ class MatchesSearchFilters {
     this.religion,
     this.education,
     this.heightMinCm,
+    this.diet,
   });
 
   final int? ageMin;
@@ -121,6 +296,7 @@ class MatchesSearchFilters {
   final String? religion;
   final String? education;
   final int? heightMinCm;
+  final String? diet;
 
   MatchesSearchFilters copyWith({
     int? ageMin,
@@ -129,6 +305,7 @@ class MatchesSearchFilters {
     String? religion,
     String? education,
     int? heightMinCm,
+    String? diet,
   }) {
     return MatchesSearchFilters(
       ageMin: ageMin ?? this.ageMin,
@@ -137,6 +314,7 @@ class MatchesSearchFilters {
       religion: religion ?? this.religion,
       education: education ?? this.education,
       heightMinCm: heightMinCm ?? this.heightMinCm,
+      diet: diet ?? this.diet,
     );
   }
 
@@ -149,10 +327,12 @@ class MatchesSearchFilters {
           city == other.city &&
           religion == other.religion &&
           education == other.education &&
-          heightMinCm == other.heightMinCm;
+          heightMinCm == other.heightMinCm &&
+          diet == other.diet;
 
   @override
-  int get hashCode => Object.hash(ageMin, ageMax, city, religion, education, heightMinCm);
+  int get hashCode =>
+      Object.hash(ageMin, ageMax, city, religion, education, heightMinCm, diet);
 
   /// Convert to map for saved-search API (only non-null fields).
   Map<String, dynamic> toMap() {
@@ -163,6 +343,7 @@ class MatchesSearchFilters {
     if (religion != null && religion!.isNotEmpty) m['religion'] = religion;
     if (education != null && education!.isNotEmpty) m['education'] = education;
     if (heightMinCm != null) m['heightMinCm'] = heightMinCm;
+    if (diet != null && diet!.isNotEmpty) m['diet'] = diet;
     return m;
   }
 
@@ -176,6 +357,7 @@ class MatchesSearchFilters {
       religion: m['religion'] as String?,
       education: m['education'] as String?,
       heightMinCm: m['heightMinCm'] as int?,
+      diet: m['diet'] as String?,
     );
   }
 }

@@ -9,7 +9,13 @@ abstract class ContactRequestRepository {
   Future<void> sendContactRequest(String profileId);
 
   /// Received contact requests (people who want my contact). For "Contact requests" tab — accept/decline.
-  Future<List<ReceivedContactRequest>> getReceivedContactRequests({int page = 1, int limit = 20});
+  Future<List<ReceivedContactRequest>> getReceivedContactRequests({
+    int page = 1,
+    int limit = 20,
+  });
+
+  /// Count of received (pending) contact requests — for Requests nav badge. GET /contact-requests/received/count.
+  Future<int> getReceivedContactRequestsCount();
 
   /// Accept a contact request. Requester gets to see my shared contact (phone) and can Call/WhatsApp.
   /// Backend should notify the requester (e.g. push / in-app).

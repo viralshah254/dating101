@@ -21,10 +21,18 @@ mixin _$FamilyDetails {
       throw _privateConstructorUsedError; // nuclear / joint
   String? get familyValues =>
       throw _privateConstructorUsedError; // traditional / moderate / liberal
+  String? get familyLocation => throw _privateConstructorUsedError;
+  String? get familyBasedOutOfCountry => throw _privateConstructorUsedError;
+  String? get householdIncome => throw _privateConstructorUsedError;
   String? get fatherOccupation => throw _privateConstructorUsedError;
   String? get motherOccupation => throw _privateConstructorUsedError;
+  String? get fatherAge => throw _privateConstructorUsedError;
+  String? get motherAge => throw _privateConstructorUsedError;
   int? get siblingsCount => throw _privateConstructorUsedError;
   int? get siblingsMarried => throw _privateConstructorUsedError;
+  String? get brothers =>
+      throw _privateConstructorUsedError; // e.g. "None", "1", "2", "3", "4+"
+  String? get sisters => throw _privateConstructorUsedError;
 
   /// Optional; show "Family expectations" subsection when backend provides it.
   String? get familyExpectations => throw _privateConstructorUsedError;
@@ -46,10 +54,17 @@ abstract class $FamilyDetailsCopyWith<$Res> {
   $Res call({
     String? familyType,
     String? familyValues,
+    String? familyLocation,
+    String? familyBasedOutOfCountry,
+    String? householdIncome,
     String? fatherOccupation,
     String? motherOccupation,
+    String? fatherAge,
+    String? motherAge,
     int? siblingsCount,
     int? siblingsMarried,
+    String? brothers,
+    String? sisters,
     String? familyExpectations,
   });
 }
@@ -71,10 +86,17 @@ class _$FamilyDetailsCopyWithImpl<$Res, $Val extends FamilyDetails>
   $Res call({
     Object? familyType = freezed,
     Object? familyValues = freezed,
+    Object? familyLocation = freezed,
+    Object? familyBasedOutOfCountry = freezed,
+    Object? householdIncome = freezed,
     Object? fatherOccupation = freezed,
     Object? motherOccupation = freezed,
+    Object? fatherAge = freezed,
+    Object? motherAge = freezed,
     Object? siblingsCount = freezed,
     Object? siblingsMarried = freezed,
+    Object? brothers = freezed,
+    Object? sisters = freezed,
     Object? familyExpectations = freezed,
   }) {
     return _then(
@@ -87,6 +109,18 @@ class _$FamilyDetailsCopyWithImpl<$Res, $Val extends FamilyDetails>
                 ? _value.familyValues
                 : familyValues // ignore: cast_nullable_to_non_nullable
                       as String?,
+            familyLocation: freezed == familyLocation
+                ? _value.familyLocation
+                : familyLocation // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            familyBasedOutOfCountry: freezed == familyBasedOutOfCountry
+                ? _value.familyBasedOutOfCountry
+                : familyBasedOutOfCountry // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            householdIncome: freezed == householdIncome
+                ? _value.householdIncome
+                : householdIncome // ignore: cast_nullable_to_non_nullable
+                      as String?,
             fatherOccupation: freezed == fatherOccupation
                 ? _value.fatherOccupation
                 : fatherOccupation // ignore: cast_nullable_to_non_nullable
@@ -94,6 +128,14 @@ class _$FamilyDetailsCopyWithImpl<$Res, $Val extends FamilyDetails>
             motherOccupation: freezed == motherOccupation
                 ? _value.motherOccupation
                 : motherOccupation // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            fatherAge: freezed == fatherAge
+                ? _value.fatherAge
+                : fatherAge // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            motherAge: freezed == motherAge
+                ? _value.motherAge
+                : motherAge // ignore: cast_nullable_to_non_nullable
                       as String?,
             siblingsCount: freezed == siblingsCount
                 ? _value.siblingsCount
@@ -103,6 +145,14 @@ class _$FamilyDetailsCopyWithImpl<$Res, $Val extends FamilyDetails>
                 ? _value.siblingsMarried
                 : siblingsMarried // ignore: cast_nullable_to_non_nullable
                       as int?,
+            brothers: freezed == brothers
+                ? _value.brothers
+                : brothers // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            sisters: freezed == sisters
+                ? _value.sisters
+                : sisters // ignore: cast_nullable_to_non_nullable
+                      as String?,
             familyExpectations: freezed == familyExpectations
                 ? _value.familyExpectations
                 : familyExpectations // ignore: cast_nullable_to_non_nullable
@@ -125,10 +175,17 @@ abstract class _$$FamilyDetailsImplCopyWith<$Res>
   $Res call({
     String? familyType,
     String? familyValues,
+    String? familyLocation,
+    String? familyBasedOutOfCountry,
+    String? householdIncome,
     String? fatherOccupation,
     String? motherOccupation,
+    String? fatherAge,
+    String? motherAge,
     int? siblingsCount,
     int? siblingsMarried,
+    String? brothers,
+    String? sisters,
     String? familyExpectations,
   });
 }
@@ -149,10 +206,17 @@ class __$$FamilyDetailsImplCopyWithImpl<$Res>
   $Res call({
     Object? familyType = freezed,
     Object? familyValues = freezed,
+    Object? familyLocation = freezed,
+    Object? familyBasedOutOfCountry = freezed,
+    Object? householdIncome = freezed,
     Object? fatherOccupation = freezed,
     Object? motherOccupation = freezed,
+    Object? fatherAge = freezed,
+    Object? motherAge = freezed,
     Object? siblingsCount = freezed,
     Object? siblingsMarried = freezed,
+    Object? brothers = freezed,
+    Object? sisters = freezed,
     Object? familyExpectations = freezed,
   }) {
     return _then(
@@ -165,6 +229,18 @@ class __$$FamilyDetailsImplCopyWithImpl<$Res>
             ? _value.familyValues
             : familyValues // ignore: cast_nullable_to_non_nullable
                   as String?,
+        familyLocation: freezed == familyLocation
+            ? _value.familyLocation
+            : familyLocation // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        familyBasedOutOfCountry: freezed == familyBasedOutOfCountry
+            ? _value.familyBasedOutOfCountry
+            : familyBasedOutOfCountry // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        householdIncome: freezed == householdIncome
+            ? _value.householdIncome
+            : householdIncome // ignore: cast_nullable_to_non_nullable
+                  as String?,
         fatherOccupation: freezed == fatherOccupation
             ? _value.fatherOccupation
             : fatherOccupation // ignore: cast_nullable_to_non_nullable
@@ -172,6 +248,14 @@ class __$$FamilyDetailsImplCopyWithImpl<$Res>
         motherOccupation: freezed == motherOccupation
             ? _value.motherOccupation
             : motherOccupation // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        fatherAge: freezed == fatherAge
+            ? _value.fatherAge
+            : fatherAge // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        motherAge: freezed == motherAge
+            ? _value.motherAge
+            : motherAge // ignore: cast_nullable_to_non_nullable
                   as String?,
         siblingsCount: freezed == siblingsCount
             ? _value.siblingsCount
@@ -181,6 +265,14 @@ class __$$FamilyDetailsImplCopyWithImpl<$Res>
             ? _value.siblingsMarried
             : siblingsMarried // ignore: cast_nullable_to_non_nullable
                   as int?,
+        brothers: freezed == brothers
+            ? _value.brothers
+            : brothers // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        sisters: freezed == sisters
+            ? _value.sisters
+            : sisters // ignore: cast_nullable_to_non_nullable
+                  as String?,
         familyExpectations: freezed == familyExpectations
             ? _value.familyExpectations
             : familyExpectations // ignore: cast_nullable_to_non_nullable
@@ -196,10 +288,17 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
   const _$FamilyDetailsImpl({
     this.familyType,
     this.familyValues,
+    this.familyLocation,
+    this.familyBasedOutOfCountry,
+    this.householdIncome,
     this.fatherOccupation,
     this.motherOccupation,
+    this.fatherAge,
+    this.motherAge,
     this.siblingsCount,
     this.siblingsMarried,
+    this.brothers,
+    this.sisters,
     this.familyExpectations,
   });
 
@@ -210,13 +309,28 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
   final String? familyValues;
   // traditional / moderate / liberal
   @override
+  final String? familyLocation;
+  @override
+  final String? familyBasedOutOfCountry;
+  @override
+  final String? householdIncome;
+  @override
   final String? fatherOccupation;
   @override
   final String? motherOccupation;
   @override
+  final String? fatherAge;
+  @override
+  final String? motherAge;
+  @override
   final int? siblingsCount;
   @override
   final int? siblingsMarried;
+  @override
+  final String? brothers;
+  // e.g. "None", "1", "2", "3", "4+"
+  @override
+  final String? sisters;
 
   /// Optional; show "Family expectations" subsection when backend provides it.
   @override
@@ -224,7 +338,7 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
 
   @override
   String toString() {
-    return 'FamilyDetails(familyType: $familyType, familyValues: $familyValues, fatherOccupation: $fatherOccupation, motherOccupation: $motherOccupation, siblingsCount: $siblingsCount, siblingsMarried: $siblingsMarried, familyExpectations: $familyExpectations)';
+    return 'FamilyDetails(familyType: $familyType, familyValues: $familyValues, familyLocation: $familyLocation, familyBasedOutOfCountry: $familyBasedOutOfCountry, householdIncome: $householdIncome, fatherOccupation: $fatherOccupation, motherOccupation: $motherOccupation, fatherAge: $fatherAge, motherAge: $motherAge, siblingsCount: $siblingsCount, siblingsMarried: $siblingsMarried, brothers: $brothers, sisters: $sisters, familyExpectations: $familyExpectations)';
   }
 
   @override
@@ -236,14 +350,30 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
                 other.familyType == familyType) &&
             (identical(other.familyValues, familyValues) ||
                 other.familyValues == familyValues) &&
+            (identical(other.familyLocation, familyLocation) ||
+                other.familyLocation == familyLocation) &&
+            (identical(
+                  other.familyBasedOutOfCountry,
+                  familyBasedOutOfCountry,
+                ) ||
+                other.familyBasedOutOfCountry == familyBasedOutOfCountry) &&
+            (identical(other.householdIncome, householdIncome) ||
+                other.householdIncome == householdIncome) &&
             (identical(other.fatherOccupation, fatherOccupation) ||
                 other.fatherOccupation == fatherOccupation) &&
             (identical(other.motherOccupation, motherOccupation) ||
                 other.motherOccupation == motherOccupation) &&
+            (identical(other.fatherAge, fatherAge) ||
+                other.fatherAge == fatherAge) &&
+            (identical(other.motherAge, motherAge) ||
+                other.motherAge == motherAge) &&
             (identical(other.siblingsCount, siblingsCount) ||
                 other.siblingsCount == siblingsCount) &&
             (identical(other.siblingsMarried, siblingsMarried) ||
                 other.siblingsMarried == siblingsMarried) &&
+            (identical(other.brothers, brothers) ||
+                other.brothers == brothers) &&
+            (identical(other.sisters, sisters) || other.sisters == sisters) &&
             (identical(other.familyExpectations, familyExpectations) ||
                 other.familyExpectations == familyExpectations));
   }
@@ -253,10 +383,17 @@ class _$FamilyDetailsImpl implements _FamilyDetails {
     runtimeType,
     familyType,
     familyValues,
+    familyLocation,
+    familyBasedOutOfCountry,
+    householdIncome,
     fatherOccupation,
     motherOccupation,
+    fatherAge,
+    motherAge,
     siblingsCount,
     siblingsMarried,
+    brothers,
+    sisters,
     familyExpectations,
   );
 
@@ -273,10 +410,17 @@ abstract class _FamilyDetails implements FamilyDetails {
   const factory _FamilyDetails({
     final String? familyType,
     final String? familyValues,
+    final String? familyLocation,
+    final String? familyBasedOutOfCountry,
+    final String? householdIncome,
     final String? fatherOccupation,
     final String? motherOccupation,
+    final String? fatherAge,
+    final String? motherAge,
     final int? siblingsCount,
     final int? siblingsMarried,
+    final String? brothers,
+    final String? sisters,
     final String? familyExpectations,
   }) = _$FamilyDetailsImpl;
 
@@ -285,13 +429,27 @@ abstract class _FamilyDetails implements FamilyDetails {
   @override
   String? get familyValues; // traditional / moderate / liberal
   @override
+  String? get familyLocation;
+  @override
+  String? get familyBasedOutOfCountry;
+  @override
+  String? get householdIncome;
+  @override
   String? get fatherOccupation;
   @override
   String? get motherOccupation;
   @override
+  String? get fatherAge;
+  @override
+  String? get motherAge;
+  @override
   int? get siblingsCount;
   @override
   int? get siblingsMarried;
+  @override
+  String? get brothers; // e.g. "None", "1", "2", "3", "4+"
+  @override
+  String? get sisters;
 
   /// Optional; show "Family expectations" subsection when backend provides it.
   @override

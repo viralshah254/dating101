@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/repository_providers.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/blocked_user_entry.dart';
 
@@ -18,13 +19,14 @@ class BlockedUsersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final async = ref.watch(_blockedListProvider);
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Blocked users',
+          l.blockedUsersScreenTitle,
           style: AppTypography.headlineSmall.copyWith(
             color: onSurface,
             fontWeight: FontWeight.w700,
@@ -70,9 +72,10 @@ class BlockedUsersScreen extends ConsumerWidget {
                           .unblock(entry.blockedUserId);
                       if (context.mounted) ref.invalidate(_blockedListProvider);
                       if (context.mounted) {
+                        final loc = AppLocalizations.of(context)!;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${entry.profile.name} unblocked'),
+                            content: Text(loc.unblocked(entry.profile.name)),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -81,9 +84,7 @@ class BlockedUsersScreen extends ConsumerWidget {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text(
-                              'Could not unblock. Please try again.',
-                            ),
+                            content: Text(l.somethingWentWrong),
                             behavior: SnackBarBehavior.floating,
                             backgroundColor: Theme.of(
                               context,
@@ -103,11 +104,11 @@ class BlockedUsersScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Something went wrong', style: AppTypography.bodyLarge),
+              Text(l.somethingWentWrong, style: AppTypography.bodyLarge),
               const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () => ref.invalidate(_blockedListProvider),
-                child: const Text('Retry'),
+                child: Text(l.retry),
               ),
             ],
           ),
@@ -152,7 +153,10 @@ class _BlockedUserTile extends StatelessWidget {
               ),
             )
           : null,
-      trailing: TextButton(onPressed: onUnblock, child: const Text('Unblock')),
+      trailing: TextButton(
+        onPressed: onUnblock,
+        child: Text(AppLocalizations.of(context)!.unblock),
+      ),
     );
   }
 }

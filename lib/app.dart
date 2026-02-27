@@ -45,7 +45,7 @@ class _SaathiAppState extends ConsumerState<SaathiApp> {
     final localeCode = ref.watch(appLocaleProvider);
     final locale = localeCode != null ? Locale(localeCode) : null;
     return MaterialApp.router(
-      title: 'saathi',
+      title: lookupAppLocalizations(locale ?? const Locale('en')).appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

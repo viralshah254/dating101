@@ -8,6 +8,7 @@ import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 
 class PaywallScreen extends ConsumerWidget {
   const PaywallScreen({super.key});
@@ -17,51 +18,77 @@ class PaywallScreen extends ConsumerWidget {
     try {
       // In production, the receipt/token comes from StoreKit or Google Play billing.
       // For now, trigger the purchase flow which the backend will validate.
-      await ref.read(subscriptionRepositoryProvider).purchaseSubscription(
+      await ref
+          .read(subscriptionRepositoryProvider)
+          .purchaseSubscription(
             platform: platform,
             receiptOrToken: 'placeholder_receipt',
             planId: 'premium_monthly',
           );
       ref.invalidate(entitlementsProvider);
       if (context.mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Subscription activated!'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(l.subscriptionActivated),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         context.pop();
       }
     } catch (e) {
       if (!context.mounted) return;
+      final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Purchase failed: ${e is Exception ? e.toString() : 'Unknown error'}'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(
+            l.purchaseFailed(e is Exception ? e.toString() : 'Unknown error'),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
   Future<void> _onRestore(BuildContext context, WidgetRef ref) async {
     try {
-      final restored = await ref.read(subscriptionRepositoryProvider).restorePurchases();
+      final restored = await ref
+          .read(subscriptionRepositoryProvider)
+          .restorePurchases();
       ref.invalidate(entitlementsProvider);
       if (!context.mounted) return;
+      final l = AppLocalizations.of(context)!;
       if (restored) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Purchases restored!'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(l.purchasesRestored),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         context.pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No active purchases found.'), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(l.noActivePurchases),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (_) {
       if (!context.mounted) return;
+      final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not restore purchases.'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(l.couldNotRestorePurchases),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
     final ent = ref.watch(entitlementsProvider);
 
@@ -105,7 +132,11 @@ class PaywallScreen extends ConsumerWidget {
                 color: AppColors.saffron.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.workspace_premium, size: 48, color: AppColors.saffron),
+              child: Icon(
+                Icons.workspace_premium,
+                size: 48,
+                color: AppColors.saffron,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -117,7 +148,9 @@ class PaywallScreen extends ConsumerWidget {
             Text(
               ent.upgradeReason,
               style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 80.ms),
@@ -125,15 +158,24 @@ class PaywallScreen extends ConsumerWidget {
             if (ent.isFemale) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.indiaGreen.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.indiaGreen.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.indiaGreen.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle, size: 20, color: AppColors.indiaGreen),
+                    Icon(
+                      Icons.check_circle,
+                      size: 20,
+                      color: AppColors.indiaGreen,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -151,7 +193,7 @@ class PaywallScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
             _PlanCard(
-              title: 'Premium',
+              title: l.premium,
               price: '£9.99',
               period: '/month',
               features: features,
@@ -160,7 +202,7 @@ class PaywallScreen extends ConsumerWidget {
             ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.03, end: 0),
             const SizedBox(height: 12),
             _PlanCard(
-              title: 'Boost pack',
+              title: l.boostPack,
               price: '£4.99',
               period: ' one-time',
               features: const [
@@ -175,14 +217,16 @@ class PaywallScreen extends ConsumerWidget {
               onPressed: () => _onSubscribe(context, ref),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: const Text('Subscribe'),
+              child: Text(l.subscribe),
             ).animate().fadeIn(delay: 250.ms),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => _onRestore(context, ref),
-              child: const Text('Restore purchases'),
+              child: Text(l.restorePurchases),
             ),
             const SizedBox(height: 24),
           ],
@@ -235,7 +279,10 @@ class _PlanCard extends StatelessWidget {
               children: [
                 Text(title, style: AppTypography.titleLarge),
                 const SizedBox(width: 12),
-                Text(price, style: AppTypography.headlineSmall.copyWith(color: accent)),
+                Text(
+                  price,
+                  style: AppTypography.headlineSmall.copyWith(color: accent),
+                ),
                 Text(period, style: AppTypography.bodySmall),
               ],
             ),

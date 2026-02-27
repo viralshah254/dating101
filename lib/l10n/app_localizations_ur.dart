@@ -163,6 +163,33 @@ class AppLocalizationsUr extends AppLocalizations {
   String get navShortlist => 'Shortlist';
 
   @override
+  String get navEvents => 'تقریبات';
+
+  @override
+  String get navVisitors => 'زائرین';
+
+  @override
+  String get refine => 'بہتر بنائیں';
+
+  @override
+  String get refineTooltip =>
+      'عمر، شہر، مذہب، تعلیم اور مزید کے ساتھ بہتر بنائیں';
+
+  @override
+  String get noRecommendationsYet => 'ابھی تک کوئی سفارشات نہیں';
+
+  @override
+  String get noRecommendationsYetBody =>
+      'AI سے چلنے والے میچ حاصل کرنے کے لیے اپنا پروفائل اور ترجیحات مکمل کریں۔';
+
+  @override
+  String get searchWidenedTitle => 'ہم نے تلاش وسیع کر دی ہے';
+
+  @override
+  String get searchWidenedBody =>
+      'آپ کے موجودہ فلٹرز سے کوئی نتائج میل نہیں کھائے۔ ہم کچھ فلٹر کم کر کے مزید پروفائلز دکھا رہے ہیں۔';
+
+  @override
   String get discoverTitle => 'Discover';
 
   @override
@@ -430,7 +457,7 @@ class AppLocalizationsUr extends AppLocalizations {
       'Focus on verified profiles and detailed preferences for a trusted match.';
 
   @override
-  String get yourName => 'Your name';
+  String get yourName => 'آپ کا نام';
 
   @override
   String get nameHint => 'e.g. Priya, Arjun';
@@ -682,7 +709,13 @@ class AppLocalizationsUr extends AppLocalizations {
   String get currentLocation => 'Where do you live?';
 
   @override
+  String get currentLocationHint => 'مثلاً ممبئی، نیویارک';
+
+  @override
   String get hometown => 'Where are you from?';
+
+  @override
+  String get placeOfBirthHint => 'مثلاً جے پور، حیدرآباد';
 
   @override
   String get lookingForPartner => 'Looking for';
@@ -1076,7 +1109,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get optional => 'Optional';
 
   @override
-  String get skipForNow => 'Skip for now';
+  String get skipForNow => 'ابھی چھوڑیں';
 
   @override
   String get fillLater => 'You can fill this later from your profile.';
@@ -1328,63 +1361,722 @@ class AppLocalizationsUr extends AppLocalizations {
   String get toastReportSubmitted => 'Report submitted. Thank you.';
 
   @override
-  String get toastErrorGeneric => 'Something went wrong. Please try again.';
+  String get toastErrorGeneric => 'کچھ غلط ہو گیا۔ براہ کرم دوبارہ کوشش کریں۔';
 
   @override
-  String get activeNow => 'Active now';
+  String get activeNow => 'ابھی فعال';
 
   @override
-  String get verified => 'Verified';
+  String get verified => 'تصدیق شدہ';
 
   @override
   String managedBy(Object role) {
-    return 'Managed by: $role';
+    return 'منظم: $role';
   }
 
   @override
-  String get lastActive => 'Last active';
+  String get lastActive => 'آخر بار فعال';
 
   @override
   String kmAway(Object distance) {
-    return '$distance km away';
+    return '$distance کلومیٹر دور';
   }
 
   @override
-  String get ageRange => 'Age range';
+  String get ageRange => 'عمر کی حد';
 
   @override
-  String get distance => 'Distance';
+  String get distance => 'فاصلہ';
 
   @override
-  String get city => 'City';
+  String get city => 'شہر';
 
   @override
-  String get religion => 'Religion';
+  String get religion => 'مذہب';
 
   @override
-  String get motherTongue => 'Mother tongue';
+  String get motherTongue => 'مادری زبان';
 
   @override
-  String get maritalStatus => 'Marital status';
+  String get maritalStatus => 'شادی کی حیثیت';
 
   @override
-  String get height => 'Height';
+  String get height => 'قد';
 
   @override
-  String get educationLevel => 'Education';
+  String get educationLevel => 'تعلیم';
 
   @override
-  String get occupation => 'Occupation';
+  String get occupation => 'پیشہ';
 
   @override
-  String get income => 'Income';
+  String get income => 'آمدنی';
 
   @override
-  String get diet => 'Diet';
+  String get diet => 'خوراک';
 
   @override
-  String get familyType => 'Family type';
+  String get familyType => 'خاندان کی قسم';
 
   @override
-  String get familyValues => 'Family values';
+  String get familyValues => 'خاندانی اقدار';
+
+  @override
+  String get appLanguage => 'ایپ کی زبان';
+
+  @override
+  String get chooseAppLanguage => 'ایپ کی زبان منتخب کریں';
+
+  @override
+  String languageSetTo(Object name) {
+    return 'زبان $name پر سیٹ ہو گئی';
+  }
+
+  @override
+  String get saathiMode => 'saathi موڈ';
+
+  @override
+  String get accountAndData => 'اکاؤنٹ اور ڈیٹا';
+
+  @override
+  String get viewProfile => 'پروفائل دیکھیں';
+
+  @override
+  String get downloadMyData => 'اپنا ڈیٹا ڈاؤن لوڈ کریں';
+
+  @override
+  String get requestDataCopy => 'اپنے ڈیٹا کی کاپی کی درخواست کریں';
+
+  @override
+  String get deactivateAccount => 'اکاؤنٹ غیر فعال کریں';
+
+  @override
+  String get deactivateAccountSubtitle => 'عارضی طور پر اکاؤنٹ غیر فعال کریں';
+
+  @override
+  String get deleteAccount => 'اکاؤنٹ حذف کریں';
+
+  @override
+  String get deleteAccountSubtitle => 'مستقل طور پر اکاؤنٹ حذف کریں';
+
+  @override
+  String get boostProfile => 'پروفائل بڑھائیں';
+
+  @override
+  String get appearMoreInDiscovery => 'دریافت میں زیادہ نظر آئیں';
+
+  @override
+  String get verificationSubtitle => 'آئی ڈی، فوٹو، لنکڈ ان';
+
+  @override
+  String get blockedUsers => 'بلاک شدہ صارفین';
+
+  @override
+  String get blockedUsersSubtitle =>
+      'جنہیں آپ نے بلاک کیا انہیں دیکھیں اور ان بلاک کریں';
+
+  @override
+  String get showInVisitors => 'زائرین میں دکھائیں';
+
+  @override
+  String get whoCanSeeMyProfile => 'میری پروفائل کون دیکھ سکتا ہے';
+
+  @override
+  String get everyone => 'سب';
+
+  @override
+  String get onlyMyMatches => 'صرف میرے میچ';
+
+  @override
+  String get onlyAfterInterest => 'صرف دلچسپی کے بعد';
+
+  @override
+  String get hideFromDiscovery => 'دریافت سے چھپائیں';
+
+  @override
+  String get privacySettingsSaved => 'رازداری کی ترتیبات محفوظ ہو گئیں';
+
+  @override
+  String switchToMode(Object mode) {
+    return '$mode پر سوئچ کریں؟';
+  }
+
+  @override
+  String switchToModeLabel(Object mode) {
+    return '$mode پر سوئچ کریں';
+  }
+
+  @override
+  String get switchButton => 'سوئچ';
+
+  @override
+  String get requestFailedTryAgain =>
+      'درخواست ناکام۔ بعد میں دوبارہ کوشش کریں۔';
+
+  @override
+  String get deactivateAccountConfirm => 'اکاؤنٹ غیر فعال کریں؟';
+
+  @override
+  String get deactivationFailed => 'غیر فعال کرنا ناکام۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get deactivate => 'غیر فعال کریں';
+
+  @override
+  String get deleteAccountConfirm => 'اکاؤنٹ مستقل طور پر حذف کریں؟';
+
+  @override
+  String get deleteFailed => 'حذف ناکام۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get deletePermanently => 'مستقل طور پر حذف کریں';
+
+  @override
+  String get notificationPreferencesSaved => 'نوٹیفکیشن ترجیحات محفوظ ہو گئیں';
+
+  @override
+  String get noFcmToken => 'FCM ٹوکن نہیں (اجازت چیک کریں)';
+
+  @override
+  String get copyFcmToken => 'FCM ٹوکن کاپی کریں';
+
+  @override
+  String get linkCopied => 'لنک کاپی ہو گیا';
+
+  @override
+  String errorLoadingProfile(Object error) {
+    return 'پروفائل لوڈ کرنے میں خرابی: $error';
+  }
+
+  @override
+  String get noProfileYet => 'ابھی پروفائل نہیں';
+
+  @override
+  String get createProfile => 'پروفائل بنائیں';
+
+  @override
+  String get basicDetails => 'بنیادی تفصیلات';
+
+  @override
+  String get religionAndCommunity => 'مذہب اور برادری';
+
+  @override
+  String get physicalAttributes => 'جسمانی صفات';
+
+  @override
+  String get educationAndCareer => 'تعلیم اور کیریئر';
+
+  @override
+  String get lifestyleAndHabits => 'طرز زندگی اور عادات';
+
+  @override
+  String get interestsAndHobbiesSection => 'دلچسپیاں اور مشاغل';
+
+  @override
+  String get familySection => 'خاندان';
+
+  @override
+  String get horoscopeSection => 'حمل';
+
+  @override
+  String get aboutMeSection => 'میرے بارے میں';
+
+  @override
+  String get partnerPreferencesSection => 'ساتھی ترجیحات';
+
+  @override
+  String get photosSection => 'تصاویر';
+
+  @override
+  String get languagesLabel => 'زبانیں';
+
+  @override
+  String get locationLabel => 'مقام';
+
+  @override
+  String get originLabel => 'اصل';
+
+  @override
+  String get degreeLabel => 'ڈگری';
+
+  @override
+  String get institutionLabel => 'ادارہ';
+
+  @override
+  String get yearOfGraduation => 'گریجویشن کا سال';
+
+  @override
+  String get gradeClassification => 'گریڈ / درجہ بندی';
+
+  @override
+  String get employer => 'آجر';
+
+  @override
+  String get industry => 'صنعت';
+
+  @override
+  String get communityLabel => 'برادری';
+
+  @override
+  String get educationAndCareerTitle => 'تعلیم اور کیریئر';
+
+  @override
+  String get familyTitle => 'خاندان';
+
+  @override
+  String get lifestyleTitleSection => 'طرز زندگی';
+
+  @override
+  String get horoscopeTitle => 'حمل';
+
+  @override
+  String get lookingForTitle => 'کیا تلاش ہے';
+
+  @override
+  String get requestAgain => 'دوبارہ درخواست کریں';
+
+  @override
+  String get requestContact => 'رابطے کی درخواست کریں';
+
+  @override
+  String get contactRequestSent => 'رابطے کی درخواست بھیج دی گئی';
+
+  @override
+  String couldNotSendRequest(Object error) {
+    return 'درخواست نہیں بھیج سکے: $error';
+  }
+
+  @override
+  String get call => 'کال';
+
+  @override
+  String get whatsApp => 'واٹس ایپ';
+
+  @override
+  String get contactShared =>
+      'رابطہ شیئر ہو گیا۔ وہ اب آپ کو کال یا میسج کر سکتے ہیں۔';
+
+  @override
+  String couldNotAccept(Object error) {
+    return 'قبول نہیں کر سکے: $error';
+  }
+
+  @override
+  String get requestDeclined => 'درخواست مسترد';
+
+  @override
+  String couldNotDecline(Object error) {
+    return 'مسترد نہیں کر سکے: $error';
+  }
+
+  @override
+  String get interested => 'دلچسپی';
+
+  @override
+  String get priorityInterest => 'ترجیحی دلچسپی';
+
+  @override
+  String get withdrawInterest => 'دلچسپی واپس لیں';
+
+  @override
+  String get declineRequest => 'درخواست مسترد کریں';
+
+  @override
+  String get noContactRequests => 'رابطے کی درخواستیں نہیں';
+
+  @override
+  String get upgrade => 'اپ گریڈ';
+
+  @override
+  String get failedToSendTryAgain => 'بھیجنا ناکام۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get blockUserConfirm => 'صارف کو بلاک کریں؟';
+
+  @override
+  String get reportUser => 'صارف کی رپورٹ کریں';
+
+  @override
+  String get reportUserConfirm => 'صارف کی رپورٹ کریں؟';
+
+  @override
+  String reportUserMessage(Object name) {
+    return 'نامناسب رویے کے لیے $name کی رپورٹ کریں؟';
+  }
+
+  @override
+  String get reportSubmittedThankYou => 'رپورٹ جمع ہو گئی۔ شکریہ۔';
+
+  @override
+  String get changeCity => 'شہر بدلیں';
+
+  @override
+  String get yourArea => 'آپ کا علاقہ';
+
+  @override
+  String get showProfilesNearYou => 'آپ کے قریب پروفائلز دکھائیں';
+
+  @override
+  String unblocked(Object name) {
+    return '$name ان بلاک ہو گیا';
+  }
+
+  @override
+  String get somethingWentWrong => 'کچھ غلط ہو گیا';
+
+  @override
+  String get whyBlocking => 'بلاک کیوں کر رہے ہیں؟';
+
+  @override
+  String get whyReporting => 'رپورٹ کیوں کر رہے ہیں؟';
+
+  @override
+  String get blockedUsersScreenTitle => 'بلاک شدہ صارفین';
+
+  @override
+  String get unblock => 'ان بلاک';
+
+  @override
+  String get noConversationsYet => 'ابھی بات چیت نہیں';
+
+  @override
+  String get noChatRequests => 'چیٹ درخواستیں نہیں';
+
+  @override
+  String get priority => 'ترجیح';
+
+  @override
+  String yrs(Object age) {
+    return '$age سال';
+  }
+
+  @override
+  String get idVerificationSubtitle =>
+      'حکومتی آئی ڈی اپ لوڈ کریں۔ ہم اسے آپ کی فوٹو سے ملا کر دیکھیں گے۔';
+
+  @override
+  String get faceMatchSubtitle => 'سیلفی آپ کی آئی ڈی فوٹو سے ملی۔';
+
+  @override
+  String get linkedInSubtitle => 'کام کی تصدیق کے لیے اپنا لنکڈ ان جوڑیں۔';
+
+  @override
+  String get educationSubtitle => 'اپنی یونیورسٹی یا کالج کی تصدیق کریں۔';
+
+  @override
+  String verificationComingSoon(Object feature) {
+    return '$feature تصدیق جلد آ رہی ہے';
+  }
+
+  @override
+  String get uploadUrlNotAvailable => 'اپ لوڈ URL دستیاب نہیں';
+
+  @override
+  String uploadFailed(Object code) {
+    return 'اپ لوڈ ناکام: $code';
+  }
+
+  @override
+  String get idSubmittedNotify =>
+      'آئی ڈی جمع ہو گئی۔ تصدیق مکمل ہونے پر بتائیں گے۔';
+
+  @override
+  String uploadFailedError(Object error) {
+    return 'ناکام: $error';
+  }
+
+  @override
+  String get chooseFile => 'فائل منتخب کریں';
+
+  @override
+  String get photoVerification => 'فوٹو تصدیق';
+
+  @override
+  String get startVerification => 'تصدیق شروع کریں';
+
+  @override
+  String get takePhoto => 'فوٹو لیں';
+
+  @override
+  String get imReady => 'میں تیار ہوں';
+
+  @override
+  String get simulateSuccess => 'کامیابی کی نقل کریں';
+
+  @override
+  String get tryAgain => 'دوبارہ کوشش کریں';
+
+  @override
+  String get subscriptionActivated => 'سبسکرپشن فعال!';
+
+  @override
+  String purchaseFailed(Object error) {
+    return 'خریداری ناکام: $error';
+  }
+
+  @override
+  String get purchasesRestored => 'خریداریاں بحال!';
+
+  @override
+  String get noActivePurchases => 'کوئی فعال خریداری نہیں ملی۔';
+
+  @override
+  String get couldNotRestorePurchases => 'خریداریاں بحال نہیں کر سکے۔';
+
+  @override
+  String get boostPack => 'بوسٹ پیک';
+
+  @override
+  String get mostRecent => 'سب سے حالیہ';
+
+  @override
+  String get mostInterested => 'سب سے زیادہ دلچسپی';
+
+  @override
+  String get note => 'نوٹ';
+
+  @override
+  String get noMatchesYet => 'ابھی میچ نہیں';
+
+  @override
+  String get sendYourNote => 'اپنی نوٹ بھیجیں';
+
+  @override
+  String get savedSearches => 'محفوظ تلاش';
+
+  @override
+  String get searchSaved => 'تلاش محفوظ ہو گئی';
+
+  @override
+  String get couldNotSaveSearch => 'تلاش محفوظ نہیں کر سکے';
+
+  @override
+  String get saveSearch => 'تلاش محفوظ کریں';
+
+  @override
+  String get preferredLanguage => 'ترجیحی زبان';
+
+  @override
+  String get preferredLanguageSubtitle =>
+      'اختیاری — ہم اسے مواد اور میچوں کے لیے استعمال کریں گے۔';
+
+  @override
+  String get mapFilters => 'نقشہ فلٹر';
+
+  @override
+  String get join => 'شامل ہوں';
+
+  @override
+  String get rsvp => 'RSVP';
+
+  @override
+  String rsvpdTo(Object title) {
+    return '$title کو RSVP کیا';
+  }
+
+  @override
+  String get confirm => 'تصدیق کریں';
+
+  @override
+  String get reset => 'ری سیٹ';
+
+  @override
+  String get shellRequiresProvider => 'شیل کے لیے پراوائڈر درکار';
+
+  @override
+  String get add => 'شامل کریں';
+
+  @override
+  String get conversationStarter => 'بات چیت کا آغاز';
+
+  @override
+  String switchToModeBody(Object mode) {
+    return 'آپ کی پروفائل کی معلومات شیئر ہوتی ہے۔ آپ $mode-مخصوص تفصیلات کسی بھی وقت مکمل یا اپ ڈیٹ کر سکتے ہیں۔';
+  }
+
+  @override
+  String get exportRequested =>
+      'ایکسپورٹ کی درخواست ہو گئی۔ تیار ہونے پر ای میل کریں گے۔';
+
+  @override
+  String get deactivateAccountConfirmBody =>
+      'آپ کی پروفائل چھپ جائے گی اور آپ کو میچ یا میسجز نہیں ملیں گے۔ بعد میں دوبارہ فعال کر سکتے ہیں۔';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'یہ واپس نہیں ہو سکتا۔ آپ کا سارا ڈیٹا مستقل طور پر حذف ہو جائے گا۔';
+
+  @override
+  String get showInVisitorsSubtitle =>
+      'بند ہونے پر، آپ کی وزٹس ریکارڈ ہوتی ہیں لیکن دوسروں کی زائر لسٹوں میں نظر نہیں آئیں گے';
+
+  @override
+  String get hideFromDiscoverySubtitle =>
+      'دریافت اور سفارشات سے اپنی پروفائل عارضی طور پر چھپائیں';
+
+  @override
+  String get hideMyPhotos => 'اپنی تصاویر چھپائیں';
+
+  @override
+  String get hideMyPhotosSubtitle =>
+      'دوسروں کو آپ کی تصاویر دیکھنے کے لیے درخواست دینی ہوگی؛ آپ درخواستوں میں قبول یا انکار کریں گے۔';
+
+  @override
+  String get requestToViewPhotos => 'تصاویر دیکھنے کی درخواست کریں';
+
+  @override
+  String get requestToViewPhotosSent => 'درخواست بھیج دی گئی';
+
+  @override
+  String get photoViewRequestPending => 'درخواست زیر التوا';
+
+  @override
+  String get requestedToViewYourPhotos => 'آپ کی تصاویر دیکھنے کی درخواست کی';
+
+  @override
+  String get noPhotoViewRequests => 'تصویر دیکھنے کی کوئی درخواستیں نہیں';
+
+  @override
+  String get noPhotoViewRequestsBody =>
+      'جب کوئی آپ کی تصاویر دیکھنے کی درخواست کرے گا، آپ یہاں قبول یا انکار کر سکتے ہیں۔';
+
+  @override
+  String get photoViewRequestAccepted => 'اب وہ آپ کی تصاویر دیکھ سکتے ہیں۔';
+
+  @override
+  String get photoViewRequestsTab => 'تصویر دیکھیں';
+
+  @override
+  String get photosLocked => 'تصاویر نجی ہیں';
+
+  @override
+  String get photosLockedHint =>
+      'ان کی تصاویر دیکھنے کے لیے رسائی کی درخواست کریں';
+
+  @override
+  String blockUserMessage(Object name) {
+    return '$name آپ کی پروفائل نہیں دیکھ سکے گا یا آپ سے رابطہ نہیں کر سکے گا۔';
+  }
+
+  @override
+  String get yourProfile => 'آپ کی پروفائل';
+
+  @override
+  String get aboutYouShort => 'آپ کے بارے میں کچھ لائنیں';
+
+  @override
+  String get recordYourIntro => 'اپنا تعارف ریکارڈ کریں';
+
+  @override
+  String get heritageType => 'ورثہ / بھارتی قسم';
+
+  @override
+  String get communityTagsOptional => 'کمیونٹی ٹیگز (اختیاری)';
+
+  @override
+  String get communityTagsSubtitle =>
+      'جو لاگو ہوں منتخب کریں — سرکلز اور ایونٹس میں مدد۔';
+
+  @override
+  String get familyOrientation => 'خاندانی رجحان';
+
+  @override
+  String get familyOrientationSubtitle =>
+      'اپنی ترجیح ظاہر کرنے کے لیے سلائیڈ کریں — کوئی غلط جواب نہیں۔';
+
+  @override
+  String get traditionalLabel => 'روایتی';
+
+  @override
+  String get progressiveLabel => 'ترقی پسند';
+
+  @override
+  String get dietLifestyleTitle => 'خوراک / طرز زندگی';
+
+  @override
+  String get dietLifestyleSubtitle => 'ڈیٹ آئیڈیاز اور فلٹرز میں مدد۔';
+
+  @override
+  String get activeNowOnly => 'صرف ابھی آن لائن';
+
+  @override
+  String get activeNowOnlySubtitle =>
+      'پچھلے 24 گھنٹوں میں آن لائن لوگوں کو ہی دکھائیں';
+
+  @override
+  String get locationBlur => 'مقام دھندلاہٹ';
+
+  @override
+  String get locationBlurSubtitle => 'عین پن کی بجائے تقریبی علاقہ دکھائیں';
+
+  @override
+  String get verificationTitle => 'تصدیق';
+
+  @override
+  String get feetUnit => 'فٹ';
+
+  @override
+  String get inchesUnit => 'انچ';
+
+  @override
+  String get clearButton => '—';
+
+  @override
+  String yearsFormat(Object age) {
+    return '$age سال';
+  }
+
+  @override
+  String get profileManagedByParent => 'والدین کے زیر انتظام پروفائل';
+
+  @override
+  String get profileManagedByGuardian => 'سرپرست کے زیر انتظام پروفائل';
+
+  @override
+  String get profileManagedBySibling => 'بہن بھائی کے زیر انتظام پروفائل';
+
+  @override
+  String get profileManagedByFriend => 'دوست کے زیر انتظام پروفائل';
+
+  @override
+  String get blockUserMessageChat => 'وہ اب آپ سے رابطہ نہیں کر سکیں گے۔';
+
+  @override
+  String get reportUserMessageChat =>
+      'ہم حفاظت سنجیدگی سے لیتے ہیں اور اس رپورٹ کا جائزہ لیں گے۔';
+
+  @override
+  String get blockUser => 'صارف کو بلاک کریں';
+
+  @override
+  String get matchToContinueOrUpgrade =>
+      'جاری رکھنے یا اپ گریڈ کے لیے میچ کریں';
+
+  @override
+  String get noConversationsYetBody =>
+      'جب آپ کسی سے میچ کریں گے، آپ کی چیٹس یہاں نظر آئیں گی۔';
+
+  @override
+  String get noChatRequestsBody =>
+      'جب کوئی آپ کو دلچسپی بھیجے گا، چیٹ شروع کرنے کے لیے یہاں قبول کر سکتے ہیں۔';
+
+  @override
+  String get noContactRequestsBody =>
+      'جب کوئی آپ کا رابطہ مانگے گا، یہاں قبول یا مسترد کر سکتے ہیں۔';
+
+  @override
+  String get requestedYourContact => 'آپ کا رابطہ مانگا ہے';
+
+  @override
+  String get withdrawPriority => 'ترجیح واپس لیں';
+
+  @override
+  String get withdrawPriorityAndInterest => 'ترجیح (اور دلچسپی) واپس لیں';
+
+  @override
+  String get additionalDetailsOptional => 'اضافی تفصیلات (اختیاری)';
+
+  @override
+  String get reportDetailsHint =>
+      'ایسا کوئی سیاق و سباق شامل کریں جو ہماری ٹیم کی مدد کرے';
 }

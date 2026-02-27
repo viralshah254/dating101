@@ -39,6 +39,10 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? religion,
     String? education,
     int? heightMinCm,
+    int? heightMaxCm,
+    String? diet,
+    String? bodyType,
+    String? maritalStatus,
     int limit = 20,
     String? cursor,
   }) async {
@@ -50,9 +54,15 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (ageMax != null) query['ageMax'] = '$ageMax';
     if (city != null && city.isNotEmpty) query['city'] = city;
     if (religion != null && religion.isNotEmpty) query['religion'] = religion;
-    if (education != null && education.isNotEmpty)
+    if (education != null && education.isNotEmpty) {
       query['education'] = education;
+    }
     if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
+    if (heightMaxCm != null) query['heightMaxCm'] = '$heightMaxCm';
+    if (diet != null && diet.isNotEmpty) query['diet'] = diet;
+    if (bodyType != null && bodyType.isNotEmpty) query['bodyType'] = bodyType;
+    if (maritalStatus != null && maritalStatus.isNotEmpty)
+      query['maritalStatus'] = maritalStatus;
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
 
     final body = await api.get('/discovery/explore', query: query);
@@ -67,6 +77,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? religion,
     String? education,
     int? heightMinCm,
+    String? diet,
     int limit = 20,
     String? cursor,
   }) async {
@@ -77,6 +88,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (religion != null) query['religion'] = religion;
     if (education != null) query['education'] = education;
     if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
+    if (diet != null && diet.isNotEmpty) query['diet'] = diet;
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
 
     final body = await api.get('/discovery/search', query: query);
@@ -199,7 +211,8 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name;
-    if (notifyOnNewMatch != null) payload['notifyOnNewMatch'] = notifyOnNewMatch;
+    if (notifyOnNewMatch != null)
+      payload['notifyOnNewMatch'] = notifyOnNewMatch;
     if (payload.isEmpty) {
       final body = await api.get('/discovery/saved-searches');
       final list = (body['savedSearches'] as List? ?? [])
@@ -208,7 +221,10 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
       if (list.isEmpty) throw StateError('Saved search $id not found');
       return _parseSavedSearch(list.first);
     }
-    final body = await api.patch('/discovery/saved-searches/$id', body: payload);
+    final body = await api.patch(
+      '/discovery/saved-searches/$id',
+      body: payload,
+    );
     return _parseSavedSearch(body);
   }
 

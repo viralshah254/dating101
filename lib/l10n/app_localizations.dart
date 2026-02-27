@@ -410,6 +410,54 @@ abstract class AppLocalizations {
   /// **'Shortlist'**
   String get navShortlist;
 
+  /// No description provided for @navEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get navEvents;
+
+  /// No description provided for @navVisitors.
+  ///
+  /// In en, this message translates to:
+  /// **'Visitors'**
+  String get navVisitors;
+
+  /// No description provided for @refine.
+  ///
+  /// In en, this message translates to:
+  /// **'Refine'**
+  String get refine;
+
+  /// No description provided for @refineTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refine by age, city, religion, education and more'**
+  String get refineTooltip;
+
+  /// No description provided for @noRecommendationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No recommendations yet'**
+  String get noRecommendationsYet;
+
+  /// No description provided for @noRecommendationsYetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete your profile and preferences to get AI-powered matches.'**
+  String get noRecommendationsYetBody;
+
+  /// No description provided for @searchWidenedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ve widened the search'**
+  String get searchWidenedTitle;
+
+  /// No description provided for @searchWidenedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No results matched your current filters. We\'re showing more profiles by reducing some filters.'**
+  String get searchWidenedBody;
+
   /// No description provided for @discoverTitle.
   ///
   /// In en, this message translates to:
@@ -1388,11 +1436,23 @@ abstract class AppLocalizations {
   /// **'Where do you live?'**
   String get currentLocation;
 
+  /// No description provided for @currentLocationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Mumbai, New York'**
+  String get currentLocationHint;
+
   /// No description provided for @hometown.
   ///
   /// In en, this message translates to:
-  /// **'Where are you from?'**
+  /// **'Where were you born?'**
   String get hometown;
+
+  /// No description provided for @placeOfBirthHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Jaipur, Hyderabad'**
+  String get placeOfBirthHint;
 
   /// No description provided for @lookingForPartner.
   ///
@@ -2707,6 +2767,1206 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Family values'**
   String get familyValues;
+
+  /// No description provided for @appLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'App language'**
+  String get appLanguage;
+
+  /// No description provided for @chooseAppLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose app language'**
+  String get chooseAppLanguage;
+
+  /// No description provided for @languageSetTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Language set to {name}'**
+  String languageSetTo(Object name);
+
+  /// No description provided for @saathiMode.
+  ///
+  /// In en, this message translates to:
+  /// **'saathi mode'**
+  String get saathiMode;
+
+  /// No description provided for @accountAndData.
+  ///
+  /// In en, this message translates to:
+  /// **'Account & data'**
+  String get accountAndData;
+
+  /// No description provided for @viewProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'View profile'**
+  String get viewProfile;
+
+  /// No description provided for @downloadMyData.
+  ///
+  /// In en, this message translates to:
+  /// **'Download my data'**
+  String get downloadMyData;
+
+  /// No description provided for @requestDataCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a copy of your data'**
+  String get requestDataCopy;
+
+  /// No description provided for @deactivateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate account'**
+  String get deactivateAccount;
+
+  /// No description provided for @deactivateAccountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporarily disable your account'**
+  String get deactivateAccountSubtitle;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete your account'**
+  String get deleteAccountSubtitle;
+
+  /// No description provided for @boostProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Boost profile'**
+  String get boostProfile;
+
+  /// No description provided for @appearMoreInDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Appear more in discovery'**
+  String get appearMoreInDiscovery;
+
+  /// No description provided for @verificationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'ID, photo, LinkedIn'**
+  String get verificationSubtitle;
+
+  /// No description provided for @blockedUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked users'**
+  String get blockedUsers;
+
+  /// No description provided for @blockedUsersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View and unblock people you\'ve blocked'**
+  String get blockedUsersSubtitle;
+
+  /// No description provided for @showInVisitors.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in visitors'**
+  String get showInVisitors;
+
+  /// No description provided for @whoCanSeeMyProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see my profile'**
+  String get whoCanSeeMyProfile;
+
+  /// No description provided for @everyone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get everyone;
+
+  /// No description provided for @onlyMyMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Only my matches'**
+  String get onlyMyMatches;
+
+  /// No description provided for @onlyAfterInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Only after interest'**
+  String get onlyAfterInterest;
+
+  /// No description provided for @hideFromDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide from discovery'**
+  String get hideFromDiscovery;
+
+  /// No description provided for @privacySettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy settings saved'**
+  String get privacySettingsSaved;
+
+  /// No description provided for @switchToMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {mode}?'**
+  String switchToMode(Object mode);
+
+  /// No description provided for @switchToModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {mode}'**
+  String switchToModeLabel(Object mode);
+
+  /// No description provided for @switchButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get switchButton;
+
+  /// No description provided for @requestFailedTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Request failed. Try again later.'**
+  String get requestFailedTryAgain;
+
+  /// No description provided for @deactivateAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate account?'**
+  String get deactivateAccountConfirm;
+
+  /// No description provided for @deactivationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivation failed. Try again.'**
+  String get deactivationFailed;
+
+  /// No description provided for @deactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get deactivate;
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account permanently?'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @deleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete failed. Try again.'**
+  String get deleteFailed;
+
+  /// No description provided for @deletePermanently.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get deletePermanently;
+
+  /// No description provided for @notificationPreferencesSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification preferences saved'**
+  String get notificationPreferencesSaved;
+
+  /// No description provided for @noFcmToken.
+  ///
+  /// In en, this message translates to:
+  /// **'No FCM token (check permission)'**
+  String get noFcmToken;
+
+  /// No description provided for @copyFcmToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy FCM token'**
+  String get copyFcmToken;
+
+  /// No description provided for @linkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get linkCopied;
+
+  /// No description provided for @errorLoadingProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading profile: {error}'**
+  String errorLoadingProfile(Object error);
+
+  /// No description provided for @noProfileYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No profile yet'**
+  String get noProfileYet;
+
+  /// No description provided for @createProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Create profile'**
+  String get createProfile;
+
+  /// No description provided for @basicDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic details'**
+  String get basicDetails;
+
+  /// No description provided for @religionAndCommunity.
+  ///
+  /// In en, this message translates to:
+  /// **'Religion & Community'**
+  String get religionAndCommunity;
+
+  /// No description provided for @physicalAttributes.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical Attributes'**
+  String get physicalAttributes;
+
+  /// No description provided for @educationAndCareer.
+  ///
+  /// In en, this message translates to:
+  /// **'Education & Career'**
+  String get educationAndCareer;
+
+  /// No description provided for @lifestyleAndHabits.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifestyle & Habits'**
+  String get lifestyleAndHabits;
+
+  /// No description provided for @interestsAndHobbiesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Interests & Hobbies'**
+  String get interestsAndHobbiesSection;
+
+  /// No description provided for @familySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get familySection;
+
+  /// No description provided for @horoscopeSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Horoscope'**
+  String get horoscopeSection;
+
+  /// No description provided for @aboutMeSection.
+  ///
+  /// In en, this message translates to:
+  /// **'About Me'**
+  String get aboutMeSection;
+
+  /// No description provided for @partnerPreferencesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Partner preferences'**
+  String get partnerPreferencesSection;
+
+  /// No description provided for @photosSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get photosSection;
+
+  /// No description provided for @languagesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Languages'**
+  String get languagesLabel;
+
+  /// No description provided for @locationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get locationLabel;
+
+  /// No description provided for @originLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Origin'**
+  String get originLabel;
+
+  /// No description provided for @degreeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Degree'**
+  String get degreeLabel;
+
+  /// No description provided for @institutionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Institution'**
+  String get institutionLabel;
+
+  /// No description provided for @yearOfGraduation.
+  ///
+  /// In en, this message translates to:
+  /// **'Year of graduation'**
+  String get yearOfGraduation;
+
+  /// No description provided for @gradeClassification.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade / classification'**
+  String get gradeClassification;
+
+  /// No description provided for @employer.
+  ///
+  /// In en, this message translates to:
+  /// **'Employer'**
+  String get employer;
+
+  /// No description provided for @industry.
+  ///
+  /// In en, this message translates to:
+  /// **'Industry'**
+  String get industry;
+
+  /// No description provided for @communityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Community'**
+  String get communityLabel;
+
+  /// No description provided for @educationAndCareerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Education & career'**
+  String get educationAndCareerTitle;
+
+  /// No description provided for @familyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get familyTitle;
+
+  /// No description provided for @lifestyleTitleSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifestyle'**
+  String get lifestyleTitleSection;
+
+  /// No description provided for @horoscopeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Horoscope'**
+  String get horoscopeTitle;
+
+  /// No description provided for @lookingForTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for'**
+  String get lookingForTitle;
+
+  /// No description provided for @requestAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Request again'**
+  String get requestAgain;
+
+  /// No description provided for @requestContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Request contact'**
+  String get requestContact;
+
+  /// No description provided for @contactRequestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact request sent'**
+  String get contactRequestSent;
+
+  /// No description provided for @couldNotSendRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send request: {error}'**
+  String couldNotSendRequest(Object error);
+
+  /// No description provided for @call.
+  ///
+  /// In en, this message translates to:
+  /// **'Call'**
+  String get call;
+
+  /// No description provided for @whatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp'**
+  String get whatsApp;
+
+  /// No description provided for @contactShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact shared. They can now call or message you.'**
+  String get contactShared;
+
+  /// No description provided for @couldNotAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not accept: {error}'**
+  String couldNotAccept(Object error);
+
+  /// No description provided for @requestDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined'**
+  String get requestDeclined;
+
+  /// No description provided for @couldNotDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not decline: {error}'**
+  String couldNotDecline(Object error);
+
+  /// No description provided for @interested.
+  ///
+  /// In en, this message translates to:
+  /// **'Interested'**
+  String get interested;
+
+  /// No description provided for @priorityInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority interest'**
+  String get priorityInterest;
+
+  /// No description provided for @withdrawInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw interest'**
+  String get withdrawInterest;
+
+  /// No description provided for @declineRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline request'**
+  String get declineRequest;
+
+  /// No description provided for @noContactRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No contact requests'**
+  String get noContactRequests;
+
+  /// No description provided for @upgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get upgrade;
+
+  /// No description provided for @failedToSendTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send. Try again.'**
+  String get failedToSendTryAgain;
+
+  /// No description provided for @blockUserConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Block user?'**
+  String get blockUserConfirm;
+
+  /// No description provided for @reportUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Report user'**
+  String get reportUser;
+
+  /// No description provided for @reportUserConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Report user?'**
+  String get reportUserConfirm;
+
+  /// No description provided for @reportUserMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Report {name} for inappropriate behaviour?'**
+  String reportUserMessage(Object name);
+
+  /// No description provided for @reportSubmittedThankYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Report submitted. Thank you.'**
+  String get reportSubmittedThankYou;
+
+  /// No description provided for @changeCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Change city'**
+  String get changeCity;
+
+  /// No description provided for @yourArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Your area'**
+  String get yourArea;
+
+  /// No description provided for @showProfilesNearYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Show profiles near you'**
+  String get showProfilesNearYou;
+
+  /// No description provided for @unblocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} unblocked'**
+  String unblocked(Object name);
+
+  /// No description provided for @somethingWentWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get somethingWentWrong;
+
+  /// No description provided for @whyBlocking.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are you blocking?'**
+  String get whyBlocking;
+
+  /// No description provided for @whyReporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are you reporting?'**
+  String get whyReporting;
+
+  /// No description provided for @blockedUsersScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked users'**
+  String get blockedUsersScreenTitle;
+
+  /// No description provided for @unblock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock'**
+  String get unblock;
+
+  /// No description provided for @noConversationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet'**
+  String get noConversationsYet;
+
+  /// No description provided for @noChatRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No chat requests'**
+  String get noChatRequests;
+
+  /// No description provided for @priority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get priority;
+
+  /// No description provided for @yrs.
+  ///
+  /// In en, this message translates to:
+  /// **'{age} yrs'**
+  String yrs(Object age);
+
+  /// No description provided for @idVerificationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a government ID. We match it to your photo.'**
+  String get idVerificationSubtitle;
+
+  /// No description provided for @faceMatchSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Selfie matched to your ID photo.'**
+  String get faceMatchSubtitle;
+
+  /// No description provided for @linkedInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect your LinkedIn to verify work.'**
+  String get linkedInSubtitle;
+
+  /// No description provided for @educationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your university or college.'**
+  String get educationSubtitle;
+
+  /// No description provided for @verificationComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'{feature} verification coming soon'**
+  String verificationComingSoon(Object feature);
+
+  /// No description provided for @uploadUrlNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload URL not available'**
+  String get uploadUrlNotAvailable;
+
+  /// No description provided for @uploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed: {code}'**
+  String uploadFailed(Object code);
+
+  /// No description provided for @idSubmittedNotify.
+  ///
+  /// In en, this message translates to:
+  /// **'ID submitted. We\'ll notify you when verification is complete.'**
+  String get idSubmittedNotify;
+
+  /// No description provided for @uploadFailedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String uploadFailedError(Object error);
+
+  /// No description provided for @chooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get chooseFile;
+
+  /// No description provided for @photoVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo verification'**
+  String get photoVerification;
+
+  /// No description provided for @startVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Start verification'**
+  String get startVerification;
+
+  /// No description provided for @takePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get takePhoto;
+
+  /// No description provided for @imReady.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m ready'**
+  String get imReady;
+
+  /// No description provided for @simulateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulate success'**
+  String get simulateSuccess;
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get tryAgain;
+
+  /// No description provided for @subscriptionActivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription activated!'**
+  String get subscriptionActivated;
+
+  /// No description provided for @purchaseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase failed: {error}'**
+  String purchaseFailed(Object error);
+
+  /// No description provided for @purchasesRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases restored!'**
+  String get purchasesRestored;
+
+  /// No description provided for @noActivePurchases.
+  ///
+  /// In en, this message translates to:
+  /// **'No active purchases found.'**
+  String get noActivePurchases;
+
+  /// No description provided for @couldNotRestorePurchases.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not restore purchases.'**
+  String get couldNotRestorePurchases;
+
+  /// No description provided for @boostPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Boost pack'**
+  String get boostPack;
+
+  /// No description provided for @mostRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Most recent'**
+  String get mostRecent;
+
+  /// No description provided for @mostInterested.
+  ///
+  /// In en, this message translates to:
+  /// **'Most interested'**
+  String get mostInterested;
+
+  /// No description provided for @note.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get note;
+
+  /// No description provided for @noMatchesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches yet'**
+  String get noMatchesYet;
+
+  /// No description provided for @sendYourNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Send your note'**
+  String get sendYourNote;
+
+  /// No description provided for @savedSearches.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved searches'**
+  String get savedSearches;
+
+  /// No description provided for @searchSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Search saved'**
+  String get searchSaved;
+
+  /// No description provided for @couldNotSaveSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save search'**
+  String get couldNotSaveSearch;
+
+  /// No description provided for @saveSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Save search'**
+  String get saveSearch;
+
+  /// No description provided for @preferredLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred language'**
+  String get preferredLanguage;
+
+  /// No description provided for @preferredLanguageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — we\'ll use this for content and matches.'**
+  String get preferredLanguageSubtitle;
+
+  /// No description provided for @mapFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Map filters'**
+  String get mapFilters;
+
+  /// No description provided for @join.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get join;
+
+  /// No description provided for @rsvp.
+  ///
+  /// In en, this message translates to:
+  /// **'RSVP'**
+  String get rsvp;
+
+  /// No description provided for @rsvpdTo.
+  ///
+  /// In en, this message translates to:
+  /// **'RSVP\'d to {title}'**
+  String rsvpdTo(Object title);
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// No description provided for @shellRequiresProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell requires Provider'**
+  String get shellRequiresProvider;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @conversationStarter.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation starter'**
+  String get conversationStarter;
+
+  /// No description provided for @switchToModeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile info is shared. You can complete or update {mode}-specific details anytime.'**
+  String switchToModeBody(Object mode);
+
+  /// No description provided for @exportRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Export requested. We\'ll email you when ready.'**
+  String get exportRequested;
+
+  /// No description provided for @deactivateAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile will be hidden and you won\'t receive matches or messages. You can reactivate later.'**
+  String get deactivateAccountConfirmBody;
+
+  /// No description provided for @deleteAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone. All your data will be permanently deleted.'**
+  String get deleteAccountConfirmBody;
+
+  /// No description provided for @showInVisitorsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, your visits are still recorded but you won\'t appear in others\' visitor lists'**
+  String get showInVisitorsSubtitle;
+
+  /// No description provided for @hideFromDiscoverySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporarily hide your profile from discovery and recommendations'**
+  String get hideFromDiscoverySubtitle;
+
+  /// No description provided for @hideMyPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide my photos'**
+  String get hideMyPhotos;
+
+  /// No description provided for @hideMyPhotosSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Others must request to view your photos; you approve or decline in Requests.'**
+  String get hideMyPhotosSubtitle;
+
+  /// No description provided for @requestToViewPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Request to view photos'**
+  String get requestToViewPhotos;
+
+  /// No description provided for @requestToViewPhotosSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Request sent'**
+  String get requestToViewPhotosSent;
+
+  /// No description provided for @photoViewRequestPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Request pending'**
+  String get photoViewRequestPending;
+
+  /// No description provided for @requestedToViewYourPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested to view your photos'**
+  String get requestedToViewYourPhotos;
+
+  /// No description provided for @noPhotoViewRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No photo view requests'**
+  String get noPhotoViewRequests;
+
+  /// No description provided for @noPhotoViewRequestsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When someone requests to view your photos, you can accept or decline here.'**
+  String get noPhotoViewRequestsBody;
+
+  /// No description provided for @photoViewRequestAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'They can now view your photos.'**
+  String get photoViewRequestAccepted;
+
+  /// No description provided for @photoViewRequestsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo view'**
+  String get photoViewRequestsTab;
+
+  /// No description provided for @photosLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos are private'**
+  String get photosLocked;
+
+  /// No description provided for @photosLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Request access to view their photos'**
+  String get photosLockedHint;
+
+  /// No description provided for @blockUserMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} won\'t be able to see your profile or contact you.'**
+  String blockUserMessage(Object name);
+
+  /// No description provided for @yourProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile'**
+  String get yourProfile;
+
+  /// No description provided for @aboutYouShort.
+  ///
+  /// In en, this message translates to:
+  /// **'A few lines about you'**
+  String get aboutYouShort;
+
+  /// No description provided for @recordYourIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Record your intro'**
+  String get recordYourIntro;
+
+  /// No description provided for @heritageType.
+  ///
+  /// In en, this message translates to:
+  /// **'Heritage / type of Indian'**
+  String get heritageType;
+
+  /// No description provided for @communityTagsOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Community tags (optional)'**
+  String get communityTagsOptional;
+
+  /// No description provided for @communityTagsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select any that apply — helps with circles and events.'**
+  String get communityTagsSubtitle;
+
+  /// No description provided for @familyOrientation.
+  ///
+  /// In en, this message translates to:
+  /// **'Family orientation'**
+  String get familyOrientation;
+
+  /// No description provided for @familyOrientationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide to reflect your preference — no wrong answer.'**
+  String get familyOrientationSubtitle;
+
+  /// No description provided for @traditionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Traditional'**
+  String get traditionalLabel;
+
+  /// No description provided for @progressiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Progressive'**
+  String get progressiveLabel;
+
+  /// No description provided for @dietLifestyleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Diet / lifestyle'**
+  String get dietLifestyleTitle;
+
+  /// No description provided for @dietLifestyleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Helps with date ideas and filters.'**
+  String get dietLifestyleSubtitle;
+
+  /// No description provided for @activeNowOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Active now only'**
+  String get activeNowOnly;
+
+  /// No description provided for @activeNowOnlySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show only people active in the last 24h'**
+  String get activeNowOnlySubtitle;
+
+  /// No description provided for @locationBlur.
+  ///
+  /// In en, this message translates to:
+  /// **'Location blur'**
+  String get locationBlur;
+
+  /// No description provided for @locationBlurSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show approximate area instead of exact pin'**
+  String get locationBlurSubtitle;
+
+  /// No description provided for @verificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get verificationTitle;
+
+  /// No description provided for @feetUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'ft'**
+  String get feetUnit;
+
+  /// No description provided for @inchesUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'in'**
+  String get inchesUnit;
+
+  /// No description provided for @clearButton.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get clearButton;
+
+  /// No description provided for @yearsFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'{age} years'**
+  String yearsFormat(Object age);
+
+  /// No description provided for @profileManagedByParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile managed by parent'**
+  String get profileManagedByParent;
+
+  /// No description provided for @profileManagedByGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile managed by guardian'**
+  String get profileManagedByGuardian;
+
+  /// No description provided for @profileManagedBySibling.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile managed by sibling'**
+  String get profileManagedBySibling;
+
+  /// No description provided for @profileManagedByFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile managed by friend'**
+  String get profileManagedByFriend;
+
+  /// No description provided for @blockUserMessageChat.
+  ///
+  /// In en, this message translates to:
+  /// **'They won\'t be able to contact you anymore.'**
+  String get blockUserMessageChat;
+
+  /// No description provided for @reportUserMessageChat.
+  ///
+  /// In en, this message translates to:
+  /// **'We take safety seriously and will review this report.'**
+  String get reportUserMessageChat;
+
+  /// No description provided for @blockUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Block user'**
+  String get blockUser;
+
+  /// No description provided for @matchToContinueOrUpgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Match to continue or upgrade'**
+  String get matchToContinueOrUpgrade;
+
+  /// No description provided for @noConversationsYetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When you match with someone, your chats will appear here.'**
+  String get noConversationsYetBody;
+
+  /// No description provided for @noChatRequestsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When someone sends you an interest, you can accept here to start chatting.'**
+  String get noChatRequestsBody;
+
+  /// No description provided for @noContactRequestsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When someone requests your contact, you can accept or decline here.'**
+  String get noContactRequestsBody;
+
+  /// No description provided for @requestedYourContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested your contact'**
+  String get requestedYourContact;
+
+  /// No description provided for @withdrawPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw priority'**
+  String get withdrawPriority;
+
+  /// No description provided for @withdrawPriorityAndInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw priority (and interest)'**
+  String get withdrawPriorityAndInterest;
+
+  /// No description provided for @additionalDetailsOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional details (optional)'**
+  String get additionalDetailsOptional;
+
+  /// No description provided for @reportDetailsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add any context that might help our team'**
+  String get reportDetailsHint;
 }
 
 class _AppLocalizationsDelegate

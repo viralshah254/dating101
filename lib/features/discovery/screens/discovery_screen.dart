@@ -35,11 +35,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           l.discoverTitle,
-          style: AppTypography.headlineSmall.copyWith(
+          style: AppTypography.titleLarge.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
         actions: [
@@ -78,27 +82,31 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     String? travelCity,
   ) {
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      cacheExtent: 300,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   l.dailyCuratedSet,
-                  style: AppTypography.labelLarge.copyWith(
+                  style: AppTypography.titleSmall.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 _CityChip(
                   city: travelCity,
                   onTap: () => _showCityPicker(context, ref),
                   exploreLabel: l.exploreCity(travelCity ?? ''),
-                  changeCityLabel: 'Change city',
+                  changeCityLabel: l.changeCity,
                 ),
                 if (travelCity != null)
                   Padding(
@@ -111,7 +119,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                       ],
                     ),
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -126,27 +134,35 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           )
         else
           SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final profile = profiles[index];
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child:
-                    ProfileCard(
-                          profile: profile,
-                          sendPrimaryLabel: AppCopy.ctaSendPrimary(
-                            context,
-                            mode,
-                          ),
-                          onTap: () => context.push('/profile/${profile.id}'),
-                          onSendIntro: () => _onSendIntro(profile),
-                          onBlock: () => _onBlock(profile),
-                          onReport: () => _onReport(profile),
-                        )
-                        .animate()
-                        .fadeIn(delay: (50 * index).ms)
-                        .slideY(begin: 0.03, end: 0),
-              );
-            }, childCount: profiles.length),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final profile = profiles[index];
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+                  child: RepaintBoundary(
+                    child:
+                        ProfileCard(
+                              profile: profile,
+                              sendPrimaryLabel: AppCopy.ctaSendPrimary(
+                                context,
+                                mode,
+                              ),
+                              onTap: () =>
+                                  context.push('/profile/${profile.id}'),
+                              onSendIntro: () => _onSendIntro(profile),
+                              onBlock: () => _onBlock(profile),
+                              onReport: () => _onReport(profile),
+                            )
+                            .animate()
+                            .fadeIn(delay: (50 * index).ms)
+                            .slideY(begin: 0.03, end: 0),
+                  ),
+                );
+              },
+              childCount: profiles.length,
+              addAutomaticKeepAlives: true,
+              addRepaintBoundaries: true,
+            ),
           ),
       ],
     );
@@ -180,11 +196,14 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-              child: Text('Change city', style: AppTypography.headlineSmall),
+              child: Text(
+                AppLocalizations.of(context)!.changeCity,
+                style: AppTypography.headlineSmall,
+              ),
             ),
             ListTile(
-              title: const Text('Your area'),
-              subtitle: const Text('Show profiles near you'),
+              title: Text(AppLocalizations.of(context)!.yourArea),
+              subtitle: Text(AppLocalizations.of(context)!.showProfilesNearYou),
               leading: const Icon(Icons.my_location),
               onTap: () {
                 ref.read(discoveryTravelCityProvider.notifier).state = null;
@@ -226,7 +245,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       if (result.mutualMatch && result.chatThreadId != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('It\'s a match with ${profile.name}!'),
+            content: Text(
+              AppLocalizations.of(context)!.toastMatchWith(profile.name),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -236,7 +257,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Interest sent to ${profile.name}'),
+            content: Text(
+              AppLocalizations.of(context)!.toastInterestSentTo(profile.name),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -255,23 +278,24 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     if (reason == null || !mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Block user?'),
-        content: Text(
-          '${profile.name} won\'t be able to see your profile or contact you.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Block'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          title: Text(l.blockUserConfirm),
+          content: Text(l.blockUserMessage(profile.name)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: Text(l.block),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true || !mounted) return;
     try {
@@ -282,7 +306,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       ref.invalidate(discoveryFeedProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${profile.name} blocked'),
+          content: Text(
+            AppLocalizations.of(context)!.toastBlocked(profile.name),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -295,17 +321,19 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Report user?'),
-        content: Text('Report ${profile.name} for inappropriate behaviour?'),
+        title: Text(AppLocalizations.of(context)!.reportUserConfirm),
+        content: Text(
+          AppLocalizations.of(context)!.reportUserMessage(profile.name),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Report'),
+            child: Text(AppLocalizations.of(context)!.report),
           ),
         ],
       ),
@@ -323,8 +351,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       if (!mounted) return;
       ref.invalidate(discoveryFeedProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Report submitted. Thank you.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.reportSubmittedThankYou),
           behavior: SnackBarBehavior.floating,
         ),
       );

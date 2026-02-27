@@ -19,7 +19,8 @@ ProfileSummary profileToSummary(
       incomeLabel = '${inc.currency ?? ''} ${parts.join(' – ')}'.trim();
     }
   }
-  final reasons = matchReasons ?? (matchReason != null ? [matchReason] : <String>[]);
+  final reasons =
+      matchReasons ?? (matchReason != null ? [matchReason] : <String>[]);
 
   return ProfileSummary(
     id: p.id,
@@ -49,5 +50,6 @@ ProfileSummary profileToSummary(
     employer: mat?.employer,
     familyType: mat?.familyDetails?.familyType,
     photoCount: p.photoUrls.length,
+    roleManagingProfile: mat?.roleManagingProfile,
   );
 }

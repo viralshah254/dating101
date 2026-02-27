@@ -25,6 +25,12 @@ class UserProfile with _$UserProfile {
     @Default([]) List<String> languagesSpoken,
     String? motherTongue,
     @Default([]) List<String> photoUrls,
+
+    /// When true, profile owner has hidden photos; others must request to view.
+    @Default(false) bool photosHidden,
+
+    /// When viewing another user: true if caller is allowed to see their photos.
+    bool? canViewPhotos,
     @Default('') String aboutMe,
     @Default([]) List<String> interests,
     @Default(VerificationStatus()) VerificationStatus verificationStatus,
@@ -34,6 +40,7 @@ class UserProfile with _$UserProfile {
     MatrimonyExtensions? matrimonyExtensions,
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
+
     /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
     double? creationLat,
     double? creationLng,

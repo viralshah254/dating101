@@ -55,7 +55,10 @@ class ChatListScreen extends ConsumerWidget {
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.search_rounded, color: onSurface.withValues(alpha: 0.8)),
+              icon: Icon(
+                Icons.search_rounded,
+                color: onSurface.withValues(alpha: 0.8),
+              ),
               onPressed: () {},
             ),
           ],
@@ -63,19 +66,16 @@ class ChatListScreen extends ConsumerWidget {
             labelColor: AppColors.saffron,
             unselectedLabelColor: onSurface.withValues(alpha: 0.6),
             indicatorColor: AppColors.saffron,
-            labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
+            labelStyle: AppTypography.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
             tabs: const [
               Tab(text: 'Chats'),
               Tab(text: 'Requests'),
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _ChatsTab(),
-            _ChatRequestsTab(),
-          ],
-        ),
+        body: TabBarView(children: [_ChatsTab(), _ChatRequestsTab()]),
       ),
     );
   }
@@ -93,8 +93,8 @@ class _ChatsTab extends ConsumerWidget {
         if (threads.isEmpty) {
           return EmptyState(
             icon: Icons.chat_bubble_outline_rounded,
-            title: 'No conversations yet',
-            body: 'When you match with someone, your chats will appear here.',
+            title: l.noConversationsYet,
+            body: l.noConversationsYetBody,
             ctaLabel: l.retry,
             onCta: () => ref.invalidate(chatThreadsProvider),
           );
@@ -104,13 +104,22 @@ class _ChatsTab extends ConsumerWidget {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             itemCount: threads.length,
-            separatorBuilder: (_, __) => Divider(height: 1, indent: 72, endIndent: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06)),
+            separatorBuilder: (_, __) => Divider(
+              height: 1,
+              indent: 72,
+              endIndent: 16,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.06),
+            ),
             itemBuilder: (context, i) {
               final t = threads[i];
               return _ChatThreadTile(
                 thread: t,
                 onTap: () async {
-                  await context.push('/chat/${t.id}?otherUserId=${Uri.encodeComponent(t.otherUserId)}');
+                  await context.push(
+                    '/chat/${t.id}?otherUserId=${Uri.encodeComponent(t.otherUserId)}',
+                  );
                   if (context.mounted) ref.invalidate(chatThreadsProvider);
                 },
               );
@@ -141,8 +150,8 @@ class _ChatRequestsTab extends ConsumerWidget {
         if (groups.isEmpty) {
           return EmptyState(
             icon: Icons.mail_outline_rounded,
-            title: 'No chat requests',
-            body: 'When someone sends you an interest, you can accept here to start chatting.',
+            title: l.noChatRequests,
+            body: l.noChatRequestsBody,
             ctaLabel: l.retry,
             onCta: () {
               ref.invalidate(receivedInteractionsProvider);
@@ -183,22 +192,34 @@ class _ChatRequestsTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _acceptAndMaybeOpenChat(BuildContext context, WidgetRef ref, _GroupedRequest group) async {
+  Future<void> _acceptAndMaybeOpenChat(
+    BuildContext context,
+    WidgetRef ref,
+    _GroupedRequest group,
+  ) async {
     final repo = ref.read(interactionsRepositoryProvider);
     try {
       ExpressInterestResult? result;
       if (group.priorityItem != null) {
-        result = await repo.respondToInterest(group.priorityItem!.interactionId, accept: true);
+        result = await repo.respondToInterest(
+          group.priorityItem!.interactionId,
+          accept: true,
+        );
       }
       if (group.interestItem != null) {
-        result = await repo.respondToInterest(group.interestItem!.interactionId, accept: true);
+        result = await repo.respondToInterest(
+          group.interestItem!.interactionId,
+          accept: true,
+        );
       }
       if (!context.mounted) return;
       ref.invalidate(receivedInteractionsProvider);
       ref.invalidate(receivedRequestsCountProvider);
       ref.invalidate(chatThreadsProvider);
       if (result != null && result.mutualMatch && result.chatThreadId != null) {
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(group.user.id)}');
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(group.user.id)}',
+        );
       }
     } on ApiException catch (e) {
       if (!context.mounted) return;
@@ -206,7 +227,11 @@ class _ChatRequestsTab extends ConsumerWidget {
     }
   }
 
-  Future<void> _declineAll(BuildContext context, WidgetRef ref, _GroupedRequest group) async {
+  Future<void> _declineAll(
+    BuildContext context,
+    WidgetRef ref,
+    _GroupedRequest group,
+  ) async {
     final repo = ref.read(interactionsRepositoryProvider);
     try {
       for (final item in group.items) {
@@ -227,7 +252,11 @@ List<_GroupedRequest> _groupByUser(List<InteractionInboxItem> items) {
   for (final item in items) {
     byId.putIfAbsent(item.otherUser.id, () => []).add(item);
   }
-  return byId.entries.map((e) => _GroupedRequest(user: e.value.first.otherUser, items: e.value)).toList();
+  return byId.entries
+      .map(
+        (e) => _GroupedRequest(user: e.value.first.otherUser, items: e.value),
+      )
+      .toList();
 }
 
 class _GroupedRequest {
@@ -236,11 +265,16 @@ class _GroupedRequest {
   final List<InteractionInboxItem> items;
   bool get hasPriority => items.any((e) => e.type == 'priority_interest');
   InteractionInboxItem? get priorityItem {
-    for (final e in items) if (e.type == 'priority_interest') return e;
+    for (final e in items) {
+      if (e.type == 'priority_interest') return e;
+    }
     return null;
   }
+
   InteractionInboxItem? get interestItem {
-    for (final e in items) if (e.type == 'interest') return e;
+    for (final e in items) {
+      if (e.type == 'interest') return e;
+    }
     return null;
   }
 }
@@ -258,7 +292,9 @@ class _ChatThreadTile extends ConsumerWidget {
     final timeStr = _timeAgo(thread.lastMessageAt);
     final profileAsync = ref.watch(profileSummaryProvider(thread.otherUserId));
     final imageUrl = profileAsync.valueOrNull?.imageUrl;
-    final initial = thread.otherName.isNotEmpty ? thread.otherName[0].toUpperCase() : '?';
+    final initial = thread.otherName.isNotEmpty
+        ? thread.otherName[0].toUpperCase()
+        : '?';
 
     return Material(
       color: Colors.transparent,
@@ -277,7 +313,10 @@ class _ChatThreadTile extends ConsumerWidget {
                 child: imageUrl == null || imageUrl.isEmpty
                     ? Text(
                         initial,
-                        style: AppTypography.titleLarge.copyWith(color: AppColors.saffron, fontWeight: FontWeight.w600),
+                        style: AppTypography.titleLarge.copyWith(
+                          color: AppColors.saffron,
+                          fontWeight: FontWeight.w600,
+                        ),
                       )
                     : null,
               ),
@@ -288,14 +327,19 @@ class _ChatThreadTile extends ConsumerWidget {
                   children: [
                     Text(
                       thread.otherName,
-                      style: AppTypography.titleMedium.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+                      style: AppTypography.titleMedium.copyWith(
+                        color: onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       thread.lastMessage ?? 'No messages yet',
-                      style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.65)),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: onSurface.withValues(alpha: 0.65),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -310,19 +354,27 @@ class _ChatThreadTile extends ConsumerWidget {
                   if (timeStr != null)
                     Text(
                       timeStr,
-                      style: AppTypography.caption.copyWith(color: onSurface.withValues(alpha: 0.5)),
+                      style: AppTypography.caption.copyWith(
+                        color: onSurface.withValues(alpha: 0.5),
+                      ),
                     ),
                   if (thread.unreadCount > 0) ...[
                     if (timeStr != null) const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.saffron,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${thread.unreadCount}',
-                        style: AppTypography.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -363,13 +415,17 @@ class _ChatRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final p = group.user;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: onSurface.withValues(alpha: 0.08))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: onSurface.withValues(alpha: 0.08)),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
@@ -380,7 +436,13 @@ class _ChatRequestCard extends StatelessWidget {
               CircleAvatar(
                 radius: 26,
                 backgroundColor: AppColors.indiaGreen.withValues(alpha: 0.15),
-                child: Text(p.name.isNotEmpty ? p.name[0].toUpperCase() : '?', style: AppTypography.titleMedium.copyWith(color: AppColors.indiaGreen, fontWeight: FontWeight.w600)),
+                child: Text(
+                  p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: AppColors.indiaGreen,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -390,34 +452,84 @@ class _ChatRequestCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(p.name, style: AppTypography.titleSmall.copyWith(color: onSurface, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            p.name,
+                            style: AppTypography.titleSmall.copyWith(
+                              color: onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         if (group.hasPriority)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.saffron.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.star_rounded, size: 12, color: AppColors.saffron),
-                              const SizedBox(width: 4),
-                              Text('Priority', style: AppTypography.labelSmall.copyWith(color: AppColors.saffron, fontWeight: FontWeight.w600)),
-                            ]),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.saffron.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 12,
+                                  color: AppColors.saffron,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  l.priority,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: AppColors.saffron,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                       ],
                     ),
-                    if (p.age != null) Text('${p.age} yrs', style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.6))),
+                    if (p.age != null)
+                      Text(
+                        l.yrs(p.age!),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         FilledButton(
                           onPressed: onAccept,
-                          style: FilledButton.styleFrom(backgroundColor: AppColors.indiaGreen, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), minimumSize: Size.zero),
-                          child: const Text('Accept'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.indiaGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            minimumSize: Size.zero,
+                          ),
+                          child: Text(l.accept),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton(
                           onPressed: onDecline,
-                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), minimumSize: Size.zero, side: BorderSide(color: onSurface.withValues(alpha: 0.3))),
-                          child: const Text('Decline'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            minimumSize: Size.zero,
+                            side: BorderSide(
+                              color: onSurface.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(l.decline),
                         ),
                       ],
                     ),
@@ -431,4 +543,3 @@ class _ChatRequestCard extends StatelessWidget {
     );
   }
 }
-

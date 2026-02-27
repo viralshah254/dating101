@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../domain/models/referral_info.dart';
 
 final _referralProvider = FutureProvider<ReferralInfo>((ref) async {
@@ -26,7 +27,7 @@ class ReferralScreen extends ConsumerWidget {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Invite friends'),
+        title: Text(AppLocalizations.of(context)!.inviteFriends),
       ),
       body: referralAsync.when(
         data: (info) => _ReferralBody(info: info, accent: accent, ref: ref),
@@ -37,11 +38,15 @@ class ReferralScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(err.toString(), textAlign: TextAlign.center, style: AppTypography.bodySmall),
+                Text(
+                  err.toString(),
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodySmall,
+                ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () => ref.invalidate(_referralProvider),
-                  child: const Text('Retry'),
+                  child: Text(AppLocalizations.of(context)!.retry),
                 ),
               ],
             ),
@@ -53,7 +58,11 @@ class ReferralScreen extends ConsumerWidget {
 }
 
 class _ReferralBody extends StatelessWidget {
-  const _ReferralBody({required this.info, required this.accent, required this.ref});
+  const _ReferralBody({
+    required this.info,
+    required this.accent,
+    required this.ref,
+  });
   final ReferralInfo info;
   final Color accent;
   final WidgetRef ref;
@@ -67,12 +76,12 @@ class _ReferralBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Give friends a better way to connect',
+            AppLocalizations.of(context)!.inviteCopy,
             style: AppTypography.headlineMedium,
           ).animate().fadeIn().slideY(begin: -0.05, end: 0),
           const SizedBox(height: 8),
           Text(
-            'Share your invite code or link. When they join, you both get a reward.',
+            AppLocalizations.of(context)!.inviteReward,
             style: AppTypography.bodyMedium,
           ).animate().fadeIn(delay: 80.ms),
           const SizedBox(height: 32),
@@ -82,7 +91,7 @@ class _ReferralBody extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'Your invite code',
+                    AppLocalizations.of(context)!.yourInviteCode,
                     style: AppTypography.labelMedium,
                   ),
                   const SizedBox(height: 8),
@@ -98,11 +107,15 @@ class _ReferralBody extends StatelessWidget {
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: info.code));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Code copied')),
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context)!.codeCopied,
+                          ),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.copy),
-                    label: const Text('Copy code'),
+                    label: Text(AppLocalizations.of(context)!.copyCode),
                   ),
                 ],
               ),
@@ -110,7 +123,7 @@ class _ReferralBody extends StatelessWidget {
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.03, end: 0),
           const SizedBox(height: 24),
           Text(
-            'Share via',
+            AppLocalizations.of(context)!.shareVia,
             style: AppTypography.labelLarge,
           ),
           const SizedBox(height: 12),
@@ -125,7 +138,7 @@ class _ReferralBody extends StatelessWidget {
                     repo.recordInvite(channel: 'share');
                   },
                   icon: const Icon(Icons.share),
-                  label: const Text('Share'),
+                  label: Text(AppLocalizations.of(context)!.share),
                 ),
               ),
               const SizedBox(width: 12),
@@ -134,12 +147,14 @@ class _ReferralBody extends StatelessWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: info.inviteLink));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Link copied')),
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context)!.linkCopied),
+                      ),
                     );
                     repo.recordInvite(channel: 'copy_link');
                   },
                   icon: const Icon(Icons.link),
-                  label: const Text('Copy link'),
+                  label: Text(AppLocalizations.of(context)!.copyLink),
                 ),
               ),
             ],
@@ -152,10 +167,7 @@ class _ReferralBody extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 32),
-          Text(
-            'Rewards',
-            style: AppTypography.labelLarge,
-          ),
+          Text('Rewards', style: AppTypography.labelLarge),
           const SizedBox(height: 8),
           Text(
             'You: 1 month Premium when they sign up. Them: 2 weeks free Premium.',

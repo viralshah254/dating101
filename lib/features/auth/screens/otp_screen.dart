@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -20,13 +19,18 @@ class OtpScreen extends ConsumerStatefulWidget {
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProviderStateMixin {
+class _OtpScreenState extends ConsumerState<OtpScreen>
+    with SingleTickerProviderStateMixin {
   static const _digitCount = 4;
 
-  final List<TextEditingController> _controllers =
-      List.generate(_digitCount, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(_digitCount, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(
+    _digitCount,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(
+    _digitCount,
+    (_) => FocusNode(),
+  );
 
   Timer? _resendTimer;
   int _resendSeconds = 30;
@@ -39,7 +43,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProvider
     if (phone == null || phone.isEmpty) return '';
     final digits = phone.replaceAll(RegExp(r'\D'), '');
     if (digits.length < 4) return phone;
-    final prefix = phone.startsWith('+') ? phone.split(RegExp(r'[\s]')).first : '+??';
+    final prefix = phone.startsWith('+')
+        ? phone.split(RegExp(r'[\s]')).first
+        : '+??';
     final last4 = digits.substring(digits.length - 4);
     return '$prefix \u25CF\u25CF\u25CF\u25CF\u25CF $last4';
   }
@@ -130,7 +136,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProvider
           // Returning user — verify they have a profile
           debugPrint('[OTP] Returning user, checking profile...');
           try {
-            final profile = await ref.read(profileRepositoryProvider).getMyProfile();
+            final profile = await ref
+                .read(profileRepositoryProvider)
+                .getMyProfile();
             if (!mounted) return;
             if (profile != null) {
               debugPrint('[OTP] Profile exists → home');
@@ -183,13 +191,16 @@ class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProvider
                   children: [
                     const SizedBox(height: 20),
                     Text(
-                      l.otpTitle,
-                      style: AppTypography.displayLarge.copyWith(
-                        color: onSurface,
-                        fontSize: 36,
-                        height: 1.15,
-                      ),
-                    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+                          l.otpTitle,
+                          style: AppTypography.displayLarge.copyWith(
+                            color: onSurface,
+                            fontSize: 36,
+                            height: 1.15,
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms)
+                        .slideY(begin: -0.1, end: 0),
                     const SizedBox(height: 12),
                     RichText(
                       text: TextSpan(
@@ -213,61 +224,75 @@ class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProvider
 
                     // OTP boxes
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(_digitCount, (i) {
-                        final hasValue = _controllers[i].text.isNotEmpty;
-                        return Container(
-                          width: 56,
-                          height: 64,
-                          margin: EdgeInsets.only(
-                            right: i < _digitCount - 1 ? 12 : 0,
-                          ),
-                          child: KeyboardListener(
-                            focusNode: FocusNode(),
-                            onKeyEvent: (e) => _onKeyPress(i, e),
-                            child: TextField(
-                              controller: _controllers[i],
-                              focusNode: _focusNodes[i],
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              maxLength: 1,
-                              style: AppTypography.headlineMedium.copyWith(
-                                color: onSurface,
-                                fontWeight: FontWeight.w700,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(_digitCount, (i) {
+                            final hasValue = _controllers[i].text.isNotEmpty;
+                            return Container(
+                              width: 56,
+                              height: 64,
+                              margin: EdgeInsets.only(
+                                right: i < _digitCount - 1 ? 12 : 0,
                               ),
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              decoration: InputDecoration(
-                                counterText: '',
-                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                filled: true,
-                                fillColor: hasValue
-                                    ? accent.withValues(alpha: 0.08)
-                                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: hasValue ? accent : Theme.of(context).dividerColor,
+                              child: KeyboardListener(
+                                focusNode: FocusNode(),
+                                onKeyEvent: (e) => _onKeyPress(i, e),
+                                child: TextField(
+                                  controller: _controllers[i],
+                                  focusNode: _focusNodes[i],
+                                  textAlign: TextAlign.center,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 1,
+                                  style: AppTypography.headlineMedium.copyWith(
+                                    color: onSurface,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: accent, width: 2),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: hasValue
-                                        ? accent.withValues(alpha: 0.5)
-                                        : Theme.of(context).dividerColor,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  decoration: InputDecoration(
+                                    counterText: '',
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    filled: true,
+                                    fillColor: hasValue
+                                        ? accent.withValues(alpha: 0.08)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceContainerHighest,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: hasValue
+                                            ? accent
+                                            : Theme.of(context).dividerColor,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: accent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: hasValue
+                                            ? accent.withValues(alpha: 0.5)
+                                            : Theme.of(context).dividerColor,
+                                      ),
+                                    ),
                                   ),
+                                  onChanged: (v) => _onDigitChanged(i, v),
                                 ),
                               ),
-                              onChanged: (v) => _onDigitChanged(i, v),
-                            ),
-                          ),
-                        );
-                      }),
-                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.05, end: 0),
+                            );
+                          }),
+                        )
+                        .animate()
+                        .fadeIn(delay: 200.ms, duration: 400.ms)
+                        .slideY(begin: 0.05, end: 0),
 
                     if (_errorMessage != null) ...[
                       const SizedBox(height: 16),
@@ -318,7 +343,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProvider
                       width: double.infinity,
                       height: 54,
                       child: FilledButton(
-                        onPressed: _fullCode.length == _digitCount && !_isVerifying ? _verify : null,
+                        onPressed:
+                            _fullCode.length == _digitCount && !_isVerifying
+                            ? _verify
+                            : null,
                         style: FilledButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -335,7 +363,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> with SingleTickerProvider
                               )
                             : Text(
                                 l.verifyAndContinue,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                       ),
                     ),

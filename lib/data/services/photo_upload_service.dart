@@ -25,9 +25,16 @@ class PhotoUploadService {
   /// Compresses an image file for upload (JPEG, max dimension and quality capped).
   /// Returns compressed bytes, or original file bytes if compression fails.
   Future<List<int>> _compressImage(String localPath) async {
+    final file = File(localPath);
+    if (!file.existsSync()) {
+      debugPrint('[PhotoUpload] File not found: $localPath');
+      throw Exception('Photo file not found: $localPath');
+    }
+    // Use absolute path; compressWithFile can return null on macOS with relative paths.
+    final path = file.absolute.path;
     try {
       final compressed = await FlutterImageCompress.compressWithFile(
-        localPath,
+        path,
         minWidth: _kMaxImageDimension,
         minHeight: _kMaxImageDimension,
         quality: _kUploadJpegQuality,
@@ -35,14 +42,32 @@ class PhotoUploadService {
       );
       if (compressed != null && compressed.isNotEmpty) {
         debugPrint(
-          '[PhotoUpload] Compressed ${File(localPath).lengthSync()} → ${compressed.length} bytes',
+          '[PhotoUpload] Compressed ${file.lengthSync()} → ${compressed.length} bytes',
         );
         return compressed;
       }
+      // compressWithFile can return null on macOS; try compressWithList as fallback.
+      final bytes = await file.readAsBytes();
+      final fromList = await FlutterImageCompress.compressWithList(
+        bytes,
+        minWidth: _kMaxImageDimension,
+        minHeight: _kMaxImageDimension,
+        quality: _kUploadJpegQuality,
+        format: CompressFormat.jpeg,
+      );
+      if (fromList.isNotEmpty) {
+        debugPrint(
+          '[PhotoUpload] Compressed (list) ${bytes.length} → ${fromList.length} bytes',
+        );
+        return fromList;
+      }
+      debugPrint(
+        '[PhotoUpload] Compression returned empty, using original file',
+      );
     } catch (e) {
       debugPrint('[PhotoUpload] Compression failed, using original: $e');
     }
-    return await File(localPath).readAsBytes();
+    return await file.readAsBytes();
   }
 
   /// Upload a local image file to S3 via presigned URL.
@@ -66,8 +91,9 @@ class PhotoUploadService {
     final upload = uploads[0] as Map<String, dynamic>;
     final rawUploadUrl = upload['uploadUrl'] ?? upload['upload_url'];
     final uploadUrl = rawUploadUrl is String ? rawUploadUrl : null;
-    if (uploadUrl == null || uploadUrl.isEmpty)
+    if (uploadUrl == null || uploadUrl.isEmpty) {
       throw Exception('Missing uploadUrl in response');
+    }
     final key = (upload['key'] as String?) ?? '';
     // photoUrl may be omitted; fallback to uploadUrl without query string for display
     final rawPhotoUrl = upload['photoUrl'] ?? upload['photo_url'];

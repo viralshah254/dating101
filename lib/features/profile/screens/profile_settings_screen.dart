@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/feature_flags/feature_flags.dart';
 import '../../../core/locale/app_locale_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/mode/mode_switch_helper.dart';
@@ -37,6 +38,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final flags = ref.watch(featureFlagsProvider);
     final onSurface = Theme.of(context).colorScheme.onSurface;
@@ -51,7 +53,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Profile & Settings',
+          l.profileSettings,
           style: AppTypography.headlineSmall.copyWith(
             color: onSurface,
             fontWeight: FontWeight.w700,
@@ -73,14 +75,14 @@ class ProfileSettingsScreen extends ConsumerWidget {
                   _buildAvatar(profilePhoto, primary, 48),
                   const SizedBox(height: 12),
                   Text(
-                    profileName ?? 'My profile',
+                    profileName ?? l.myProfile,
                     style: AppTypography.titleLarge.copyWith(
                       color: onSurface,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
-                    'View profile',
+                    l.viewProfile,
                     style: AppTypography.bodySmall.copyWith(
                       color: onSurface.withValues(alpha: 0.7),
                     ),
@@ -90,24 +92,24 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 32),
-          _SectionHeader(title: 'saathi mode', onSurface: onSurface),
+          _SectionHeader(title: l.saathiMode, onSurface: onSurface),
           _ModeSwitchTile(
             currentMode: mode,
             onSwitch: () => _showModeSwitch(context, ref, mode),
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: 'Account', onSurface: onSurface),
+          _SectionHeader(title: l.account, onSurface: onSurface),
           ListTile(
             leading: const Icon(Icons.people_outline),
             title: Text(
-              'Invite friends',
+              l.inviteFriends,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Referral rewards',
+              l.rewards,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
@@ -119,14 +121,14 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.rocket_launch_outlined),
               title: Text(
-                'Boost profile',
+                l.boostProfile,
                 style: AppTypography.bodyLarge.copyWith(
                   color: onSurface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               subtitle: Text(
-                'Appear more in discovery',
+                l.appearMoreInDiscovery,
                 style: AppTypography.bodySmall.copyWith(
                   color: onSurface.withValues(alpha: 0.7),
                 ),
@@ -137,14 +139,14 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.verified_user_outlined),
             title: Text(
-              'Verification',
+              l.verification,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'ID, photo, LinkedIn',
+              l.verificationSubtitle,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
@@ -155,7 +157,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: Text(
-              'Notifications',
+              l.notifications,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
@@ -167,7 +169,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.lock_outline),
             title: Text(
-              'Privacy & safety',
+              l.privacyAndSafety,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
@@ -179,14 +181,14 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.language),
             title: Text(
-              'App language',
+              l.appLanguage,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Choose app language',
+              l.chooseAppLanguage,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
@@ -195,18 +197,18 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onTap: () => _showLanguagePicker(context, ref),
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: 'Account & data', onSurface: onSurface),
+          _SectionHeader(title: l.accountAndData, onSurface: onSurface),
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: Text(
-              'Download my data',
+              l.downloadMyData,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Request a copy of your data',
+              l.requestDataCopy,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
@@ -217,14 +219,14 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.pause_circle_outline),
             title: Text(
-              'Deactivate account',
+              l.deactivateAccount,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Temporarily disable your account',
+              l.deactivateAccountSubtitle,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
@@ -233,16 +235,19 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onTap: () => _showDeactivateConfirm(context, ref),
           ),
           ListTile(
-            leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+            leading: Icon(
+              Icons.delete_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
             title: Text(
-              'Delete account',
+              l.deleteAccount,
               style: AppTypography.bodyLarge.copyWith(
                 color: Theme.of(context).colorScheme.error,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Permanently delete your account',
+              l.deleteAccountSubtitle,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
@@ -251,11 +256,11 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onTap: () => _showDeleteAccountConfirm(context, ref),
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: 'Support', onSurface: onSurface),
+          _SectionHeader(title: l.support, onSurface: onSurface),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: Text(
-              'Help centre',
+              l.helpCentre,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
@@ -267,7 +272,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.description_outlined),
             title: Text(
-              'Terms & Privacy',
+              l.termsAndPrivacy,
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
@@ -288,7 +293,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
               if (context.mounted) context.go('/login');
             },
             icon: const Icon(Icons.logout, size: 20),
-            label: const Text('Sign out'),
+            label: Text(l.signOut),
           ),
         ],
       ),
@@ -328,7 +333,9 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
   };
   Map<String, bool> prefs = Map.from(defaultPrefs);
   try {
-    final loaded = await ref.read(profileRepositoryProvider).getNotificationPreferences();
+    final loaded = await ref
+        .read(profileRepositoryProvider)
+        .getNotificationPreferences();
     for (final e in loaded.entries) {
       if (e.value is bool) prefs[e.key] = e.value as bool;
     }
@@ -397,16 +404,17 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                             prefs.map((k, v) => MapEntry(k, v)),
                           );
                       if (context.mounted) {
+                        final loc = AppLocalizations.of(context)!;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Notification preferences saved'),
+                          SnackBar(
+                            content: Text(loc.notificationPreferencesSaved),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
                       }
                     } catch (_) {}
                   },
-                  child: const Text('Save'),
+                  child: Text(AppLocalizations.of(ctx)!.save),
                 ),
                 if (kDebugMode) ...[
                   const SizedBox(height: 24),
@@ -424,17 +432,20 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                           .read(notificationServiceProvider)
                           .getToken();
                       if (token == null) {
-                        if (ctx.mounted)
+                        if (ctx.mounted) {
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(
-                              content: Text('No FCM token (check permission)'),
+                            SnackBar(
+                              content: Text(
+                                AppLocalizations.of(ctx)!.noFcmToken,
+                              ),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
+                        }
                         return;
                       }
                       await Clipboard.setData(ClipboardData(text: token));
-                      if (ctx.mounted)
+                      if (ctx.mounted) {
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           const SnackBar(
                             content: Text(
@@ -444,9 +455,10 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                             duration: Duration(seconds: 4),
                           ),
                         );
+                      }
                     },
                     icon: const Icon(Icons.copy, size: 18),
-                    label: const Text('Copy FCM token'),
+                    label: Text(AppLocalizations.of(ctx)!.copyFcmToken),
                   ),
                 ],
               ],
@@ -459,15 +471,23 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
 }
 
 void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
-  Map<String, dynamic> privacy = {'showInVisitors': true, 'profileVisibility': 'everyone', 'hideFromDiscovery': false};
+  Map<String, dynamic> privacy = {
+    'showInVisitors': true,
+    'profileVisibility': 'everyone',
+    'hideFromDiscovery': false,
+    'photosHidden': false,
+  };
   try {
     privacy = await ref.read(profileRepositoryProvider).getPrivacy();
   } catch (_) {}
   bool showInVisitors = privacy['showInVisitors'] == true;
-  String profileVisibility = (privacy['profileVisibility'] as String?) ?? 'everyone';
+  String profileVisibility =
+      (privacy['profileVisibility'] as String?) ?? 'everyone';
   bool hideFromDiscovery = privacy['hideFromDiscovery'] == true;
+  bool photosHidden = privacy['photosHidden'] == true;
 
   if (!context.mounted) return;
+  final l = AppLocalizations.of(context)!;
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -475,155 +495,160 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setSheetState) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+      builder: (ctx, setSheetState) {
+        final loc = AppLocalizations.of(ctx)!;
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Privacy & safety',
-                style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: 16),
+                Text(
+                  loc.privacyAndSafety,
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.block_outlined),
-                title: const Text('Blocked users'),
-                subtitle: const Text('View and unblock people you\'ve blocked'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.push('/blocked-users');
-                },
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Show in visitors'),
-                subtitle: const Text(
-                  'When off, your visits are still recorded but you won\'t appear in others\' visitor lists',
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.block_outlined),
+                  title: Text(loc.blockedUsers),
+                  subtitle: Text(loc.blockedUsersSubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('/blocked-users');
+                  },
                 ),
-                value: showInVisitors,
-                onChanged: (v) => setSheetState(() => showInVisitors = v),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                title: const Text('Who can see my profile'),
-                subtitle: Text(
-                  profileVisibility == 'everyone'
-                      ? 'Everyone'
-                      : profileVisibility == 'only_matches'
-                          ? 'Only my matches'
-                          : 'Only after interest',
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: Text(loc.showInVisitors),
+                  subtitle: Text(loc.showInVisitorsSubtitle),
+                  value: showInVisitors,
+                  onChanged: (v) => setSheetState(() => showInVisitors = v),
                 ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  showDialog<String>(
-                    context: ctx,
-                    builder: (dctx) => AlertDialog(
-                      title: const Text('Who can see my profile'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          RadioListTile<String>(
-                            title: const Text('Everyone'),
-                            value: 'everyone',
+                const SizedBox(height: 8),
+                ListTile(
+                  title: Text(loc.whoCanSeeMyProfile),
+                  subtitle: Text(
+                    profileVisibility == 'everyone'
+                        ? loc.everyone
+                        : profileVisibility == 'only_matches'
+                        ? loc.onlyMyMatches
+                        : loc.onlyAfterInterest,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    showDialog<String>(
+                      context: ctx,
+                      builder: (dctx) {
+                        final dloc = AppLocalizations.of(dctx)!;
+                        return AlertDialog(
+                          title: Text(dloc.whoCanSeeMyProfile),
+                          content: RadioGroup<String>(
                             groupValue: profileVisibility,
                             onChanged: (v) {
-                              setSheetState(() => profileVisibility = v!);
-                              Navigator.pop(dctx, v);
+                              if (v != null) {
+                                setSheetState(() => profileVisibility = v);
+                                Navigator.pop(dctx, v);
+                              }
                             },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                RadioListTile<String>(
+                                  title: Text(dloc.everyone),
+                                  value: 'everyone',
+                                ),
+                                RadioListTile<String>(
+                                  title: Text(dloc.onlyMyMatches),
+                                  value: 'only_matches',
+                                ),
+                                RadioListTile<String>(
+                                  title: Text(dloc.onlyAfterInterest),
+                                  value: 'only_after_interest',
+                                ),
+                              ],
+                            ),
                           ),
-                          RadioListTile<String>(
-                            title: const Text('Only my matches'),
-                            value: 'only_matches',
-                            groupValue: profileVisibility,
-                            onChanged: (v) {
-                              setSheetState(() => profileVisibility = v!);
-                              Navigator.pop(dctx, v);
-                            },
-                          ),
-                          RadioListTile<String>(
-                            title: const Text('Only after interest'),
-                            value: 'only_after_interest',
-                            groupValue: profileVisibility,
-                            onChanged: (v) {
-                              setSheetState(() => profileVisibility = v!);
-                              Navigator.pop(dctx, v);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ).then((v) {
-                    if (v != null) setSheetState(() => profileVisibility = v);
-                  });
-                },
-              ),
-              SwitchListTile(
-                title: const Text('Hide from discovery'),
-                subtitle: const Text(
-                  'Temporarily hide your profile from discovery and recommendations',
-                ),
-                value: hideFromDiscovery,
-                onChanged: (v) => setSheetState(() => hideFromDiscovery = v),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  try {
-                    await ref.read(profileRepositoryProvider).updatePrivacy({
-                      'showInVisitors': showInVisitors,
-                      'profileVisibility': profileVisibility,
-                      'hideFromDiscovery': hideFromDiscovery,
+                        );
+                      },
+                    ).then((v) {
+                      if (v != null) setSheetState(() => profileVisibility = v);
                     });
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Privacy settings saved'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  } catch (_) {}
-                },
-                child: const Text('Save'),
-              ),
-            ],
+                  },
+                ),
+                SwitchListTile(
+                  title: Text(loc.hideFromDiscovery),
+                  subtitle: Text(loc.hideFromDiscoverySubtitle),
+                  value: hideFromDiscovery,
+                  onChanged: (v) => setSheetState(() => hideFromDiscovery = v),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: Text(loc.hideMyPhotos),
+                  subtitle: Text(loc.hideMyPhotosSubtitle),
+                  value: photosHidden,
+                  onChanged: (v) => setSheetState(() => photosHidden = v),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ref.read(profileRepositoryProvider).updatePrivacy({
+                        'showInVisitors': showInVisitors,
+                        'profileVisibility': profileVisibility,
+                        'hideFromDiscovery': hideFromDiscovery,
+                        'photosHidden': photosHidden,
+                      });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l.privacySettingsSaved),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (_) {}
+                  },
+                  child: Text(l.save),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     ),
   );
 }
 
 void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
+  final l = AppLocalizations.of(context)!;
   final newMode = currentMode == AppMode.dating
       ? AppMode.matrimony
       : AppMode.dating;
-  final newLabel = newMode == AppMode.dating ? 'Dating' : 'Matrimony';
+  final newLabel = newMode == AppMode.dating ? l.modeDating : l.modeMatrimony;
   final onSurface = Theme.of(context).colorScheme.onSurface;
 
   showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text('Switch to $newLabel?'),
+      title: Text(l.switchToMode(newLabel)),
       content: Text(
-        'Your profile info is shared. You can complete or update $newLabel-specific details anytime.',
+        l.switchToModeBody(newLabel),
         style: AppTypography.bodyMedium.copyWith(
           color: onSurface.withValues(alpha: 0.8),
         ),
@@ -632,7 +657,7 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
         TextButton(
           onPressed: () => Navigator.pop(ctx),
           child: Text(
-            'Cancel',
+            l.cancel,
             style: TextStyle(color: onSurface.withValues(alpha: 0.7)),
           ),
         ),
@@ -641,7 +666,7 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
             Navigator.pop(ctx);
             await switchAppMode(context, ref, newMode);
           },
-          child: const Text('Switch'),
+          child: Text(l.switchButton),
         ),
       ],
     ),
@@ -649,6 +674,7 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
 }
 
 void _showLanguagePicker(BuildContext context, WidgetRef ref) {
+  final l = AppLocalizations.of(context)!;
   final currentCode = ref.read(appLocaleProvider);
   final locales = supportedAppLocales;
   final localeNames = <String, String>{
@@ -666,45 +692,60 @@ void _showLanguagePicker(BuildContext context, WidgetRef ref) {
   };
   showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'App language',
-              style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.w700,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.appLanguage,
+                style: AppTypography.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ...locales.map((locale) {
-              final code = locale.languageCode;
-              final name = localeNames[code] ?? code;
-              final isSelected = currentCode == code;
-              return ListTile(
-                title: Text(name),
-                trailing: isSelected ? const Icon(Icons.check_rounded) : null,
-                onTap: () {
-                  ref.read(appLocaleProvider.notifier).setLocale(code);
-                  Navigator.pop(ctx);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Language set to $name'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: locales.length,
+                  itemBuilder: (_, index) {
+                    final locale = locales[index];
+                    final code = locale.languageCode;
+                    final name = localeNames[code] ?? code;
+                    final isSelected = currentCode == code;
+                    return ListTile(
+                      title: Text(name),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_rounded)
+                          : null,
+                      onTap: () {
+                        ref.read(appLocaleProvider.notifier).setLocale(code);
+                        Navigator.pop(ctx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l.languageSetTo(name)),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
                     );
-                  }
-                },
-              );
-            }),
-          ],
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -713,11 +754,15 @@ void _showLanguagePicker(BuildContext context, WidgetRef ref) {
 
 Future<void> _requestDataExport(BuildContext context, WidgetRef ref) async {
   try {
-    final result = await ref.read(accountRepositoryProvider).requestDataExport();
+    final result = await ref
+        .read(accountRepositoryProvider)
+        .requestDataExport();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result.message ?? 'Export requested. We\'ll email you when ready.'),
+        content: Text(
+          result.message ?? AppLocalizations.of(context)!.exportRequested,
+        ),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ),
@@ -725,8 +770,8 @@ Future<void> _requestDataExport(BuildContext context, WidgetRef ref) async {
   } catch (_) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Request failed. Try again later.'),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.requestFailedTryAgain),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -734,18 +779,14 @@ Future<void> _requestDataExport(BuildContext context, WidgetRef ref) async {
 }
 
 void _showDeactivateConfirm(BuildContext context, WidgetRef ref) {
+  final l = AppLocalizations.of(context)!;
   showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Deactivate account?'),
-      content: const Text(
-        'Your profile will be hidden and you won\'t receive matches or messages. You can reactivate later.',
-      ),
+      title: Text(l.deactivateAccountConfirm),
+      content: Text(l.deactivateAccountConfirmBody),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
         FilledButton(
           onPressed: () async {
             Navigator.pop(ctx);
@@ -758,14 +799,14 @@ void _showDeactivateConfirm(BuildContext context, WidgetRef ref) {
             } catch (_) {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Deactivation failed. Try again.'),
+                SnackBar(
+                  content: Text(l.deactivationFailed),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             }
           },
-          child: const Text('Deactivate'),
+          child: Text(l.deactivate),
         ),
       ],
     ),
@@ -773,19 +814,15 @@ void _showDeactivateConfirm(BuildContext context, WidgetRef ref) {
 }
 
 void _showDeleteAccountConfirm(BuildContext context, WidgetRef ref) {
+  final l = AppLocalizations.of(context)!;
   final errorColor = Theme.of(context).colorScheme.error;
   showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Delete account permanently?'),
-      content: const Text(
-        'This cannot be undone. All your data will be permanently deleted.',
-      ),
+      title: Text(l.deleteAccountConfirm),
+      content: Text(l.deleteAccountConfirmBody),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
         FilledButton(
           onPressed: () async {
             Navigator.pop(ctx);
@@ -798,15 +835,15 @@ void _showDeleteAccountConfirm(BuildContext context, WidgetRef ref) {
             } catch (_) {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Delete failed. Try again.'),
+                SnackBar(
+                  content: Text(l.deleteFailed),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             }
           },
           style: FilledButton.styleFrom(backgroundColor: errorColor),
-          child: const Text('Delete permanently'),
+          child: Text(l.deletePermanently),
         ),
       ],
     ),
@@ -820,6 +857,7 @@ class _ModeSwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final isDating = currentMode == AppMode.dating;
     return Material(
@@ -851,14 +889,16 @@ class _ModeSwitchTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isDating ? 'Dating' : 'Matrimony',
+                      isDating ? l.modeDating : l.modeMatrimony,
                       style: AppTypography.titleMedium.copyWith(
                         color: onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
-                      isDating ? 'Switch to Matrimony' : 'Switch to Dating',
+                      isDating
+                          ? l.switchToModeLabel(l.modeMatrimony)
+                          : l.switchToModeLabel(l.modeDating),
                       style: AppTypography.bodySmall.copyWith(
                         color: onSurface.withValues(alpha: 0.6),
                       ),

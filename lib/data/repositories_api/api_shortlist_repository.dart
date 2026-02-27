@@ -9,7 +9,11 @@ class ApiShortlistRepository implements ShortlistRepository {
   final ApiClient api;
 
   @override
-  Future<List<ShortlistEntry>> getShortlist({int limit = 100, int page = 1, String? sort}) async {
+  Future<List<ShortlistEntry>> getShortlist({
+    int limit = 100,
+    int page = 1,
+    String? sort,
+  }) async {
     final query = <String, String>{'page': '$page', 'limit': '$limit'};
     if (sort != null && sort.isNotEmpty) query['sort'] = sort;
     final body = await api.get('/shortlist', query: query);
@@ -35,7 +39,11 @@ class ApiShortlistRepository implements ShortlistRepository {
   }
 
   @override
-  Future<void> updateShortlistEntry(String shortlistId, {String? note, int? sortOrder}) async {
+  Future<void> updateShortlistEntry(
+    String shortlistId, {
+    String? note,
+    int? sortOrder,
+  }) async {
     final body = <String, dynamic>{};
     if (note != null) body['note'] = note;
     if (sortOrder != null) body['sortOrder'] = sortOrder;
@@ -55,8 +63,14 @@ class ApiShortlistRepository implements ShortlistRepository {
   }
 
   @override
-  Future<List<WhoShortlistedMeEntry>> getWhoShortlistedMe({int page = 1, int limit = 20}) async {
-    final body = await api.get('/shortlist/received', query: {'page': '$page', 'limit': '$limit'});
+  Future<List<WhoShortlistedMeEntry>> getWhoShortlistedMe({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final body = await api.get(
+      '/shortlist/received',
+      query: {'page': '$page', 'limit': '$limit'},
+    );
     final list = body['profiles'] as List? ?? [];
     return list.map((e) {
       final map = e as Map<String, dynamic>;
@@ -66,7 +80,9 @@ class ApiShortlistRepository implements ShortlistRepository {
         firstName: map['firstName'] as String? ?? '',
         age: map['age'] as int?,
         name: map['name'] as String?,
-        imageUrl: map['imageUrl'] as String?,
+        imageUrl: ApiProfileRepository.sanitizeImageUrl(
+          map['imageUrl'] as String?,
+        ),
         blurred: blurred,
       );
     }).toList();

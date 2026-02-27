@@ -163,6 +163,32 @@ class AppLocalizationsPa extends AppLocalizations {
   String get navShortlist => 'Shortlist';
 
   @override
+  String get navEvents => 'ਈਵੈਂਟ';
+
+  @override
+  String get navVisitors => 'ਵਿਜ਼ਿਟਰ';
+
+  @override
+  String get refine => 'ਸੁਧਾਰੋ';
+
+  @override
+  String get refineTooltip => 'ਉਮਰ, ਸ਼ਹਿਰ, ਧਰਮ, ਪੜ੍ਹਾਈ ਅਤੇ ਹੋਰ ਨਾਲ ਸੁਧਾਰੋ';
+
+  @override
+  String get noRecommendationsYet => 'ਅਜੇ ਕੋਈ ਸਿਫਾਰਿਸ਼ ਨਹੀਂ';
+
+  @override
+  String get noRecommendationsYetBody =>
+      'AI-ਸੰਚਾਲਿਤ ਮੈਚਾਂ ਲਈ ਆਪਣਾ ਪ੍ਰੋਫਾਈਲ ਅਤੇ ਤਰਜੀਹਾਂ ਪੂਰੀਆਂ ਕਰੋ.';
+
+  @override
+  String get searchWidenedTitle => 'ਅਸੀਂ ਖੋਜ ਵਿਸਤਾਰੀ ਹੈ';
+
+  @override
+  String get searchWidenedBody =>
+      'ਤੁਹਾਡੇ ਮੌਜੂਦਾ ਫਿਲਟਰਾਂ ਨਾਲ ਕੋਈ ਨਤੀਜੇ ਨਹੀਂ ਮਿਲੇ। ਅਸੀਂ ਕੁਝ ਫਿਲਟਰ ਘਟਾ ਕੇ ਹੋਰ ਪ੍ਰੋਫਾਈਲ ਦਿਖਾ ਰਹੇ ਹਾਂ।';
+
+  @override
   String get discoverTitle => 'Discover';
 
   @override
@@ -430,7 +456,7 @@ class AppLocalizationsPa extends AppLocalizations {
       'Focus on verified profiles and detailed preferences for a trusted match.';
 
   @override
-  String get yourName => 'Your name';
+  String get yourName => 'ਤੁਹਾਡਾ ਨਾਮ';
 
   @override
   String get nameHint => 'e.g. Priya, Arjun';
@@ -682,7 +708,13 @@ class AppLocalizationsPa extends AppLocalizations {
   String get currentLocation => 'Where do you live?';
 
   @override
+  String get currentLocationHint => 'ਜਿਵੇਂ ਮੁੰਬਈ, ਨਿਊ ਯਾਰਕ';
+
+  @override
   String get hometown => 'Where are you from?';
+
+  @override
+  String get placeOfBirthHint => 'ਜਿਵੇਂ ਜੈਪੁਰ, ਹੈਦਰਾਬਾਦ';
 
   @override
   String get lookingForPartner => 'Looking for';
@@ -1076,7 +1108,7 @@ class AppLocalizationsPa extends AppLocalizations {
   String get optional => 'Optional';
 
   @override
-  String get skipForNow => 'Skip for now';
+  String get skipForNow => 'ਹੁਣ ਛੱਡੋ';
 
   @override
   String get fillLater => 'You can fill this later from your profile.';
@@ -1328,63 +1360,718 @@ class AppLocalizationsPa extends AppLocalizations {
   String get toastReportSubmitted => 'Report submitted. Thank you.';
 
   @override
-  String get toastErrorGeneric => 'Something went wrong. Please try again.';
+  String get toastErrorGeneric =>
+      'ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
 
   @override
-  String get activeNow => 'Active now';
+  String get activeNow => 'ਹੁਣ ਸਰਗਰਮ';
 
   @override
-  String get verified => 'Verified';
+  String get verified => 'ਪ੍ਰਮਾਣਿਤ';
 
   @override
   String managedBy(Object role) {
-    return 'Managed by: $role';
+    return 'ਪ੍ਰਬੰਧਿਤ: $role';
   }
 
   @override
-  String get lastActive => 'Last active';
+  String get lastActive => 'ਆਖਰੀ ਸਰਗਰਮ';
 
   @override
   String kmAway(Object distance) {
-    return '$distance km away';
+    return '$distance ਕਿ.ਮੀ. ਦੂਰ';
   }
 
   @override
-  String get ageRange => 'Age range';
+  String get ageRange => 'ਉਮਰ ਸੀਮਾ';
 
   @override
-  String get distance => 'Distance';
+  String get distance => 'ਦੂਰੀ';
 
   @override
-  String get city => 'City';
+  String get city => 'ਸ਼ਹਿਰ';
 
   @override
-  String get religion => 'Religion';
+  String get religion => 'ਧਰਮ';
 
   @override
-  String get motherTongue => 'Mother tongue';
+  String get motherTongue => 'ਮਾਤ ਭਾਸ਼ਾ';
 
   @override
-  String get maritalStatus => 'Marital status';
+  String get maritalStatus => 'ਵਿਆਹੁਤਾ ਸਥਿਤੀ';
 
   @override
-  String get height => 'Height';
+  String get height => 'ਉਚਾਈ';
 
   @override
-  String get educationLevel => 'Education';
+  String get educationLevel => 'ਪੜ੍ਹਾਈ';
 
   @override
-  String get occupation => 'Occupation';
+  String get occupation => 'ਕਿੱਤਾ';
 
   @override
-  String get income => 'Income';
+  String get income => 'ਆਮਦਨ';
 
   @override
-  String get diet => 'Diet';
+  String get diet => 'ਖੁਰਾਕ';
 
   @override
-  String get familyType => 'Family type';
+  String get familyType => 'ਪਰਿਵਾਰ ਕਿਸਮ';
 
   @override
-  String get familyValues => 'Family values';
+  String get familyValues => 'ਪਰਿਵਾਰ ਮੁੱਲ';
+
+  @override
+  String get appLanguage => 'ਐਪ ਭਾਸ਼ਾ';
+
+  @override
+  String get chooseAppLanguage => 'ਐਪ ਭਾਸ਼ਾ ਚੁਣੋ';
+
+  @override
+  String languageSetTo(Object name) {
+    return 'ਭਾਸ਼ਾ $name \'ਤੇ ਸੈੱਟ ਕੀਤੀ';
+  }
+
+  @override
+  String get saathiMode => 'saathi ਮੋਡ';
+
+  @override
+  String get accountAndData => 'ਖਾਤਾ ਅਤੇ ਡਾਟਾ';
+
+  @override
+  String get viewProfile => 'ਪ੍ਰੋਫਾਈਲ ਦੇਖੋ';
+
+  @override
+  String get downloadMyData => 'ਮੇਰਾ ਡਾਟਾ ਡਾਊਨਲੋਡ ਕਰੋ';
+
+  @override
+  String get requestDataCopy => 'ਆਪਣੇ ਡਾਟੇ ਦੀ ਕਾਪੀ ਮੰਗੋ';
+
+  @override
+  String get deactivateAccount => 'ਖਾਤਾ ਨਿਸ਼ਕ੍ਰਿਯ ਕਰੋ';
+
+  @override
+  String get deactivateAccountSubtitle => 'ਅਸਥਾਈ ਤੌਰ \'ਤੇ ਖਾਤਾ ਨਿਸ਼ਕ੍ਰਿਯ ਕਰੋ';
+
+  @override
+  String get deleteAccount => 'ਖਾਤਾ ਮਿਟਾਓ';
+
+  @override
+  String get deleteAccountSubtitle => 'ਪੱਕਾ ਖਾਤਾ ਮਿਟਾਓ';
+
+  @override
+  String get boostProfile => 'ਪ੍ਰੋਫਾਈਲ ਬੂਸਟ ਕਰੋ';
+
+  @override
+  String get appearMoreInDiscovery => 'ਖੋਜ ਵਿੱਚ ਵੱਧ ਦਿਖੋ';
+
+  @override
+  String get verificationSubtitle => 'ਆਈ.ਡੀ., ਫੋਟੋ, ਲਿੰਕਡਇਨ';
+
+  @override
+  String get blockedUsers => 'ਬਲਾਕ ਕੀਤੇ ਯੂਜ਼ਰ';
+
+  @override
+  String get blockedUsersSubtitle =>
+      'ਜਿਨ੍ਹਾਂ ਨੂੰ ਤੁਸੀਂ ਬਲਾਕ ਕੀਤਾ, ਦੇਖੋ ਅਤੇ ਅਨਬਲਾਕ ਕਰੋ';
+
+  @override
+  String get showInVisitors => 'ਵਿਜ਼ਟਰਾਂ ਵਿੱਚ ਦਿਖਾਓ';
+
+  @override
+  String get whoCanSeeMyProfile => 'ਮੇਰੀ ਪ੍ਰੋਫਾਈਲ ਕੌਣ ਦੇਖ ਸਕਦਾ ਹੈ';
+
+  @override
+  String get everyone => 'ਸਭ';
+
+  @override
+  String get onlyMyMatches => 'ਸਿਰਫ਼ ਮੇਰੇ ਮੈਚ';
+
+  @override
+  String get onlyAfterInterest => 'ਸਿਰਫ਼ ਦਿਲਚਸਪੀ ਤੋਂ ਬਾਅਦ';
+
+  @override
+  String get hideFromDiscovery => 'ਖੋਜ ਤੋਂ ਓਹਲੇ ਕਰੋ';
+
+  @override
+  String get privacySettingsSaved => 'ਗੋਪਨੀਯਤਾ ਸੈਟਿੰਗਾਂ ਸੇਵ ਕੀਤੀਆਂ';
+
+  @override
+  String switchToMode(Object mode) {
+    return '$mode \'ਤੇ ਸਵਿਚ ਕਰਨਾ ਹੈ?';
+  }
+
+  @override
+  String switchToModeLabel(Object mode) {
+    return '$mode \'ਤੇ ਸਵਿਚ ਕਰੋ';
+  }
+
+  @override
+  String get switchButton => 'ਸਵਿਚ';
+
+  @override
+  String get requestFailedTryAgain =>
+      'ਬੇਨਤੀ ਫੇਲ੍ਹ। ਬਾਅਦ ਵਿੱਚ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
+
+  @override
+  String get deactivateAccountConfirm => 'ਖਾਤਾ ਨਿਸ਼ਕ੍ਰਿਯ ਕਰਨਾ ਹੈ?';
+
+  @override
+  String get deactivationFailed => 'ਨਿਸ਼ਕ੍ਰਿਯਤਾ ਫੇਲ੍ਹ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
+
+  @override
+  String get deactivate => 'ਨਿਸ਼ਕ੍ਰਿਯ ਕਰੋ';
+
+  @override
+  String get deleteAccountConfirm => 'ਖਾਤਾ ਪੱਕਾ ਮਿਟਾਉਣਾ ਹੈ?';
+
+  @override
+  String get deleteFailed => 'ਮਿਟਾਉਣਾ ਫੇਲ੍ਹ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
+
+  @override
+  String get deletePermanently => 'ਪੱਕਾ ਮਿਟਾਓ';
+
+  @override
+  String get notificationPreferencesSaved => 'ਨੋਟੀਫਿਕੇਸ਼ਨ ਤਰਜੀਹਾਂ ਸੇਵ ਕੀਤੀਆਂ';
+
+  @override
+  String get noFcmToken => 'FCM ਟੋਕਨ ਨਹੀਂ (ਇਜਾਜ਼ਤ ਚੈਕ ਕਰੋ)';
+
+  @override
+  String get copyFcmToken => 'FCM ਟੋਕਨ ਕਾਪੀ ਕਰੋ';
+
+  @override
+  String get linkCopied => 'ਲਿੰਕ ਕਾਪੀ ਕੀਤਾ';
+
+  @override
+  String errorLoadingProfile(Object error) {
+    return 'ਪ੍ਰੋਫਾਈਲ ਲੋਡ ਕਰਨ ਵਿੱਚ ਗਲਤੀ: $error';
+  }
+
+  @override
+  String get noProfileYet => 'ਅਜੇ ਪ੍ਰੋਫਾਈਲ ਨਹੀਂ';
+
+  @override
+  String get createProfile => 'ਪ੍ਰੋਫਾਈਲ ਬਣਾਓ';
+
+  @override
+  String get basicDetails => 'ਬੁਨਿਆਦੀ ਵੇਰਵੇ';
+
+  @override
+  String get religionAndCommunity => 'ਧਰਮ ਅਤੇ ਕਮਿਊਨਿਟੀ';
+
+  @override
+  String get physicalAttributes => 'ਸਰੀਰਕ ਗੁਣ';
+
+  @override
+  String get educationAndCareer => 'ਪੜ੍ਹਾਈ ਅਤੇ ਕੈਰੀਅਰ';
+
+  @override
+  String get lifestyleAndHabits => 'ਜੀਵਨ ਸ਼ੈਲੀ ਅਤੇ ਆਦਤਾਂ';
+
+  @override
+  String get interestsAndHobbiesSection => 'ਦਿਲਚਸਪੀਆਂ ਅਤੇ ਸ਼ੌਕ';
+
+  @override
+  String get familySection => 'ਪਰਿਵਾਰ';
+
+  @override
+  String get horoscopeSection => 'ਜੋਤਿਸ਼';
+
+  @override
+  String get aboutMeSection => 'ਮੇਰੇ ਬਾਰੇ';
+
+  @override
+  String get partnerPreferencesSection => 'ਜੋੜੀਦਾਰ ਤਰਜੀਹਾਂ';
+
+  @override
+  String get photosSection => 'ਫੋਟੋ';
+
+  @override
+  String get languagesLabel => 'ਭਾਸ਼ਾਵਾਂ';
+
+  @override
+  String get locationLabel => 'ਟਿਕਾਣਾ';
+
+  @override
+  String get originLabel => 'ਮੂਲ';
+
+  @override
+  String get degreeLabel => 'ਡਿਗਰੀ';
+
+  @override
+  String get institutionLabel => 'ਸੰਸਥਾ';
+
+  @override
+  String get yearOfGraduation => 'ਗ੍ਰੈਜੁਏਸ਼ਨ ਸਾਲ';
+
+  @override
+  String get gradeClassification => 'ਗ੍ਰੇਡ / ਵਰਗੀਕਰਣ';
+
+  @override
+  String get employer => 'ਨਿਯੋਜਕ';
+
+  @override
+  String get industry => 'ਉਦਯੋਗ';
+
+  @override
+  String get communityLabel => 'ਕਮਿਊਨਿਟੀ';
+
+  @override
+  String get educationAndCareerTitle => 'ਪੜ੍ਹਾਈ ਅਤੇ ਕੈਰੀਅਰ';
+
+  @override
+  String get familyTitle => 'ਪਰਿਵਾਰ';
+
+  @override
+  String get lifestyleTitleSection => 'ਜੀਵਨ ਸ਼ੈਲੀ';
+
+  @override
+  String get horoscopeTitle => 'ਜੋਤਿਸ਼';
+
+  @override
+  String get lookingForTitle => 'ਕੀ ਚਾਹੀਦਾ ਹੈ';
+
+  @override
+  String get requestAgain => 'ਦੁਬਾਰਾ ਬੇਨਤੀ ਕਰੋ';
+
+  @override
+  String get requestContact => 'ਸੰਪਰਕ ਬੇਨਤੀ ਕਰੋ';
+
+  @override
+  String get contactRequestSent => 'ਸੰਪਰਕ ਬੇਨਤੀ ਭੇਜੀ ਗਈ';
+
+  @override
+  String couldNotSendRequest(Object error) {
+    return 'ਬੇਨਤੀ ਭੇਜ ਨਹੀਂ ਸਕੇ: $error';
+  }
+
+  @override
+  String get call => 'ਕਾਲ';
+
+  @override
+  String get whatsApp => 'ਵਟਸਐਪ';
+
+  @override
+  String get contactShared =>
+      'ਸੰਪਰਕ ਸਾਂਝਾ ਕੀਤਾ। ਉਹ ਹੁਣ ਤੁਹਨੂੰ ਕਾਲ ਜਾਂ ਮੈਸੇਜ ਕਰ ਸਕਦੇ ਹਨ।';
+
+  @override
+  String couldNotAccept(Object error) {
+    return 'ਸਵੀਕਾਰ ਨਹੀਂ ਕਰ ਸਕੇ: $error';
+  }
+
+  @override
+  String get requestDeclined => 'ਬੇਨਤੀ ਰੱਦ ਕੀਤੀ ਗਈ';
+
+  @override
+  String couldNotDecline(Object error) {
+    return 'ਰੱਦ ਨਹੀਂ ਕਰ ਸਕੇ: $error';
+  }
+
+  @override
+  String get interested => 'ਦਿਲਚਸਪੀ';
+
+  @override
+  String get priorityInterest => 'ਤਰਜੀਹੀ ਦਿਲਚਸਪੀ';
+
+  @override
+  String get withdrawInterest => 'ਦਿਲਚਸਪੀ ਵਾਪਸ ਲਓ';
+
+  @override
+  String get declineRequest => 'ਬੇਨਤੀ ਰੱਦ ਕਰੋ';
+
+  @override
+  String get noContactRequests => 'ਕੋਈ ਸੰਪਰਕ ਬੇਨਤੀਆਂ ਨਹੀਂ';
+
+  @override
+  String get upgrade => 'ਅੱਪਗ੍ਰੇਡ';
+
+  @override
+  String get failedToSendTryAgain => 'ਭੇਜਣਾ ਫੇਲ੍ਹ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
+
+  @override
+  String get blockUserConfirm => 'ਯੂਜ਼ਰ ਨੂੰ ਬਲਾਕ ਕਰਨਾ ਹੈ?';
+
+  @override
+  String get reportUser => 'ਯੂਜ਼ਰ ਦੀ ਰਿਪੋਰਟ ਕਰੋ';
+
+  @override
+  String get reportUserConfirm => 'ਯੂਜ਼ਰ ਦੀ ਰਿਪੋਰਟ ਕਰਨੀ ਹੈ?';
+
+  @override
+  String reportUserMessage(Object name) {
+    return 'ਗਲਤ ਵਿਵਹਾਰ ਲਈ $name ਦੀ ਰਿਪੋਰਟ ਕਰਨੀ ਹੈ?';
+  }
+
+  @override
+  String get reportSubmittedThankYou => 'ਰਿਪੋਰਟ ਜਮ੍ਹਾਂ ਕਰਵਾਈ। ਧੰਨਵਾਦ।';
+
+  @override
+  String get changeCity => 'ਸ਼ਹਿਰ ਬਦਲੋ';
+
+  @override
+  String get yourArea => 'ਤੁਹਾਡਾ ਇਲਾਕਾ';
+
+  @override
+  String get showProfilesNearYou => 'ਤੁਹਾਡੇ ਨੇੜੇ ਪ੍ਰੋਫਾਈਲ ਦਿਖਾਓ';
+
+  @override
+  String unblocked(Object name) {
+    return '$name ਅਨਬਲਾਕ ਕੀਤਾ';
+  }
+
+  @override
+  String get somethingWentWrong => 'ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ';
+
+  @override
+  String get whyBlocking => 'ਬਲਾਕ ਕਿਉਂ ਕਰ ਰਹੇ ਹੋ?';
+
+  @override
+  String get whyReporting => 'ਰਿਪੋਰਟ ਕਿਉਂ ਕਰ ਰਹੇ ਹੋ?';
+
+  @override
+  String get blockedUsersScreenTitle => 'ਬਲਾਕ ਕੀਤੇ ਯੂਜ਼ਰ';
+
+  @override
+  String get unblock => 'ਅਨਬਲਾਕ';
+
+  @override
+  String get noConversationsYet => 'ਅਜੇ ਗੱਲਬਾਤਾਂ ਨਹੀਂ';
+
+  @override
+  String get noChatRequests => 'ਚੈਟ ਬੇਨਤੀਆਂ ਨਹੀਂ';
+
+  @override
+  String get priority => 'ਤਰਜੀਹ';
+
+  @override
+  String yrs(Object age) {
+    return '$age ਸਾਲ';
+  }
+
+  @override
+  String get idVerificationSubtitle =>
+      'ਸਰਕਾਰੀ ਆਈ.ਡੀ. ਅੱਪਲੋਡ ਕਰੋ। ਅਸੀਂ ਇਸਨੂੰ ਤੁਹਾਡੇ ਫੋਟੋ ਨਾਲ ਮਿਲਾਉਂਦੇ ਹਾਂ।';
+
+  @override
+  String get faceMatchSubtitle => 'ਸੈਲਫੀ ਤੁਹਾਡੀ ਆਈ.ਡੀ. ਫੋਟੋ ਨਾਲ ਮਿਲੀ।';
+
+  @override
+  String get linkedInSubtitle => 'ਕੰਮ ਪੁਸ਼ਟੀ ਲਈ ਆਪਣਾ ਲਿੰਕਡਇਨ ਜੋੜੋ।';
+
+  @override
+  String get educationSubtitle => 'ਆਪਣਾ ਯੂਨੀਵਰਸਿਟੀ ਜਾਂ ਕਾਲਜ ਪੁਸ਼ਟੀ ਕਰੋ।';
+
+  @override
+  String verificationComingSoon(Object feature) {
+    return '$feature ਪੁਸ਼ਟੀਕਰਨ ਜਲਦੀ ਆ ਰਿਹਾ ਹੈ';
+  }
+
+  @override
+  String get uploadUrlNotAvailable => 'ਅੱਪਲੋਡ URL ਉਪਲਬਧ ਨਹੀਂ';
+
+  @override
+  String uploadFailed(Object code) {
+    return 'ਅੱਪਲੋਡ ਫੇਲ੍ਹ: $code';
+  }
+
+  @override
+  String get idSubmittedNotify =>
+      'ਆਈ.ਡੀ. ਜਮ੍ਹਾਂ ਕਰਵਾਈ। ਪੁਸ਼ਟੀਕਰਨ ਪੂਰਾ ਹੋਣ \'ਤੇ ਸੂਚਿਤ ਕਰਾਂਗੇ।';
+
+  @override
+  String uploadFailedError(Object error) {
+    return 'ਫੇਲ੍ਹ: $error';
+  }
+
+  @override
+  String get chooseFile => 'ਫਾਈਲ ਚੁਣੋ';
+
+  @override
+  String get photoVerification => 'ਫੋਟੋ ਪੁਸ਼ਟੀਕਰਨ';
+
+  @override
+  String get startVerification => 'ਪੁਸ਼ਟੀਕਰਨ ਸ਼ੁਰੂ ਕਰੋ';
+
+  @override
+  String get takePhoto => 'ਫੋਟੋ ਲਓ';
+
+  @override
+  String get imReady => 'ਮੈਂ ਤਿਆਰ ਹਾਂ';
+
+  @override
+  String get simulateSuccess => 'ਸਫਲਤਾ ਸਿਮੂਲੇਟ ਕਰੋ';
+
+  @override
+  String get tryAgain => 'ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ';
+
+  @override
+  String get subscriptionActivated => 'ਗਾਹਕੀ ਐਕਟਿਵੇਟ!';
+
+  @override
+  String purchaseFailed(Object error) {
+    return 'ਖਰੀਦ ਫੇਲ੍ਹ: $error';
+  }
+
+  @override
+  String get purchasesRestored => 'ਖਰੀਦਾਂ ਬਹਾਲ!';
+
+  @override
+  String get noActivePurchases => 'ਕੋਈ ਐਕਟਿਵ ਖਰੀਦ ਨਹੀਂ ਮਿਲੀ।';
+
+  @override
+  String get couldNotRestorePurchases => 'ਖਰੀਦਾਂ ਬਹਾਲ ਨਹੀਂ ਕਰ ਸਕੇ।';
+
+  @override
+  String get boostPack => 'ਬੂਸਟ ਪੈਕ';
+
+  @override
+  String get mostRecent => 'ਸਭ ਤੋਂ ਤਾਜ਼ਾ';
+
+  @override
+  String get mostInterested => 'ਸਭ ਤੋਂ ਦਿਲਚਸਪੀ';
+
+  @override
+  String get note => 'ਨੋਟ';
+
+  @override
+  String get noMatchesYet => 'ਅਜੇ ਮੈਚ ਨਹੀਂ';
+
+  @override
+  String get sendYourNote => 'ਆਪਣੀ ਨੋਟ ਭੇਜੋ';
+
+  @override
+  String get savedSearches => 'ਸੇਵ ਕੀਤੀਆਂ ਖੋਜਾਂ';
+
+  @override
+  String get searchSaved => 'ਖੋਜ ਸੇਵ ਕੀਤੀ';
+
+  @override
+  String get couldNotSaveSearch => 'ਖੋਜ ਸੇਵ ਨਹੀਂ ਕਰ ਸਕੇ';
+
+  @override
+  String get saveSearch => 'ਖੋਜ ਸੇਵ ਕਰੋ';
+
+  @override
+  String get preferredLanguage => 'ਤਰਜੀਹੀ ਭਾਸ਼ਾ';
+
+  @override
+  String get preferredLanguageSubtitle =>
+      'ਵਿਕਲਪਿਕ — ਸਮੱਗਰੀ ਅਤੇ ਮੈਚਾਂ ਲਈ ਵਰਤਾਂਗੇ।';
+
+  @override
+  String get mapFilters => 'ਨਕਸ਼ਾ ਫਿਲਟਰ';
+
+  @override
+  String get join => 'ਜੁੜੋ';
+
+  @override
+  String get rsvp => 'RSVP';
+
+  @override
+  String rsvpdTo(Object title) {
+    return '$title ਨੂੰ RSVP ਕੀਤਾ';
+  }
+
+  @override
+  String get confirm => 'ਪੁਸ਼ਟੀ ਕਰੋ';
+
+  @override
+  String get reset => 'ਰੀਸੈੱਟ';
+
+  @override
+  String get shellRequiresProvider => 'ਸ਼ੈੱਲ ਨੂੰ ਪ੍ਰੋਵਾਈਡਰ ਚਾਹੀਦਾ ਹੈ';
+
+  @override
+  String get add => 'ਜੋੜੋ';
+
+  @override
+  String get conversationStarter => 'ਗੱਲਬਾਤ ਸ਼ੁਰੂ';
+
+  @override
+  String switchToModeBody(Object mode) {
+    return 'ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ ਜਾਣਕਾਰੀ ਸਾਂਝੀ ਹੈ। ਤੁਸੀਂ $mode-ਵਿਸ਼ੇਸ਼ ਵੇਰਵੇ ਕਿਸੇ ਵੀ ਸਮੇਂ ਪੂਰੇ ਜਾਂ ਅੱਪਡੇਟ ਕਰ ਸਕਦੇ ਹੋ।';
+  }
+
+  @override
+  String get exportRequested => 'ਨਿਰਯਾਤ ਬੇਨਤੀ ਕੀਤੀ। ਤਿਆਰ ਹੋਣ \'ਤੇ ਈਮੇਲ ਕਰਾਂਗੇ।';
+
+  @override
+  String get deactivateAccountConfirmBody =>
+      'ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ ਓਹਲੇ ਹੋ ਜਾਵੇਗੀ ਅਤੇ ਤੁਹਾਨੂੰ ਮੈਚ ਜਾਂ ਮੈਸੇਜ ਨਹੀਂ ਮਿਲਣਗੇ। ਬਾਅਦ ਵਿੱਚ ਦੁਬਾਰਾ ਐਕਟਿਵੇਟ ਕਰ ਸਕਦੇ ਹੋ।';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'ਇਹ ਪੂਰਵਵਤ ਨਹੀਂ ਹੋ ਸਕਦਾ। ਤੁਹਾਡਾ ਸਾਰਾ ਡਾਟਾ ਪੱਕਾ ਮਿਟ ਜਾਵੇਗਾ।';
+
+  @override
+  String get showInVisitorsSubtitle =>
+      'ਬੰਦ ਹੋਣ \'ਤੇ, ਤੁਹਾਡੀਆਂ ਵਿਜ਼ਟ ਨੋਟ ਹੁੰਦੀਆਂ ਹਨ ਪਰ ਦੂਜਿਆਂ ਦੀਆਂ ਵਿਜ਼ਟਰ ਸੂਚੀਆਂ ਵਿੱਚ ਨਹੀਂ ਦਿਖੋਗੇ';
+
+  @override
+  String get hideFromDiscoverySubtitle =>
+      'ਖੋਜ ਅਤੇ ਸਿਫਾਰਿਸ਼ਾਂ ਤੋਂ ਆਪਣੀ ਪ੍ਰੋਫਾਈਲ ਅਸਥਾਈ ਓਹਲੇ ਕਰੋ';
+
+  @override
+  String get hideMyPhotos => 'ਮੇਰੀਆਂ ਫੋਟੋਆਂ ਓਹਲੇ ਕਰੋ';
+
+  @override
+  String get hideMyPhotosSubtitle =>
+      'ਦੂਜਿਆਂ ਨੂੰ ਤੁਹਾਡੀਆਂ ਫੋਟੋਆਂ ਦੇਖਣ ਲਈ ਬੇਨਤੀ ਕਰਨੀ ਪਵੇਗੀ; ਤੁਸੀਂ ਬੇਨਤੀਆਂ ਵਿੱਚ ਮਨਜ਼ੂਰ ਜਾਂ ਇਨਕਾਰ ਕਰੋਗੇ।';
+
+  @override
+  String get requestToViewPhotos => 'ਫੋਟੋਆਂ ਦੇਖਣ ਦੀ ਬੇਨਤੀ ਕਰੋ';
+
+  @override
+  String get requestToViewPhotosSent => 'ਬੇਨਤੀ ਭੇਜੀ ਗਈ';
+
+  @override
+  String get photoViewRequestPending => 'ਬੇਨਤੀ ਲੰਬਿਤ';
+
+  @override
+  String get requestedToViewYourPhotos => 'ਤੁਹਾਡੀਆਂ ਫੋਟੋਆਂ ਦੇਖਣ ਦੀ ਬੇਨਤੀ ਕੀਤੀ';
+
+  @override
+  String get noPhotoViewRequests => 'ਫੋਟੋ ਦੇਖਣ ਦੀਆਂ ਕੋਈ ਬੇਨਤੀਆਂ ਨਹੀਂ';
+
+  @override
+  String get noPhotoViewRequestsBody =>
+      'ਜਦੋਂ ਕੋਈ ਤੁਹਾਡੀਆਂ ਫੋਟੋਆਂ ਦੇਖਣ ਦੀ ਬੇਨਤੀ ਕਰੇਗਾ, ਤੁਸੀਂ ਇੱਥੇ ਮਨਜ਼ੂਰ ਜਾਂ ਇਨਕਾਰ ਕਰ ਸਕਦੇ ਹੋ।';
+
+  @override
+  String get photoViewRequestAccepted => 'ਹੁਣ ਉਹ ਤੁਹਾਡੀਆਂ ਫੋਟੋਆਂ ਦੇਖ ਸਕਦੇ ਹਨ।';
+
+  @override
+  String get photoViewRequestsTab => 'ਫੋਟੋ ਦੇਖੋ';
+
+  @override
+  String get photosLocked => 'ਫੋਟੋਆਂ ਨਿੱਜੀ ਹਨ';
+
+  @override
+  String get photosLockedHint => 'ਉਨ੍ਹਾਂ ਦੀਆਂ ਫੋਟੋਆਂ ਦੇਖਣ ਲਈ ਐਕਸੈਸ ਬੇਨਤੀ ਕਰੋ';
+
+  @override
+  String blockUserMessage(Object name) {
+    return '$name ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ ਨਹੀਂ ਦੇਖ ਸਕੇਗਾ ਜਾਂ ਸੰਪਰਕ ਨਹੀਂ ਕਰ ਸਕੇਗਾ।';
+  }
+
+  @override
+  String get yourProfile => 'ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ';
+
+  @override
+  String get aboutYouShort => 'ਤੁਹਾਡੇ ਬਾਰੇ ਕੁਝ ਲਾਈਨਾਂ';
+
+  @override
+  String get recordYourIntro => 'ਆਪਣੀ ਜਾਣ-ਪਛਾਣ ਰਿਕਾਰਡ ਕਰੋ';
+
+  @override
+  String get heritageType => 'ਵਿਰਾਸਤ / ਭਾਰਤੀ ਕਿਸਮ';
+
+  @override
+  String get communityTagsOptional => 'ਕਮਿਊਨਿਟੀ ਟੈਗ (ਵਿਕਲਪਿਕ)';
+
+  @override
+  String get communityTagsSubtitle =>
+      'ਲਾਗੂ ਹੋਣ ਵਾਲੇ ਚੁਣੋ — ਸਰਕਲਾਂ ਅਤੇ ਈਵੈਂਟਾਂ ਲਈ ਮਦਦ।';
+
+  @override
+  String get familyOrientation => 'ਪਰਿਵਾਰ ਦਿਸ਼ਾ';
+
+  @override
+  String get familyOrientationSubtitle =>
+      'ਆਪਣੀ ਤਰਜੀਹ ਦਿਖਾਉਣ ਲਈ ਸਲਾਈਡ ਕਰੋ — ਕੋਈ ਗਲਤ ਜਵਾਬ ਨਹੀਂ।';
+
+  @override
+  String get traditionalLabel => 'ਰਵਾਇਤੀ';
+
+  @override
+  String get progressiveLabel => 'ਤਰੱਕੀਵਾਦੀ';
+
+  @override
+  String get dietLifestyleTitle => 'ਖਾਣ-ਪੀਣ / ਜੀਵਨ ਸ਼ੈਲੀ';
+
+  @override
+  String get dietLifestyleSubtitle => 'ਡੇਟ ਵਿਚਾਰਾਂ ਅਤੇ ਫਿਲਟਰਾਂ ਲਈ ਮਦਦ।';
+
+  @override
+  String get activeNowOnly => 'ਸਿਰਫ਼ ਹੁਣ ਐਕਟਿਵ';
+
+  @override
+  String get activeNowOnlySubtitle => 'ਪਿਛਲੇ 24 ਘੰਟਿਆਂ ਵਿੱਚ ਐਕਟਿਵ ਲੋਕ ਹੀ ਦਿਖਾਓ';
+
+  @override
+  String get locationBlur => 'ਟਿਕਾਣਾ ਧੁੰਦਲਾਪਣ';
+
+  @override
+  String get locationBlurSubtitle => 'ਸਹੀ ਪਿੰਨ ਦੀ ਬਜਾਏ ਲਗਭਗ ਇਲਾਕਾ ਦਿਖਾਓ';
+
+  @override
+  String get verificationTitle => 'ਪੁਸ਼ਟੀਕਰਨ';
+
+  @override
+  String get feetUnit => 'ਫੁੱਟ';
+
+  @override
+  String get inchesUnit => 'ਇੰਚ';
+
+  @override
+  String get clearButton => '—';
+
+  @override
+  String yearsFormat(Object age) {
+    return '$age ਸਾਲ';
+  }
+
+  @override
+  String get profileManagedByParent => 'ਪਾਲਕ ਦੁਆਰਾ ਪ੍ਰਬੰਧਿਤ ਪ੍ਰੋਫਾਈਲ';
+
+  @override
+  String get profileManagedByGuardian => 'ਗਾਰਡੀਅਨ ਦੁਆਰਾ ਪ੍ਰਬੰਧਿਤ ਪ੍ਰੋਫਾਈਲ';
+
+  @override
+  String get profileManagedBySibling => 'ਭਰਾ/ਭੈਣ ਦੁਆਰਾ ਪ੍ਰਬੰਧਿਤ ਪ੍ਰੋਫਾਈਲ';
+
+  @override
+  String get profileManagedByFriend => 'ਦੋਸਤ ਦੁਆਰਾ ਪ੍ਰਬੰਧਿਤ ਪ੍ਰੋਫਾਈਲ';
+
+  @override
+  String get blockUserMessageChat => 'ਉਹ ਹੁਣ ਤੁਹਾਡੇ ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਕਰ ਸਕਣਗੇ।';
+
+  @override
+  String get reportUserMessageChat =>
+      'ਅਸੀਂ ਸੁਰੱਖਿਆ ਗੰਭੀਰਤਾ ਨਾਲ ਲੈਂਦੇ ਹਾਂ ਅਤੇ ਇਸ ਰਿਪੋਰਟ ਦੀ ਜਾਂਚ ਕਰਾਂਗੇ।';
+
+  @override
+  String get blockUser => 'ਯੂਜ਼ਰ ਨੂੰ ਬਲਾਕ ਕਰੋ';
+
+  @override
+  String get matchToContinueOrUpgrade => 'ਜਾਰੀ ਰੱਖਣ ਜਾਂ ਅੱਪਗ੍ਰੇਡ ਲਈ ਮੈਚ ਕਰੋ';
+
+  @override
+  String get noConversationsYetBody =>
+      'ਜਦੋਂ ਤੁਸੀਂ ਕਿਸੇ ਨਾਲ ਮੈਚ ਕਰੋਗੇ, ਤੁਹਾਡੇ ਚੈਟ ਇੱਥੇ ਦਿਖਾਈ ਦੇਣਗੇ।';
+
+  @override
+  String get noChatRequestsBody =>
+      'ਜਦੋਂ ਕੋਈ ਤੁਹਾਨੂੰ ਦਿਲਚਸਪੀ ਭੇਜੇਗਾ, ਤਾਂ ਚੈਟ ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਇੱਥੇ ਸਵੀਕਾਰ ਕਰ ਸਕਦੇ ਹੋ।';
+
+  @override
+  String get noContactRequestsBody =>
+      'ਜਦੋਂ ਕੋਈ ਤੁਹਾਡਾ ਸੰਪਰਕ ਮੰਗੇਗਾ, ਤਾਂ ਇੱਥੇ ਸਵੀਕਾਰ ਜਾਂ ਰੱਦ ਕਰ ਸਕਦੇ ਹੋ।';
+
+  @override
+  String get requestedYourContact => 'ਤੁਹਾਡਾ ਸੰਪਰਕ ਮੰਗਿਆ ਹੈ';
+
+  @override
+  String get withdrawPriority => 'ਤਰਜੀਹ ਵਾਪਸ ਲਓ';
+
+  @override
+  String get withdrawPriorityAndInterest => 'ਤਰਜੀਹ (ਅਤੇ ਦਿਲਚਸਪੀ) ਵਾਪਸ ਲਓ';
+
+  @override
+  String get additionalDetailsOptional => 'ਵਾਧੂ ਵੇਰਵੇ (ਵਿਕਲਪਿਕ)';
+
+  @override
+  String get reportDetailsHint => 'ਕੋਈ ਸੰਦਰਭ ਜੋੜੋ ਜੋ ਸਾਡੀ ਟੀਮ ਦੀ ਮਦਦ ਕਰੇ';
 }

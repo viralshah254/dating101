@@ -49,8 +49,11 @@ class ShortlistScreen extends ConsumerWidget {
                 ref.invalidate(shortlistProvider);
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'recent', child: Text('Most recent')),
-                const PopupMenuItem(value: 'most_interested', child: Text('Most interested')),
+                PopupMenuItem(value: 'recent', child: Text(l.mostRecent)),
+                PopupMenuItem(
+                  value: 'most_interested',
+                  child: Text(l.mostInterested),
+                ),
               ],
             ),
           ],
@@ -64,12 +67,7 @@ class ShortlistScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _ShortlistedTab(),
-            _ShortlistedYouTab(),
-          ],
-        ),
+        body: TabBarView(children: [_ShortlistedTab(), _ShortlistedYouTab()]),
       ),
     );
   }
@@ -84,38 +82,50 @@ class _ShortlistedTab extends ConsumerStatefulWidget {
 class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   Future<void> _onLike(ProfileSummary p) async {
     try {
-      final result = await ref.read(interactionsRepositoryProvider).expressInterest(p.id, source: 'shortlist');
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      ref.invalidate(matchesRecommendedProvider);
+      final result = await ref
+          .read(interactionsRepositoryProvider)
+          .expressInterest(p.id, source: 'shortlist');
+      if (!context.mounted) return;
+      final ctx = context;
+      final l = AppLocalizations.of(ctx)!;
+      ref.invalidate(matchesRecommendedWithFallbackProvider);
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        showSuccessToast(context, l.toastMatchWith(p.name));
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}');
+        showSuccessToast(ctx, l.toastMatchWith(p.name));
+        ctx.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
+        );
       } else {
-        showSuccessToast(context, l.toastInterestSentTo(p.name));
+        showSuccessToast(ctx, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
-      if (!mounted) return;
-      showErrorToast(context, e.message);
+      if (!context.mounted) return;
+      final ctx = context;
+      showErrorToast(ctx, e.message);
     }
   }
 
   Future<void> _onSuperLike(ProfileSummary p) async {
     try {
-      final result = await ref.read(interactionsRepositoryProvider).expressPriorityInterest(p.id, source: 'shortlist');
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
+      final result = await ref
+          .read(interactionsRepositoryProvider)
+          .expressPriorityInterest(p.id, source: 'shortlist');
+      if (!context.mounted) return;
+      final ctx = context;
+      final l = AppLocalizations.of(ctx)!;
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        showSuccessToast(context, l.toastMatchWith(p.name));
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}');
+        showSuccessToast(ctx, l.toastMatchWith(p.name));
+        ctx.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
+        );
       } else {
-        showSuccessToast(context, l.toastInterestSentTo(p.name));
+        showSuccessToast(ctx, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
-      if (!mounted) return;
-      showErrorToast(context, e.message);
+      if (!context.mounted) return;
+      final ctx = context;
+      showErrorToast(ctx, e.message);
     }
   }
 
@@ -123,72 +133,91 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
-      final threadId = await ref.read(chatRepositoryProvider).createThread(p.id, mode: modeStr);
-      if (!mounted) return;
-      context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
+      final threadId = await ref
+          .read(chatRepositoryProvider)
+          .createThread(p.id, mode: modeStr);
+      if (!context.mounted) return;
+      final ctx = context;
+      ctx.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
     } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!context.mounted) return;
+      final ctx = context;
+      ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
-          content: Text(e.code == 'CONNECTION_REQUIRED' ? 'Send or accept an interest first' : e.message),
+          content: Text(
+            e.code == 'CONNECTION_REQUIRED'
+                ? 'Send or accept an interest first'
+                : e.message,
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      context.push('/chats');
+      ctx.push('/chats');
     } catch (_) {
-      if (!mounted) return;
-      context.push('/chats');
+      if (!context.mounted) return;
+      final ctx = context;
+      ctx.push('/chats');
     }
   }
 
   Future<void> _onBlock(ProfileSummary p) async {
     final l = AppLocalizations.of(context)!;
     final reason = await showBlockReasonPicker(context);
-    if (reason == null || !mounted) return;
+    if (reason == null || !context.mounted) return;
+    final ctx = context;
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: ctx,
       builder: (ctx) => AlertDialog(
         title: Text(l.block),
         content: Text(
           '${l.block} ${p.name}? They won\'t be able to see your profile or contact you.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(l.block),
           ),
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !context.mounted) return;
     try {
-      await ref.read(safetyRepositoryProvider).block(
-        p.id,
-        reason,
-        source: 'shortlist',
-      );
-      if (!mounted) return;
+      await ref
+          .read(safetyRepositoryProvider)
+          .block(p.id, reason, source: 'shortlist');
+      if (!context.mounted) return;
+      final ctx = context;
       ref.invalidate(shortlistProvider);
       ref.invalidate(shortlistedIdsProvider);
       ref.invalidate(mutualMatchesProvider);
       ref.invalidate(matchedUserIdsProvider);
-      showSuccessToast(context, l.toastBlocked(p.name));
+      showSuccessToast(ctx, l.toastBlocked(p.name));
     } catch (_) {
-      if (!mounted) return;
-      showErrorToast(context, l.toastErrorGeneric);
+      if (!context.mounted) return;
+      final ctx = context;
+      showErrorToast(ctx, l.toastErrorGeneric);
     }
   }
 
-  Future<void> _showEditNoteDialog(BuildContext context, WidgetRef ref, ShortlistEntry entry) async {
+  Future<void> _showEditNoteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    ShortlistEntry entry,
+  ) async {
     if (entry.shortlistId == null) return;
     final controller = TextEditingController(text: entry.note ?? '');
     final l = AppLocalizations.of(context)!;
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Note'),
+        title: Text(l.note),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -199,7 +228,10 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
           maxLength: 500,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(l.save),
@@ -207,54 +239,69 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         ],
       ),
     );
-    if (result != true || !mounted) return;
+    if (result != true || !context.mounted) return;
     try {
-      await ref.read(shortlistRepositoryProvider).updateShortlistEntry(
-        entry.shortlistId!,
-        note: controller.text.trim().isEmpty ? null : controller.text.trim(),
-      );
-      if (!mounted) return;
+      await ref
+          .read(shortlistRepositoryProvider)
+          .updateShortlistEntry(
+            entry.shortlistId!,
+            note: controller.text.trim().isEmpty
+                ? null
+                : controller.text.trim(),
+          );
+      if (!context.mounted) return;
       ref.invalidate(shortlistProvider);
     } on ApiException catch (e) {
-      if (!mounted) return;
-      showErrorToast(context, e.message);
+      if (!context.mounted) return;
+      final ctx = context;
+      showErrorToast(ctx, e.message);
     }
   }
 
   Future<void> _onReport(ProfileSummary p) async {
     final l = AppLocalizations.of(context)!;
     final result = await showReportReasonPicker(context);
-    if (result == null || !mounted) return;
+    if (result == null || !context.mounted) return;
+    final ctx = context;
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: ctx,
       builder: (ctx) => AlertDialog(
         title: Text(l.report),
         content: Text(
           '${l.report} ${p.name}? We take safety seriously and will review this profile.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.cancel),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(l.report),
           ),
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !context.mounted) return;
     try {
-      await ref.read(safetyRepositoryProvider).report(
-        p.id,
-        result.reason,
-        details: result.details,
-        source: 'shortlist',
-      );
-      if (!mounted) return;
-      showSuccessToast(context, l.toastReportSubmitted);
+      await ref
+          .read(safetyRepositoryProvider)
+          .report(
+            p.id,
+            result.reason,
+            details: result.details,
+            source: 'shortlist',
+          );
+      if (!context.mounted) return;
+      final ctx = context;
+      showSuccessToast(ctx, l.toastReportSubmitted);
     } catch (_) {
-      if (!mounted) return;
-      showErrorToast(context, l.toastErrorGeneric);
+      if (!context.mounted) return;
+      final ctx = context;
+      showErrorToast(ctx, l.toastErrorGeneric);
     }
   }
 
@@ -262,7 +309,8 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final async = ref.watch(shortlistProvider);
-    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final matchedIds =
+        ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
 
     return async.when(
       data: (entries) {
@@ -284,7 +332,8 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
             itemBuilder: (context, index) {
               final entry = entries[index];
               final p = entry.profile;
-              final cardHeight = (MediaQuery.sizeOf(context).height * 0.78).clamp(380.0, 520.0);
+              final cardHeight = (MediaQuery.sizeOf(context).height * 0.78)
+                  .clamp(380.0, 520.0);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Column(
@@ -298,17 +347,25 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
                           Expanded(
                             child: GestureDetector(
                               onTap: entry.shortlistId != null
-                                  ? () => _showEditNoteDialog(context, ref, entry)
+                                  ? () =>
+                                        _showEditNoteDialog(context, ref, entry)
                                   : null,
                               child: Text(
                                 entry.note != null && entry.note!.isNotEmpty
                                     ? entry.note!
                                     : 'Add note (e.g. Family liked, Call next week)',
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(
-                                    alpha: entry.note != null && entry.note!.isNotEmpty ? 0.7 : 0.5,
-                                  ),
-                                  fontStyle: entry.note != null && entry.note!.isNotEmpty
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(
+                                        alpha:
+                                            entry.note != null &&
+                                                entry.note!.isNotEmpty
+                                            ? 0.7
+                                            : 0.5,
+                                      ),
+                                  fontStyle:
+                                      entry.note != null &&
+                                          entry.note!.isNotEmpty
                                       ? FontStyle.italic
                                       : FontStyle.normal,
                                 ),
@@ -320,7 +377,8 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
                           if (entry.shortlistId != null)
                             IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 20),
-                              onPressed: () => _showEditNoteDialog(context, ref, entry),
+                              onPressed: () =>
+                                  _showEditNoteDialog(context, ref, entry),
                               style: IconButton.styleFrom(
                                 padding: const EdgeInsets.all(4),
                                 minimumSize: const Size(36, 36),
@@ -339,7 +397,9 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
                         onLike: () => _onLike(p),
                         onSuperLike: () => _onSuperLike(p),
                         onShortlist: () async {
-                          await ref.read(shortlistRepositoryProvider).removeFromShortlist(p.id);
+                          await ref
+                              .read(shortlistRepositoryProvider)
+                              .removeFromShortlist(p.id);
                           ref.invalidate(shortlistProvider);
                           ref.invalidate(shortlistedIdsProvider);
                         },
@@ -375,9 +435,9 @@ class _ShortlistedYouTab extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () async {
-              ref.invalidate(whoShortlistedMeProvider);
-              ref.invalidate(whoShortlistedMeCountProvider);
-            },
+        ref.invalidate(whoShortlistedMeProvider);
+        ref.invalidate(whoShortlistedMeCountProvider);
+      },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
@@ -462,7 +522,11 @@ class _WhoShortlistedMeContent extends StatelessWidget {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.people_outline, size: 40, color: onSurface.withValues(alpha: 0.3)),
+                          Icon(
+                            Icons.people_outline,
+                            size: 40,
+                            color: onSurface.withValues(alpha: 0.3),
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'No one has shortlisted you yet.',
@@ -478,14 +542,16 @@ class _WhoShortlistedMeContent extends StatelessWidget {
                 }
                 return Column(
                   children: list
-                      .map((e) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _BlurredPreviewCard(
-                              firstName: e.firstName,
-                              age: e.age,
-                              locked: false,
-                            ),
-                          ))
+                      .map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _BlurredPreviewCard(
+                            firstName: e.firstName,
+                            age: e.age,
+                            locked: false,
+                          ),
+                        ),
+                      )
                       .toList(),
                 );
               },
@@ -536,7 +602,11 @@ class _PremiumUpsellBanner extends StatelessWidget {
                   color: accent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.workspace_premium_rounded, color: accent, size: 22),
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  color: accent,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -593,12 +663,12 @@ class _BlurredPreviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: locked
-            ? onSurface.withValues(alpha: 0.04)
-            : surface,
+        color: locked ? onSurface.withValues(alpha: 0.04) : surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: locked ? onSurface.withValues(alpha: 0.08) : onSurface.withValues(alpha: 0.06),
+          color: locked
+              ? onSurface.withValues(alpha: 0.08)
+              : onSurface.withValues(alpha: 0.06),
         ),
       ),
       child: Row(
@@ -658,7 +728,11 @@ class _BlurredPreviewCard extends StatelessWidget {
                 color: onSurface.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.lock_rounded, size: 16, color: onSurface.withValues(alpha: 0.4)),
+              child: Icon(
+                Icons.lock_rounded,
+                size: 16,
+                color: onSurface.withValues(alpha: 0.4),
+              ),
             ),
         ],
       ),

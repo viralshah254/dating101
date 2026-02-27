@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_ctas.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ProfileWizardScreen extends StatefulWidget {
   const ProfileWizardScreen({super.key});
@@ -19,10 +20,25 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
   final _promptController = TextEditingController();
   final List<String> _selectedLifestyleTags = [];
 
-  static const _stepTitles = ['Basic info', 'Photos', 'Interests & prompts', 'Voice intro'];
+  static const _stepTitles = [
+    'Basic info',
+    'Photos',
+    'Interests & prompts',
+    'Voice intro',
+  ];
   static const _lifestyleTags = [
-    'Coffee lover', 'Fitness', 'Travel', 'Foodie', 'Arts', 'Music',
-    'Reading', 'Yoga', 'Tech', 'Volunteering', 'Dining out', 'Outdoors',
+    'Coffee lover',
+    'Fitness',
+    'Travel',
+    'Foodie',
+    'Arts',
+    'Music',
+    'Reading',
+    'Yoga',
+    'Tech',
+    'Volunteering',
+    'Dining out',
+    'Outdoors',
   ];
 
   @override
@@ -45,6 +61,7 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
@@ -53,7 +70,7 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Your profile'),
+            Text(l.yourProfile),
             Text(
               _stepTitles[_currentStep],
               style: AppTypography.bodySmall.copyWith(
@@ -80,7 +97,9 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
         children: [
           LinearProgressIndicator(
             value: _profileCompletion / 100,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation<Color>(accent),
           ),
           Expanded(
@@ -120,7 +139,10 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
-                      AppCTAs.completeProfile.replaceFirst('%s%', _profileCompletion.toString()),
+                      AppCTAs.completeProfile.replaceFirst(
+                        '%s%',
+                        _profileCompletion.toString(),
+                      ),
                       style: AppTypography.labelMedium.copyWith(
                         color: onSurface.withValues(alpha: 0.8),
                       ),
@@ -164,6 +186,7 @@ class _QuickProfileStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -192,7 +215,10 @@ class _QuickProfileStep extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Your name', style: AppTypography.labelLarge.copyWith(color: onSurface)),
+                  Text(
+                    l.yourName,
+                    style: AppTypography.labelLarge.copyWith(color: onSurface),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: nameController,
@@ -203,13 +229,17 @@ class _QuickProfileStep extends StatelessWidget {
                     onChanged: (_) => onChanged(),
                   ),
                   const SizedBox(height: 20),
-                  Text('A few lines about you', style: AppTypography.labelLarge.copyWith(color: onSurface)),
+                  Text(
+                    l.aboutYouShort,
+                    style: AppTypography.labelLarge.copyWith(color: onSurface),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: bioController,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      hintText: 'Share what matters to you — work, interests, what you\'re looking for.',
+                      hintText:
+                          'Share what matters to you — work, interests, what you\'re looking for.',
                       alignLabelWithHint: true,
                       border: OutlineInputBorder(),
                     ),
@@ -269,7 +299,9 @@ class _PhotosStep extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       'Tips for great photos',
-                      style: AppTypography.labelLarge.copyWith(color: onSurface),
+                      style: AppTypography.labelLarge.copyWith(
+                        color: onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -339,14 +371,19 @@ class _PhotoSlot extends StatelessWidget {
                 bottom: 6,
                 left: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: primary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     'Main',
-                    style: AppTypography.labelSmall.copyWith(color: Colors.white),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -389,14 +426,17 @@ class _PromptsAndTagsStep extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Answer a prompt so matches have something to talk about.',
-            style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.8)),
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.8),
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: promptController,
             maxLines: 2,
             decoration: const InputDecoration(
-              hintText: 'e.g. Best way to spend a Sunday? Chai and a book. Or: My ideal weekend is…',
+              hintText:
+                  'e.g. Best way to spend a Sunday? Chai and a book. Or: My ideal weekend is…',
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => onPromptChanged(),
@@ -412,7 +452,9 @@ class _PromptsAndTagsStep extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Select any that describe you. Helps with better matches.',
-            style: AppTypography.bodySmall.copyWith(color: onSurface.withValues(alpha: 0.8)),
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.8),
+            ),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -444,6 +486,7 @@ class _PromptsAndTagsStep extends StatelessWidget {
 class _VoiceIntroStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final primary = Theme.of(context).colorScheme.primary;
     return SingleChildScrollView(
@@ -483,15 +526,12 @@ class _VoiceIntroStep extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.mic, size: 20),
-              label: const Text('Record your intro'),
+              label: Text(l.recordYourIntro),
             ),
           ),
           const SizedBox(height: 12),
           Center(
-            child: TextButton(
-              onPressed: () {},
-              child: const Text('Skip for now'),
-            ),
+            child: TextButton(onPressed: () {}, child: Text(l.skipForNow)),
           ),
         ],
       ),

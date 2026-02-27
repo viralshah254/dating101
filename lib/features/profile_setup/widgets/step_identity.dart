@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../core/location/place_search_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
@@ -11,14 +14,19 @@ String? _genderPrefToDisplay(String? stored, AppMode mode, AppLocalizations l) {
   if (stored == null) return null;
   if (mode.isDating) {
     switch (stored) {
-      case 'Woman': return l.interestedInWomen;
-      case 'Man': return l.interestedInMen;
-      case 'Any': return l.interestedInEveryone;
+      case 'Woman':
+        return l.interestedInWomen;
+      case 'Man':
+        return l.interestedInMen;
+      case 'Any':
+        return l.interestedInEveryone;
     }
   } else {
     switch (stored) {
-      case 'Woman': return l.lookingForBride;
-      case 'Man': return l.lookingForGroom;
+      case 'Woman':
+        return l.lookingForBride;
+      case 'Man':
+        return l.lookingForGroom;
     }
   }
   return stored;
@@ -26,11 +34,20 @@ String? _genderPrefToDisplay(String? stored, AppMode mode, AppLocalizations l) {
 
 /// Convert display label back to normalized stored value.
 String _displayToGenderPref(String display, AppLocalizations l) {
-  if (display == l.lookingForBride || display == l.interestedInWomen) return 'Woman';
-  if (display == l.lookingForGroom || display == l.interestedInMen) return 'Man';
-  if (display == l.interestedInEveryone) return 'Any';
+  if (display == l.lookingForBride || display == l.interestedInWomen) {
+    return 'Woman';
+  }
+  if (display == l.lookingForGroom || display == l.interestedInMen) {
+    return 'Man';
+  }
+  if (display == l.interestedInEveryone) {
+    return 'Any';
+  }
   return display;
 }
+
+/// When non-null, only that part of the identity step is shown (for section-only edit screens).
+enum StepIdentityOnlySection { basic, physical }
 
 class StepIdentity extends StatelessWidget {
   const StepIdentity({
@@ -39,12 +56,16 @@ class StepIdentity extends StatelessWidget {
     required this.formData,
     required this.onChanged,
     this.isEditing = false,
+    this.onlySection,
   });
 
   final AppMode mode;
   final ProfileFormData formData;
   final VoidCallback onChanged;
   final bool isEditing;
+
+  /// When set, only that section is shown (for dedicated section edit screen).
+  final StepIdentityOnlySection? onlySection;
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +76,54 @@ class StepIdentity extends StatelessWidget {
     final forSelf = formData.isForSelf;
     final subject = formData.subjectName;
 
-    final title = isEditing
-        ? 'Edit your profile'
-        : (forSelf ? l.profileSetupTitle : l.dynSetupTitle(subject));
-    final subtitle = isEditing
-        ? 'Update your details. Some fields cannot be changed.'
-        : (forSelf ? l.profileSetupSubtitle : l.dynSetupSubtitle(subject));
+    if (onlySection == StepIdentityOnlySection.physical) {
+      return SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.physicalTitle,
+              style: AppTypography.displayLarge.copyWith(
+                color: onSurface,
+                fontSize: 28,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Update your physical attributes.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _PhysicalSection(
+              mode: mode,
+              formData: formData,
+              onChanged: onChanged,
+              accent: accent,
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      );
+    }
+
+    final isBasicOnly = onlySection == StepIdentityOnlySection.basic;
+    final title = isBasicOnly && isEditing
+        ? 'Your details'
+        : (isEditing
+              ? 'Edit your profile'
+              : (forSelf ? l.profileSetupTitle : l.dynSetupTitle(subject)));
+    final subtitle = isBasicOnly && isEditing
+        ? 'Name and date of birth cannot be changed after setup.'
+        : (isEditing
+              ? 'Update your details. Some fields cannot be changed.'
+              : (forSelf
+                    ? l.profileSetupSubtitle
+                    : l.dynSetupSubtitle(subject)));
     final nameLabel = forSelf ? l.yourName : l.dynName(subject);
     final genderLabel = forSelf ? l.genderQuestion : l.dynGender(subject);
     final dobLabel = forSelf ? l.dateOfBirth : l.dynDob(subject);
@@ -70,9 +133,11 @@ class StepIdentity extends StatelessWidget {
     String nameHint;
     if (forSelf) {
       nameHint = l.nameHint;
-    } else if (formData.creatingFor == 'son' || formData.creatingFor == 'brother') {
+    } else if (formData.creatingFor == 'son' ||
+        formData.creatingFor == 'brother') {
       nameHint = l.dynNameHintSon;
-    } else if (formData.creatingFor == 'daughter' || formData.creatingFor == 'sister') {
+    } else if (formData.creatingFor == 'daughter' ||
+        formData.creatingFor == 'sister') {
       nameHint = l.dynNameHintDaughter;
     } else {
       nameHint = l.dynNameHintGeneric;
@@ -88,18 +153,19 @@ class StepIdentity extends StatelessWidget {
             title,
             style: AppTypography.displayLarge.copyWith(
               color: onSurface,
-              fontSize: 32,
-              height: 1.15,
+              fontSize: isBasicOnly && isEditing ? 26 : 32,
+              height: 1.2,
             ),
           ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.08, end: 0),
           const SizedBox(height: 8),
           Text(
             subtitle,
             style: AppTypography.bodyMedium.copyWith(
-              color: onSurface.withValues(alpha: 0.6),
+              color: onSurface.withValues(alpha: 0.65),
+              height: 1.4,
             ),
           ).animate().fadeIn(delay: 100.ms),
-          const SizedBox(height: 32),
+          SizedBox(height: isBasicOnly && isEditing ? 28 : 32),
 
           // ── Creating for (matrimony only, first-time setup only) ──
           if (mode.isMatrimony && !isEditing) ...[
@@ -117,10 +183,12 @@ class StepIdentity extends StatelessWidget {
             hint: nameHint,
             textInputAction: TextInputAction.next,
             readOnly: isEditing,
-            onChanged: isEditing ? null : (v) {
-              formData.name = ProfileFormData.toTitleCase(v);
-              onChanged();
-            },
+            onChanged: isEditing
+                ? null
+                : (v) {
+                    formData.name = ProfileFormData.toTitleCase(v);
+                    onChanged();
+                  },
           ),
           if (isEditing) ...[
             const SizedBox(height: 4),
@@ -132,7 +200,9 @@ class StepIdentity extends StatelessWidget {
               ),
             ),
           ],
-          if (!isEditing && formData.name.trim().isNotEmpty && !ProfileFormData.isNameValid(formData.name)) ...[
+          if (!isEditing &&
+              formData.name.trim().isNotEmpty &&
+              !ProfileFormData.isNameValid(formData.name)) ...[
             const SizedBox(height: 6),
             Text(
               l.nameValidationHint,
@@ -144,11 +214,15 @@ class StepIdentity extends StatelessWidget {
           const SizedBox(height: 24),
 
           // ── About me (first page, after name) ────────────────────
-          _SectionLabel(label: forSelf ? l.profileBuilderAbout : l.dynAboutTitle(subject)),
+          _SectionLabel(
+            label: forSelf ? l.profileBuilderAbout : l.dynAboutTitle(subject),
+          ),
           const SizedBox(height: 8),
           _StyledMultilineField(
             value: formData.bio,
-            hint: forSelf ? 'Write a few lines about yourself...' : l.dynAboutHint(subject),
+            hint: forSelf
+                ? 'Write a few lines about yourself...'
+                : l.dynAboutHint(subject),
             onChanged: (v) {
               formData.bio = v;
               onChanged();
@@ -158,7 +232,7 @@ class StepIdentity extends StatelessWidget {
 
           // ── Gender (locked in edit mode) ────────────────────────
           _SectionLabel(label: genderLabel, mandatory: !isEditing),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           IgnorePointer(
             ignoring: isEditing,
             child: Opacity(
@@ -170,7 +244,8 @@ class StepIdentity extends StatelessWidget {
                   formData.gender = v;
                   if (v == l.genderMan && formData.interestedIn == null) {
                     formData.interestedIn = 'Woman';
-                  } else if (v == l.genderWoman && formData.interestedIn == null) {
+                  } else if (v == l.genderWoman &&
+                      formData.interestedIn == null) {
                     formData.interestedIn = 'Man';
                   }
                   onChanged();
@@ -181,11 +256,17 @@ class StepIdentity extends StatelessWidget {
           const SizedBox(height: 24),
 
           // ── Partner gender preference ───────────────────────────
-          _SectionLabel(label: mode.isDating ? l.interestedIn : l.lookingForPartner),
-          const SizedBox(height: 12),
+          _SectionLabel(
+            label: mode.isDating ? l.interestedIn : l.lookingForPartner,
+          ),
+          const SizedBox(height: 10),
           _ChipSelector(
             options: mode.isDating
-                ? [l.interestedInWomen, l.interestedInMen, l.interestedInEveryone]
+                ? [
+                    l.interestedInWomen,
+                    l.interestedInMen,
+                    l.interestedInEveryone,
+                  ]
                 : [l.lookingForBride, l.lookingForGroom],
             selected: _genderPrefToDisplay(formData.interestedIn, mode, l),
             onSelected: (v) {
@@ -197,7 +278,7 @@ class StepIdentity extends StatelessWidget {
 
           // ── Date of birth (locked in edit mode) ──────────────────
           _SectionLabel(label: dobLabel, mandatory: !isEditing),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           IgnorePointer(
             ignoring: isEditing,
             child: Opacity(
@@ -206,6 +287,10 @@ class StepIdentity extends StatelessWidget {
                 value: formData.dateOfBirth,
                 onChanged: (d) {
                   formData.dateOfBirth = d;
+                  // Picker only allows dates 18+ years ago; auto-check confirmation.
+                  if (ProfileFormData.isAtLeast18(d)) {
+                    formData.confirmedAge18 = true;
+                  }
                   onChanged();
                 },
               ),
@@ -221,7 +306,9 @@ class StepIdentity extends StatelessWidget {
               ),
             ),
           ],
-          if (!isEditing && formData.dateOfBirth != null && !ProfileFormData.isAtLeast18(formData.dateOfBirth)) ...[
+          if (!isEditing &&
+              formData.dateOfBirth != null &&
+              !ProfileFormData.isAtLeast18(formData.dateOfBirth)) ...[
             const SizedBox(height: 6),
             Text(
               l.dobMustBe18,
@@ -232,38 +319,41 @@ class StepIdentity extends StatelessWidget {
           ],
           if (!isEditing) ...[
             const SizedBox(height: 16),
-            _ConfirmAge18Checkbox(
-              formData: formData,
-              onChanged: onChanged,
-            ),
+            _ConfirmAge18Checkbox(formData: formData, onChanged: onChanged),
           ],
           const SizedBox(height: 24),
 
-          // ── Location ────────────────────────────────────────────
+          // ── Location (searchable from place API) ─────────────────────
           _SectionLabel(label: locationLabel),
-          const SizedBox(height: 8),
-          _StyledTextField(
+          const SizedBox(height: 10),
+          _IdentityPlaceSearchField(
+            label: locationLabel,
             value: formData.location,
-            hint: 'e.g. Mumbai, New York',
+            hint: l.currentLocationHint,
             icon: Icons.location_on_outlined,
-            textInputAction: TextInputAction.next,
-            onChanged: (v) {
-              formData.location = v;
+            onSelected: (s) {
+              final city = s.city ?? s.displayName.split(',').first.trim();
+              formData.location = s.country.isNotEmpty
+                  ? '$city, ${s.country}'
+                  : city;
               onChanged();
             },
           ),
 
           if (mode.isMatrimony) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             _SectionLabel(label: hometownLabel),
-            const SizedBox(height: 8),
-            _StyledTextField(
+            const SizedBox(height: 10),
+            _IdentityPlaceSearchField(
+              label: hometownLabel,
               value: formData.hometown,
-              hint: 'e.g. Jaipur, Hyderabad',
+              hint: l.placeOfBirthHint,
               icon: Icons.home_outlined,
-              textInputAction: TextInputAction.done,
-              onChanged: (v) {
-                formData.hometown = v;
+              onSelected: (s) {
+                final city = s.city ?? s.displayName.split(',').first.trim();
+                formData.hometown = s.country.isNotEmpty
+                    ? '$city, ${s.country}'
+                    : city;
                 onChanged();
               },
             ),
@@ -271,22 +361,23 @@ class StepIdentity extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // ── Physical & Personal section ─────────────────────────
-          _PhysicalSection(
-            mode: mode,
-            formData: formData,
-            onChanged: onChanged,
-            accent: accent,
-          ),
-
-          const SizedBox(height: 40),
+          // ── Physical & Personal section (omit when only basic) ─────
+          if (onlySection != StepIdentityOnlySection.basic)
+            _PhysicalSection(
+              mode: mode,
+              formData: formData,
+              onChanged: onChanged,
+              accent: accent,
+            ),
+          if (onlySection != StepIdentityOnlySection.basic)
+            const SizedBox(height: 40),
         ],
       ),
     );
   }
 }
 
-// ── Physical / Personal card (height, body type, marital status, complexion) ──
+// ── Physical only (height, body type, complexion, disability; marital is in Religion & Community) ──
 
 class _PhysicalSection extends StatelessWidget {
   const _PhysicalSection({
@@ -308,7 +399,7 @@ class _PhysicalSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -319,8 +410,8 @@ class _PhysicalSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.accessibility_new_outlined, size: 20, color: accent),
-              const SizedBox(width: 8),
+              Icon(Icons.accessibility_new_outlined, size: 22, color: accent),
+              const SizedBox(width: 10),
               Text(
                 l.physicalTitle,
                 style: AppTypography.titleMedium.copyWith(
@@ -336,7 +427,7 @@ class _PhysicalSection extends StatelessWidget {
 
           // Height picker
           _SectionLabel(label: l.heightQuestion),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _HeightPicker(
             value: formData.heightCm,
             onChanged: (v) {
@@ -344,13 +435,19 @@ class _PhysicalSection extends StatelessWidget {
               onChanged();
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Body type
           _SectionLabel(label: l.bodyTypeQuestion),
           const SizedBox(height: 10),
           _ChipSelector(
-            options: [l.bodyTypeSlim, l.bodyTypeAthletic, l.bodyTypeAverage, l.bodyTypeHeavy, l.bodyTypeCurvy],
+            options: [
+              l.bodyTypeSlim,
+              l.bodyTypeAthletic,
+              l.bodyTypeAverage,
+              l.bodyTypeHeavy,
+              l.bodyTypeCurvy,
+            ],
             selected: formData.bodyType,
             onSelected: (v) {
               formData.bodyType = v;
@@ -359,13 +456,18 @@ class _PhysicalSection extends StatelessWidget {
           ),
 
           if (mode.isMatrimony) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Complexion
             _SectionLabel(label: l.complexionQuestion),
             const SizedBox(height: 10),
             _ChipSelector(
-              options: [l.complexionFair, l.complexionWheatish, l.complexionDark, l.complexionPreferNot],
+              options: [
+                l.complexionFair,
+                l.complexionWheatish,
+                l.complexionDark,
+                l.complexionPreferNot,
+              ],
               selected: formData.complexion,
               onSelected: (v) {
                 formData.complexion = v;
@@ -374,20 +476,6 @@ class _PhysicalSection extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 20),
-
-          // Marital status
-          _SectionLabel(label: l.maritalStatus),
-          const SizedBox(height: 10),
-          _ChipSelector(
-            options: [l.neverMarried, l.divorced, l.widowed, l.awaitingDivorce],
-            selected: formData.maritalStatus,
-            onSelected: (v) {
-              formData.maritalStatus = v;
-              onChanged();
-            },
-          ),
-
           if (mode.isMatrimony) ...[
             const SizedBox(height: 20),
 
@@ -395,7 +483,11 @@ class _PhysicalSection extends StatelessWidget {
             _SectionLabel(label: l.disabilityQuestion),
             const SizedBox(height: 10),
             _ChipSelector(
-              options: [l.disabilityNone, l.disabilityPhysical, l.disabilityPreferNot],
+              options: [
+                l.disabilityNone,
+                l.disabilityPhysical,
+                l.disabilityPreferNot,
+              ],
               selected: formData.disability,
               onSelected: (v) {
                 formData.disability = v;
@@ -448,6 +540,7 @@ class _HeightPickerState extends State<_HeightPicker> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
         int tmpFeet = _feet;
         int tmpInches = _inches;
         return StatefulBuilder(
@@ -459,7 +552,8 @@ class _HeightPickerState extends State<_HeightPicker> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: Theme.of(ctx).dividerColor,
                       borderRadius: BorderRadius.circular(2),
@@ -468,21 +562,27 @@ class _HeightPickerState extends State<_HeightPicker> {
                   const SizedBox(height: 20),
                   Text(
                     '$tmpFeet\' $tmpInches" — $cm cm',
-                    style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
+                    style: AppTypography.titleLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _WheelColumn(
-                        label: 'ft',
-                        min: 4, max: 7, value: tmpFeet,
+                        label: l.feetUnit,
+                        min: 4,
+                        max: 7,
+                        value: tmpFeet,
                         onChanged: (v) => setBS(() => tmpFeet = v),
                       ),
                       const SizedBox(width: 32),
                       _WheelColumn(
-                        label: 'in',
-                        min: 0, max: 11, value: tmpInches,
+                        label: l.inchesUnit,
+                        min: 0,
+                        max: 11,
+                        value: tmpInches,
                         onChanged: (v) => setBS(() => tmpInches = v),
                       ),
                     ],
@@ -501,9 +601,17 @@ class _HeightPickerState extends State<_HeightPicker> {
                         Navigator.pop(ctx);
                       },
                       style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                      child: const Text('Confirm', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        l.confirm,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -533,17 +641,29 @@ class _HeightPickerState extends State<_HeightPicker> {
         ),
         child: Row(
           children: [
-            Icon(Icons.straighten, size: 20, color: onSurface.withValues(alpha: 0.5)),
+            Icon(
+              Icons.straighten,
+              size: 20,
+              color: onSurface.withValues(alpha: 0.5),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                hasValue ? '$_feet\' $_inches" — $_totalCm cm' : 'Tap to select height',
+                hasValue
+                    ? '$_feet\' $_inches" — $_totalCm cm'
+                    : 'Tap to select height',
                 style: AppTypography.bodyLarge.copyWith(
-                  color: hasValue ? onSurface : onSurface.withValues(alpha: 0.4),
+                  color: hasValue
+                      ? onSurface
+                      : onSurface.withValues(alpha: 0.4),
                 ),
               ),
             ),
-            Icon(Icons.unfold_more, size: 20, color: accent.withValues(alpha: 0.6)),
+            Icon(
+              Icons.unfold_more,
+              size: 20,
+              color: accent.withValues(alpha: 0.6),
+            ),
           ],
         ),
       ),
@@ -574,7 +694,12 @@ class _WheelColumn extends StatelessWidget {
 
     return Column(
       children: [
-        Text(label, style: AppTypography.labelSmall.copyWith(color: onSurface.withValues(alpha: 0.5))),
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: onSurface.withValues(alpha: 0.5),
+          ),
+        ),
         const SizedBox(height: 8),
         SizedBox(
           height: 160,
@@ -594,8 +719,12 @@ class _WheelColumn extends StatelessWidget {
                     '${items[i]}',
                     style: TextStyle(
                       fontSize: isSelected ? 24 : 18,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                      color: isSelected ? accent : onSurface.withValues(alpha: 0.35),
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w400,
+                      color: isSelected
+                          ? accent
+                          : onSurface.withValues(alpha: 0.35),
                     ),
                   ),
                 );
@@ -623,7 +752,9 @@ class _OptionalBadge extends StatelessWidget {
       child: Text(
         l.optional,
         style: AppTypography.labelSmall.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurface.withValues(alpha: 0.45),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -643,7 +774,7 @@ class _SectionLabel extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTypography.labelLarge.copyWith(
+          style: AppTypography.titleSmall.copyWith(
             color: onSurface,
             fontWeight: FontWeight.w600,
           ),
@@ -669,7 +800,6 @@ class _StyledTextField extends StatefulWidget {
     required this.value,
     required this.hint,
     this.onChanged,
-    this.icon,
     this.textInputAction = TextInputAction.done,
     this.readOnly = false,
   });
@@ -677,7 +807,6 @@ class _StyledTextField extends StatefulWidget {
   final String value;
   final String hint;
   final ValueChanged<String>? onChanged;
-  final IconData? icon;
   final TextInputAction textInputAction;
   final bool readOnly;
 
@@ -711,19 +840,43 @@ class _StyledTextFieldState extends State<_StyledTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
     return TextField(
       controller: _ctrl,
       textInputAction: widget.textInputAction,
       readOnly: widget.readOnly,
       enabled: !widget.readOnly,
+      style: AppTypography.bodyLarge.copyWith(color: onSurface),
       decoration: InputDecoration(
         hintText: widget.hint,
-        prefixIcon: widget.icon != null ? Icon(widget.icon) : null,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        hintStyle: AppTypography.bodyLarge.copyWith(
+          color: onSurface.withValues(alpha: 0.4),
+        ),
+        prefixIcon: null,
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 52,
+          minHeight: 24,
+        ),
         filled: true,
         fillColor: widget.readOnly
-            ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-            : Theme.of(context).colorScheme.surfaceContainerHighest,
+            ? cs.surfaceContainerHighest.withValues(alpha: 0.6)
+            : cs.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: cs.primary, width: 1.5),
+        ),
       ),
       onChanged: widget.onChanged,
     );
@@ -770,16 +923,32 @@ class _StyledMultilineFieldState extends State<_StyledMultilineField> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
     return TextField(
       controller: _ctrl,
       maxLines: 4,
       textInputAction: TextInputAction.newline,
+      style: AppTypography.bodyLarge.copyWith(color: onSurface),
       decoration: InputDecoration(
         hintText: widget.hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        hintStyle: AppTypography.bodyLarge.copyWith(
+          color: onSurface.withValues(alpha: 0.4),
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: cs.primary, width: 1.5),
+        ),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        contentPadding: const EdgeInsets.all(16),
+        fillColor: cs.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.all(18),
       ),
       onChanged: widget.onChanged,
     );
@@ -806,24 +975,34 @@ class _ChipSelector extends StatelessWidget {
       runSpacing: 10,
       children: options.map((opt) {
         final isSelected = opt == selected;
-        return GestureDetector(
-          onTap: () => onSelected(opt),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected ? accent.withValues(alpha: 0.12) : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? accent : Theme.of(context).dividerColor,
-                width: isSelected ? 2 : 1,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => onSelected(opt),
+            borderRadius: BorderRadius.circular(12),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? accent.withValues(alpha: 0.12)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? accent : Theme.of(context).dividerColor,
+                  width: isSelected ? 1.5 : 1,
+                ),
               ),
-            ),
-            child: Text(
-              opt,
-              style: AppTypography.bodyMedium.copyWith(
-                color: isSelected ? accent : onSurface,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  opt,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isSelected ? accent : onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
               ),
             ),
           ),
@@ -834,7 +1013,10 @@ class _ChipSelector extends StatelessWidget {
 }
 
 class _ConfirmAge18Checkbox extends StatelessWidget {
-  const _ConfirmAge18Checkbox({required this.formData, required this.onChanged});
+  const _ConfirmAge18Checkbox({
+    required this.formData,
+    required this.onChanged,
+  });
 
   final ProfileFormData formData;
   final VoidCallback onChanged;
@@ -877,9 +1059,7 @@ class _ConfirmAge18Checkbox extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: onSurface,
-                ),
+                style: AppTypography.bodyMedium.copyWith(color: onSurface),
               ),
             ),
           ],
@@ -896,7 +1076,8 @@ class _DateOfBirthPicker extends StatelessWidget {
   final ValueChanged<DateTime> onChanged;
 
   static DateTime get _today => DateTime.now();
-  static DateTime get _maxDate => DateTime(_today.year - 18, _today.month, _today.day);
+  static DateTime get _maxDate =>
+      DateTime(_today.year - 18, _today.month, _today.day);
 
   @override
   Widget build(BuildContext context) {
@@ -905,34 +1086,47 @@ class _DateOfBirthPicker extends StatelessWidget {
         ? '${value!.day.toString().padLeft(2, '0')} / ${value!.month.toString().padLeft(2, '0')} / ${value!.year}'
         : 'DD / MM / YYYY';
 
-    return GestureDetector(
-      onTap: () async {
-        final picked = await _showEfficientDatePicker(
-          context: context,
-          initial: value ?? DateTime(_today.year - 25, 1, 1),
-          lastDate: _maxDate,
-        );
-        if (picked != null) onChanged(picked);
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.calendar_today_outlined, size: 20, color: onSurface.withValues(alpha: 0.5)),
-            const SizedBox(width: 12),
-            Text(
-              displayText,
-              style: AppTypography.bodyLarge.copyWith(
-                color: value != null ? onSurface : onSurface.withValues(alpha: 0.4),
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          final picked = await _showEfficientDatePicker(
+            context: context,
+            initial: value ?? DateTime(_today.year - 25, 1, 1),
+            lastDate: _maxDate,
+          );
+          if (picked != null) onChanged(picked);
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 22,
+                color: onSurface.withValues(alpha: 0.5),
               ),
-            ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  displayText,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: value != null
+                        ? onSurface
+                        : onSurface.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -990,7 +1184,11 @@ class _CreatingForSelector extends StatelessWidget {
       _RoleOption(l.profileCreatingForBrother, Icons.person_outline, 'brother'),
       _RoleOption(l.profileCreatingForSister, Icons.person_outline, 'sister'),
       _RoleOption(l.profileCreatingForFriend, Icons.people_outline, 'friend'),
-      _RoleOption(l.profileCreatingForRelative, Icons.family_restroom, 'relative'),
+      _RoleOption(
+        l.profileCreatingForRelative,
+        Icons.family_restroom,
+        'relative',
+      ),
     ];
 
     return Wrap(
@@ -1032,7 +1230,11 @@ class _CreatingForSelector extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(opt.icon, size: 18, color: isSelected ? accent : onSurface.withValues(alpha: 0.5)),
+                Icon(
+                  opt.icon,
+                  size: 18,
+                  color: isSelected ? accent : onSurface.withValues(alpha: 0.5),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   opt.label,
@@ -1046,6 +1248,153 @@ class _CreatingForSelector extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+/// Searchable place field for "Where do you live?" and "Where were you born?" (API-backed).
+class _IdentityPlaceSearchField extends StatefulWidget {
+  const _IdentityPlaceSearchField({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.icon,
+    required this.onSelected,
+  });
+
+  final String label;
+  final String value;
+  final String hint;
+  final IconData icon;
+  final void Function(PlaceSuggestion s) onSelected;
+
+  @override
+  State<_IdentityPlaceSearchField> createState() =>
+      _IdentityPlaceSearchFieldState();
+}
+
+class _IdentityPlaceSearchFieldState extends State<_IdentityPlaceSearchField> {
+  late final TextEditingController _ctrl;
+  Timer? _debounce;
+  List<PlaceSuggestion> _suggestions = [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(_IdentityPlaceSearchField old) {
+    super.didUpdateWidget(old);
+    if (old.value != widget.value && widget.value != _ctrl.text) {
+      _ctrl.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged(String q) {
+    _debounce?.cancel();
+    if (q.trim().length < 2) {
+      setState(() {
+        _suggestions = [];
+        _loading = false;
+      });
+      return;
+    }
+    setState(() => _loading = true);
+    _debounce = Timer(const Duration(milliseconds: 400), () async {
+      final list = await PlaceSearchService.searchWithIndiaBias(q);
+      if (!mounted) return;
+      setState(() {
+        _suggestions = list;
+        _loading = false;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _ctrl,
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            prefixIcon: Icon(
+              widget.icon,
+              size: 22,
+              color: onSurface.withValues(alpha: 0.5),
+            ),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            suffixIcon: _loading
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : null,
+          ),
+          onChanged: _onTextChanged,
+          onSubmitted: (v) {
+            if (v.trim().isNotEmpty) {
+              widget.onSelected(
+                PlaceSuggestion(displayName: v.trim(), country: ''),
+              );
+            }
+          },
+        ),
+        if (_suggestions.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _suggestions.length,
+              itemBuilder: (context, i) {
+                final s = _suggestions[i];
+                return ListTile(
+                  title: Text(
+                    s.displayName,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onTap: () {
+                    _ctrl.text = s.displayName;
+                    setState(() => _suggestions = []);
+                    widget.onSelected(s);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

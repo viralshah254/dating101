@@ -101,7 +101,7 @@ Use **data-only** or **notification + data** messages so the Flutter app can ope
 | interactionId | Interaction id (e.g. for requests) | `int_123` |
 | matchId | Match id | `match_abc` |
 
-**Type values:** `interest_received`, `priority_interest_received`, `interest_accepted`, `interest_declined`, `mutual_match`, `profile_visited`, `new_message`.
+**Type values:** `interest_received`, `priority_interest_received`, `interest_accepted`, `interest_declined`, `mutual_match`, `profile_visited`, `new_message`, `contact_request_accepted`, `contact_request_declined`.
 
 ### Deep link paths (Flutter app)
 
@@ -111,10 +111,12 @@ The app uses these paths. Build `data` so the client can build the same path. Wh
 |--------|------|------------------|
 | Chat thread | `/chat/:threadId?otherUserId=...` | type: `new_message`, threadId, otherUserId |
 | Chats list | `/chats` | screen: `chats` |
-| Requests / community | `/community` | screen: `requests` or `community` |
+| Requests inbox | `/requests` | screen: `requests` or type: `interest_received` / `priority_interest_received` |
 | Matches | `/` (home) | screen: `matches` |
 | Profile | `/profile/:id` | profileId |
 | Visitors | `/community` | screen: `visitors` |
+| Contact request accepted | `/profile/:id` or `/` | type: `contact_request_accepted`, profileId |
+| Contact request declined | `/` | type: `contact_request_declined` |
 
 Example for **new message:**
 
@@ -192,6 +194,8 @@ PATCH /profile/me/notifications
 | mutualMatch | Push when you get a mutual match | true |
 | profileVisited | Push when someone views your profile | true |
 | newMessage | Push when you receive a new chat message | true |
+| contactRequestAccepted | Push when someone accepts your contact request | true |
+| contactRequestDeclined | Push when someone declines your contact request | false |
 
 Before sending a push for an event, check the recipient’s stored preferences and skip if the corresponding key is `false`.
 
@@ -208,8 +212,9 @@ Before sending a push for an event, check the recipient’s stored preferences a
 | 5 | On **mutual match**: send push to both users; respect `mutualMatch`. |
 | 6 | On **profile visit** (when recording visit): send push to profile owner; respect `profileVisited`. |
 | 7 | On **new chat message**: send push to the other participant; respect `newMessage`. Include `threadId` and `otherUserId` in `data`. |
-| 8 | Store and honour notification preferences from `PATCH /profile/me/notifications` (including `newMessage`). |
-| 9 | (Optional) Implement `DELETE /profile/me/fcm-token` for logout. |
+| 8 | On **contact request accepted/declined**: send push to the requester; respect `contactRequestAccepted` / `contactRequestDeclined`. Include `profileId` for accepted. |
+| 9 | Store and honour notification preferences from `PATCH /profile/me/notifications` (including `newMessage`, `contactRequestAccepted`, `contactRequestDeclined`). |
+| 10 | (Optional) Implement `DELETE /profile/me/fcm-token` for logout. |
 
 ---
 

@@ -62,7 +62,7 @@ String? notificationDataToPath(Map<String, dynamic>? data) {
   if (screen != null && screen.isNotEmpty) {
     switch (screen) {
       case 'requests':
-        return '/community'; // Community tab has requests
+        return '/requests';
       case 'chats':
         return '/chats';
       case 'matches':
@@ -90,11 +90,16 @@ String? notificationDataToPath(Map<String, dynamic>? data) {
       return '/';
     case 'interest_received':
     case 'priority_interest_received':
-      return '/community'; // Requests in community
+      return '/requests';
     case 'interest_declined':
       return '/';
     case 'profile_visited':
-      return '/community'; // Visitors
+      return '/community'; // Visitors tab
+    case 'contact_request_accepted':
+      if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
+      return '/';
+    case 'contact_request_declined':
+      return '/';
     default:
       return '/';
   }
@@ -133,6 +138,11 @@ class FirebaseNotificationService extends NotificationService {
       // Initial message (app opened from terminated state via notification)
       final initial = await FirebaseMessaging.instance.getInitialMessage();
       if (initial != null) _navigateFromData(initial.data);
+
+      // Re-register when FCM token changes (e.g. reinstall, app data cleared)
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+        onRegisterToken(newToken);
+      });
 
       _initialized = true;
     } on MissingPluginException {

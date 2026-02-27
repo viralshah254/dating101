@@ -52,6 +52,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     if (_filters.religion != null && _filters.religion!.isNotEmpty) c++;
     if (_filters.education != null && _filters.education!.isNotEmpty) c++;
     if (_filters.heightMinCm != null) c++;
+    if (_filters.diet != null && _filters.diet!.isNotEmpty) c++;
     setState(() => _activeFilterCount = c);
   }
 
@@ -84,10 +85,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(48),
-              child: _TabBarSection(
-                controller: _tabController,
-                accent: accent,
-              ),
+              child: _TabBarSection(controller: _tabController, accent: accent),
             ),
           ),
         ],
@@ -144,12 +142,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       final repo = ref.read(interactionsRepositoryProvider);
       final result = await repo.expressInterest(p.id, source: 'recommended');
       if (!mounted) return;
-      ref.invalidate(matchesRecommendedProvider);
+      ref.invalidate(matchesRecommendedWithFallbackProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}');
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
+        );
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -182,12 +182,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
         source: 'recommended',
       );
       if (!mounted) return;
-      ref.invalidate(matchesRecommendedProvider);
+      ref.invalidate(matchesRecommendedWithFallbackProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        context.push('/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}');
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
+        );
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -207,7 +209,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       if (!mounted) return;
       ref.invalidate(shortlistProvider);
       ref.invalidate(shortlistedIdsProvider);
-      ref.invalidate(matchesRecommendedProvider);
+      ref.invalidate(matchesRecommendedWithFallbackProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
     } on ApiException catch (e) {
@@ -226,14 +228,20 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
-      final threadId = await ref.read(chatRepositoryProvider).createThread(p.id, mode: modeStr);
+      final threadId = await ref
+          .read(chatRepositoryProvider)
+          .createThread(p.id, mode: modeStr);
       if (!mounted) return;
       context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.code == 'CONNECTION_REQUIRED' ? 'Send or accept an interest first' : e.message),
+          content: Text(
+            e.code == 'CONNECTION_REQUIRED'
+                ? 'Send or accept an interest first'
+                : e.message,
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -264,7 +272,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(l.block),
           ),
         ],
@@ -272,19 +282,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     );
     if (confirmed != true || !mounted) return;
     try {
-      await ref.read(safetyRepositoryProvider).block(
-            p.id,
-            reason,
-            source: 'discover',
-          );
+      await ref
+          .read(safetyRepositoryProvider)
+          .block(p.id, reason, source: 'discover');
       if (!mounted) return;
-      ref.invalidate(matchesRecommendedProvider);
-      ref.invalidate(matchesExploreProvider);
+      ref.invalidate(matchesRecommendedWithFallbackProvider);
+      ref.invalidate(matchesExploreWithFallbackProvider);
       ref.invalidate(mutualMatchesProvider);
       ref.invalidate(matchedUserIdsProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${p.name} ${l.block.toLowerCase()}ed'),
+          content: Text(l.toastBlocked(p.name)),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -292,7 +300,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Something went wrong. Please try again.'),
+          content: Text(l.toastErrorGeneric),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -318,7 +326,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(l.report),
           ),
         ],
@@ -326,7 +336,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     );
     if (confirmed != true || !mounted) return;
     try {
-      await ref.read(safetyRepositoryProvider).report(
+      await ref
+          .read(safetyRepositoryProvider)
+          .report(
             p.id,
             result.reason,
             details: result.details,
@@ -335,7 +347,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Report submitted. Thank you.'),
+          content: Text(l.reportSubmittedThankYou),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -343,7 +355,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Something went wrong. Please try again.'),
+          content: Text(l.toastErrorGeneric),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -373,22 +385,25 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     final defaultAgeMin = opts?.age.defaultMin ?? 21;
     final defaultAgeMax = opts?.age.defaultMax ?? 45;
     if (opts != null && _filters.ageMin == null && _filters.ageMax == null) {
-      ageRange = RangeValues(defaultAgeMin.toDouble(), defaultAgeMax.toDouble());
+      ageRange = RangeValues(
+        defaultAgeMin.toDouble(),
+        defaultAgeMax.toDouble(),
+      );
     }
     final cities = opts?.cities.options.isNotEmpty == true
         ? opts!.cities.options
-        : const [
-            'London', 'Mumbai', 'Delhi', 'Dubai', 'New York', 'Bangalore',
-          ];
+        : const ['London', 'Mumbai', 'Delhi', 'Dubai', 'New York', 'Bangalore'];
     final religions = opts?.religions.options.isNotEmpty == true
         ? opts!.religions.options
-        : const [
-            'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist',
-          ];
+        : const ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist'];
     final educationOptions = opts?.education.options.isNotEmpty == true
         ? opts!.education.options
         : const [
-            "Bachelor's", "Master's", 'Doctorate', 'Diploma', 'High School',
+            "Bachelor's",
+            "Master's",
+            'Doctorate',
+            'Diploma',
+            'High School',
           ];
 
     showModalBottomSheet<void>(
@@ -402,7 +417,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             return Container(
               decoration: BoxDecoration(
                 color: surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),
@@ -432,14 +449,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                         TextButton(
                           onPressed: () {
                             setSheetState(() {
-                              ageRange = RangeValues(defaultAgeMin.toDouble(), defaultAgeMax.toDouble());
+                              ageRange = RangeValues(
+                                defaultAgeMin.toDouble(),
+                                defaultAgeMax.toDouble(),
+                              );
                               city = null;
                               religion = null;
                               education = null;
                             });
                           },
                           child: Text(
-                            'Clear all',
+                            l.reset,
                             style: TextStyle(
                               color: accent,
                               fontWeight: FontWeight.w600,
@@ -468,14 +488,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                         children: [
                           Consumer(
                             builder: (ctx, ref, _) {
-                              final savedAsync = ref.watch(savedSearchesProvider);
+                              final savedAsync = ref.watch(
+                                savedSearchesProvider,
+                              );
                               return savedAsync.when(
                                 data: (list) {
-                                  if (list.isEmpty) return const SizedBox.shrink();
+                                  if (list.isEmpty)
+                                    return const SizedBox.shrink();
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
                                     child: _FilterSection(
-                                      label: 'Saved searches',
+                                      label: l.savedSearches,
                                       onSurface: onSurface,
                                       child: Wrap(
                                         spacing: 8,
@@ -497,11 +520,20 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                                             label: Text(ss.displayName),
                                             onPressed: () {
                                               setState(() {
-                                                _filters = MatchesSearchFilters.fromMap(ss.filters);
+                                                _filters =
+                                                    MatchesSearchFilters.fromMap(
+                                                      ss.filters,
+                                                    );
                                                 _updateFilterCount();
                                               });
-                                              ref.read(discoveryRepositoryProvider).markSavedSearchViewed(ss.id);
-                                              ref.invalidate(savedSearchesProvider);
+                                              ref
+                                                  .read(
+                                                    discoveryRepositoryProvider,
+                                                  )
+                                                  .markSavedSearchViewed(ss.id);
+                                              ref.invalidate(
+                                                savedSearchesProvider,
+                                              );
                                               _tabController.animateTo(2);
                                               Navigator.pop(ctx);
                                             },
@@ -517,13 +549,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                             },
                           ),
                           _FilterSection(
-                            label: 'Age range',
+                            label: l.ageRange,
                             onSurface: onSurface,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${ageRange.start.round()}',
@@ -547,62 +580,75 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                                   max: ageMax.toDouble(),
                                   divisions: (ageMax - ageMin).clamp(1, 50),
                                   activeColor: accent,
-                                  onChanged: (v) => setSheetState(() => ageRange = v),
+                                  onChanged: (v) =>
+                                      setSheetState(() => ageRange = v),
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
                           _FilterSection(
-                            label: 'City',
+                            label: l.city,
                             onSurface: onSurface,
                             child: Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: cities
-                                  .map((c) => _ChoiceChipFilter(
-                                        label: c,
-                                        selected: city == c,
-                                        accent: accent,
-                                        onTap: () => setSheetState(
-                                            () => city = city == c ? null : c),
-                                      ))
+                                  .map(
+                                    (c) => _ChoiceChipFilter(
+                                      label: c,
+                                      selected: city == c,
+                                      accent: accent,
+                                      onTap: () => setSheetState(
+                                        () => city = city == c ? null : c,
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                             ),
                           ),
                           const SizedBox(height: 16),
                           _FilterSection(
-                            label: 'Religion',
+                            label: l.religion,
                             onSurface: onSurface,
                             child: Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: religions
-                                  .map((r) => _ChoiceChipFilter(
-                                        label: r,
-                                        selected: religion == r,
-                                        accent: accent,
-                                        onTap: () => setSheetState(
-                                            () => religion = religion == r ? null : r),
-                                      ))
+                                  .map(
+                                    (r) => _ChoiceChipFilter(
+                                      label: r,
+                                      selected: religion == r,
+                                      accent: accent,
+                                      onTap: () => setSheetState(
+                                        () =>
+                                            religion = religion == r ? null : r,
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                             ),
                           ),
                           const SizedBox(height: 16),
                           _FilterSection(
-                            label: 'Education',
+                            label: l.educationLevel,
                             onSurface: onSurface,
                             child: Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: educationOptions
-                                  .map((e) => _ChoiceChipFilter(
-                                        label: e,
-                                        selected: education == e,
-                                        accent: accent,
-                                        onTap: () => setSheetState(() =>
-                                            education = education == e ? null : e),
-                                      ))
+                                  .map(
+                                    (e) => _ChoiceChipFilter(
+                                      label: e,
+                                      selected: education == e,
+                                      accent: accent,
+                                      onTap: () => setSheetState(
+                                        () => education = education == e
+                                            ? null
+                                            : e,
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                             ),
                           ),
@@ -637,20 +683,27 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                                 'ageMin': ageRange.start.round(),
                                 'ageMax': ageRange.end.round(),
                               };
-                              if (city != null && city!.isNotEmpty) filters['city'] = city!;
-                              if (religion != null && religion!.isNotEmpty) filters['religion'] = religion!;
-                              if (education != null && education!.isNotEmpty) filters['education'] = education!;
+                              if (city != null && city!.isNotEmpty)
+                                filters['city'] = city!;
+                              if (religion != null && religion!.isNotEmpty)
+                                filters['religion'] = religion!;
+                              if (education != null && education!.isNotEmpty)
+                                filters['education'] = education!;
                               try {
-                                await ref.read(discoveryRepositoryProvider).createSavedSearch(filters);
+                                await ref
+                                    .read(discoveryRepositoryProvider)
+                                    .createSavedSearch(filters);
                                 if (!ctx.mounted) return;
                                 ref.invalidate(savedSearchesProvider);
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(content: Text('Search saved')),
+                                  SnackBar(content: Text(l.searchSaved)),
                                 );
                               } catch (_) {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
-                                    const SnackBar(content: Text('Could not save search')),
+                                    SnackBar(
+                                      content: Text(l.couldNotSaveSearch),
+                                    ),
                                   );
                                 }
                               }
@@ -662,7 +715,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: const Text('Save search'),
+                            child: Text(l.saveSearch),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -672,15 +725,21 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                                   final ageMinVal = ageRange.start.round();
                                   final ageMaxVal = ageRange.end.round();
                                   _filters = MatchesSearchFilters(
-                                    ageMin: ageMinVal == defaultAgeMin ? null : ageMinVal,
-                                    ageMax: ageMaxVal == defaultAgeMax ? null : ageMaxVal,
+                                    ageMin: ageMinVal == defaultAgeMin
+                                        ? null
+                                        : ageMinVal,
+                                    ageMax: ageMaxVal == defaultAgeMax
+                                        ? null
+                                        : ageMaxVal,
                                     city: city,
                                     religion: religion,
                                     education: education,
                                   );
                                   _updateFilterCount();
                                   if (_activeFilterCount > 0) {
-                                    _tabController.animateTo(2); // Switch to Explore tab
+                                    _tabController.animateTo(
+                                      2,
+                                    ); // Switch to Explore tab
                                   }
                                 });
                                 Navigator.pop(ctx);
@@ -723,6 +782,7 @@ class _TabBarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Container(
@@ -742,13 +802,15 @@ class _TabBarSection extends StatelessWidget {
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: onSurface.withValues(alpha: 0.6),
-        labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
+        labelStyle: AppTypography.labelLarge.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
         unselectedLabelStyle: AppTypography.labelLarge,
-        tabs: const [
-          Tab(text: 'Recommended', height: 38),
-          Tab(text: 'Visitors', height: 38),
-          Tab(text: 'Search', height: 38),
-          Tab(text: 'Matches', height: 38),
+        tabs: [
+          Tab(text: l.matchesRecommended, height: 38),
+          Tab(text: l.navVisitors, height: 38),
+          Tab(text: l.matchesSearch, height: 38),
+          Tab(text: l.navMatches, height: 38),
         ],
       ),
     );
@@ -780,36 +842,49 @@ class _RecommendedTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
-    final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
-    final async = ref.watch(matchesRecommendedProvider);
+    final shortlistedIds =
+        ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        <String>{};
+    final matchedIds =
+        ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final async = ref.watch(matchesRecommendedWithFallbackProvider);
     return async.when(
-      data: (profiles) {
-        final filtered = profiles.where((p) => !matchedIds.contains(p.id)).toList();
+      data: (result) {
+        final filtered = result.profiles
+            .where((p) => !matchedIds.contains(p.id))
+            .toList();
         return _ProfileList(
-        profiles: filtered,
-        shortlistedIds: shortlistedIds,
-        sentInterestIds: sentInterestIds,
-        sentPriorityInterestIds: sentPriorityIds,
-        onTap: onTapProfile,
-        onLike: onLike,
-        onSuperLike: onSuperLike,
-        onShortlist: onShortlist,
-        onMessage: onMessage,
-        onUpgrade: onUpgrade,
-        onBlock: onBlock,
-        onReport: onReport,
-        emptyIcon: Icons.diversity_3_rounded,
-        emptyTitle: 'No recommendations yet',
-        emptyBody: 'Complete your profile and preferences to get AI-powered matches.',
+          profiles: filtered,
+          shortlistedIds: shortlistedIds,
+          sentInterestIds: sentInterestIds,
+          sentPriorityInterestIds: sentPriorityIds,
+          onTap: onTapProfile,
+          onLike: onLike,
+          onSuperLike: onSuperLike,
+          onShortlist: onShortlist,
+          onMessage: onMessage,
+          onUpgrade: onUpgrade,
+          onBlock: onBlock,
+          onReport: onReport,
+          emptyIcon: Icons.diversity_3_rounded,
+          emptyTitle: l.noRecommendationsYet,
+          emptyBody: l.noRecommendationsYetBody,
+          widenedSearchBanner: result.isWidenedSearch && filtered.isNotEmpty
+              ? _WidenedSearchBanner(
+                  title: l.searchWidenedTitle,
+                  body: l.searchWidenedBody,
+                )
+              : null,
         );
       },
       loading: () => const SkeletonCardList(),
       error: (_, __) => ErrorState(
         message: l.errorGeneric,
-        onRetry: () => ref.invalidate(matchesRecommendedProvider),
+        onRetry: () => ref.invalidate(matchesRecommendedWithFallbackProvider),
         retryLabel: l.retry,
       ),
     );
@@ -841,30 +916,38 @@ class _VisitorsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
-    final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final shortlistedIds =
+        ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        <String>{};
+    final matchedIds =
+        ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final async = ref.watch(visitorsProvider);
     return async.when(
       data: (profiles) {
-        final filtered = profiles.where((p) => !matchedIds.contains(p.id)).toList();
+        final filtered = profiles
+            .where((p) => !matchedIds.contains(p.id))
+            .toList();
         return _ProfileList(
-        profiles: filtered,
-        shortlistedIds: shortlistedIds,
-        sentInterestIds: sentInterestIds,
-        sentPriorityInterestIds: sentPriorityIds,
-        onTap: onTapProfile,
-        onLike: onLike,
-        onSuperLike: onSuperLike,
-        onShortlist: onShortlist,
-        onMessage: onMessage,
-        onUpgrade: onUpgrade,
-        emptyIcon: Icons.visibility_outlined,
-        emptyTitle: 'No visitors yet',
-        emptyBody: 'Profiles who viewed you will appear here. Complete your profile to get noticed.',
-        onBlock: onBlock,
-        onReport: onReport,
+          profiles: filtered,
+          shortlistedIds: shortlistedIds,
+          sentInterestIds: sentInterestIds,
+          sentPriorityInterestIds: sentPriorityIds,
+          onTap: onTapProfile,
+          onLike: onLike,
+          onSuperLike: onSuperLike,
+          onShortlist: onShortlist,
+          onMessage: onMessage,
+          onUpgrade: onUpgrade,
+          emptyIcon: Icons.visibility_outlined,
+          emptyTitle: 'No visitors yet',
+          emptyBody:
+              'Profiles who viewed you will appear here. Complete your profile to get noticed.',
+          onBlock: onBlock,
+          onReport: onReport,
         );
       },
       loading: () => const SkeletonCardList(),
@@ -907,45 +990,62 @@ class _ExploreTab extends ConsumerWidget {
     final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final exploreArgs = (mode: mode, filters: filters);
 
-    final shortlistedIds = ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
-    final sentInterestIds = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
-    final sentPriorityIds = ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final shortlistedIds =
+        ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        <String>{};
 
-    final hasFilters = filters.ageMin != null ||
+    final hasFilters =
+        filters.ageMin != null ||
         filters.ageMax != null ||
         (filters.city != null && filters.city!.isNotEmpty) ||
         (filters.religion != null && filters.religion!.isNotEmpty) ||
-        (filters.education != null && filters.education!.isNotEmpty);
+        (filters.education != null && filters.education!.isNotEmpty) ||
+        (filters.diet != null && filters.diet!.isNotEmpty) ||
+        filters.heightMinCm != null;
 
-    final matchedIds = ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
-    final async = ref.watch(matchesExploreProvider(exploreArgs));
+    final matchedIds =
+        ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final async = ref.watch(matchesExploreWithFallbackProvider(exploreArgs));
     return async.when(
-      data: (profiles) {
-        final filtered = profiles.where((p) => !matchedIds.contains(p.id)).toList();
+      data: (result) {
+        final filtered = result.profiles
+            .where((p) => !matchedIds.contains(p.id))
+            .toList();
         return _ProfileList(
-        profiles: filtered,
-        shortlistedIds: shortlistedIds,
-        sentInterestIds: sentInterestIds,
-        sentPriorityInterestIds: sentPriorityIds,
-        onTap: onTapProfile,
-        onLike: onLike,
-        onSuperLike: onSuperLike,
-        onShortlist: onShortlist,
-        onMessage: onMessage,
-        onUpgrade: onUpgrade,
-        emptyIcon: hasFilters ? Icons.search_off : Icons.explore_outlined,
-        emptyTitle: hasFilters ? 'No matches found' : 'Explore profiles',
-        emptyBody: hasFilters
-            ? 'Try adjusting your filters for more results.'
-            : 'Use the filter icon above to search by age, city, religion, education and more.',
-        onBlock: onBlock,
-        onReport: onReport,
+          profiles: filtered,
+          shortlistedIds: shortlistedIds,
+          sentInterestIds: sentInterestIds,
+          sentPriorityInterestIds: sentPriorityIds,
+          onTap: onTapProfile,
+          onLike: onLike,
+          onSuperLike: onSuperLike,
+          onShortlist: onShortlist,
+          onMessage: onMessage,
+          onUpgrade: onUpgrade,
+          emptyIcon: hasFilters ? Icons.search_off : Icons.explore_outlined,
+          emptyTitle: hasFilters ? 'No matches found' : 'Explore profiles',
+          emptyBody: hasFilters
+              ? 'Try adjusting your filters for more results.'
+              : 'Use the filter icon above to search by age, city, religion, education and more.',
+          onBlock: onBlock,
+          onReport: onReport,
+          widenedSearchBanner: result.isWidenedSearch && filtered.isNotEmpty
+              ? _WidenedSearchBanner(
+                  title: l.searchWidenedTitle,
+                  body: l.searchWidenedBody,
+                )
+              : null,
         );
       },
       loading: () => const SkeletonCardList(),
       error: (_, __) => ErrorState(
         message: l.errorGeneric,
-        onRetry: () => ref.invalidate(matchesExploreProvider(exploreArgs)),
+        onRetry: () =>
+            ref.invalidate(matchesExploreWithFallbackProvider(exploreArgs)),
         retryLabel: l.retry,
       ),
     );
@@ -975,8 +1075,9 @@ class _MatchesTab extends ConsumerWidget {
         if (entries.isEmpty) {
           return EmptyState(
             icon: Icons.favorite_border_rounded,
-            title: 'No matches yet',
-            body: 'When you and someone else both express interest, you\'ll match and appear here.',
+            title: l.noMatchesYet,
+            body:
+                'When you and someone else both express interest, you\'ll match and appear here.',
           );
         }
         final onSurface = Theme.of(context).colorScheme.onSurface;
@@ -996,19 +1097,26 @@ class _MatchesTab extends ConsumerWidget {
                   onTap: () => onTapProfile(p),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: onSurface.withValues(alpha: 0.1),
-                          backgroundImage: p.imageUrl != null && p.imageUrl!.isNotEmpty
+                          backgroundImage:
+                              p.imageUrl != null && p.imageUrl!.isNotEmpty
                               ? NetworkImage(p.imageUrl!)
                               : null,
                           child: p.imageUrl == null || p.imageUrl!.isEmpty
                               ? Text(
-                                  (p.name.isNotEmpty ? p.name[0] : '?').toUpperCase(),
-                                  style: AppTypography.titleMedium.copyWith(color: onSurface.withValues(alpha: 0.6)),
+                                  (p.name.isNotEmpty ? p.name[0] : '?')
+                                      .toUpperCase(),
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: onSurface.withValues(alpha: 0.6),
+                                  ),
                                 )
                               : null,
                         ),
@@ -1036,7 +1144,8 @@ class _MatchesTab extends ConsumerWidget {
                                   ),
                                 ),
                               ],
-                              if (entry.lastMessage != null && entry.lastMessage!.isNotEmpty) ...[
+                              if (entry.lastMessage != null &&
+                                  entry.lastMessage!.isNotEmpty) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   entry.lastMessage!,
@@ -1052,13 +1161,21 @@ class _MatchesTab extends ConsumerWidget {
                         ),
                         IconButton(
                           onPressed: () => onMessage(p),
-                          icon: Icon(Icons.chat_bubble_outline_rounded, color: accent),
+                          icon: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            color: accent,
+                          ),
                           tooltip: 'Message',
                         ),
                         PopupMenuButton<String>(
-                          icon: Icon(Icons.more_vert, color: onSurface.withValues(alpha: 0.6)),
+                          icon: Icon(
+                            Icons.more_vert,
+                            color: onSurface.withValues(alpha: 0.6),
+                          ),
                           padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           onSelected: (v) {
                             if (v == 'block') onBlock(p);
                             if (v == 'report') onReport(p);
@@ -1068,7 +1185,11 @@ class _MatchesTab extends ConsumerWidget {
                               value: 'block',
                               child: Row(
                                 children: [
-                                  Icon(Icons.block, size: 20, color: Theme.of(context).colorScheme.error),
+                                  Icon(
+                                    Icons.block,
+                                    size: 20,
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                   const SizedBox(width: 12),
                                   Text(l.block),
                                 ],
@@ -1078,7 +1199,11 @@ class _MatchesTab extends ConsumerWidget {
                               value: 'report',
                               child: Row(
                                 children: [
-                                  Icon(Icons.flag_outlined, size: 20, color: Theme.of(context).colorScheme.error),
+                                  Icon(
+                                    Icons.flag_outlined,
+                                    size: 20,
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                   const SizedBox(width: 12),
                                   Text(l.report),
                                 ],
@@ -1107,6 +1232,58 @@ class _MatchesTab extends ConsumerWidget {
 
 // ─── Shared widgets ─────────────────────────────────────────────────────
 
+class _WidenedSearchBanner extends StatelessWidget {
+  const _WidenedSearchBanner({required this.title, required this.body});
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = AppColors.lightAccent;
+    return Material(
+      color: accent.withValues(alpha: 0.12),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline_rounded, size: 22, color: accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.labelLarge.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      body,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.85,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileList extends StatelessWidget {
   const _ProfileList({
     required this.profiles,
@@ -1124,6 +1301,7 @@ class _ProfileList extends StatelessWidget {
     required this.emptyIcon,
     required this.emptyTitle,
     required this.emptyBody,
+    this.widenedSearchBanner,
   });
   final List<ProfileSummary> profiles;
   final Set<String>? shortlistedIds;
@@ -1140,6 +1318,7 @@ class _ProfileList extends StatelessWidget {
   final IconData emptyIcon;
   final String emptyTitle;
   final String emptyBody;
+  final Widget? widenedSearchBanner;
 
   @override
   Widget build(BuildContext context) {
@@ -1151,14 +1330,20 @@ class _ProfileList extends StatelessWidget {
     const horizontalPadding = 12.0;
     const peekGap = 12.0;
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(horizontalPadding, 12, horizontalPadding, 24),
+    final list = ListView.builder(
+      padding: const EdgeInsets.fromLTRB(
+        horizontalPadding,
+        12,
+        horizontalPadding,
+        24,
+      ),
       itemCount: profiles.length,
       itemBuilder: (context, i) {
         final p = profiles[i];
         final isShortlisted = shortlistedIds?.contains(p.id) ?? false;
         final isInterested = sentInterestIds?.contains(p.id) ?? false;
-        final isPriorityInterested = sentPriorityInterestIds?.contains(p.id) ?? false;
+        final isPriorityInterested =
+            sentPriorityInterestIds?.contains(p.id) ?? false;
         return Padding(
           padding: const EdgeInsets.only(bottom: peekGap),
           child: SizedBox(
@@ -1182,6 +1367,17 @@ class _ProfileList extends StatelessWidget {
         );
       },
     );
+    if (widenedSearchBanner != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          widenedSearchBanner!,
+          Expanded(child: list),
+        ],
+      );
+    }
+    return list;
   }
 }
 
@@ -1201,7 +1397,7 @@ class _FilterButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Tooltip(
-        message: 'Refine by age, city, religion, education and more',
+        message: AppLocalizations.of(context)!.refineTooltip,
         child: GestureDetector(
           onTap: onTap,
           child: Container(
@@ -1218,20 +1414,27 @@ class _FilterButton extends StatelessWidget {
                 Icon(
                   Icons.tune_rounded,
                   size: 20,
-                  color: activeCount > 0 ? accent : onSurface.withValues(alpha: 0.7),
+                  color: activeCount > 0
+                      ? accent
+                      : onSurface.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Refine',
+                  AppLocalizations.of(context)!.refine,
                   style: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: activeCount > 0 ? accent : onSurface.withValues(alpha: 0.85),
+                    color: activeCount > 0
+                        ? accent
+                        : onSurface.withValues(alpha: 0.85),
                   ),
                 ),
                 if (activeCount > 0) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: accent,
                       borderRadius: BorderRadius.circular(10),
@@ -1337,7 +1540,8 @@ class _PriorityInterestDialog extends StatefulWidget {
   final String profileName;
 
   @override
-  State<_PriorityInterestDialog> createState() => _PriorityInterestDialogState();
+  State<_PriorityInterestDialog> createState() =>
+      _PriorityInterestDialogState();
 }
 
 class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
@@ -1351,6 +1555,7 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final surface = Theme.of(context).colorScheme.surface;
     final accent = AppColors.saffron;
@@ -1360,7 +1565,9 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
     final warmFill = Color.lerp(surface, accent, 0.06) ?? surface;
 
     final name = widget.profileName.split(' ').first;
-    final greeting = name.isNotEmpty ? 'Say hi to $name' : 'Send a personal note';
+    final greeting = name.isNotEmpty
+        ? 'Say hi to $name'
+        : 'Send a personal note';
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -1431,7 +1638,8 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                   minLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    hintText: 'e.g. Hi! Something in your profile caught my eye...',
+                    hintText:
+                        'e.g. Hi! Something in your profile caught my eye...',
                     hintStyle: TextStyle(
                       color: onSurface.withValues(alpha: 0.4),
                       fontWeight: FontWeight.w400,
@@ -1442,7 +1650,9 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide(color: onSurface.withValues(alpha: 0.12)),
+                      borderSide: BorderSide(
+                        color: onSurface.withValues(alpha: 0.12),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
@@ -1450,7 +1660,10 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                     ),
                     filled: true,
                     fillColor: warmFill,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 26),
@@ -1463,10 +1676,12 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                     backgroundColor: accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 0,
                   ),
-                  child: const Text('Send your note'),
+                  child: Text(l.sendYourNote),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
@@ -1474,7 +1689,7 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                   style: TextButton.styleFrom(
                     foregroundColor: onSurface.withValues(alpha: 0.55),
                   ),
-                  child: const Text('Skip for now'),
+                  child: Text(l.skipForNow),
                 ),
               ],
             ),

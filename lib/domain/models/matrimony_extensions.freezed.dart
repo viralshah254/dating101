@@ -35,7 +35,11 @@ mixin _$MatrimonyExtensions {
   String? get diet => throw _privateConstructorUsedError;
   String? get drinking => throw _privateConstructorUsedError;
   String? get smoking => throw _privateConstructorUsedError;
+  String? get exercise => throw _privateConstructorUsedError;
   HoroscopeDetails? get horoscope => throw _privateConstructorUsedError;
+  String? get aboutEducation => throw _privateConstructorUsedError;
+  List<EducationEntryDto>? get educationEntries =>
+      throw _privateConstructorUsedError;
 
   /// Create a copy of MatrimonyExtensions
   /// with the given fields replaced by the non-null parameter values.
@@ -70,7 +74,10 @@ abstract class $MatrimonyExtensionsCopyWith<$Res> {
     String? diet,
     String? drinking,
     String? smoking,
+    String? exercise,
     HoroscopeDetails? horoscope,
+    String? aboutEducation,
+    List<EducationEntryDto>? educationEntries,
   });
 
   $IncomeRangeCopyWith<$Res>? get incomeRange;
@@ -111,7 +118,10 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
     Object? diet = freezed,
     Object? drinking = freezed,
     Object? smoking = freezed,
+    Object? exercise = freezed,
     Object? horoscope = freezed,
+    Object? aboutEducation = freezed,
+    Object? educationEntries = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -187,10 +197,22 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
                 ? _value.smoking
                 : smoking // ignore: cast_nullable_to_non_nullable
                       as String?,
+            exercise: freezed == exercise
+                ? _value.exercise
+                : exercise // ignore: cast_nullable_to_non_nullable
+                      as String?,
             horoscope: freezed == horoscope
                 ? _value.horoscope
                 : horoscope // ignore: cast_nullable_to_non_nullable
                       as HoroscopeDetails?,
+            aboutEducation: freezed == aboutEducation
+                ? _value.aboutEducation
+                : aboutEducation // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            educationEntries: freezed == educationEntries
+                ? _value.educationEntries
+                : educationEntries // ignore: cast_nullable_to_non_nullable
+                      as List<EducationEntryDto>?,
           )
           as $Val,
     );
@@ -267,7 +289,10 @@ abstract class _$$MatrimonyExtensionsImplCopyWith<$Res>
     String? diet,
     String? drinking,
     String? smoking,
+    String? exercise,
     HoroscopeDetails? horoscope,
+    String? aboutEducation,
+    List<EducationEntryDto>? educationEntries,
   });
 
   @override
@@ -310,7 +335,10 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
     Object? diet = freezed,
     Object? drinking = freezed,
     Object? smoking = freezed,
+    Object? exercise = freezed,
     Object? horoscope = freezed,
+    Object? aboutEducation = freezed,
+    Object? educationEntries = freezed,
   }) {
     return _then(
       _$MatrimonyExtensionsImpl(
@@ -386,10 +414,22 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
             ? _value.smoking
             : smoking // ignore: cast_nullable_to_non_nullable
                   as String?,
+        exercise: freezed == exercise
+            ? _value.exercise
+            : exercise // ignore: cast_nullable_to_non_nullable
+                  as String?,
         horoscope: freezed == horoscope
             ? _value.horoscope
             : horoscope // ignore: cast_nullable_to_non_nullable
                   as HoroscopeDetails?,
+        aboutEducation: freezed == aboutEducation
+            ? _value.aboutEducation
+            : aboutEducation // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        educationEntries: freezed == educationEntries
+            ? _value._educationEntries
+            : educationEntries // ignore: cast_nullable_to_non_nullable
+                  as List<EducationEntryDto>?,
       ),
     );
   }
@@ -417,8 +457,11 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     this.diet,
     this.drinking,
     this.smoking,
+    this.exercise,
     this.horoscope,
-  });
+    this.aboutEducation,
+    final List<EducationEntryDto>? educationEntries,
+  }) : _educationEntries = educationEntries;
 
   @override
   @JsonKey()
@@ -458,11 +501,25 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
   @override
   final String? smoking;
   @override
+  final String? exercise;
+  @override
   final HoroscopeDetails? horoscope;
+  @override
+  final String? aboutEducation;
+  final List<EducationEntryDto>? _educationEntries;
+  @override
+  List<EducationEntryDto>? get educationEntries {
+    final value = _educationEntries;
+    if (value == null) return null;
+    if (_educationEntries is EqualUnmodifiableListView)
+      return _educationEntries;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
 
   @override
   String toString() {
-    return 'MatrimonyExtensions(roleManagingProfile: $roleManagingProfile, religion: $religion, casteOrCommunity: $casteOrCommunity, motherTongue: $motherTongue, maritalStatus: $maritalStatus, heightCm: $heightCm, bodyType: $bodyType, complexion: $complexion, educationDegree: $educationDegree, educationInstitution: $educationInstitution, occupation: $occupation, employer: $employer, industry: $industry, incomeRange: $incomeRange, familyDetails: $familyDetails, diet: $diet, drinking: $drinking, smoking: $smoking, horoscope: $horoscope)';
+    return 'MatrimonyExtensions(roleManagingProfile: $roleManagingProfile, religion: $religion, casteOrCommunity: $casteOrCommunity, motherTongue: $motherTongue, maritalStatus: $maritalStatus, heightCm: $heightCm, bodyType: $bodyType, complexion: $complexion, educationDegree: $educationDegree, educationInstitution: $educationInstitution, occupation: $occupation, employer: $employer, industry: $industry, incomeRange: $incomeRange, familyDetails: $familyDetails, diet: $diet, drinking: $drinking, smoking: $smoking, exercise: $exercise, horoscope: $horoscope, aboutEducation: $aboutEducation, educationEntries: $educationEntries)';
   }
 
   @override
@@ -504,8 +561,16 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
             (identical(other.drinking, drinking) ||
                 other.drinking == drinking) &&
             (identical(other.smoking, smoking) || other.smoking == smoking) &&
+            (identical(other.exercise, exercise) ||
+                other.exercise == exercise) &&
             (identical(other.horoscope, horoscope) ||
-                other.horoscope == horoscope));
+                other.horoscope == horoscope) &&
+            (identical(other.aboutEducation, aboutEducation) ||
+                other.aboutEducation == aboutEducation) &&
+            const DeepCollectionEquality().equals(
+              other._educationEntries,
+              _educationEntries,
+            ));
   }
 
   @override
@@ -529,7 +594,10 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     diet,
     drinking,
     smoking,
+    exercise,
     horoscope,
+    aboutEducation,
+    const DeepCollectionEquality().hash(_educationEntries),
   ]);
 
   /// Create a copy of MatrimonyExtensions
@@ -564,7 +632,10 @@ abstract class _MatrimonyExtensions implements MatrimonyExtensions {
     final String? diet,
     final String? drinking,
     final String? smoking,
+    final String? exercise,
     final HoroscopeDetails? horoscope,
+    final String? aboutEducation,
+    final List<EducationEntryDto>? educationEntries,
   }) = _$MatrimonyExtensionsImpl;
 
   @override
@@ -604,13 +675,257 @@ abstract class _MatrimonyExtensions implements MatrimonyExtensions {
   @override
   String? get smoking;
   @override
+  String? get exercise;
+  @override
   HoroscopeDetails? get horoscope;
+  @override
+  String? get aboutEducation;
+  @override
+  List<EducationEntryDto>? get educationEntries;
 
   /// Create a copy of MatrimonyExtensions
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$MatrimonyExtensionsImplCopyWith<_$MatrimonyExtensionsImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$EducationEntryDto {
+  String? get degree => throw _privateConstructorUsedError;
+  String? get institution => throw _privateConstructorUsedError;
+  int? get graduationYear => throw _privateConstructorUsedError;
+  String? get scoreCountry => throw _privateConstructorUsedError;
+  String? get scoreType => throw _privateConstructorUsedError;
+
+  /// Create a copy of EducationEntryDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $EducationEntryDtoCopyWith<EducationEntryDto> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $EducationEntryDtoCopyWith<$Res> {
+  factory $EducationEntryDtoCopyWith(
+    EducationEntryDto value,
+    $Res Function(EducationEntryDto) then,
+  ) = _$EducationEntryDtoCopyWithImpl<$Res, EducationEntryDto>;
+  @useResult
+  $Res call({
+    String? degree,
+    String? institution,
+    int? graduationYear,
+    String? scoreCountry,
+    String? scoreType,
+  });
+}
+
+/// @nodoc
+class _$EducationEntryDtoCopyWithImpl<$Res, $Val extends EducationEntryDto>
+    implements $EducationEntryDtoCopyWith<$Res> {
+  _$EducationEntryDtoCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of EducationEntryDto
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? degree = freezed,
+    Object? institution = freezed,
+    Object? graduationYear = freezed,
+    Object? scoreCountry = freezed,
+    Object? scoreType = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            degree: freezed == degree
+                ? _value.degree
+                : degree // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            institution: freezed == institution
+                ? _value.institution
+                : institution // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            graduationYear: freezed == graduationYear
+                ? _value.graduationYear
+                : graduationYear // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            scoreCountry: freezed == scoreCountry
+                ? _value.scoreCountry
+                : scoreCountry // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            scoreType: freezed == scoreType
+                ? _value.scoreType
+                : scoreType // ignore: cast_nullable_to_non_nullable
+                      as String?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$EducationEntryDtoImplCopyWith<$Res>
+    implements $EducationEntryDtoCopyWith<$Res> {
+  factory _$$EducationEntryDtoImplCopyWith(
+    _$EducationEntryDtoImpl value,
+    $Res Function(_$EducationEntryDtoImpl) then,
+  ) = __$$EducationEntryDtoImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    String? degree,
+    String? institution,
+    int? graduationYear,
+    String? scoreCountry,
+    String? scoreType,
+  });
+}
+
+/// @nodoc
+class __$$EducationEntryDtoImplCopyWithImpl<$Res>
+    extends _$EducationEntryDtoCopyWithImpl<$Res, _$EducationEntryDtoImpl>
+    implements _$$EducationEntryDtoImplCopyWith<$Res> {
+  __$$EducationEntryDtoImplCopyWithImpl(
+    _$EducationEntryDtoImpl _value,
+    $Res Function(_$EducationEntryDtoImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of EducationEntryDto
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? degree = freezed,
+    Object? institution = freezed,
+    Object? graduationYear = freezed,
+    Object? scoreCountry = freezed,
+    Object? scoreType = freezed,
+  }) {
+    return _then(
+      _$EducationEntryDtoImpl(
+        degree: freezed == degree
+            ? _value.degree
+            : degree // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        institution: freezed == institution
+            ? _value.institution
+            : institution // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        graduationYear: freezed == graduationYear
+            ? _value.graduationYear
+            : graduationYear // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        scoreCountry: freezed == scoreCountry
+            ? _value.scoreCountry
+            : scoreCountry // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        scoreType: freezed == scoreType
+            ? _value.scoreType
+            : scoreType // ignore: cast_nullable_to_non_nullable
+                  as String?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+
+class _$EducationEntryDtoImpl implements _EducationEntryDto {
+  const _$EducationEntryDtoImpl({
+    this.degree,
+    this.institution,
+    this.graduationYear,
+    this.scoreCountry,
+    this.scoreType,
+  });
+
+  @override
+  final String? degree;
+  @override
+  final String? institution;
+  @override
+  final int? graduationYear;
+  @override
+  final String? scoreCountry;
+  @override
+  final String? scoreType;
+
+  @override
+  String toString() {
+    return 'EducationEntryDto(degree: $degree, institution: $institution, graduationYear: $graduationYear, scoreCountry: $scoreCountry, scoreType: $scoreType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$EducationEntryDtoImpl &&
+            (identical(other.degree, degree) || other.degree == degree) &&
+            (identical(other.institution, institution) ||
+                other.institution == institution) &&
+            (identical(other.graduationYear, graduationYear) ||
+                other.graduationYear == graduationYear) &&
+            (identical(other.scoreCountry, scoreCountry) ||
+                other.scoreCountry == scoreCountry) &&
+            (identical(other.scoreType, scoreType) ||
+                other.scoreType == scoreType));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    degree,
+    institution,
+    graduationYear,
+    scoreCountry,
+    scoreType,
+  );
+
+  /// Create a copy of EducationEntryDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$EducationEntryDtoImplCopyWith<_$EducationEntryDtoImpl> get copyWith =>
+      __$$EducationEntryDtoImplCopyWithImpl<_$EducationEntryDtoImpl>(
+        this,
+        _$identity,
+      );
+}
+
+abstract class _EducationEntryDto implements EducationEntryDto {
+  const factory _EducationEntryDto({
+    final String? degree,
+    final String? institution,
+    final int? graduationYear,
+    final String? scoreCountry,
+    final String? scoreType,
+  }) = _$EducationEntryDtoImpl;
+
+  @override
+  String? get degree;
+  @override
+  String? get institution;
+  @override
+  int? get graduationYear;
+  @override
+  String? get scoreCountry;
+  @override
+  String? get scoreType;
+
+  /// Create a copy of EducationEntryDto
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$EducationEntryDtoImplCopyWith<_$EducationEntryDtoImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -796,7 +1111,9 @@ mixin _$HoroscopeDetails {
   String? get timeOfBirth => throw _privateConstructorUsedError;
   String? get birthPlace => throw _privateConstructorUsedError;
   String? get manglik => throw _privateConstructorUsedError;
+  String? get rashi => throw _privateConstructorUsedError;
   String? get nakshatra => throw _privateConstructorUsedError;
+  String? get gotra => throw _privateConstructorUsedError;
   String? get horoscopeDocUrl => throw _privateConstructorUsedError;
 
   /// Create a copy of HoroscopeDetails
@@ -818,7 +1135,9 @@ abstract class $HoroscopeDetailsCopyWith<$Res> {
     String? timeOfBirth,
     String? birthPlace,
     String? manglik,
+    String? rashi,
     String? nakshatra,
+    String? gotra,
     String? horoscopeDocUrl,
   });
 }
@@ -842,7 +1161,9 @@ class _$HoroscopeDetailsCopyWithImpl<$Res, $Val extends HoroscopeDetails>
     Object? timeOfBirth = freezed,
     Object? birthPlace = freezed,
     Object? manglik = freezed,
+    Object? rashi = freezed,
     Object? nakshatra = freezed,
+    Object? gotra = freezed,
     Object? horoscopeDocUrl = freezed,
   }) {
     return _then(
@@ -863,9 +1184,17 @@ class _$HoroscopeDetailsCopyWithImpl<$Res, $Val extends HoroscopeDetails>
                 ? _value.manglik
                 : manglik // ignore: cast_nullable_to_non_nullable
                       as String?,
+            rashi: freezed == rashi
+                ? _value.rashi
+                : rashi // ignore: cast_nullable_to_non_nullable
+                      as String?,
             nakshatra: freezed == nakshatra
                 ? _value.nakshatra
                 : nakshatra // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            gotra: freezed == gotra
+                ? _value.gotra
+                : gotra // ignore: cast_nullable_to_non_nullable
                       as String?,
             horoscopeDocUrl: freezed == horoscopeDocUrl
                 ? _value.horoscopeDocUrl
@@ -891,7 +1220,9 @@ abstract class _$$HoroscopeDetailsImplCopyWith<$Res>
     String? timeOfBirth,
     String? birthPlace,
     String? manglik,
+    String? rashi,
     String? nakshatra,
+    String? gotra,
     String? horoscopeDocUrl,
   });
 }
@@ -914,7 +1245,9 @@ class __$$HoroscopeDetailsImplCopyWithImpl<$Res>
     Object? timeOfBirth = freezed,
     Object? birthPlace = freezed,
     Object? manglik = freezed,
+    Object? rashi = freezed,
     Object? nakshatra = freezed,
+    Object? gotra = freezed,
     Object? horoscopeDocUrl = freezed,
   }) {
     return _then(
@@ -935,9 +1268,17 @@ class __$$HoroscopeDetailsImplCopyWithImpl<$Res>
             ? _value.manglik
             : manglik // ignore: cast_nullable_to_non_nullable
                   as String?,
+        rashi: freezed == rashi
+            ? _value.rashi
+            : rashi // ignore: cast_nullable_to_non_nullable
+                  as String?,
         nakshatra: freezed == nakshatra
             ? _value.nakshatra
             : nakshatra // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        gotra: freezed == gotra
+            ? _value.gotra
+            : gotra // ignore: cast_nullable_to_non_nullable
                   as String?,
         horoscopeDocUrl: freezed == horoscopeDocUrl
             ? _value.horoscopeDocUrl
@@ -956,7 +1297,9 @@ class _$HoroscopeDetailsImpl implements _HoroscopeDetails {
     this.timeOfBirth,
     this.birthPlace,
     this.manglik,
+    this.rashi,
     this.nakshatra,
+    this.gotra,
     this.horoscopeDocUrl,
   });
 
@@ -969,13 +1312,17 @@ class _$HoroscopeDetailsImpl implements _HoroscopeDetails {
   @override
   final String? manglik;
   @override
+  final String? rashi;
+  @override
   final String? nakshatra;
+  @override
+  final String? gotra;
   @override
   final String? horoscopeDocUrl;
 
   @override
   String toString() {
-    return 'HoroscopeDetails(dateOfBirth: $dateOfBirth, timeOfBirth: $timeOfBirth, birthPlace: $birthPlace, manglik: $manglik, nakshatra: $nakshatra, horoscopeDocUrl: $horoscopeDocUrl)';
+    return 'HoroscopeDetails(dateOfBirth: $dateOfBirth, timeOfBirth: $timeOfBirth, birthPlace: $birthPlace, manglik: $manglik, rashi: $rashi, nakshatra: $nakshatra, gotra: $gotra, horoscopeDocUrl: $horoscopeDocUrl)';
   }
 
   @override
@@ -990,8 +1337,10 @@ class _$HoroscopeDetailsImpl implements _HoroscopeDetails {
             (identical(other.birthPlace, birthPlace) ||
                 other.birthPlace == birthPlace) &&
             (identical(other.manglik, manglik) || other.manglik == manglik) &&
+            (identical(other.rashi, rashi) || other.rashi == rashi) &&
             (identical(other.nakshatra, nakshatra) ||
                 other.nakshatra == nakshatra) &&
+            (identical(other.gotra, gotra) || other.gotra == gotra) &&
             (identical(other.horoscopeDocUrl, horoscopeDocUrl) ||
                 other.horoscopeDocUrl == horoscopeDocUrl));
   }
@@ -1003,7 +1352,9 @@ class _$HoroscopeDetailsImpl implements _HoroscopeDetails {
     timeOfBirth,
     birthPlace,
     manglik,
+    rashi,
     nakshatra,
+    gotra,
     horoscopeDocUrl,
   );
 
@@ -1025,7 +1376,9 @@ abstract class _HoroscopeDetails implements HoroscopeDetails {
     final String? timeOfBirth,
     final String? birthPlace,
     final String? manglik,
+    final String? rashi,
     final String? nakshatra,
+    final String? gotra,
     final String? horoscopeDocUrl,
   }) = _$HoroscopeDetailsImpl;
 
@@ -1038,7 +1391,11 @@ abstract class _HoroscopeDetails implements HoroscopeDetails {
   @override
   String? get manglik;
   @override
+  String? get rashi;
+  @override
   String? get nakshatra;
+  @override
+  String? get gotra;
   @override
   String? get horoscopeDocUrl;
 

@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'matrimony_extensions.dart';
+
 part 'profile_summary.freezed.dart';
 
 /// Lightweight profile for cards and lists (derived from UserProfile or API).
@@ -17,6 +19,7 @@ class ProfileSummary with _$ProfileSummary {
     @Default('') String bio,
     String? promptAnswer,
     @Default([]) List<String> interests,
+
     /// Interests this profile shares with the current viewer (from backend).
     @Default([]) List<String> sharedInterests,
     String? motherTongue,
@@ -36,5 +39,8 @@ class ProfileSummary with _$ProfileSummary {
     String? compatibilityLabel,
     @Default([]) List<String> matchReasons,
     Map<String, double>? breakdown,
+
+    /// Who manages this profile (matrimony). Only shown when not self.
+    ProfileRole? roleManagingProfile,
   }) = _ProfileSummary;
 }

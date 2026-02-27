@@ -20,6 +20,7 @@ import '../../data/repositories_api/api_shortlist_repository.dart';
 import '../../data/repositories_api/api_subscription_repository.dart';
 import '../../data/repositories_api/api_account_repository.dart';
 import '../../data/repositories_api/api_contact_request_repository.dart';
+import '../../data/repositories_api/api_photo_view_request_repository.dart';
 import '../../data/repositories_api/api_visits_repository.dart';
 import '../../data/repositories_api/api_referral_repository.dart';
 import '../../data/repositories_api/api_verification_repository.dart';
@@ -35,12 +36,14 @@ import '../../data/repositories_fake/fake_safety_repository.dart';
 import '../../data/repositories_fake/fake_shortlist_repository.dart';
 import '../../data/repositories_fake/fake_subscription_repository.dart';
 import '../../data/repositories_fake/fake_contact_request_repository.dart';
+import '../../data/repositories_fake/fake_photo_view_request_repository.dart';
 import '../../data/repositories_fake/fake_visits_repository.dart';
 import '../../data/repositories_fake/fake_referral_repository.dart';
 import '../../data/repositories_fake/fake_verification_repository.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/contact_request_repository.dart';
+import '../../domain/repositories/photo_view_request_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/discovery_repository.dart';
 import '../../domain/repositories/interactions_repository.dart';
@@ -158,6 +161,11 @@ final contactRequestRepositoryProvider = Provider<ContactRequestRepository>((ref
   return ApiContactRequestRepository(api: ref.watch(apiClientProvider));
 });
 
+final photoViewRequestRepositoryProvider = Provider<PhotoViewRequestRepository>((ref) {
+  if (_config.useFakeBackend) return FakePhotoViewRequestRepository();
+  return ApiPhotoViewRequestRepository(api: ref.watch(apiClientProvider));
+});
+
 final photoUploadServiceProvider = Provider<PhotoUploadService>((ref) {
   return PhotoUploadService(api: ref.watch(apiClientProvider));
 });
@@ -172,8 +180,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   final profileRepo = ref.watch(profileRepositoryProvider);
   return FirebaseNotificationService(
     onRegisterToken: (token) => profileRepo.registerFcmToken(token),
-    onLogoutCallback:
-        null, // Backend can optionally support DELETE device token on logout
+    onLogoutCallback: () => profileRepo.deleteFcmToken(),
   );
 });
 

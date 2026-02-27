@@ -138,13 +138,25 @@ class _StepPhotosState extends State<StepPhotos> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                _TipRow(icon: Icons.check_circle_outline, text: 'Clear, well-lit face photo as main'),
+                _TipRow(
+                  icon: Icons.check_circle_outline,
+                  text: 'Clear, well-lit face photo as main',
+                ),
                 const SizedBox(height: 6),
-                _TipRow(icon: Icons.check_circle_outline, text: 'Full-length photo shows personality'),
+                _TipRow(
+                  icon: Icons.check_circle_outline,
+                  text: 'Full-length photo shows personality',
+                ),
                 const SizedBox(height: 6),
-                _TipRow(icon: Icons.check_circle_outline, text: 'Avoid heavy filters or group shots'),
+                _TipRow(
+                  icon: Icons.check_circle_outline,
+                  text: 'Avoid heavy filters or group shots',
+                ),
                 const SizedBox(height: 6),
-                _TipRow(icon: Icons.check_circle_outline, text: 'Smile — it genuinely helps'),
+                _TipRow(
+                  icon: Icons.check_circle_outline,
+                  text: 'Smile — it genuinely helps',
+                ),
               ],
             ),
           ).animate().fadeIn(delay: 300.ms),
@@ -190,7 +202,11 @@ class _StepPhotosState extends State<StepPhotos> {
           height: h,
           child: Opacity(
             opacity: 0.85,
-            child: _PhotoCard(path: _photos[i], isPrimary: i == 0, accent: accent),
+            child: _PhotoCard(
+              path: _photos[i],
+              isPrimary: i == 0,
+              accent: accent,
+            ),
           ),
         ),
       ),
@@ -243,9 +259,18 @@ class _StepPhotosState extends State<StepPhotos> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_photo_alternate_outlined, size: 28, color: onSurface.withValues(alpha: 0.3)),
+                    Icon(
+                      Icons.add_photo_alternate_outlined,
+                      size: 28,
+                      color: onSurface.withValues(alpha: 0.3),
+                    ),
                     const SizedBox(height: 4),
-                    Text('Add', style: AppTypography.caption.copyWith(color: onSurface.withValues(alpha: 0.4))),
+                    Text(
+                      AppLocalizations.of(context)!.add,
+                      style: AppTypography.caption.copyWith(
+                        color: onSurface.withValues(alpha: 0.4),
+                      ),
+                    ),
                   ],
                 ),
               )
@@ -257,14 +282,18 @@ class _StepPhotosState extends State<StepPhotos> {
 
     return DragTarget<int>(
       onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (details) => _onReorder(details.data, i.clamp(0, _photos.length - 1)),
+      onAcceptWithDetails: (details) =>
+          _onReorder(details.data, i.clamp(0, _photos.length - 1)),
       builder: (context, candidateData, _) {
         if (candidateData.isNotEmpty) {
           return Container(
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: accent.withValues(alpha: 0.4), width: 2),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.4),
+                width: 2,
+              ),
             ),
           );
         }
@@ -310,7 +339,10 @@ class _PhotoCard extends StatelessWidget {
                 top: 8,
                 left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: accent,
                     borderRadius: BorderRadius.circular(6),
@@ -341,7 +373,11 @@ class _TipRow extends StatelessWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     return Row(
       children: [
-        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
+        Icon(
+          icon,
+          size: 16,
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../location/app_location_service.dart';
 import '../../features/splash/screens/splash_screen.dart';
 import '../../features/splash/screens/tagline_screen.dart';
@@ -12,6 +13,7 @@ import '../../features/mode_select/screens/mode_select_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/screens/profile_wizard_screen.dart';
 import '../../features/profile_setup/screens/profile_setup_screen.dart';
+import '../../features/profile_setup/screens/profile_section_edit_screen.dart';
 import '../../features/profile/screens/full_profile_screen.dart';
 import '../../features/profile/screens/blocked_users_screen.dart';
 import '../../features/profile/screens/profile_view_screen.dart';
@@ -21,18 +23,40 @@ import '../../features/verification/screens/photo_verification_screen.dart';
 import '../../features/identity/screens/identity_onboarding_screen.dart';
 import '../../features/referral/screens/referral_screen.dart';
 import '../../features/chat/screens/chat_thread_screen.dart';
+import '../../features/requests/screens/requests_screen.dart';
 import '../shell/root_shell.dart';
 import '../shell/shell_branch_content.dart';
+import '../providers/repository_providers.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Routes that do not require an authenticated user (sign-in / sign-up flow).
+const _publicPaths = [
+  '/splash',
+  '/tagline',
+  '/login',
+  '/otp',
+  '/location-required',
+  '/mode-select',
+  '/onboarding',
+];
+
 Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  final authRepo = ref.watch(authRepositoryProvider);
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
+    refreshListenable: tokenStorage.authChangeListenable,
     redirect: (context, state) async {
       final loc = state.matchedLocation;
-      final isShellRoute =
+      final isPublic =
+          _publicPaths.any((p) => loc == p || loc.startsWith('$p?'));
+      if (!isPublic && authRepo.currentUserId == null) {
+        return '/login';
+      }
+        final isShellRoute =
           loc == '/' ||
           loc.startsWith('/map') ||
           loc.startsWith('/chats') ||
@@ -89,6 +113,13 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           return ProfileSetupScreen(isEditing: editing, initialStep: step);
         },
       ),
+      GoRoute(
+        path: '/profile-edit',
+        builder: (_, state) {
+          final section = state.uri.queryParameters['section'] ?? 'basic';
+          return ProfileSectionEditScreen(sectionId: section);
+        },
+      ),
       GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
       GoRoute(
         path: '/verification',
@@ -106,6 +137,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/blocked-users',
         builder: (_, __) => const BlockedUsersScreen(),
+      ),
+      GoRoute(
+        path: '/requests',
+        builder: (_, __) => const RequestsScreen(),
       ),
       GoRoute(
         path: '/profile/:id',
@@ -185,8 +220,8 @@ GoRouter createAppRouter() {
       ),
       GoRoute(
         path: '/',
-        builder: (_, __) => const Scaffold(
-          body: Center(child: Text('Shell requires Provider')),
+        builder: (_, __) => Scaffold(
+          body: Center(child: Text(lookupAppLocalizations(const Locale('en')).shellRequiresProvider)),
         ),
       ),
     ],

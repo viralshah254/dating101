@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Week 15 — Live photo verification: capture, blink/smile challenge, badge states, retry.
 enum PhotoVerificationState {
@@ -18,7 +19,8 @@ class PhotoVerificationScreen extends StatefulWidget {
   const PhotoVerificationScreen({super.key});
 
   @override
-  State<PhotoVerificationScreen> createState() => _PhotoVerificationScreenState();
+  State<PhotoVerificationScreen> createState() =>
+      _PhotoVerificationScreenState();
 }
 
 class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
@@ -35,11 +37,9 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Photo verification'),
+        title: Text(AppLocalizations.of(context)!.photoVerification),
       ),
-      body: SafeArea(
-        child: _buildStep(context, accent, isDark),
-      ),
+      body: SafeArea(child: _buildStep(context, accent, isDark)),
     );
   }
 
@@ -48,17 +48,20 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
       case PhotoVerificationState.intro:
         return _IntroStep(
           accent: accent,
-          onStart: () => setState(() => _state = PhotoVerificationState.capture),
+          onStart: () =>
+              setState(() => _state = PhotoVerificationState.capture),
         );
       case PhotoVerificationState.capture:
         return _CaptureStep(
           accent: accent,
-          onCapture: () => setState(() => _state = PhotoVerificationState.challenge),
+          onCapture: () =>
+              setState(() => _state = PhotoVerificationState.challenge),
         );
       case PhotoVerificationState.challenge:
         return _ChallengeStep(
           accent: accent,
-          onPass: () => setState(() => _state = PhotoVerificationState.processing),
+          onPass: () =>
+              setState(() => _state = PhotoVerificationState.processing),
           onFail: () => setState(() => _state = PhotoVerificationState.retry),
         );
       case PhotoVerificationState.processing:
@@ -67,15 +70,13 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
           onDone: () => setState(() => _state = PhotoVerificationState.success),
         );
       case PhotoVerificationState.success:
-        return _SuccessStep(
-          accent: accent,
-          onClose: () => context.pop(),
-        );
+        return _SuccessStep(accent: accent, onClose: () => context.pop());
       case PhotoVerificationState.failed:
       case PhotoVerificationState.retry:
         return _RetryStep(
           accent: accent,
-          onRetry: () => setState(() => _state = PhotoVerificationState.capture),
+          onRetry: () =>
+              setState(() => _state = PhotoVerificationState.capture),
           onCancel: () => context.pop(),
         );
     }
@@ -114,7 +115,7 @@ class _IntroStep extends StatelessWidget {
           const Spacer(),
           FilledButton(
             onPressed: onStart,
-            child: const Text('Start verification'),
+            child: Text(AppLocalizations.of(context)!.startVerification),
           ).animate().fadeIn(delay: 300.ms),
         ],
       ),
@@ -163,7 +164,7 @@ class _CaptureStep extends StatelessWidget {
           FilledButton.icon(
             onPressed: onCapture,
             icon: const Icon(Icons.camera),
-            label: const Text('Take photo'),
+            label: Text(AppLocalizations.of(context)!.takePhoto),
           ),
         ],
       ),
@@ -212,12 +213,12 @@ class _ChallengeStep extends StatelessWidget {
           const Spacer(),
           FilledButton(
             onPressed: onPass,
-            child: const Text('I’m ready'),
+            child: Text(AppLocalizations.of(context)!.imReady),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: onFail,
-            child: const Text('Something went wrong'),
+            child: Text(AppLocalizations.of(context)!.somethingWentWrong),
           ),
         ],
       ),
@@ -238,24 +239,21 @@ class _ProcessingStep extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 48,
-            height: 48,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(accent),
-            ),
-          )
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(accent),
+                ),
+              )
               .animate(onPlay: (c) => c.repeat())
               .shimmer(duration: 1500.ms, color: accent.withValues(alpha: 0.3)),
           const SizedBox(height: 24),
-          Text(
-            'Verifying your photo…',
-            style: AppTypography.titleMedium,
-          ),
+          Text('Verifying your photo…', style: AppTypography.titleMedium),
           const SizedBox(height: 48),
           TextButton(
             onPressed: onDone,
-            child: const Text('Simulate success'),
+            child: Text(AppLocalizations.of(context)!.simulateSuccess),
           ),
         ],
       ),
@@ -280,10 +278,7 @@ class _SuccessStep extends StatelessWidget {
               .scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1))
               .fadeIn(),
           const SizedBox(height: 24),
-          Text(
-            'You’re verified',
-            style: AppTypography.headlineMedium,
-          ),
+          Text('You’re verified', style: AppTypography.headlineMedium),
           const SizedBox(height: 8),
           Text(
             'Your profile will show a verification badge.',
@@ -293,7 +288,7 @@ class _SuccessStep extends StatelessWidget {
           const SizedBox(height: 32),
           FilledButton(
             onPressed: onClose,
-            child: const Text('Done'),
+            child: Text(AppLocalizations.of(context)!.done),
           ),
         ],
       ),
@@ -334,12 +329,12 @@ class _RetryStep extends StatelessWidget {
           const SizedBox(height: 32),
           FilledButton(
             onPressed: onRetry,
-            child: const Text('Try again'),
+            child: Text(AppLocalizations.of(context)!.tryAgain),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: onCancel,
-            child: const Text('Skip for now'),
+            child: Text(AppLocalizations.of(context)!.skipForNow),
           ),
         ],
       ),

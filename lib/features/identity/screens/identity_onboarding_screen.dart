@@ -4,6 +4,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/dynamic_gradient_background.dart';
 
 /// Week 14 — Signup 2.0: Indian identity layer (origin, language, community, family, veg).
@@ -139,6 +140,7 @@ class _IdentityOnboardingScreenState extends State<IdentityOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
@@ -152,7 +154,7 @@ class _IdentityOnboardingScreenState extends State<IdentityOnboardingScreen> {
                   TextButton(
                     onPressed: () => context.go('/profile-wizard'),
                     child: Text(
-                      'Skip',
+                      l.skip,
                       style: TextStyle(
                         color: accent,
                         fontWeight: FontWeight.w600,
@@ -255,7 +257,7 @@ class _IdentityOnboardingScreenState extends State<IdentityOnboardingScreen> {
                           );
                           setState(() => _step--);
                         },
-                        child: const Text('Back'),
+                        child: Text(l.back),
                       ),
                     const Spacer(),
                     if (_step > 1)
@@ -717,9 +719,10 @@ class _LanguageStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return _StepFrame(
-      title: 'Preferred language',
-      subtitle: 'Optional — we’ll use this for content and matches.',
+      title: l.preferredLanguage,
+      subtitle: l.preferredLanguageSubtitle,
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -749,10 +752,10 @@ class _HeritageStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return _StepFrame(
-      title: 'Heritage / type of Indian',
-      subtitle:
-          'Optional — helps us connect you with relevant communities and events.',
+      title: l.heritageType,
+      subtitle: l.communityTagsSubtitle,
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -782,9 +785,10 @@ class _CommunityStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return _StepFrame(
-      title: 'Community tags (optional)',
-      subtitle: 'Select any that apply — helps with circles and events.',
+      title: l.communityTagsOptional,
+      subtitle: l.communityTagsSubtitle,
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -817,17 +821,18 @@ class _FamilyStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return _StepFrame(
-      title: 'Family orientation',
-      subtitle: 'Slide to reflect your preference — no wrong answer.',
+      title: l.familyOrientation,
+      subtitle: l.familyOrientationSubtitle,
       child: Column(
         children: [
           Slider(value: value, onChanged: onChanged, divisions: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Traditional', style: AppTypography.bodySmall),
-              Text('Progressive', style: AppTypography.bodySmall),
+              Text(l.traditionalLabel, style: AppTypography.bodySmall),
+              Text(l.progressiveLabel, style: AppTypography.bodySmall),
             ],
           ),
         ],
@@ -848,9 +853,10 @@ class _DietStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return _StepFrame(
-      title: 'Diet / lifestyle',
-      subtitle: 'Helps with date ideas and filters.',
+      title: l.dietLifestyleTitle,
+      subtitle: l.dietLifestyleSubtitle,
       child: Wrap(
         spacing: 8,
         runSpacing: 8,

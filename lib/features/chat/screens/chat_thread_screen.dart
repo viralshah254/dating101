@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
@@ -72,23 +73,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     try {
       await chatRepo.sendMessage(widget.threadId, text);
     } on ApiException catch (e) {
-      if (mounted) {
-        setState(
-          () => _pendingSent.removeWhere((m) => m.text == text),
-        );
+      if (context.mounted) {
+        setState(() => _pendingSent.removeWhere((m) => m.text == text));
         final showUpgrade =
             e.code == 'PREMIUM_REQUIRED' || e.code == 'INTRO_LIMIT';
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e.code == 'INTRO_LIMIT'
-                  ? 'Match to continue or upgrade'
-                  : e.message,
+              e.code == 'INTRO_LIMIT' ? l.matchToContinueOrUpgrade : e.message,
             ),
             behavior: SnackBarBehavior.floating,
             action: showUpgrade
                 ? SnackBarAction(
-                    label: 'Upgrade',
+                    label: l.upgrade,
                     onPressed: () => context.push('/paywall'),
                   )
                 : null,
@@ -97,20 +95,18 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       }
       return;
     } catch (_) {
-      if (mounted) {
-        setState(
-          () => _pendingSent.removeWhere((m) => m.text == text),
-        );
+      if (context.mounted) {
+        setState(() => _pendingSent.removeWhere((m) => m.text == text));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to send. Try again.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
       return;
     }
-    if (!mounted) return;
+    if (!context.mounted) return;
     ref.invalidate(_threadMessagesProvider(widget.threadId));
     ref.invalidate(chatThreadsProvider);
   }
@@ -142,7 +138,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             if (otherUserId != null)
               ListTile(
                 leading: const Icon(Icons.person_outline),
-                title: const Text('View profile'),
+                title: Text(AppLocalizations.of(ctx)!.viewProfile),
                 onTap: () {
                   Navigator.pop(ctx);
                   context.push('/profile/$otherUserId');
@@ -150,90 +146,96 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               ),
             ListTile(
               leading: const Icon(Icons.block, color: Colors.red),
-              title: const Text(
-                'Block user',
-                style: TextStyle(color: Colors.red),
+              title: Text(
+                AppLocalizations.of(ctx)!.blockUser,
+                style: const TextStyle(color: Colors.red),
               ),
               onTap: () async {
                 Navigator.pop(ctx);
                 if (otherUserId == null) return;
                 final reason = await showBlockReasonPicker(context);
-                if (reason == null || !mounted) return;
+                if (reason == null || !context.mounted) return;
                 final confirmed = await showDialog<bool>(
                   context: context,
-                  builder: (d) => AlertDialog(
-                    title: const Text('Block user?'),
-                    content: const Text(
-                      'They won\'t be able to contact you anymore.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(d, false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(d, true),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red,
+                  builder: (d) {
+                    final l = AppLocalizations.of(d)!;
+                    return AlertDialog(
+                      title: Text(l.blockUserConfirm),
+                      content: Text(l.blockUserMessageChat),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(d, false),
+                          child: Text(l.cancel),
                         ),
-                        child: const Text('Block'),
-                      ),
-                    ],
-                  ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(d, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          child: Text(l.block),
+                        ),
+                      ],
+                    );
+                  },
                 );
-                if (confirmed != true || !mounted) return;
+                if (confirmed != true || !context.mounted) return;
                 try {
-                  await ref.read(safetyRepositoryProvider).block(
-                        otherUserId,
-                        reason,
-                        source: 'chat',
-                      );
-                  if (mounted) context.pop();
+                  await ref
+                      .read(safetyRepositoryProvider)
+                      .block(otherUserId, reason, source: 'chat');
+                  if (context.mounted) {
+                    context.pop();
+                  }
                 } catch (_) {}
               },
             ),
             ListTile(
               leading: const Icon(Icons.flag_outlined, color: Colors.orange),
-              title: const Text('Report user'),
+              title: Text(AppLocalizations.of(ctx)!.reportUser),
               onTap: () async {
                 Navigator.pop(ctx);
                 if (otherUserId == null) return;
                 final result = await showReportReasonPicker(context);
-                if (result == null || !mounted) return;
+                if (result == null || !context.mounted) return;
                 final confirmed = await showDialog<bool>(
                   context: context,
-                  builder: (d) => AlertDialog(
-                    title: const Text('Report user?'),
-                    content: const Text(
-                      'We take safety seriously and will review this report.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(d, false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(d, true),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.orange,
+                  builder: (d) {
+                    final l = AppLocalizations.of(d)!;
+                    return AlertDialog(
+                      title: Text(l.reportUserConfirm),
+                      content: Text(l.reportUserMessageChat),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(d, false),
+                          child: Text(l.cancel),
                         ),
-                        child: const Text('Report'),
-                      ),
-                    ],
-                  ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(d, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                          ),
+                          child: Text(l.report),
+                        ),
+                      ],
+                    );
+                  },
                 );
-                if (confirmed != true || !mounted) return;
+                if (confirmed != true || !context.mounted) return;
                 try {
-                  await ref.read(safetyRepositoryProvider).report(
+                  await ref
+                      .read(safetyRepositoryProvider)
+                      .report(
                         otherUserId,
                         result.reason,
                         details: result.details,
                         source: 'chat',
                       );
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Report submitted. Thank you.'),
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(context)!.reportSubmittedThankYou,
+                        ),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -272,7 +274,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final currentUserId = ref.watch(authRepositoryProvider).currentUserId;
     final messagesAsync = ref.watch(_threadMessagesProvider(widget.threadId));
     final suggestionsAsync = ref.watch(chatSuggestionsProvider);
-    final icebreakerList = suggestionsAsync.valueOrNull ?? _icebreakerSuggestions;
+    final icebreakerList =
+        suggestionsAsync.valueOrNull ?? _icebreakerSuggestions;
     final otherUserId = widget.otherUserId;
     final profileAsync = otherUserId != null
         ? ref.watch(profileSummaryProvider(otherUserId))
@@ -280,7 +283,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
     ref.listen(_threadMessagesProvider(widget.threadId), (prev, next) {
       if (!next.hasValue || _pendingSent.isEmpty) return;
-      if (!mounted) return;
+      if (!context.mounted) return;
       final list = next.value!;
       setState(() {
         _pendingSent.removeWhere(
@@ -405,7 +408,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: AppColors.saffron.withValues(alpha: 0.08),
+                                color: AppColors.saffron.withValues(
+                                  alpha: 0.08,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -418,7 +423,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                             Text(
                               'Start the conversation!',
                               style: AppTypography.titleMedium.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.85),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -426,7 +433,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                             Text(
                               'Say hi, send an emoji — break the ice.',
                               style: AppTypography.bodyMedium.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.55),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -438,7 +447,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                               children: icebreakerList.map((s) {
                                 return ActionChip(
                                   label: Text(s),
-                                  onPressed: () => _sendMessageText(context, ref, s),
+                                  onPressed: () =>
+                                      _sendMessageText(context, ref, s),
                                 );
                               }).toList(),
                             ),
@@ -459,19 +469,21 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                       final m = reversed[i];
                       final isMe =
                           currentUserId != null && m.senderId == currentUserId;
-                      final showDateSeparator = i == 0 ||
+                      final showDateSeparator =
+                          i == 0 ||
                           !_isSameDay(m.sentAt, reversed[i - 1].sentAt);
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (showDateSeparator) _DateSeparator(sentAt: m.sentAt),
+                          if (showDateSeparator)
+                            _DateSeparator(sentAt: m.sentAt),
                           _MessageBubble(
-                            text: m.text,
-                            sentAt: m.sentAt,
-                            isMe: isMe,
-                            isVoiceNote: m.isVoiceNote,
-                          )
+                                text: m.text,
+                                sentAt: m.sentAt,
+                                isMe: isMe,
+                                isVoiceNote: m.isVoiceNote,
+                              )
                               .animate()
                               .fadeIn(delay: (20 * i).ms)
                               .slideY(begin: 0.03, end: 0),
@@ -497,7 +509,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                           onPressed: () => ref.invalidate(
                             _threadMessagesProvider(widget.threadId),
                           ),
-                          child: const Text('Retry'),
+                          child: Text(AppLocalizations.of(context)!.retry),
                         ),
                       ],
                     ),
@@ -506,9 +518,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               ),
             ),
           ),
-          _TypingBar(
-            onSend: (text) => _sendMessageText(context, ref, text),
-          ),
+          _TypingBar(onSend: (text) => _sendMessageText(context, ref, text)),
         ],
       ),
     );
@@ -547,13 +557,17 @@ class _DateSeparator extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             label,
             style: AppTypography.labelSmall.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -666,7 +680,9 @@ class _MessageBubble extends StatelessWidget {
       return DateFormat.jm().format(d);
     }
     final yesterday = now.subtract(const Duration(days: 1));
-    if (d.day == yesterday.day && d.month == yesterday.month && d.year == yesterday.year) {
+    if (d.day == yesterday.day &&
+        d.month == yesterday.month &&
+        d.year == yesterday.year) {
       return 'Yesterday ${DateFormat.jm().format(d)}';
     }
     if (diff.inDays < 7) return DateFormat.E().add_jm().format(d);
@@ -710,7 +726,9 @@ class _TypingBarState extends State<_TypingBar> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.2),
+                color: Theme.of(
+                  ctx,
+                ).colorScheme.onSurface.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -724,7 +742,10 @@ class _TypingBarState extends State<_TypingBar> {
                     backgroundColor: Theme.of(ctx).colorScheme.surface,
                   ),
                   categoryViewConfig: CategoryViewConfig(
-                    backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    backgroundColor: Theme.of(ctx)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.3),
                     indicatorColor: AppColors.saffron,
                   ),
                 ),

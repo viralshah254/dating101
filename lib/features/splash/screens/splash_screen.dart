@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/logo_with_transparent_white.dart';
+import '../../../data/api/api_client.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -49,8 +50,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           destination = '/mode-select';
         }
       } catch (e) {
-        debugPrint('[Splash] Error checking profile: $e — defaulting to home');
-        destination = '/';
+        if (e is ApiException && (e.statusCode == 401 || e.statusCode == 403)) {
+          debugPrint(
+            '[Splash] Auth invalid (${e.statusCode}), signing out and routing to login',
+          );
+          await authRepo.signOut();
+          destination = '/login';
+        } else {
+          debugPrint(
+            '[Splash] Error checking profile: $e — defaulting to home',
+          );
+          destination = '/';
+        }
       }
     }
 
@@ -90,35 +101,54 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             children: [
               const Spacer(flex: 2),
               Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 48,
+                    ),
                     decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      gradient: RadialGradient(
+                        center: Alignment.center,
+                        radius: 1.2,
+                        colors: isDark
+                            ? [
+                                bg.withValues(alpha: 0.6),
+                                bg.withValues(alpha: 0.25),
+                                Colors.transparent,
+                              ]
+                            : [
+                                AppColors.splashMid.withValues(alpha: 0.5),
+                                AppColors.splashPeach.withValues(alpha: 0.2),
+                                Colors.transparent,
+                              ],
+                        stops: const [0.0, 0.5, 1.0],
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: accent.withValues(alpha: 0.25),
-                          blurRadius: 60,
-                          spreadRadius: 10,
+                          color: accent.withValues(alpha: 0.2),
+                          blurRadius: 80,
+                          spreadRadius: 5,
                         ),
                         BoxShadow(
-                          color: AppColors.indiaGreen.withValues(alpha: 0.1),
-                          blurRadius: 90,
-                          spreadRadius: 15,
+                          color: AppColors.indiaGreen.withValues(alpha: 0.08),
+                          blurRadius: 100,
+                          spreadRadius: 20,
                         ),
                       ],
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/saathi_logo.png',
-                          width: 338,
-                          fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: 280,
+                      child: ClipRect(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: LogoWithTransparentWhite(
+                            assetPath: 'assets/images/shubhmilan_logo.png',
+                            width: 420,
+                            fit: BoxFit.contain,
+                            whiteThreshold: 200,
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Image.asset(
-                          'assets/images/shubhmilan_heart.png',
-                          width: 120,
-                          fit: BoxFit.contain,
-                        ),
-                      ],
+                      ),
                     ),
                   )
                   .animate()

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Week 13 — Launch tagline screen (optional post-splash).
 class TaglineScreen extends StatelessWidget {
@@ -22,10 +23,7 @@ class TaglineScreen extends StatelessWidget {
               ? LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.darkBackground,
-                    AppColors.darkSurface,
-                  ],
+                  colors: [AppColors.darkBackground, AppColors.darkSurface],
                 )
               : AppColors.splashGradient,
         ),
@@ -36,13 +34,13 @@ class TaglineScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Depth-first connections.\nNo mindless swiping.',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.headlineMedium.copyWith(
-                    color: accent,
-                    height: 1.3,
-                  ),
-                )
+                      'Depth-first connections.\nNo mindless swiping.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: accent,
+                        height: 1.3,
+                      ),
+                    )
                     .animate()
                     .fadeIn(duration: 500.ms)
                     .slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
@@ -55,7 +53,7 @@ class TaglineScreen extends StatelessWidget {
                 const SizedBox(height: 48),
                 FilledButton(
                   onPressed: () => context.go('/login'),
-                  child: const Text('Get started'),
+                  child: Text(AppLocalizations.of(context)!.getStarted),
                 ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05, end: 0),
               ],
             ),

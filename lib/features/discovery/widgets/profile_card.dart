@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
-import '../../ai/widgets/match_reason_chip.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../ai/widgets/match_reason_chip.dart';
 
 class ProfileCard extends StatelessWidget {
   const ProfileCard({
@@ -29,30 +30,29 @@ class ProfileCard extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  _ProfileAvatar(
+                    imageUrl: profile.imageUrl,
+                    name: profile.name,
                     radius: 32,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    backgroundImage: profile.imageUrl != null
-                        ? NetworkImage(profile.imageUrl!)
-                        : null,
-                    child: profile.imageUrl == null
-                        ? Text(
-                            profile.name.isNotEmpty
-                                ? profile.name[0].toUpperCase()
-                                : '?',
-                            style: AppTypography.headlineMedium,
-                          )
-                        : null,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -74,18 +74,31 @@ class ProfileCard extends StatelessWidget {
                             ],
                           ],
                         ),
+                        if (profile.roleManagingProfile != null &&
+                            profile.roleManagingProfile !=
+                                ProfileRole.self) ...[
+                          const SizedBox(height: 6),
+                          _ManagedByChip(
+                            role: profile.roleManagingProfile!,
+                            onSurface: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ],
                         const SizedBox(height: 2),
                         Text(
                           profile.city ?? '',
                           style: AppTypography.bodySmall.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.85),
                           ),
                         ),
                         if (profile.distanceKm != null)
                           Text(
                             l.kmAway(profile.distanceKm!.toStringAsFixed(1)),
                             style: AppTypography.caption.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.75),
                             ),
                           ),
                       ],
@@ -114,14 +127,17 @@ class ProfileCard extends StatelessWidget {
                       .toList(),
                 ),
                 const SizedBox(height: 12),
-              ] else if (profile.matchReason != null && profile.matchReason!.isNotEmpty) ...[
+              ] else if (profile.matchReason != null &&
+                  profile.matchReason!.isNotEmpty) ...[
                 MatchReasonChip(reason: profile.matchReason!),
                 const SizedBox(height: 12),
               ],
               Text(
                 profile.bio,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.9),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.9),
                 ),
               ),
               if ((profile.promptAnswer ?? '').isNotEmpty) ...[
@@ -138,14 +154,18 @@ class ProfileCard extends StatelessWidget {
                       Text(
                         l.prompt,
                         style: AppTypography.labelSmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         profile.promptAnswer!,
                         style: AppTypography.bodySmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.9),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.9),
                         ),
                       ),
                     ],
@@ -163,6 +183,104 @@ class ProfileCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact "Managed by parent/sibling/..." for discovery cards (matrimony).
+class _ManagedByChip extends StatelessWidget {
+  const _ManagedByChip({required this.role, required this.onSurface});
+  final ProfileRole role;
+  final Color onSurface;
+
+  static String _label(BuildContext context, ProfileRole r) {
+    final l = AppLocalizations.of(context)!;
+    switch (r) {
+      case ProfileRole.parent:
+        return l.profileManagedByParent;
+      case ProfileRole.guardian:
+        return l.profileManagedByGuardian;
+      case ProfileRole.sibling:
+        return l.profileManagedBySibling;
+      case ProfileRole.friend:
+        return l.profileManagedByFriend;
+      case ProfileRole.self:
+        return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _label(context, role);
+    if (label.isEmpty) return const SizedBox.shrink();
+    final accent = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.family_restroom,
+            size: 14,
+            color: accent.withValues(alpha: 0.9),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Avatar that shows profile image or falls back to initial letter on error (e.g. 403).
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.imageUrl,
+    required this.name,
+    required this.radius,
+  });
+  final String? imageUrl;
+  final String name;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = SizedBox(
+      width: radius * 2,
+      height: radius * 2,
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: AppTypography.headlineMedium,
+        ),
+      ),
+    );
+    if (imageUrl == null || imageUrl!.isEmpty) return fallback;
+    return ClipOval(
+      child: SizedBox(
+        width: radius * 2,
+        height: radius * 2,
+        child: Image.network(
+          imageUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback,
         ),
       ),
     );

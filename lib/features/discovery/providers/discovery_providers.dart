@@ -14,10 +14,14 @@ import '../../../domain/repositories/discovery_repository.dart';
 final discoveryTravelCityProvider = StateProvider<String?>((ref) => null);
 
 /// Applied discovery filters (from filters sheet). When non-null, feed uses getExplore with these params.
-final discoveryFilterParamsProvider = StateProvider<DiscoveryFilterParams?>((ref) => null);
+final discoveryFilterParamsProvider = StateProvider<DiscoveryFilterParams?>(
+  (ref) => null,
+);
 
 /// Discovery feed: recommended (with optional travel city) or filtered explore results.
-final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
+final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+  ref,
+) async {
   final mode = ref.watch(appModeProvider) ?? AppMode.dating;
   final travelCity = ref.watch(discoveryTravelCityProvider);
   final filterParams = ref.watch(discoveryFilterParamsProvider);
@@ -32,6 +36,10 @@ final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
       religion: filterParams.religion,
       education: filterParams.education,
       heightMinCm: filterParams.heightMinCm,
+      heightMaxCm: filterParams.heightMaxCm,
+      diet: filterParams.diet,
+      bodyType: filterParams.bodyType,
+      maritalStatus: filterParams.maritalStatus,
       limit: 20,
     );
   }
@@ -40,37 +48,43 @@ final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
 
 /// Recommended list for current mode (dating discovery / matrimony matches).
 /// Prefer [discoveryFeedProvider] for discovery screen (supports travel city + filters).
-final recommendedProfilesProvider = FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
-  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
-  final repo = ref.watch(discoveryRepositoryProvider);
-  return repo.getRecommended(mode: mode, limit: 20);
-});
+final recommendedProfilesProvider =
+    FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
+      final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+      final repo = ref.watch(discoveryRepositoryProvider);
+      return repo.getRecommended(mode: mode, limit: 20);
+    });
 
 /// Single profile summary by id (for full profile screen).
-final profileSummaryProvider = FutureProvider.autoDispose.family<ProfileSummary?, String>((ref, userId) async {
-  final repo = ref.watch(profileRepositoryProvider);
-  return repo.getProfileSummary(userId);
-});
+final profileSummaryProvider = FutureProvider.autoDispose
+    .family<ProfileSummary?, String>((ref, userId) async {
+      final repo = ref.watch(profileRepositoryProvider);
+      return repo.getProfileSummary(userId);
+    });
 
 /// Full UserProfile by id (for detailed profile view, matrimony).
-final fullUserProfileProvider = FutureProvider.autoDispose.family<UserProfile?, String>((ref, userId) async {
-  final repo = ref.watch(profileRepositoryProvider);
-  return repo.getProfile(userId);
-});
+final fullUserProfileProvider = FutureProvider.autoDispose
+    .family<UserProfile?, String>((ref, userId) async {
+      final repo = ref.watch(profileRepositoryProvider);
+      return repo.getProfile(userId);
+    });
 
 /// Compatibility breakdown for a specific candidate.
-final compatibilityProvider = FutureProvider.autoDispose.family<CompatibilityDetail?, String>((ref, candidateId) async {
-  final repo = ref.watch(discoveryRepositoryProvider);
-  try {
-    return await repo.getCompatibility(candidateId);
-  } catch (e) {
-    debugPrint('[Compatibility] Failed to fetch for $candidateId: $e');
-    return null;
-  }
-});
+final compatibilityProvider = FutureProvider.autoDispose
+    .family<CompatibilityDetail?, String>((ref, candidateId) async {
+      final repo = ref.watch(discoveryRepositoryProvider);
+      try {
+        return await repo.getCompatibility(candidateId);
+      } catch (e) {
+        debugPrint('[Compatibility] Failed to fetch for $candidateId: $e');
+        return null;
+      }
+    });
 
 /// Filter options for Explore tab (GET /discovery/filter-options). Use for dropdown options and defaults.
-final filterOptionsProvider = FutureProvider.autoDispose<FilterOptions>((ref) async {
+final filterOptionsProvider = FutureProvider.autoDispose<FilterOptions>((
+  ref,
+) async {
   final repo = ref.watch(discoveryRepositoryProvider);
   return repo.getFilterOptions();
 });

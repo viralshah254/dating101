@@ -49,6 +49,9 @@ mixin _$ProfileSummary {
   List<String> get matchReasons => throw _privateConstructorUsedError;
   Map<String, double>? get breakdown => throw _privateConstructorUsedError;
 
+  /// Who manages this profile (matrimony). Only shown when not self.
+  ProfileRole? get roleManagingProfile => throw _privateConstructorUsedError;
+
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -92,6 +95,7 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     String? compatibilityLabel,
     List<String> matchReasons,
     Map<String, double>? breakdown,
+    ProfileRole? roleManagingProfile,
   });
 }
 
@@ -138,6 +142,7 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? compatibilityLabel = freezed,
     Object? matchReasons = null,
     Object? breakdown = freezed,
+    Object? roleManagingProfile = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -253,6 +258,10 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.breakdown
                 : breakdown // ignore: cast_nullable_to_non_nullable
                       as Map<String, double>?,
+            roleManagingProfile: freezed == roleManagingProfile
+                ? _value.roleManagingProfile
+                : roleManagingProfile // ignore: cast_nullable_to_non_nullable
+                      as ProfileRole?,
           )
           as $Val,
     );
@@ -297,6 +306,7 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     String? compatibilityLabel,
     List<String> matchReasons,
     Map<String, double>? breakdown,
+    ProfileRole? roleManagingProfile,
   });
 }
 
@@ -342,6 +352,7 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? compatibilityLabel = freezed,
     Object? matchReasons = null,
     Object? breakdown = freezed,
+    Object? roleManagingProfile = freezed,
   }) {
     return _then(
       _$ProfileSummaryImpl(
@@ -457,6 +468,10 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value._breakdown
             : breakdown // ignore: cast_nullable_to_non_nullable
                   as Map<String, double>?,
+        roleManagingProfile: freezed == roleManagingProfile
+            ? _value.roleManagingProfile
+            : roleManagingProfile // ignore: cast_nullable_to_non_nullable
+                  as ProfileRole?,
       ),
     );
   }
@@ -494,6 +509,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     this.compatibilityLabel,
     final List<String> matchReasons = const [],
     final Map<String, double>? breakdown,
+    this.roleManagingProfile,
   }) : _interests = interests,
        _sharedInterests = sharedInterests,
        _matchReasons = matchReasons,
@@ -591,9 +607,13 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     return EqualUnmodifiableMapView(value);
   }
 
+  /// Who manages this profile (matrimony). Only shown when not self.
+  @override
+  final ProfileRole? roleManagingProfile;
+
   @override
   String toString() {
-    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown)';
+    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile)';
   }
 
   @override
@@ -658,7 +678,9 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
             const DeepCollectionEquality().equals(
               other._breakdown,
               _breakdown,
-            ));
+            ) &&
+            (identical(other.roleManagingProfile, roleManagingProfile) ||
+                other.roleManagingProfile == roleManagingProfile));
   }
 
   @override
@@ -692,6 +714,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     compatibilityLabel,
     const DeepCollectionEquality().hash(_matchReasons),
     const DeepCollectionEquality().hash(_breakdown),
+    roleManagingProfile,
   ]);
 
   /// Create a copy of ProfileSummary
@@ -736,6 +759,7 @@ abstract class _ProfileSummary implements ProfileSummary {
     final String? compatibilityLabel,
     final List<String> matchReasons,
     final Map<String, double>? breakdown,
+    final ProfileRole? roleManagingProfile,
   }) = _$ProfileSummaryImpl;
 
   @override
@@ -796,6 +820,10 @@ abstract class _ProfileSummary implements ProfileSummary {
   List<String> get matchReasons;
   @override
   Map<String, double>? get breakdown;
+
+  /// Who manages this profile (matrimony). Only shown when not self.
+  @override
+  ProfileRole? get roleManagingProfile;
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.

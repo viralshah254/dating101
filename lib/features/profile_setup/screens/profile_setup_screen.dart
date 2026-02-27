@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -301,7 +300,22 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
     if (_isLoading) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: accent)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: accent),
+              const SizedBox(height: 20),
+              Text(
+                'Loading…',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -314,56 +328,62 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         resizeToAvoidBottomInset: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(
+          centerTitle: true,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            onPressed: _currentStep > 0 ? _back : () => context.pop(),
+            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          ),
+          title: Text(
+            currentStep.label,
+            style: AppTypography.titleLarge.copyWith(
+              color: onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
+              // Step progress — same concept as section edit: clear, minimal
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Column(
                   children: [
-                    if (_currentStep > 0 || widget.isEditing)
-                      IconButton(
-                        onPressed: _currentStep > 0
-                            ? _back
-                            : () => context.pop(),
-                        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                      )
-                    else
-                      const SizedBox(width: 48),
-                    const Spacer(),
-                    ...List.generate(_steps.length, (i) {
-                      return Container(
-                        width: i == _currentStep ? 24 : 8,
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: i <= _currentStep
-                              ? accent
-                              : onSurface.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Step ${_currentStep + 1} of ${_steps.length}',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: onSurface.withValues(alpha: 0.6),
+                          ),
                         ),
-                      );
-                    }),
-                    const Spacer(),
-                    Text(
-                      '${_currentStep + 1}/${_steps.length}',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: onSurface.withValues(alpha: 0.5),
+                        Text(
+                          '${(progress * 100).round()}%',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: onSurface.withValues(alpha: 0.1),
+                        valueColor: AlwaysStoppedAnimation(accent),
+                        minHeight: 6,
                       ),
                     ),
                   ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: onSurface.withValues(alpha: 0.08),
-                    valueColor: AlwaysStoppedAnimation(accent),
-                    minHeight: 3,
-                  ),
                 ),
               ),
               Expanded(
@@ -374,90 +394,81 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
               ),
 
-              // Bottom buttons
+              // Bottom — same style as ProfileSectionEditScreen (Save & close / Next)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (widget.isEditing) ...[
-                      // Edit mode: save and close when editing one section; else save and continue
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: FilledButton(
-                          onPressed: _isSaving ? null : _saveAndContinue,
-                          style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: FilledButton(
+                        onPressed: widget.isEditing
+                            ? (_isSaving ? null : _saveAndContinue)
+                            : (_canProceed ? _next : null),
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      (widget.initialStep != null) ||
-                                              _currentStep >= _steps.length - 1
-                                          ? 'Save & close'
-                                          : 'Save & continue',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                        ),
+                        child: widget.isEditing
+                            ? (_isSaving
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
                                       ),
-                                    ),
-                                    if ((widget.initialStep == null) &&
-                                        _currentStep < _steps.length - 1) ...[
-                                      const SizedBox(width: 6),
-                                      const Icon(Icons.arrow_forward, size: 18),
-                                    ],
-                                  ],
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          _currentStep >= _steps.length - 1
+                                              ? 'Save & close'
+                                              : 'Save & continue',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (_currentStep <
+                                            _steps.length - 1) ...[
+                                          const SizedBox(width: 8),
+                                          const Icon(
+                                            Icons.arrow_forward,
+                                            size: 20,
+                                          ),
+                                        ],
+                                      ],
+                                    ))
+                            : Text(
+                                _currentStep < _steps.length - 1
+                                    ? l.next
+                                    : l.getStarted,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                        ),
+                              ),
                       ),
-                    ] else ...[
-                      // First-time setup: Next / Get started
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: FilledButton(
-                          onPressed: _canProceed ? _next : null,
-                          style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: Text(
-                            _currentStep < _steps.length - 1
-                                ? l.next
-                                : l.getStarted,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                    ),
+                    if (!widget.isEditing &&
+                        currentStep.skippable &&
+                        _currentStep < _steps.length - 1) ...[
+                      const SizedBox(height: 10),
+                      TextButton(
+                        onPressed: _skip,
+                        child: Text(
+                          l.skipForNow,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: onSurface.withValues(alpha: 0.55),
                           ),
                         ),
                       ),
-                      if (currentStep.skippable &&
-                          _currentStep < _steps.length - 1) ...[
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _skip,
-                          child: Text(
-                            l.skipForNow,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: onSurface.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ],
                 ),
@@ -742,6 +753,10 @@ class ProfileFormData {
   // Partner preferences (persisted)
   int? prefAgeMin;
   int? prefAgeMax;
+  int? prefHeightMinCm;
+  int? prefHeightMaxCm;
+  List<String> preferredBodyTypes = [];
+  bool prefBodyTypeStrict = false;
   String? prefReligion;
   bool prefReligionStrict = false;
   String? prefMotherTongue;
@@ -825,18 +840,29 @@ class ProfileFormData {
       diet = mat.diet;
       drinking = mat.drinking;
       smoking = mat.smoking;
+      exercise = mat.exercise;
+      aboutEducation = mat.aboutEducation;
       final fam = mat.familyDetails;
       if (fam != null) {
         familyType = fam.familyType;
         familyValues = fam.familyValues;
+        familyLocation = fam.familyLocation;
+        familyBasedOutOfCountry = fam.familyBasedOutOfCountry;
+        householdIncome = fam.householdIncome;
         fatherOccupation = fam.fatherOccupation;
         motherOccupation = fam.motherOccupation;
+        fatherAge = fam.fatherAge;
+        motherAge = fam.motherAge;
         if (fam.siblingsCount != null) siblings = fam.siblingsCount.toString();
+        siblingBrothers = fam.brothers;
+        siblingSisters = fam.sisters;
       }
       final hor = mat.horoscope;
       if (hor != null) {
         manglik = hor.manglik;
+        rashi = hor.rashi;
         nakshatra = hor.nakshatra;
+        gotra = hor.gotra;
         birthTime = hor.timeOfBirth;
         birthPlace = hor.birthPlace;
         if (hor.dateOfBirth != null) {
@@ -844,7 +870,20 @@ class ProfileFormData {
           if (dob != null) dateOfBirth ??= dob;
         }
       }
-      if (mat.educationDegree != null || mat.educationInstitution != null) {
+      if (mat.educationEntries != null && mat.educationEntries!.isNotEmpty) {
+        educationEntries = mat.educationEntries!
+            .map(
+              (e) => EducationEntry(
+                degree: e.degree,
+                institution: e.institution,
+                graduationYear: e.graduationYear,
+                scoreCountry: e.scoreCountry,
+                scoreType: e.scoreType,
+              ),
+            )
+            .toList();
+      } else if (mat.educationDegree != null ||
+          mat.educationInstitution != null) {
         educationEntries = [
           EducationEntry(
             degree: mat.educationDegree,
@@ -867,6 +906,12 @@ class ProfileFormData {
       interestedIn = prefs.genderPreference;
       prefAgeMin = prefs.ageMin;
       prefAgeMax = prefs.ageMax;
+      prefHeightMinCm = prefs.heightMinCm;
+      prefHeightMaxCm = prefs.heightMaxCm;
+      if (prefs.preferredBodyTypes != null &&
+          prefs.preferredBodyTypes!.isNotEmpty) {
+        preferredBodyTypes = List<String>.from(prefs.preferredBodyTypes!);
+      }
       prefReligion = prefs.preferredReligions?.isNotEmpty == true
           ? prefs.preferredReligions!.first
           : null;
@@ -890,6 +935,19 @@ class ProfileFormData {
       if (prefs.preferredCountries != null &&
           prefs.preferredCountries!.isNotEmpty) {
         preferredCountries = List<String>.from(prefs.preferredCountries!);
+      }
+      final strict = prefs.strictFilters;
+      if (strict != null) {
+        prefReligionStrict = strict['religion'] ?? false;
+        prefMotherTongueStrict = strict['motherTongue'] ?? false;
+        prefEducationStrict = strict['education'] ?? false;
+        prefMaritalStatusStrict = strict['maritalStatus'] ?? false;
+        prefIncomeStrict = strict['income'] ?? false;
+        prefDietStrict = strict['diet'] ?? false;
+        prefDrinkStrict = strict['drinking'] ?? false;
+        prefSmokeStrict = strict['smoking'] ?? false;
+        prefSettledAbroadStrict = strict['settledAbroad'] ?? false;
+        prefBodyTypeStrict = strict['bodyType'] ?? false;
       }
     }
   }
@@ -1080,8 +1138,9 @@ class ProfileFormData {
     if (fatherAge != null) fam['fatherAge'] = fatherAge;
     if (motherAge != null) fam['motherAge'] = motherAge;
     if (familyLocation != null) fam['familyLocation'] = familyLocation;
-    if (familyBasedOutOfCountry != null)
+    if (familyBasedOutOfCountry != null) {
       fam['familyBasedOutOfCountry'] = familyBasedOutOfCountry;
+    }
     if (householdIncome != null) fam['householdIncome'] = householdIncome;
     final sibCount = _computeSiblings();
     if (sibCount != null) fam['siblingsCount'] = sibCount;
@@ -1148,23 +1207,33 @@ class ProfileFormData {
     if (interestedIn != null) pref['genderPreference'] = interestedIn;
     if (prefAgeMin != null) pref['ageMin'] = prefAgeMin;
     if (prefAgeMax != null) pref['ageMax'] = prefAgeMax;
+    if (prefHeightMinCm != null) pref['heightMinCm'] = prefHeightMinCm;
+    if (prefHeightMaxCm != null) pref['heightMaxCm'] = prefHeightMaxCm;
+    if (preferredBodyTypes.isNotEmpty) {
+      pref['preferredBodyTypes'] = preferredBodyTypes;
+    }
     if (prefReligion != null) pref['preferredReligions'] = [prefReligion];
-    if (prefMotherTongue != null)
+    if (prefMotherTongue != null) {
       pref['preferredMotherTongues'] = [prefMotherTongue];
+    }
     if (prefEducation != null) pref['educationPreference'] = prefEducation;
-    if (prefMaritalStatus != null)
+    if (prefMaritalStatus != null) {
       pref['maritalStatusPreference'] = [prefMaritalStatus];
+    }
     if (prefDiet != null) pref['dietPreference'] = prefDiet;
     if (prefIncome != null) pref['incomePreference'] = prefIncome;
     if (prefDrink != null) pref['drinkingPreference'] = prefDrink;
     if (prefSmoke != null) pref['smokingPreference'] = prefSmoke;
-    if (prefSettledAbroad != null)
+    if (prefSettledAbroad != null) {
       pref['settledAbroadPreference'] = prefSettledAbroad;
+    }
     if (prefCityMode != null) pref['cityPreferenceMode'] = prefCityMode;
-    if (preferredCities.isNotEmpty)
+    if (preferredCities.isNotEmpty) {
       pref['preferredLocations'] = preferredCities;
-    if (preferredCountries.isNotEmpty)
+    }
+    if (preferredCountries.isNotEmpty) {
       pref['preferredCountries'] = preferredCountries;
+    }
 
     // Strict filters
     final strict = <String, dynamic>{};
@@ -1177,6 +1246,7 @@ class ProfileFormData {
     if (prefDrinkStrict) strict['drinking'] = true;
     if (prefSmokeStrict) strict['smoking'] = true;
     if (prefSettledAbroadStrict) strict['settledAbroad'] = true;
+    if (prefBodyTypeStrict) strict['bodyType'] = true;
     if (strict.isNotEmpty) pref['strictFilters'] = strict;
 
     if (pref.isNotEmpty) json['partnerPreferences'] = pref;
@@ -1187,8 +1257,9 @@ class ProfileFormData {
   int? _computeSiblings() {
     final b = siblingBrothers != null ? int.tryParse(siblingBrothers!) : null;
     final s = siblingSisters != null ? int.tryParse(siblingSisters!) : null;
-    if (b == null && s == null)
+    if (b == null && s == null) {
       return siblings != null ? int.tryParse(siblings!) : null;
+    }
     return (b ?? 0) + (s ?? 0);
   }
 }

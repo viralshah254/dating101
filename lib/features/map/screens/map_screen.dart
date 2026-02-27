@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -14,7 +15,8 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final _mapController = MapController();
   double _radiusKm = 10;
-  double _currentZoom = 11; // synced from map so clustering works on first frame
+  double _currentZoom =
+      11; // synced from map so clustering works on first frame
   bool _locationBlur = true;
   bool _activeNowOnly = false;
   bool _locationPermissionGranted = false;
@@ -39,12 +41,13 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Map',
+          l.navMap,
           style: AppTypography.headlineSmall.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w700,
@@ -54,7 +57,7 @@ class _MapScreenState extends State<MapScreen> {
           IconButton(
             icon: Icon(_locationBlur ? Icons.blur_on : Icons.blur_off),
             onPressed: () => setState(() => _locationBlur = !_locationBlur),
-            tooltip: 'Location blur',
+            tooltip: l.locationBlur,
           ),
           IconButton(
             icon: const Icon(Icons.tune),
@@ -98,16 +101,15 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
               // Week 16 — Clustered pins (simplified: show cluster when zoom < 12)
-              MarkerLayer(
-                markers: _buildMarkers(accent),
-              ),
+              MarkerLayer(markers: _buildMarkers(accent)),
             ],
           ),
           // Week 16 — Location permission education
           if (!_locationPermissionGranted && !_hasSeenPermissionEducation)
             _LocationPermissionBanner(
               accent: accent,
-              onDismiss: () => setState(() => _hasSeenPermissionEducation = true),
+              onDismiss: () =>
+                  setState(() => _hasSeenPermissionEducation = true),
               onEnable: () async {
                 setState(() {
                   _hasSeenPermissionEducation = true;
@@ -122,7 +124,10 @@ class _MapScreenState extends State<MapScreen> {
             child: Card(
               margin: EdgeInsets.zero,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -145,16 +150,17 @@ class _MapScreenState extends State<MapScreen> {
                     Row(
                       children: [
                         FilterChip(
-                          label: const Text('Active now'),
+                          label: Text(l.activeNow),
                           selected: _activeNowOnly,
-                          onSelected: (v) =>
-                              setState(() => _activeNowOnly = v),
+                          onSelected: (v) => setState(() => _activeNowOnly = v),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'Privacy: ${_locationBlur ? "Blurred" : "Precise"}',
                           style: AppTypography.caption.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.85),
                           ),
                         ),
                       ],
@@ -179,10 +185,7 @@ class _MapScreenState extends State<MapScreen> {
           point: _center,
           width: 56,
           height: 56,
-          child: _ClusterPin(
-            accent: accent,
-            count: _mockPins.length,
-          ),
+          child: _ClusterPin(accent: accent, count: _mockPins.length),
         ),
       ];
     }
@@ -195,11 +198,7 @@ class _MapScreenState extends State<MapScreen> {
           onTap: () => _showProfilePreview(context, p),
           child: _locationBlur
               ? _BlurredPin(accent: accent)
-              : _ProfilePin(
-                  accent: accent,
-                  label: p.name,
-                  age: p.age,
-                ),
+              : _ProfilePin(accent: accent, label: p.name, age: p.age),
         ),
       );
     }).toList();
@@ -226,6 +225,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _showMapFilters(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -235,20 +235,20 @@ class _MapScreenState extends State<MapScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Map filters', style: AppTypography.headlineSmall),
+              Text(l.mapFilters, style: AppTypography.headlineSmall),
               const SizedBox(height: 16),
-              const ListTile(
-                title: Text('Active now only'),
-                subtitle: Text('Show only people active in the last 24h'),
+              ListTile(
+                title: Text(l.activeNowOnly),
+                subtitle: Text(l.activeNowOnlySubtitle),
               ),
-              const ListTile(
-                title: Text('Location blur'),
-                subtitle: Text('Show approximate area instead of exact pin'),
+              ListTile(
+                title: Text(l.locationBlur),
+                subtitle: Text(l.locationBlurSubtitle),
               ),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Done'),
+                child: Text(l.done),
               ),
             ],
           ),
@@ -306,7 +306,9 @@ class _MapProfilePreviewSheet extends StatelessWidget {
                     backgroundColor: accent.withValues(alpha: 0.2),
                     child: Text(
                       pin.name.isNotEmpty ? pin.name[0].toUpperCase() : '?',
-                      style: AppTypography.headlineMedium.copyWith(color: accent),
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: accent,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -326,10 +328,7 @@ class _MapProfilePreviewSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: onClose,
-                  ),
+                  IconButton(icon: const Icon(Icons.close), onPressed: onClose),
                 ],
               ),
               if (pin.bio.isNotEmpty) ...[
@@ -345,13 +344,13 @@ class _MapProfilePreviewSheet extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onViewFullProfile,
                 icon: const Icon(Icons.person_outline, size: 18),
-                label: const Text('View full profile'),
+                label: Text(AppLocalizations.of(context)!.viewFullProfile),
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
                 onPressed: onSendIntro,
                 icon: const Icon(Icons.send, size: 18),
-                label: const Text('Send Thoughtful Intro'),
+                label: Text(AppLocalizations.of(context)!.ctaSendIntro),
               ),
             ],
           ),
@@ -418,12 +417,12 @@ class _LocationPermissionBanner extends StatelessWidget {
                 children: [
                   TextButton(
                     onPressed: onDismiss,
-                    child: const Text('Not now'),
+                    child: Text(AppLocalizations.of(context)!.notNow),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: onEnable,
-                    child: const Text('Enable'),
+                    child: Text(AppLocalizations.of(context)!.enable),
                   ),
                 ],
               ),
@@ -453,11 +452,7 @@ class _BlurredPin extends StatelessWidget {
 }
 
 class _ProfilePin extends StatelessWidget {
-  const _ProfilePin({
-    required this.accent,
-    required this.label,
-    this.age,
-  });
+  const _ProfilePin({required this.accent, required this.label, this.age});
   final Color accent;
   final String label;
   final int? age;

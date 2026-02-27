@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 
 class MainShell extends StatelessWidget {
@@ -9,6 +10,7 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: navigationShell,
@@ -32,7 +34,7 @@ class MainShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.explore_outlined,
                   activeIcon: Icons.explore,
-                  label: 'Discover',
+                  label: l.navDiscover,
                   index: 0,
                   currentIndex: navigationShell.currentIndex,
                   onTap: () => _onTap(0),
@@ -40,7 +42,7 @@ class MainShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.map_outlined,
                   activeIcon: Icons.map,
-                  label: 'Map',
+                  label: l.navMap,
                   index: 1,
                   currentIndex: navigationShell.currentIndex,
                   onTap: () => _onTap(1),
@@ -48,7 +50,7 @@ class MainShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.chat_bubble_outline,
                   activeIcon: Icons.chat_bubble,
-                  label: 'Chats',
+                  label: l.navChats,
                   index: 2,
                   currentIndex: navigationShell.currentIndex,
                   onTap: () => _onTap(2),
@@ -56,7 +58,7 @@ class MainShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
-                  label: 'Circles',
+                  label: l.navCommunities,
                   index: 3,
                   currentIndex: navigationShell.currentIndex,
                   onTap: () => _onTap(3),
@@ -64,7 +66,7 @@ class MainShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.event_outlined,
                   activeIcon: Icons.event,
-                  label: 'Events',
+                  label: l.navEvents,
                   index: 4,
                   currentIndex: navigationShell.currentIndex,
                   onTap: () => _onTap(4),
@@ -72,7 +74,7 @@ class MainShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
-                  label: 'Profile',
+                  label: l.navProfile,
                   index: 5,
                   currentIndex: navigationShell.currentIndex,
                   onTap: () => _onTap(5),
@@ -115,11 +117,11 @@ class _NavItem extends StatelessWidget {
     final isSelected = index == currentIndex;
     final color = isSelected
         ? (Theme.of(context).brightness == Brightness.dark
-            ? AppColors.darkAccent
-            : AppColors.lightAccent)
+              ? AppColors.darkAccent
+              : AppColors.lightAccent)
         : (Theme.of(context).brightness == Brightness.dark
-            ? AppColors.darkTextTertiary
-            : AppColors.lightTextTertiary);
+              ? AppColors.darkTextTertiary
+              : AppColors.lightTextTertiary);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -133,9 +135,9 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  ),
+                color: color,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              ),
             ),
           ],
         ),

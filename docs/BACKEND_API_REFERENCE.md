@@ -268,6 +268,8 @@ GET /profile/:userId
 
 **Success** `200 OK` – body: **UserProfile**. When the caller is another user (viewer), the response includes **`canRequestContactDetails`** (boolean): `true` if the viewer has a mutual match with this user or the viewer's entitlement allows contact requests (e.g. premium). Use for contact-request gating in the app. Sensitive fields may be masked for non-self viewers.
 
+**Photo visibility:** When the profile owner has **photosHidden: true** and the viewer has **not** been granted access, the response must return **photoUrls: []** (empty), **photosHidden: true**, and **canViewPhotos: false** so the app shows the locked-photos UI and "Request to view photos" in the Photos section. When the viewer is allowed (owner does not hide, or owner accepted the viewer's photo-view request), return full **photoUrls**, **canViewPhotos: true**.
+
 **Errors**
 
 | HTTP | code | When |
@@ -448,6 +450,8 @@ Report reason codes: `spam`, `harassment`, `inappropriate_photos`, `fake_profile
 
 All discovery endpoints require auth.
 
+**Discovery and strict preferences (matrimony):** For **GET /discovery/recommended** and **GET /discovery/explore**, the backend MUST load the authenticated user's stored **partner preferences** (and **strictFilters**) and apply them when returning results. For any dimension in **strictFilters** that is `true`, only include profiles that match that preference (e.g. if `strictFilters.religion === true`, only return profiles whose religion is in the user's `preferredReligions`). Non-strict preferences can be used to rank or bias results but must not exclude profiles. When the user has not set any filters in the app, **recommended** should still apply stored preferences and strictness so that discovery always shows profiles according to what the user is looking for. This ensures the best matrimonial experience: profiles shown match the user's "Looking for" and strict criteria are enforced.
+
 ### 4.1 Recommended profiles
 
 ```http
@@ -461,11 +465,11 @@ GET /discovery/recommended?mode=dating&city=Mumbai&limit=20&cursor=usr_xyz
 | limit | number | No | Default 20, max 50 |
 | cursor | string | No | Pagination cursor (last profile id) |
 
-**Success** `200 OK` – each profile includes **`matchReasons`** (array of strings, 1–3 items) for "Why recommended" chips, plus `compatibilityScore`, `compatibilityLabel`, and optional `breakdown`.
+**Success** `200 OK` – each profile is a **ProfileSummary** (see [§9.6](#96-profilesummary)), including **`matchReasons`** (array of strings, 1–3 items) for "Why recommended" chips, plus `compatibilityScore`, `compatibilityLabel`, and optional `breakdown`. For matrimony, include **`roleManagingProfile`** (e.g. `"parent"`, `"sibling"`, `"self"`) in each profile so the app can show "Managed by parent/sibling/..." on discovery cards.
 
 ```json
 {
-  "profiles": [ { "id": "...", "name": "...", "matchReasons": ["Lives in Mumbai", "Same religion — Hindu"], ... }, ... ],
+  "profiles": [ { "id": "...", "name": "...", "matchReasons": ["Lives in Mumbai", "Same religion — Hindu"], "roleManagingProfile": "parent", ... }, ... ],
   "nextCursor": "usr_abc123"
 }
 ```
@@ -478,7 +482,7 @@ GET /discovery/recommended?mode=dating&city=Mumbai&limit=20&cursor=usr_xyz
 GET /discovery/explore?mode=matrimony&limit=20&ageMin=24&ageMax=35&city=London&religion=Hindu&education=Master's&heightMinCm=160&diet=Vegetarian
 ```
 
-Same response shape as recommended. When filters are present, only profiles matching those filters are returned. **Strict preferences** (religion, education, diet) are enforced server-side: if the user has a strict preference set, it is applied (or overrides the request) so results always respect preferences.
+Same response shape as recommended. When filters are present (from query params or from the user's stored preferences), only profiles matching those filters are returned. **Strict preferences** (religion, motherTongue, education, maritalStatus, income, diet, drinking, smoking, settledAbroad, bodyType) are enforced server-side: for each key in the user's **strictFilters** that is `true`, only include profiles that match that preference. Merge stored partner preferences with any explicit query params (e.g. from Refine); strict dimensions must always be enforced.
 
 | Query | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -1049,6 +1053,22 @@ All require auth. Used for **Request contact** on profile and **View contacts** 
 
 ---
 
+## 6f. Photo visibility & request to view pictures
+
+Users can **hide their photos** (all or some) in preferences. Others **request to view pictures**; the profile owner sees requests and can **Accept** or **Decline**. Full contract: [BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md](./BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| PATCH | /profile/me | Set **photoVisibility**: `everyone` \| `on_request` \| `none`; optional **lockedPhotoIds**. Or use dedicated PATCH /profile/me/photo-visibility. |
+| GET | /profile/:userId | When caller is viewer: return **canViewPhotos**, **photoVisibility**, **photoViewRequestState**; full or masked **photoUrls**. |
+| GET | /photo-view-requests/status/:profileId | Status of my request toward that profile (none \| pending \| accepted \| declined). |
+| POST | /photo-view-requests | Send photo view request (body: **toUserId**). |
+| GET | /photo-view-requests/received | Received photo view requests (query: page, limit). |
+| POST | /photo-view-requests/:requestId/accept | Accept; grant requester access to my photos; notify requester. |
+| POST | /photo-view-requests/:requestId/decline | Decline; notify requester. |
+
+---
+
 ## 6e. Account (export, deactivate, delete)
 
 See [BACKEND_CROSS_CUTTING.md §5.3](BACKEND_CROSS_CUTTING.md#53-account-and-data).
@@ -1377,17 +1397,21 @@ When a gated action is attempted: **403** with `PREMIUM_REQUIRED` or `DAILY_LIMI
 | heightCm | number? | |
 | bodyType | string? | e.g. "Slim", "Athletic", "Average", "Heavy", "Curvy" |
 | complexion | string? | e.g. "Fair", "Wheatish", "Dark", "Prefer not to say" |
-| educationDegree | string? | |
-| educationInstitution | string? | |
+| disability | string? | e.g. "None", "Physical", "Prefer not to say" (physical attribute) |
+| educationDegree | string? | Primary degree (also set from first education entry) |
+| educationInstitution | string? | Primary institution (also set from first education entry) |
+| **educationEntries** | **array?** | **List of education entries. Each: degree, institution, graduationYear (number), scoreCountry (e.g. "UK", "India"), scoreType (e.g. "Upper second (2:1)", "First class")** |
+| **aboutEducation** | **string?** | **Free-text "About your education" (degrees, institutions, certifications)** |
 | occupation | string? | |
 | employer | string? | |
 | industry | string? | |
 | incomeRange | object? | minLabel, maxLabel, currency |
-| familyDetails | object? | familyType, familyValues, fatherOccupation, motherOccupation, siblingsCount, siblingsMarried, familyExpectations? |
+| familyDetails | object? | familyType, familyValues, familyLocation, familyBasedOutOfCountry, householdIncome, fatherOccupation, motherOccupation, fatherAge, motherAge, siblingsCount, siblingsMarried, brothers (string e.g. "None"/"1"), sisters (string), familyExpectations? |
 | diet | string? | |
 | drinking | string? | |
 | smoking | string? | |
-| horoscope | object? | dateOfBirth, timeOfBirth, birthPlace, manglik, nakshatra, horoscopeDocUrl |
+| **exercise** | **string?** | **e.g. "Daily", "Regularly", "Sometimes", "Rarely"** |
+| horoscope | object? | dateOfBirth, timeOfBirth, birthPlace, manglik, **rashi**, nakshatra, **gotra**, horoscopeDocUrl |
 
 ### 9.5 PartnerPreferences
 
@@ -1395,16 +1419,27 @@ When a gated action is attempted: **403** with `PREMIUM_REQUIRED` or `DAILY_LIMI
 |-------|------|-------------|
 | ageMin | number | Default 21 |
 | ageMax | number | Default 45 |
-| heightMinCm | number? | |
-| heightMaxCm | number? | |
+| heightMinCm | number? | Min partner height (cm), e.g. 150 |
+| heightMaxCm | number? | Max partner height (cm), e.g. 185 |
+| **preferredBodyTypes** | **string[]?** | **Preferred partner body type(s), e.g. ["Slim", "Athletic"]. Values: Slim, Average, Athletic, Heavyset, Plus size.** |
 | preferredLocations | string[] | |
 | preferredReligions | string[] | |
 | preferredCommunities | string[] | |
+| preferredMotherTongues | string[]? | |
 | educationPreference | string? | |
 | occupationPreference | string? | |
 | maritalStatusPreference | string[] | |
 | dietPreference | string? | |
+| incomePreference | string? | |
+| drinkingPreference | string? | |
+| smokingPreference | string? | |
+| settledAbroadPreference | string? | |
+| preferredCountries | string[]? | |
+| cityPreferenceMode | string? | e.g. "any", "same_as_me", "preferred" |
 | horoscopeMatchPreferred | boolean? | |
+| **strictFilters** | **object?** | **Map of dimension → boolean. When true, that preference is strict (must match). Keys: religion, motherTongue, education, maritalStatus, income, diet, drinking, smoking, settledAbroad, bodyType.** |
+
+**Strict filters behaviour:** For each key in `strictFilters` that is `true`, discovery/explore must only return profiles that satisfy that preference. For `bodyType`: when `strictFilters.bodyType === true`, only return profiles whose `bodyType` (from matrimony extensions) is in `preferredBodyTypes`. If `preferredBodyTypes` is empty or missing, strict body type has no effect.
 
 ### 9.6 ProfileSummary
 
@@ -1440,6 +1475,7 @@ Used in discovery (recommended, search, nearby), profile summary, shortlist, vis
 | compatibilityScore | number? | |
 | compatibilityLabel | string? | |
 | breakdown | object? | Per-dimension scores |
+| **roleManagingProfile** | **string?** | **Matrimony: who manages the profile. `"self"`, `"parent"`, `"guardian"`, `"sibling"`, `"friend"`. Omit or `"self"` = self-managed. App shows "Managed by parent/sibling/..." on cards when not self.** |
 
 ### 9.7 Interest
 
@@ -1559,6 +1595,12 @@ Used in discovery (recommended, search, nearby), profile summary, shortlist, vis
 
 ---
 
+**Backend: User record required for profile and location**
+
+If the backend returns `Foreign key constraint violated: Profile_userId_fkey` or `LocationLog_userId_fkey` when the app calls **PUT /profile/me** (first-time profile create) or **POST /security/location**, the authenticated `userId` from the JWT does not exist in the **User** table. Prisma’s `Profile` and `LocationLog` models reference `User`; the row must exist before creating related rows. **Fix:** Ensure a **User** record is created when the user first authenticates (e.g. in the verify-OTP / login flow), so that by the time the app sends PUT /profile/me or POST /security/location, the User with that `id` already exists.
+
+---
+
 **Related docs**
 
 - [BACKEND_PROFILE_SECTIONS.md](./BACKEND_PROFILE_SECTIONS.md) — Profile sections (app edit flow: section → fields, save & close, GET/PATCH usage)
@@ -1570,5 +1612,6 @@ Used in discovery (recommended, search, nearby), profile summary, shortlist, vis
 - [BACKEND_REQUESTS_SHORTLIST_FAMILY.md](./BACKEND_REQUESTS_SHORTLIST_FAMILY.md) — Requests (decline message), contact gating, shortlist (notes, sort), family, horoscope, parent role
 - [BACKEND_SAVED_SEARCHES.md](./BACKEND_SAVED_SEARCHES.md) — Saved searches and new-match notifications (matrimony)
 - [BACKEND_CONTACT_REQUESTS.md](./BACKEND_CONTACT_REQUESTS.md) — Contact request flow, accept/decline, notifications, View contacts (Call/WhatsApp)
+- [BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md](./BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md) — Photo visibility preference (hide all/some), request to view pictures, accept/decline, notifications
 - [BACKEND_CROSS_CUTTING.md](./BACKEND_CROSS_CUTTING.md) — Notifications, privacy, account (export/deactivate/delete), profile boost, referral, deep links
 - [BACKEND_VERIFICATION.md](./BACKEND_VERIFICATION.md) — Verification screen: ID, face, LinkedIn, education; verificationStatus and safety score; optional upload/OAuth endpoints

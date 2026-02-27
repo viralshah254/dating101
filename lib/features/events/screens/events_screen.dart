@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
 
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
     final events = _mockEvents;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Events',
+          l.navEvents,
           style: AppTypography.headlineSmall.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w700,
@@ -30,7 +32,9 @@ class EventsScreen extends StatelessWidget {
           children: [
             TabBar(
               labelColor: accent,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              unselectedLabelColor: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
               tabs: const [
                 Tab(text: 'Upcoming'),
                 Tab(text: 'My RSVPs'),
@@ -46,78 +50,122 @@ class EventsScreen extends StatelessWidget {
                       final e = events[i];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: Card(
-                          child: InkWell(
-                            onTap: () => _showEventDetail(context, e),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 56,
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: accent.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          DateFormat('MMM').format(e.date),
-                                          style: AppTypography.labelSmall.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.9),
+                        child:
+                            Card(
+                                  child: InkWell(
+                                    onTap: () => _showEventDetail(context, e),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            width: 56,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: accent.withValues(
+                                                alpha: 0.15,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  DateFormat(
+                                                    'MMM',
+                                                  ).format(e.date),
+                                                  style: AppTypography
+                                                      .labelSmall
+                                                      .copyWith(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                              alpha: 0.9,
+                                                            ),
+                                                      ),
+                                                ),
+                                                Text(
+                                                  DateFormat(
+                                                    'd',
+                                                  ).format(e.date),
+                                                  style: AppTypography
+                                                      .titleMedium
+                                                      .copyWith(
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).colorScheme.onSurface,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        Text(
-                                          DateFormat('d').format(e.date),
-                                          style: AppTypography.titleMedium.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurface,
-                                            fontWeight: FontWeight.w700,
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  e.title,
+                                                  style: AppTypography
+                                                      .titleMedium
+                                                      .copyWith(
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).colorScheme.onSurface,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  e.venue,
+                                                  style: AppTypography.bodySmall
+                                                      .copyWith(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                              alpha: 0.85,
+                                                            ),
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${e.attendeeCount} going',
+                                                  style: AppTypography.caption
+                                                      .copyWith(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                              alpha: 0.75,
+                                                            ),
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          FilledButton(
+                                            onPressed: () => _rsvp(context, e),
+                                            child: Text(l.rsvp),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          e.title,
-                                          style: AppTypography.titleMedium.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurface,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          e.venue,
-                                          style: AppTypography.bodySmall.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${e.attendeeCount} going',
-                                          style: AppTypography.caption.copyWith(
-                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => _rsvp(context, e),
-                                    child: const Text('RSVP'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ).animate().fadeIn(delay: (50 * i).ms).slideY(begin: 0.02, end: 0),
+                                )
+                                .animate()
+                                .fadeIn(delay: (50 * i).ms)
+                                .slideY(begin: 0.02, end: 0),
                       );
                     },
                   ),
@@ -153,7 +201,10 @@ class EventsScreen extends StatelessWidget {
             children: [
               Text(e.title, style: AppTypography.headlineSmall),
               const SizedBox(height: 8),
-              Text(DateFormat.yMMMd().format(e.date), style: AppTypography.bodyMedium),
+              Text(
+                DateFormat.yMMMd().format(e.date),
+                style: AppTypography.bodyMedium,
+              ),
               Text(e.venue, style: AppTypography.bodySmall),
               const SizedBox(height: 16),
               Text(e.description, style: AppTypography.bodyMedium),
@@ -163,7 +214,7 @@ class EventsScreen extends StatelessWidget {
                   _rsvp(context, e);
                   Navigator.pop(ctx);
                 },
-                child: const Text('RSVP'),
+                child: Text(AppLocalizations.of(context)!.rsvp),
               ),
             ],
           ),
@@ -173,9 +224,10 @@ class EventsScreen extends StatelessWidget {
   }
 
   void _rsvp(BuildContext context, _Event e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('RSVP\'d to ${e.title}')),
-    );
+    final l = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.rsvpdTo(e.title))));
   }
 }
 
