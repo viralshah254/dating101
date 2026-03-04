@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'saathi';
+  String get appTitle => 'Shubhmilan';
 
   @override
   String get appTagline => 'Sophisticated connections, globally.';
@@ -56,6 +56,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get viewMore => 'View more';
+
+  @override
   String get submit => 'Submit';
 
   @override
@@ -74,7 +77,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notNow => 'Not now';
 
   @override
-  String get loginTitle => 'saathi';
+  String get loginTitle => 'Shubhmilan';
 
   @override
   String get loginTagline => 'Sophisticated connections, globally.';
@@ -226,7 +229,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ctaRequestContact => 'Request Contact';
 
   @override
-  String get ctaUpgradeToPremium => 'Upgrade to saathi Premium';
+  String get ctaUpgradeToPremium => 'Upgrade to Shubhmilan Premium';
 
   @override
   String get premiumRequired => 'Premium Feature';
@@ -303,6 +306,69 @@ class AppLocalizationsEn extends AppLocalizations {
       'Shortlist profiles you like to review later.';
 
   @override
+  String get shortlistedTab => 'Shortlisted';
+
+  @override
+  String get shortlistedYouTab => 'Shortlisted you';
+
+  @override
+  String get tabChats => 'Chats';
+
+  @override
+  String get tabMessageRequests => 'Requests';
+
+  @override
+  String get circlesTab => 'Circles';
+
+  @override
+  String get eventsTab => 'Events';
+
+  @override
+  String get upcomingTab => 'Upcoming';
+
+  @override
+  String get myRsvpsTab => 'My RSVPs';
+
+  @override
+  String get messageTooltip => 'Message';
+
+  @override
+  String get watchAd => 'Watch ad';
+
+  @override
+  String get watchAdToUnlock => 'Watch ad to unlock';
+
+  @override
+  String get loadingAd => 'Loading ad…';
+
+  @override
+  String get adCouldntBeLoaded =>
+      'Ad couldn\'t be loaded. Try again or upgrade to Premium.';
+
+  @override
+  String get mutualMatchCelebrationMessage =>
+      'You\'re both interested in each other! Send a message or view their profile.';
+
+  @override
+  String get priorityInterestAdMessage =>
+      'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.';
+
+  @override
+  String get sendOrAcceptInterestFirst => 'Send or accept an interest first';
+
+  @override
+  String get watchAdToMessageMessage =>
+      'Watch an ad to send a message, or upgrade to Premium to message without ads.';
+
+  @override
+  String sayHiToName(String name) {
+    return 'Say hi to $name';
+  }
+
+  @override
+  String get sendPersonalNote => 'Send a personal note';
+
+  @override
   String get profileTitle => 'Profile';
 
   @override
@@ -372,6 +438,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subscription => 'Subscription';
+
+  @override
+  String subscriptionExpiresOn(String date) {
+    return 'Expires $date';
+  }
+
+  @override
+  String get subscriptionRenewSoon =>
+      'Renew in the next 7 days to keep Premium';
+
+  @override
+  String subscriptionDaysLeft(int count) {
+    return '$count days left';
+  }
+
+  @override
+  String get upgradeToPremiumSubtitle => 'Unlock all features';
 
   @override
   String get legal => 'Legal';
@@ -501,7 +584,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lookingForGroom => 'Groom';
 
   @override
-  String get paywallTitle => 'Unlock more with saathi';
+  String get paywallTitle => 'Unlock more with Shubhmilan';
 
   @override
   String get paywallDatingSubtitle =>
@@ -583,11 +666,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inviteFriends => 'Invite friends';
 
   @override
+  String get referNow => 'Refer Now';
+
+  @override
   String get inviteCopy => 'Give friends a better way to connect';
 
   @override
   String get inviteReward =>
       'Share your invite code or link. When they join, you both get a reward.';
+
+  @override
+  String get referralBenefitReferred =>
+      '30 days free Premium for everyone who signs up with your code.';
+
+  @override
+  String get referralContestMessage => 'Top referrer wins up to ₹1,00,000!';
 
   @override
   String get yourInviteCode => 'Your invite code';
@@ -609,6 +702,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get codeCopied => 'Code copied';
+
+  @override
+  String get referralCodeHint => 'Have a referral code?';
+
+  @override
+  String get referralCodeOptional => 'Referral code (optional)';
+
+  @override
+  String get referralPremiumTitle => '30 days free Premium!';
+
+  @override
+  String get referralPremiumMessage =>
+      'Your referral code was applied. You have 30 days of free Premium. Enjoy!';
+
+  @override
+  String referralShareMessage(String code, String link) {
+    return 'Try Shubhmilan — meaningful connections for the diaspora.\n\nDownload the app here: $link\n\nWhen you sign up, enter my referral code: $code\n\nYou get 30 days free Premium (India only). Plus, top referrers can win up to ₹1,00,000 every month!';
+  }
+
+  @override
+  String get referralTermsApply => 'Terms & conditions apply';
+
+  @override
+  String get referralTermsTitle => 'Referral Programme Terms & Conditions';
+
+  @override
+  String get referralTermsAndConditionsBody =>
+      '1. Programme. The Shubhmilan Referral Programme (\"Programme\") lets you share a unique referral code or link. When an eligible new user signs up using your code/link in accordance with these terms, they may receive a referral benefit (e.g., 30 days of Premium), and you may be eligible for the monthly referrer contest (\"Contest\").\n\n2. Territory (India only). The Programme, referral benefits, and Contest are offered only in India. Participation is valid only for users who are physically located in India at the time of sign-up and participation, and who have an Indian mobile number. Shubhmilan may use reasonable methods (including phone number, device signals, IP/location indicators) to confirm eligibility. If you are outside India, you are not eligible for referral benefits or prizes.\n\n3. Age requirement (18+ only). You must be 18 years or older to participate. By participating, you confirm you are 18+. Any user found (or reasonably suspected) to be under 18 will be immediately disqualified from the Programme and Contest, may forfeit any benefits or prizes, and may have their account removed/suspended.\n\n4. Eligibility. To be eligible as a referrer, you must be a registered Shubhmilan user in good standing and comply with these terms and our main Terms of Service and Privacy Policy. Referred users must be new (first-time sign-up on Shubhmilan), must sign up using a valid referral code/link during registration, and must not have previously created an account (including via another phone number, email, device, or identity).\n\n5. Referral benefit (30-day Premium). If the referral code/link is successfully applied during registration and the referred user is eligible, the referred user receives 30 days of Premium (or other benefit as shown in-app). The referral benefit is limited to one per person and is not transferable, exchangeable, or redeemable for cash. Shubhmilan may reject invalid, duplicate, or fraudulent sign-ups.\n\n6. Contest period and monthly winner. Shubhmilan may run a monthly Contest where the top eligible referrer based on qualifying referrals may win a prize pool of up to ₹1,00,000 (\"Prize\"). Each month will have one (1) winner who may win the maximum prize pool for that month, subject to verification and these terms. Contest details, including the month and measurement rules, will be communicated in-app.\n\n7. Qualifying referrals. A \"qualifying referral\" is counted only when: (a) the referred user is eligible and new; (b) the referral code/link is applied at registration; (c) the account passes fraud/duplicate checks; and (d) Shubhmilan reasonably determines the sign-up is genuine. Shubhmilan may exclude referrals that appear to be incentivized improperly, spam-driven, or otherwise abusive.\n\n8. Prohibited conduct (anti-fraud). You may not use fake accounts, bots, scripts, click-farms, paid installs, spam, misleading claims, impersonation, mass messaging in violation of law/policies, or any fraudulent or abusive methods to earn referrals or Contest standing. You may not sell, trade, or publish referral codes/links on coupon/referral marketplaces. Any such activity may result in disqualification, forfeiture of benefits/prizes, and suspension/termination of your account.\n\n9. Verification, decision rights, and tie-breaks. Shubhmilan reserves the right to verify eligibility and compliance, including requesting proof of age and identity. If verification is not completed or fails, the user is disqualified. In case of a tie or suspected manipulation, Shubhmilan may use additional criteria (e.g., referral quality signals, time to qualify, integrity checks) or conduct a tie-break process at its sole discretion. Shubhmilan’s decision is final.\n\n10. Prize payment timeline and review date. Prize payouts (if any) will be processed only after the monthly competition ends and Shubhmilan completes verification and review. For the Contest cycle ending in August 2026, winner review will be completed by August 31, 2026, and payouts will be initiated after review is finalized. Shubhmilan may delay or withhold payouts where verification, compliance checks, or legal requirements are pending.\n\n11. Taxes, KYC, and payment method. Prizes may be subject to applicable Indian taxes, withholding (TDS), reporting, and KYC requirements. Winners must provide required details (e.g., PAN, bank account, ID) to receive the Prize. If a winner does not provide required information within the timeframe communicated, the Prize may be forfeited or awarded to an alternate eligible winner.\n\n12. Privacy and communications. We will handle personal data in accordance with our Privacy Policy. We may contact participants about eligibility, verification, and prize distribution.\n\n13. Changes, suspension, and termination. Shubhmilan may modify, suspend, or end the Programme/Contest or these terms at any time (including prize pool amounts and rules) where reasonably necessary (e.g., to prevent abuse, comply with law, or operational reasons). Continued participation after changes constitutes acceptance of the updated terms.\n\n14. Liability. To the maximum extent permitted by law, Shubhmilan is not liable for any loss arising from participation in the Programme/Contest, including technical issues, delayed or failed tracking, or disqualification decisions made in good faith.\n\n15. Governing law and disputes. These Referral Terms are governed by the laws of India. Courts of competent jurisdiction in India will have exclusive jurisdiction over disputes arising from the Programme/Contest.\n\n16. General. These Referral Terms are in addition to our main Terms of Service and Privacy Policy. If there is a conflict, these Referral Terms apply to the Programme/Contest only.';
 
   @override
   String get loginHeroTitle => 'Find your\nperson';
@@ -639,7 +760,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modeSelectSubtitle =>
-      'Choose how you\'d like to use saathi. You can switch anytime from settings.';
+      'Choose how you\'d like to use Shubhmilan. You can switch anytime from settings.';
 
   @override
   String get modeSwitchHint => 'You can switch anytime in Settings.';
@@ -1304,7 +1425,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationRequiredMessage =>
-      'saathi needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
+      'Shubhmilan needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
 
   @override
   String get locationAllow => 'Allow location';
@@ -1425,7 +1546,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appLanguage => 'App language';
 
   @override
-  String get chooseAppLanguage => 'Choose app language';
+  String get chooseAppLanguage => 'Choose your language';
+
+  @override
+  String get languageSelectSubtitle => 'You can change this later in settings.';
 
   @override
   String languageSetTo(Object name) {
@@ -1433,13 +1557,31 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'saathi mode';
+  String get saathiMode => 'Shubhmilan mode';
 
   @override
   String get accountAndData => 'Account & data';
 
   @override
   String get viewProfile => 'View profile';
+
+  @override
+  String get discoverPass => 'Pass';
+
+  @override
+  String get discoverLike => 'Like';
+
+  @override
+  String get discoverSuperLike => 'Super like';
+
+  @override
+  String get discoverSwipePassHint => 'Swipe left to pass';
+
+  @override
+  String get discoverSwipeLikeHint => 'Swipe right to like';
+
+  @override
+  String get discoverSwipeSuperLikeHint => 'Swipe up for super like';
 
   @override
   String get downloadMyData => 'Download my data';
@@ -1629,6 +1771,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lookingForTitle => 'Looking for';
+
+  @override
+  String get partnerPrefLocations => 'Locations';
+
+  @override
+  String get partnerPrefCountries => 'Countries';
+
+  @override
+  String get partnerPrefSettledAbroad => 'Settled abroad';
+
+  @override
+  String get partnerPrefHoroscopeMatch => 'Horoscope match';
+
+  @override
+  String get partnerPrefPreferred => 'Preferred';
+
+  @override
+  String get partnerPrefStrictSuffix => ' (Strict)';
 
   @override
   String get requestAgain => 'Request again';
@@ -2075,4 +2235,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportDetailsHint => 'Add any context that might help our team';
+
+  @override
+  String get translate => 'Translate';
+
+  @override
+  String get translating => 'Translating...';
+
+  @override
+  String get showOriginal => 'Show original';
+
+  @override
+  String get showTranslation => 'Show translation';
+
+  @override
+  String get translationUnavailable => 'Translation unavailable';
+
+  @override
+  String get noVisitorsYet => 'No visitors yet';
+
+  @override
+  String get noVisitorsYetBody =>
+      'Profiles who viewed you will appear here. Complete your profile to get noticed.';
+
+  @override
+  String get noMatchesYetBody =>
+      'When you and someone else both express interest, you\'ll match and appear here.';
+
+  @override
+  String get noMatchesFound => 'No matches found';
+
+  @override
+  String get tryAdjustingFilters =>
+      'Try adjusting your filters for more results.';
+
+  @override
+  String get exploreProfiles => 'Explore profiles';
+
+  @override
+  String get exploreProfilesBody =>
+      'Use the filter icon above to search by age, city, religion, education and more.';
 }

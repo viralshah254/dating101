@@ -23,7 +23,7 @@ ML = {
     "appLanguage": "ആപ്പ് ഭാഷ",
     "chooseAppLanguage": "ആപ്പ് ഭാഷ തിരഞ്ഞെടുക്കുക",
     "languageSetTo": "ഭാഷ {name} ആയി സജ്ജമാക്കി",
-    "saathiMode": "saathi മോഡ്",
+    "saathiMode": "Shubhmilan മോഡ്",
     "accountAndData": "അക്കൗണ്ടും ഡാറ്റയും",
     "viewProfile": "പ്രൊഫൈൽ കാണുക",
     "downloadMyData": "എന്റെ ഡാറ്റ ഡൗൺലോഡ് ചെയ്യുക",

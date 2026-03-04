@@ -20,6 +20,175 @@ class DiscoveryFeedResult {
   final bool isWidenedSearch;
 }
 
+/// State for paginated Recommended or Explore feed (lazy loading).
+class PaginatedFeedState {
+  const PaginatedFeedState({
+    required this.profiles,
+    this.nextCursor,
+    this.isWidenedSearch = false,
+    this.loadingMore = false,
+  });
+  final List<ProfileSummary> profiles;
+  final String? nextCursor;
+  final bool isWidenedSearch;
+  final bool loadingMore;
+
+  PaginatedFeedState copyWith({
+    List<ProfileSummary>? profiles,
+    Object? nextCursor = _unchanged,
+    bool? isWidenedSearch,
+    bool? loadingMore,
+  }) =>
+      PaginatedFeedState(
+        profiles: profiles ?? this.profiles,
+        nextCursor: identical(nextCursor, _unchanged) ? this.nextCursor : nextCursor as String?,
+        isWidenedSearch: isWidenedSearch ?? this.isWidenedSearch,
+        loadingMore: loadingMore ?? this.loadingMore,
+      );
+
+  bool get hasMore => nextCursor != null && nextCursor!.isNotEmpty;
+}
+
+const _unchanged = Object();
+
+const _recommendedPageSize = 30;
+const _explorePageSize = 30;
+
+/// Paginated Recommended feed: first page 30, then load more on scroll.
+class RecommendedPaginatedNotifier extends AutoDisposeAsyncNotifier<PaginatedFeedState> {
+  @override
+  Future<PaginatedFeedState> build() async {
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+    final repo = ref.read(discoveryRepositoryProvider);
+    final page = await repo.getRecommendedPage(
+      mode: mode,
+      limit: _recommendedPageSize,
+      cursor: null,
+    );
+    if (page.profiles.isNotEmpty) {
+      return PaginatedFeedState(
+        profiles: page.profiles,
+        nextCursor: page.nextCursor,
+        isWidenedSearch: false,
+      );
+    }
+    debugPrint(
+      '[Matches] No recommendations; using explore as fallback (paginated).',
+    );
+    final fallback = await repo.getExplorePage(
+      mode: mode,
+      limit: _recommendedPageSize,
+      cursor: null,
+    );
+    return PaginatedFeedState(
+      profiles: fallback.profiles,
+      nextCursor: fallback.nextCursor,
+      isWidenedSearch: fallback.profiles.isNotEmpty,
+    );
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null ||
+        current.loadingMore ||
+        !current.hasMore) return;
+    state = AsyncValue.data(current.copyWith(loadingMore: true));
+    try {
+      final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
+      final repo = ref.read(discoveryRepositoryProvider);
+      final page = await repo.getRecommendedPage(
+        mode: mode,
+        limit: _recommendedPageSize,
+        cursor: current.nextCursor,
+      );
+      final updated = current.copyWith(
+        profiles: [...current.profiles, ...page.profiles],
+        nextCursor: page.nextCursor,
+        loadingMore: false,
+      );
+      state = AsyncValue.data(updated);
+    } catch (e, st) {
+      state = AsyncValue.data(current.copyWith(loadingMore: false));
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
+
+final recommendedPaginatedProvider =
+    AsyncNotifierProvider.autoDispose<RecommendedPaginatedNotifier, PaginatedFeedState>(
+  RecommendedPaginatedNotifier.new,
+);
+
+/// Paginated Explore (Search) feed: first page 30, then load more on scroll.
+class ExplorePaginatedNotifier
+    extends AutoDisposeFamilyAsyncNotifier<PaginatedFeedState,
+        ({AppMode mode, MatchesSearchFilters filters})> {
+  @override
+  Future<PaginatedFeedState> build(
+    ({AppMode mode, MatchesSearchFilters filters}) arg,
+  ) async {
+    final repo = ref.read(discoveryRepositoryProvider);
+    final page = await repo.getExplorePage(
+      mode: arg.mode,
+      ageMin: arg.filters.ageMin,
+      ageMax: arg.filters.ageMax,
+      city: arg.filters.city,
+      religion: arg.filters.religion,
+      education: arg.filters.education,
+      heightMinCm: arg.filters.heightMinCm,
+      diet: arg.filters.diet,
+      limit: _explorePageSize,
+      cursor: null,
+    );
+    return PaginatedFeedState(
+      profiles: page.profiles,
+      nextCursor: page.nextCursor,
+      isWidenedSearch: false,
+    );
+  }
+
+  /// Call with the same (mode, filters) used to watch the provider.
+  Future<void> loadMore(({AppMode mode, MatchesSearchFilters filters}) arg) async {
+    final current = state.valueOrNull;
+    if (current == null ||
+        current.loadingMore ||
+        !current.hasMore) return;
+    state = AsyncValue.data(current.copyWith(loadingMore: true));
+    try {
+      final repo = ref.read(discoveryRepositoryProvider);
+      final page = await repo.getExplorePage(
+        mode: arg.mode,
+        ageMin: arg.filters.ageMin,
+        ageMax: arg.filters.ageMax,
+        city: arg.filters.city,
+        religion: arg.filters.religion,
+        education: arg.filters.education,
+        heightMinCm: arg.filters.heightMinCm,
+        diet: arg.filters.diet,
+        limit: _explorePageSize,
+        cursor: current.nextCursor,
+      );
+      final updated = current.copyWith(
+        profiles: [...current.profiles, ...page.profiles],
+        nextCursor: page.nextCursor,
+        loadingMore: false,
+      );
+      state = AsyncValue.data(updated);
+    } catch (e, st) {
+      state = AsyncValue.data(current.copyWith(loadingMore: false));
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
+
+final explorePaginatedProvider =
+    AsyncNotifierProvider.autoDispose.family<
+        ExplorePaginatedNotifier,
+        PaginatedFeedState,
+        ({AppMode mode, MatchesSearchFilters filters})>(
+  ExplorePaginatedNotifier.new,
+);
+
 final matchesRecommendedProvider =
     FutureProvider.autoDispose<List<ProfileSummary>>((ref) async {
       final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
@@ -40,9 +209,11 @@ final matchesRecommendedWithFallbackProvider =
         return DiscoveryFeedResult(profiles: results);
       }
       debugPrint(
-        '[Matches] No recommendations; trying explore with no filters...',
+        '[Matches] No recommendations (backend may have returned count-only); '
+        'using explore with no filters as fallback.',
       );
       final fallback = await repo.getExplore(mode: mode, limit: 20);
+      debugPrint('[Matches] Fallback explore returned ${fallback.length} profiles');
       return DiscoveryFeedResult(
         profiles: fallback,
         isWidenedSearch: fallback.isNotEmpty,

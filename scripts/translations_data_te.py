@@ -23,7 +23,7 @@ TE = {
     "appLanguage": "యాప్ భాష",
     "chooseAppLanguage": "యాప్ భాష ఎంచుకోండి",
     "languageSetTo": "భాష {name}గా సెట్ చేయబడింది",
-    "saathiMode": "saathi మోడ్",
+    "saathiMode": "Shubhmilan మోడ్",
     "accountAndData": "ఖాతా మరియు డేటా",
     "viewProfile": "ప్రొఫైల్ చూడండి",
     "downloadMyData": "నా డేటా డౌన్‌లోడ్ చేయండి",

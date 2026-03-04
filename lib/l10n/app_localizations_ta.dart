@@ -9,7 +9,7 @@ class AppLocalizationsTa extends AppLocalizations {
   AppLocalizationsTa([String locale = 'ta']) : super(locale);
 
   @override
-  String get appTitle => 'saathi';
+  String get appTitle => 'Shubhmilan';
 
   @override
   String get appTagline => 'Sophisticated connections, globally.';
@@ -56,6 +56,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get viewMore => 'மேலும் பார்க்க';
+
+  @override
   String get submit => 'Submit';
 
   @override
@@ -74,7 +77,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get notNow => 'Not now';
 
   @override
-  String get loginTitle => 'saathi';
+  String get loginTitle => 'Shubhmilan';
 
   @override
   String get loginTagline => 'Sophisticated connections, globally.';
@@ -226,7 +229,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get ctaRequestContact => 'Request Contact';
 
   @override
-  String get ctaUpgradeToPremium => 'Upgrade to saathi Premium';
+  String get ctaUpgradeToPremium => 'Upgrade to Shubhmilan Premium';
 
   @override
   String get premiumRequired => 'Premium Feature';
@@ -300,7 +303,71 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get shortlistEmptyHint =>
-      'Shortlist profiles you like to review later.';
+      'பின்னர் பார்க்க விரும்பும் சுயவிவரங்களை குறுகிய பட்டியலில் சேர்க்கவும்.';
+
+  @override
+  String get shortlistedTab => 'குறுகிய பட்டியலில்';
+
+  @override
+  String get shortlistedYouTab => 'உங்களை குறுகிய பட்டியலில் சேர்த்தவர்';
+
+  @override
+  String get tabChats => 'அரட்டைகள்';
+
+  @override
+  String get tabMessageRequests => 'கோரிக்கைகள்';
+
+  @override
+  String get circlesTab => 'வட்டங்கள்';
+
+  @override
+  String get eventsTab => 'நிகழ்வுகள்';
+
+  @override
+  String get upcomingTab => 'வரவிருக்கும்';
+
+  @override
+  String get myRsvpsTab => 'எனது RSVP';
+
+  @override
+  String get messageTooltip => 'செய்தி';
+
+  @override
+  String get watchAd => 'விளம்பரம் பார்க்கவும்';
+
+  @override
+  String get watchAdToUnlock => 'அன்லாக் செய்ய விளம்பரம் பார்க்கவும்';
+
+  @override
+  String get loadingAd => 'விளம்பரம் ஏற்றப்படுகிறது…';
+
+  @override
+  String get adCouldntBeLoaded =>
+      'விளம்பரம் ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது பிரீமியம் மேம்படுத்தவும்.';
+
+  @override
+  String get mutualMatchCelebrationMessage =>
+      'நீங்கள் இருவரும் ஒருவருக்கொருவர் ஆர்வம் காட்டுகிறீர்கள்! செய்தி அனுப்பவும் அல்லது சுயவிவரம் பார்க்கவும்.';
+
+  @override
+  String get priorityInterestAdMessage =>
+      'முன்னுரிமை ஆர்வம் அனுப்ப விளம்பரம் பார்க்கவும், அல்லது விளம்பரம் இல்லாமல் அனுப்ப பிரீமியம் மேம்படுத்தவும்.';
+
+  @override
+  String get sendOrAcceptInterestFirst =>
+      'முதலில் ஆர்வம் அனுப்பவும் அல்லது ஏற்றுக்கொள்ளவும்';
+
+  @override
+  String get watchAdToMessageMessage =>
+      'செய்தி அனுப்ப விளம்பரம் பார்க்கவும், அல்லது பிரீமியம் மேம்படுத்தி விளம்பரம் இல்லாமல் செய்தி அனுப்பவும்.';
+
+  @override
+  String sayHiToName(String name) {
+    return '$nameக்கு வணக்கம் சொல்லுங்கள்';
+  }
+
+  @override
+  String get sendPersonalNote => 'தனிப்பட்ட குறிப்பு அனுப்பவும்';
 
   @override
   String get profileTitle => 'Profile';
@@ -372,6 +439,24 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get subscription => 'Subscription';
+
+  @override
+  String subscriptionExpiresOn(String date) {
+    return '$date முடிவு';
+  }
+
+  @override
+  String get subscriptionRenewSoon =>
+      'பிரீமியம் தொடர அடுத்த 7 நாட்களில் புதுப்பிக்கவும்';
+
+  @override
+  String subscriptionDaysLeft(int count) {
+    return '$count நாட்கள் மீதி';
+  }
+
+  @override
+  String get upgradeToPremiumSubtitle =>
+      'அனைத்து அம்சங்களையும் அன்லாக் செய்யவும்';
 
   @override
   String get legal => 'Legal';
@@ -501,7 +586,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get lookingForGroom => 'Groom';
 
   @override
-  String get paywallTitle => 'Unlock more with saathi';
+  String get paywallTitle => 'Unlock more with Shubhmilan';
 
   @override
   String get paywallDatingSubtitle =>
@@ -583,11 +668,22 @@ class AppLocalizationsTa extends AppLocalizations {
   String get inviteFriends => 'Invite friends';
 
   @override
+  String get referNow => 'இப்போது பரிந்துரைக்கவும்';
+
+  @override
   String get inviteCopy => 'Give friends a better way to connect';
 
   @override
   String get inviteReward =>
       'Share your invite code or link. When they join, you both get a reward.';
+
+  @override
+  String get referralBenefitReferred =>
+      'உங்கள் குறியீட்டுடன் பதிவு செய்பவர்கள் அனைவருக்கும் 30 நாட்கள் இலவச பிரீமியம்.';
+
+  @override
+  String get referralContestMessage =>
+      'முதல் பரிந்துரைப்பவர் ₹1,00,000 வரை வெல்லலாம்!';
 
   @override
   String get yourInviteCode => 'Your invite code';
@@ -609,6 +705,35 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get codeCopied => 'Code copied';
+
+  @override
+  String get referralCodeHint => 'பரிந்துரை குறியீடு உள்ளதா?';
+
+  @override
+  String get referralCodeOptional => 'பரிந்துரை குறியீடு (விரும்பினால்)';
+
+  @override
+  String get referralPremiumTitle => '30 நாட்கள் இலவச பிரீமியம்!';
+
+  @override
+  String get referralPremiumMessage =>
+      'உங்கள் பரிந்துரை குறியீடு பயன்படுத்தப்பட்டது. உங்களுக்கு 30 நாட்கள் இலவச பிரீமியம் கிடைத்தது. அனுபவிக்கவும்!';
+
+  @override
+  String referralShareMessage(String code, String link) {
+    return 'Shubhmilan முயற்சிக்கவும் — விரிவடைந்த இந்தியருக்கான அர்த்தமுள்ள இணைப்புகள்.\n\nஇங்கிருந்து ஆப்பைப் பதிவிறக்குங்கள்: $link\n\nபதிவு செய்யும்போது எனது பரிந்துரை குறியீட்டை உள்ளிடவும்: $code\n\nஉங்களுக்கு 30 நாட்கள் இலவச பிரீமியம் (இந்தியா மட்டும்). மேலும், முதல் பரிந்துரைப்பவர்கள் ஒவ்வொரு மாதமும் ₹1,00,000 வரை வெல்லலாம்!';
+  }
+
+  @override
+  String get referralTermsApply => 'விதிமுறைகள் மற்றும் நிபந்தனைகள் பொருந்தும்';
+
+  @override
+  String get referralTermsTitle =>
+      'பரிந்துரை நிரல் விதிமுறைகள் மற்றும் நிபந்தனைகள்';
+
+  @override
+  String get referralTermsAndConditionsBody =>
+      'பரிந்துரை நிரலின் முழு விதிமுறைகள் பயன்பாட்டில் கிடைக்கின்றன.';
 
   @override
   String get loginHeroTitle => 'Find your\nperson';
@@ -639,7 +764,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get modeSelectSubtitle =>
-      'Choose how you\'d like to use saathi. You can switch anytime from settings.';
+      'Choose how you\'d like to use Shubhmilan. You can switch anytime from settings.';
 
   @override
   String get modeSwitchHint => 'You can switch anytime in Settings.';
@@ -1304,7 +1429,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get locationRequiredMessage =>
-      'saathi needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
+      'Shubhmilan needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
 
   @override
   String get locationAllow => 'Allow location';
@@ -1425,7 +1550,10 @@ class AppLocalizationsTa extends AppLocalizations {
   String get appLanguage => 'ஆப் மொழி';
 
   @override
-  String get chooseAppLanguage => 'ஆப் மொழியைத் தேர்ந்தெடுக்கவும்';
+  String get chooseAppLanguage => 'உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்';
+
+  @override
+  String get languageSelectSubtitle => 'பின்னர் அமைப்புகளிலிருந்து மாற்றலாம்.';
 
   @override
   String languageSetTo(Object name) {
@@ -1433,13 +1561,31 @@ class AppLocalizationsTa extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'saathi மோட்';
+  String get saathiMode => 'Shubhmilan மோட்';
 
   @override
   String get accountAndData => 'கணக்கு மற்றும் தரவு';
 
   @override
   String get viewProfile => 'சுயவிவரம் பார்க்கவும்';
+
+  @override
+  String get discoverPass => 'Pass';
+
+  @override
+  String get discoverLike => 'Like';
+
+  @override
+  String get discoverSuperLike => 'Super like';
+
+  @override
+  String get discoverSwipePassHint => 'Swipe left to pass';
+
+  @override
+  String get discoverSwipeLikeHint => 'Swipe right to like';
+
+  @override
+  String get discoverSwipeSuperLikeHint => 'Swipe up for super like';
 
   @override
   String get downloadMyData => 'எனது தரவைப் பதிவிறக்கவும்';
@@ -1633,6 +1779,24 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get lookingForTitle => 'எதைத் தேடுகிறீர்கள்';
+
+  @override
+  String get partnerPrefLocations => 'Locations';
+
+  @override
+  String get partnerPrefCountries => 'Countries';
+
+  @override
+  String get partnerPrefSettledAbroad => 'Settled abroad';
+
+  @override
+  String get partnerPrefHoroscopeMatch => 'Horoscope match';
+
+  @override
+  String get partnerPrefPreferred => 'Preferred';
+
+  @override
+  String get partnerPrefStrictSuffix => ' (Strict)';
 
   @override
   String get requestAgain => 'மீண்டும் கோரிக்கை';
@@ -2095,4 +2259,44 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get reportDetailsHint =>
       'எங்கள் குழுவிற்கு உதவும் எந்த சூழலையும் சேர்க்கவும்';
+
+  @override
+  String get translate => 'மொழிபெயர்';
+
+  @override
+  String get translating => 'மொழிபெயர்க்கப்படுகிறது...';
+
+  @override
+  String get showOriginal => 'அசலைக் காட்டு';
+
+  @override
+  String get showTranslation => 'மொழிபெயர்ப்பைக் காட்டு';
+
+  @override
+  String get translationUnavailable => 'மொழிபெயர்ப்பு கிடைக்கவில்லை';
+
+  @override
+  String get noVisitorsYet => 'இன்னும் பார்வையாளர்கள் இல்லை';
+
+  @override
+  String get noVisitorsYetBody =>
+      'உங்களைப் பார்த்த சுயவிவரங்கள் இங்கே தோன்றும். கவனம் ஈர்க்க சுயவிவரத்தை முடிக்கவும்.';
+
+  @override
+  String get noMatchesYetBody =>
+      'நீங்களும் மற்றவரும் ஆர்வம் காட்டும்போது, பொருந்துவீர்கள் மற்றும் இங்கே தோன்றுவீர்கள்.';
+
+  @override
+  String get noMatchesFound => 'பொருந்துதல்கள் கிடைக்கவில்லை';
+
+  @override
+  String get tryAdjustingFilters =>
+      'மேலும் முடிவுகளுக்கு வடிகட்டிகளை சரிசெய்யவும்.';
+
+  @override
+  String get exploreProfiles => 'சுயவிவரங்களை ஆராயவும்';
+
+  @override
+  String get exploreProfilesBody =>
+      'வயது, நகரம், மதம், கல்வி முதலியவற்றால் தேட மேலே உள்ள வடிகட்டி ஐகான் பயன்படுத்தவும்.';
 }

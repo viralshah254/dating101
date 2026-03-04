@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/translatable_text.dart';
 import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
@@ -132,13 +134,9 @@ class ProfileCard extends StatelessWidget {
                 MatchReasonChip(reason: profile.matchReason!),
                 const SizedBox(height: 12),
               ],
-              Text(
-                profile.bio,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.9),
-                ),
+              _ProfileBio(
+                bio: profile.bio,
+                onSurface: Theme.of(context).colorScheme.onSurface,
               ),
               if ((profile.promptAnswer ?? '').isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -282,6 +280,74 @@ class _ProfileAvatar extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => fallback,
         ),
+      ),
+    );
+  }
+}
+
+/// Bio with fixed max lines, ellipsis, and "View more" (no scrollable description).
+class _ProfileBio extends ConsumerWidget {
+  const _ProfileBio({required this.bio, required this.onSurface});
+  final String bio;
+  final Color onSurface;
+
+  static const int _maxLines = 3;
+  static const int _showViewMoreThreshold = 100;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (bio.isEmpty) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context)!;
+    final style = AppTypography.bodyMedium.copyWith(
+      color: onSurface.withValues(alpha: 0.9),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TranslatableText(
+          content: bio,
+          textStyle: style,
+          maxLines: _maxLines,
+          showTranslateButton: true,
+        ),
+        if (bio.length > _showViewMoreThreshold) ...[
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () => _showViewMoreDialog(context, bio),
+            behavior: HitTestBehavior.opaque,
+            child: Text(
+              l.viewMore,
+              style: AppTypography.labelSmall.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static void _showViewMoreDialog(BuildContext context, String bio) {
+    final l = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.aboutMeSection),
+        content: SingleChildScrollView(
+          child: TranslatableText(
+            content: bio,
+            textStyle: AppTypography.bodyMedium.copyWith(height: 1.4),
+            showTranslateButton: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.close),
+          ),
+        ],
       ),
     );
   }

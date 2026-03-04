@@ -29,7 +29,7 @@ class PlaceSuggestion {
 class PlaceSearchService {
   PlaceSearchService._();
   static const _base = 'https://nominatim.openstreetmap.org/search';
-  static const _userAgent = 'saathi/1.0 (matrimony app)';
+  static const _userAgent = 'Shubhmilan/1.0 (matrimony app)';
 
   static Future<List<PlaceSuggestion>> search(String query) async {
     final q = query.trim();

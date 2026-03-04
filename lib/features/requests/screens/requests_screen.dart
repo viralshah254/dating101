@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/entitlements/entitlements.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
@@ -12,7 +16,7 @@ import '../../../domain/models/photo_view_request.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/requests_providers.dart';
-import '../../../core/providers/repository_providers.dart';
+import '../../shortlist/providers/shortlist_providers.dart';
 
 /// One card per user: user info + list of interactions (interest and/or priority_interest).
 class _GroupedRequest {
@@ -98,11 +102,15 @@ class RequestsScreen extends ConsumerWidget {
   }
 }
 
-/// Received tab: all received requests in one list (interest, contact, photo view).
+/// Received tab: all received requests in one list (interest, contact, photo view). Premium only to see list.
 class _ReceivedTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final ent = ref.watch(entitlementsProvider);
+    if (!ent.canSeeRequestsInbox) {
+      return _RequestsPremiumGate(onUpgrade: () => context.push('/paywall'));
+    }
     final interactionsAsync = ref.watch(receivedInteractionsProvider);
     final contactAsync = ref.watch(receivedContactRequestsProvider);
     final photoViewAsync = ref.watch(receivedPhotoViewRequestsProvider);
@@ -199,6 +207,16 @@ class _ReceivedTab extends ConsumerWidget {
     WidgetRef ref,
     _GroupedRequest group,
   ) async {
+    final ent = ref.read(entitlementsProvider);
+    if (ent.requiresAdPerRequestToView) {
+      final shown = await loadAndShowInterstitialWithLoading(
+        context,
+        ref,
+        AdRewardReason.viewAndRespondToRequest,
+      );
+      if (!context.mounted) return;
+      if (!shown) return;
+    }
     final repo = ref.read(interactionsRepositoryProvider);
     try {
       // Accept priority first if present, then interest (backend may create match on first accept).
@@ -226,6 +244,9 @@ class _ReceivedTab extends ConsumerWidget {
       ref.invalidate(receivedContactRequestsCountProvider);
       ref.invalidate(receivedPhotoViewRequestsCountProvider);
       if (result != null && result.mutualMatch && result.chatThreadId != null) {
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != group.user.id).toList(),
+            );
         context.push('/chat/${result.chatThreadId}');
       }
     } on ApiException catch (e) {
@@ -279,6 +300,16 @@ class _ReceivedTab extends ConsumerWidget {
     WidgetRef ref,
     String requestId,
   ) async {
+    final ent = ref.read(entitlementsProvider);
+    if (ent.requiresAdPerRequestToView) {
+      final shown = await loadAndShowInterstitialWithLoading(
+        context,
+        ref,
+        AdRewardReason.viewAndRespondToRequest,
+      );
+      if (!context.mounted) return;
+      if (!shown) return;
+    }
     final l = AppLocalizations.of(context)!;
     try {
       await ref
@@ -347,6 +378,16 @@ class _ReceivedTab extends ConsumerWidget {
     WidgetRef ref,
     String requestId,
   ) async {
+    final ent = ref.read(entitlementsProvider);
+    if (ent.requiresAdPerRequestToView) {
+      final shown = await loadAndShowInterstitialWithLoading(
+        context,
+        ref,
+        AdRewardReason.viewAndRespondToRequest,
+      );
+      if (!context.mounted) return;
+      if (!shown) return;
+    }
     final l = AppLocalizations.of(context)!;
     try {
       await ref.read(photoViewRequestRepositoryProvider).accept(requestId);
@@ -506,6 +547,56 @@ class _SentTab extends ConsumerWidget {
         ),
       );
     }
+  }
+}
+
+/// Premium gate for Requests (Received tab): free users cannot see the requests list.
+class _RequestsPremiumGate extends StatelessWidget {
+  const _RequestsPremiumGate({required this.onUpgrade});
+  final VoidCallback onUpgrade;
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final accent = AppColors.saffron;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: onSurface.withValues(alpha: 0.3)),
+            const SizedBox(height: 20),
+            Text(
+              'See who’s interested',
+              style: AppTypography.titleLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Upgrade to Premium to view and respond to your requests.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: onSurface.withValues(alpha: 0.65),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onUpgrade,
+              icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+              label: const Text('Upgrade to Premium'),
+              style: FilledButton.styleFrom(
+                backgroundColor: accent,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

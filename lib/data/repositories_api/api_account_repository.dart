@@ -17,8 +17,10 @@ class ApiAccountRepository implements AccountRepository {
 
   @override
   Future<void> deactivateAccount({String? reason}) async {
-    await api.post('/account/deactivate',
-        body: reason != null ? {'reason': reason} : <String, dynamic>{});
+    await api.post(
+      '/account/deactivate',
+      body: reason != null ? {'reason': reason} : <String, dynamic>{},
+    );
   }
 
   @override
@@ -28,7 +30,9 @@ class ApiAccountRepository implements AccountRepository {
 
   @override
   Future<void> deleteAccount({String? reason}) async {
-    await api.post('/account/delete',
-        body: reason != null ? {'reason': reason} : <String, dynamic>{});
+    await api.post(
+      '/account/delete',
+      body: reason != null ? {'reason': reason} : <String, dynamic>{},
+    );
   }
 }

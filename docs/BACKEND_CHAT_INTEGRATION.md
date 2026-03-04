@@ -1,6 +1,6 @@
 # Backend integration: Chat (connect the app)
 
-Use this doc together with **[chat_endpoint.md](./chat_endpoint.md)** to wire your backend so the Saathi app’s chat works end‑to‑end.
+Use this doc together with **[chat_endpoint.md](./chat_endpoint.md)** to wire your backend so the Shubhmilan app’s chat works end‑to‑end.
 
 ---
 
@@ -11,7 +11,7 @@ Use this doc together with **[chat_endpoint.md](./chat_endpoint.md)** to wire yo
 | **GET** | `/chat/threads?limit=50&mode=dating` or `mode=matrimony` | Chats list screen; after opening/leaving a thread | **Must return `unreadCount` per thread.** |
 | **POST** | `/chat/threads` | When user taps “Message” (create or get thread) | Body: `{ "otherUserId": "usr_xxx", "mode": "dating" \| "matrimony" }`. Return `{ "id": "thread_yyy" }`. |
 | **GET** | `/chat/threads/:threadId/messages?limit=50` | When user opens a thread; after sending a message | Return `{ "messages": [ ... ], "nextCursor": null }`. |
-| **POST** | `/chat/threads/:threadId/messages` | When user sends a message | Body: `{ "text": "..." }`. Can return **403 PREMIUM_REQUIRED** to gate messaging. |
+| **POST** | `/chat/threads/:threadId/messages` | When user sends a message | Body: `{ "text": "..." }`; optional `adCompletionToken` after free user watches ad. **Match threads: do not require ad** — see §5. |
 | **POST** | `/chat/threads/:threadId/read` | When user **opens** the thread (once per open) | **Critical:** after this, next **GET /chat/threads** must return that thread with **`unreadCount: 0`** (so the badge and list count update). |
 
 ---
@@ -40,9 +40,10 @@ The app also accepts snake_case equivalents (e.g. `other_user_id`, `unread_count
 
 ### POST /chat/threads/:threadId/messages
 
-- **Request:** `{ "text": "..." }`
+- **Request:** `{ "text": "..." }`; optional **`adCompletionToken`** when the user has just watched an ad (free users, non‑match threads).
 - **Success:** 201 with created message (same shape as above) or empty body; the app refetches messages.
 - **403 PREMIUM_REQUIRED:** App shows “Messaging requires premium” and an Upgrade action; no crash.
+- **403 AD_REQUIRED:** App shows watch‑ad flow and resends with `adCompletionToken`. Use only for **non‑match** threads; see §5.
 
 ---
 
@@ -71,7 +72,18 @@ If this endpoint is missing or returns 404, the app falls back to initials and �
 
 ---
 
-## 5. Full spec and error codes
+## 5. Match threads: no ad required
+
+For **POST /chat/threads/:threadId/messages**:
+
+- If the two participants are **matched** (mutual interest / connection in your backend), **do not** return 403 AD_REQUIRED. Allow free users to send messages in that thread without `adCompletionToken`.
+- Return **403 AD_REQUIRED** (and require `adCompletionToken`) only when the user is free **and** the thread is **not** a match thread (e.g. cold outreach or pre‑match).
+
+So: **matches should not have to watch ads** to send messages. The app already skips showing the ad when the other user is a match; the backend must allow the request without `adCompletionToken` for match threads.
+
+---
+
+## 6. Full spec and error codes
 
 - **Full request/response and DTOs:** [chat_endpoint.md](./chat_endpoint.md)
 - **Auth:** All requests use `Authorization: Bearer <accessToken>`.
@@ -80,12 +92,12 @@ If this endpoint is missing or returns 404, the app falls back to initials and �
 
 ---
 
-## 6. Quick checklist for backend
+## 7. Quick checklist for backend
 
 - [ ] **GET /chat/threads** accepts `mode` (dating | matrimony) and returns `threads[]` with **`unreadCount`** per thread.
 - [ ] **POST /chat/threads** accepts `otherUserId` + `mode`, returns existing or new thread `id`.
 - [ ] **GET /chat/threads/:threadId/messages** returns `messages[]` (id, senderId, text, sentAt, isVoiceNote).
-- [ ] **POST /chat/threads/:threadId/messages** accepts `text`; returns 201 or 403 PREMIUM_REQUIRED.
+- [ ] **POST /chat/threads/:threadId/messages** accepts `text` and optional `adCompletionToken`; returns 201, or 403 PREMIUM_REQUIRED / AD_REQUIRED. **For match threads, do not require ad** — allow send without token.
 - [ ] **POST /chat/threads/:threadId/read** marks the thread read for the current user. The client may send an empty JSON body `{}`; the backend must accept it (do not require a non-empty body when `Content-Type: application/json` is set).
 - [ ] **Next GET /chat/threads** after read returns that thread with **`unreadCount: 0`**.
 - [ ] **GET /profile/:userId/summary** (or equivalent) returns name and photo (and optionally compatibility) for the other user so the chat list and header show photo and score.

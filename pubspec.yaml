@@ -78,6 +78,9 @@ dependencies:
   in_app_purchase: ^3.2.0
   flutter_stripe: ^11.2.0
 
+  # Ads (rewarded / interstitial for free-tier actions)
+  google_mobile_ads: ^5.1.0
+
   # Utils
   http: ^1.2.2
   intl: ^0.20.2

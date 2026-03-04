@@ -35,9 +35,9 @@ class EventsScreen extends StatelessWidget {
               unselectedLabelColor: Theme.of(
                 context,
               ).colorScheme.onSurface.withValues(alpha: 0.6),
-              tabs: const [
-                Tab(text: 'Upcoming'),
-                Tab(text: 'My RSVPs'),
+              tabs: [
+                Tab(text: AppLocalizations.of(context)!.upcomingTab),
+                Tab(text: AppLocalizations.of(context)!.myRsvpsTab),
               ],
             ),
             Expanded(

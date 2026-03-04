@@ -38,6 +38,7 @@ class FakeAuthRepository implements AuthRepository {
   Future<AuthResult> verifyOtp({
     required String verificationId,
     required String code,
+    String? referralCode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
     if (code.length != 4) {
@@ -45,7 +46,14 @@ class FakeAuthRepository implements AuthRepository {
     }
     _currentUserId = _fakeUserId;
     _userIdController.add(_currentUserId);
-    return AuthSuccess(userId: _currentUserId, isNewUser: _lastOtpIsNewUser);
+    final referralApplied = _lastOtpIsNewUser &&
+        referralCode != null &&
+        referralCode.trim().isNotEmpty;
+    return AuthSuccess(
+      userId: _currentUserId,
+      isNewUser: _lastOtpIsNewUser,
+      referralApplied: referralApplied,
+    );
   }
 
   @override

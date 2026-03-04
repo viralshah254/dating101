@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/locale/language_picker_sheet.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/repositories/auth_repository.dart';
@@ -25,14 +26,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   bool _ageConfirmed = false;
   bool _isSending = false;
   String? _errorMessage;
-  _CountryCode _country = const _CountryCode(
-    '+91',
-    'India',
-    '\u{1F1EE}\u{1F1F3}',
-  );
+  late _CountryCode _country;
 
   static const _countryCodes = [
     _CountryCode('+91', 'India', '\u{1F1EE}\u{1F1F3}'),
@@ -49,9 +47,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _CountryCode('+60', 'Malaysia', '\u{1F1F2}\u{1F1FE}'),
   ];
 
+  /// ISO 3166-1 alpha-2 country code -> _CountryCode (for device locale).
+  static final _isoToCountry = {
+    'IN': _countryCodes[0],   // India
+    'GB': _countryCodes[1],   // UK
+    'US': _countryCodes[2],   // USA
+    'AE': _countryCodes[3],   // UAE
+    'AU': _countryCodes[4],   // Australia
+    'SG': _countryCodes[5],   // Singapore
+    'DE': _countryCodes[6],   // Germany
+    'FR': _countryCodes[7],   // France
+    'CA': _countryCodes[8],   // Canada
+    'KE': _countryCodes[9],   // Kenya
+    'ZA': _countryCodes[10],  // South Africa
+    'MY': _countryCodes[11],  // Malaysia
+  };
+
+  static const _defaultCountry = _CountryCode(
+    '+91',
+    'India',
+    '\u{1F1EE}\u{1F1F3}',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _country = _countryCodeFromDeviceLocale();
+  }
+
+  /// Picks country code from device locale (e.g. US, IN, GB); falls back to India.
+  _CountryCode _countryCodeFromDeviceLocale() {
+    final locale = WidgetsBinding.instance.platformDispatcher.locale;
+    final iso = locale.countryCode;
+    if (iso != null && iso.isNotEmpty) {
+      final upper = iso.toUpperCase();
+      final match = _isoToCountry[upper];
+      if (match != null) return match;
+    }
+    return _defaultCountry;
+  }
+
   @override
   void dispose() {
     _phoneController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -84,9 +123,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     switch (result) {
       case SendOtpSuccess(:final verificationId):
         final displayPhone = '${_country.code} $phone';
-        context.push(
-          '/otp?phone=${Uri.encodeComponent(displayPhone)}&vid=${Uri.encodeComponent(verificationId)}',
-        );
+        var otpPath = '/otp?phone=${Uri.encodeComponent(displayPhone)}&vid=${Uri.encodeComponent(verificationId)}';
+        final refCode = _referralCodeController.text.trim();
+        if (refCode.isNotEmpty) {
+          otpPath += '&ref=${Uri.encodeComponent(refCode)}';
+        }
+        context.push(otpPath);
       case SendOtpFailure(:final message):
         setState(() => _errorMessage = message);
     }
@@ -105,13 +147,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         body: SafeArea(
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: () =>
+                          showLanguagePickerSheet(context, ref),
+                      icon: const Icon(Icons.language_rounded),
+                      tooltip: l.appLanguage,
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 56),
+                      const SizedBox(height: 24),
                       Text(
                             l.loginHeroTitle,
                             style: AppTypography.displayLarge.copyWith(
@@ -243,6 +299,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
 
+                      const SizedBox(height: 20),
+
+                      // Optional referral code
+                      Text(
+                        l.referralCodeHint,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _referralCodeController,
+                        textCapitalization: TextCapitalization.characters,
+                        autocorrect: false,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: onSurface,
+                          letterSpacing: 1.2,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: l.referralCodeOptional,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+
                       const SizedBox(height: 24),
 
                       // CTA
@@ -275,37 +358,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 28),
-
-                      // Divider
-                      Row(
-                        children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              l.orDivider,
-                              style: AppTypography.caption,
-                            ),
-                          ),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Social buttons
-                      _SocialButton(
-                        icon: Icons.g_mobiledata,
-                        label: l.continueWithGoogle,
-                        onTap: () => context.go('/mode-select'),
-                      ),
-                      const SizedBox(height: 12),
-                      _SocialButton(
-                        icon: Icons.apple,
-                        label: l.continueWithApple,
-                        onTap: () => context.go('/mode-select'),
-                      ),
                     ],
                   ),
                 ),
@@ -464,46 +516,3 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
   }
 }
 
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          side: BorderSide(color: Theme.of(context).dividerColor),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 22, color: onSurface),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: AppTypography.bodyMedium.copyWith(
-                color: onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

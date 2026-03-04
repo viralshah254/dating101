@@ -1,4 +1,5 @@
 import '../../domain/models/shortlist_entry.dart';
+import '../../domain/models/shortlist_unlock_quota.dart';
 import '../../domain/models/who_shortlisted_me_entry.dart';
 import '../../domain/repositories/shortlist_repository.dart';
 import '../api/api_client.dart';
@@ -86,6 +87,37 @@ class ApiShortlistRepository implements ShortlistRepository {
         blurred: blurred,
       );
     }).toList();
+  }
+
+  @override
+  Future<ShortlistUnlockResult?> unlockOneWhoShortlistedMe({
+    required String adCompletionToken,
+  }) async {
+    final body = await api.post(
+      '/shortlist/received/unlock-one',
+      body: {'adCompletionToken': adCompletionToken},
+    );
+    final entryMap = body['entry'] as Map<String, dynamic>? ?? body['profile'] as Map<String, dynamic>?;
+    if (entryMap == null) return null;
+    final entry = _parseWhoShortlistedMeEntry(entryMap);
+    final remaining = body['unlocksRemainingThisWeek'] as int? ?? 0;
+    final resetsAtStr = body['resetsAt'] as String?;
+    return ShortlistUnlockResult(
+      entry: entry,
+      unlocksRemainingThisWeek: remaining,
+      resetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
+    );
+  }
+
+  static WhoShortlistedMeEntry _parseWhoShortlistedMeEntry(Map<String, dynamic> map) {
+    return WhoShortlistedMeEntry(
+      profileId: map['profileId'] as String? ?? map['id'] as String? ?? '',
+      firstName: map['firstName'] as String? ?? (map['name'] as String?)?.split(' ').first ?? '',
+      age: map['age'] as int?,
+      name: map['name'] as String?,
+      imageUrl: ApiProfileRepository.sanitizeImageUrl(map['imageUrl'] as String?),
+      blurred: false,
+    );
   }
 
   @override

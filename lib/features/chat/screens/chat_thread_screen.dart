@@ -4,7 +4,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
@@ -13,14 +17,23 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/repositories/chat_repository.dart';
 import '../../discovery/providers/discovery_providers.dart';
+import '../../matches/providers/matches_providers.dart';
 import '../providers/chat_providers.dart';
 
 /// Single chat thread. Uses [threadId] and optional [otherUserId] for profile and "me" detection.
+/// When [initialAdToken] is set (e.g. after watch-ad on profile), the first message send uses it
+/// instead of prompting for another ad.
 class ChatThreadScreen extends ConsumerStatefulWidget {
-  const ChatThreadScreen({super.key, required this.threadId, this.otherUserId});
+  const ChatThreadScreen({
+    super.key,
+    required this.threadId,
+    this.otherUserId,
+    this.initialAdToken,
+  });
 
   final String threadId;
   final String? otherUserId;
+  final String? initialAdToken;
 
   @override
   ConsumerState<ChatThreadScreen> createState() => _ChatThreadScreenState();
@@ -34,8 +47,8 @@ const _icebreakerSuggestions = [
 ];
 
 class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
-  /// Optimistic messages we just sent; shown until server list includes them.
-  final List<ChatMessage> _pendingSent = [];
+  /// True after first send when we used [ChatThreadScreen.initialAdToken].
+  bool _consumedInitialAdToken = false;
 
   @override
   void initState() {
@@ -60,23 +73,58 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   ) async {
     final chatRepo = ref.read(chatRepositoryProvider);
     final me = ref.read(authRepositoryProvider).currentUserId;
-    setState(() {
-      _pendingSent.add(
-        ChatMessage(
-          id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
-          senderId: me ?? 'me',
-          text: text,
-          sentAt: DateTime.now(),
-        ),
-      );
-    });
+    final ent = ref.read(entitlementsProvider);
+
+    // Free user: require ad unless chatting with a match (matches can message without ad).
+    final isMatch = widget.otherUserId != null &&
+        (await ref.read(matchedUserIdsProvider.future)).contains(widget.otherUserId!);
+    final requireAd = !ent.canSendMessageDirect && !isMatch;
+
+    String? adToken;
+    if (requireAd) {
+      if (widget.initialAdToken != null && !_consumedInitialAdToken) {
+        adToken = widget.initialAdToken;
+        setState(() => _consumedInitialAdToken = true);
+      } else {
+        final shown = await loadAndShowInterstitialWithLoading(
+          context,
+          ref,
+          AdRewardReason.sendMessage,
+        );
+        if (!context.mounted) return;
+        if (!shown) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        adToken = const Uuid().v4();
+      }
+    }
+
+    final pendingMsg = ChatMessage(
+      id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
+      senderId: me ?? 'me',
+      text: text,
+      sentAt: DateTime.now(),
+    );
+    ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+          (list) => [...list, pendingMsg],
+        );
     try {
-      await chatRepo.sendMessage(widget.threadId, text);
+      await chatRepo.sendMessage(widget.threadId, text, adCompletionToken: adToken);
     } on ApiException catch (e) {
       if (context.mounted) {
-        setState(() => _pendingSent.removeWhere((m) => m.text == text));
-        final showUpgrade =
-            e.code == 'PREMIUM_REQUIRED' || e.code == 'INTRO_LIMIT';
+        ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+              (list) => list.where((m) => m.text != text).toList(),
+            );
+        final showUpgrade = e.code == 'PREMIUM_REQUIRED' ||
+            e.code == 'INTRO_LIMIT' ||
+            e.code == 'AD_REQUIRED' ||
+            e.code == 'PREMIUM_OR_AD_REQUIRED';
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -96,7 +144,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       return;
     } catch (_) {
       if (context.mounted) {
-        setState(() => _pendingSent.removeWhere((m) => m.text == text));
+        ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+              (list) => list.where((m) => m.text != text).toList(),
+            );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
@@ -107,7 +157,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       return;
     }
     if (!context.mounted) return;
-    ref.invalidate(_threadMessagesProvider(widget.threadId));
+    // Don't invalidate thread messages here: it would put the provider in loading and hide the optimistic message.
+    // The stream polls every 5s and will pick up the new message when the backend returns it.
     ref.invalidate(chatThreadsProvider);
   }
 
@@ -250,13 +301,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     );
   }
 
-  /// Merge server messages with pending sent, deduping so we don't show the same message twice.
+  /// Merge server messages with pending sent (from provider), deduping so we don't show the same message twice.
   List<ChatMessage> _mergeMessages(
     List<ChatMessage> server,
     String? currentUserId,
+    List<ChatMessage> pendingSent,
   ) {
     final merged = List<ChatMessage>.from(server);
-    for (final p in _pendingSent) {
+    for (final p in pendingSent) {
       final match = merged.any(
         (m) =>
             m.senderId == p.senderId &&
@@ -273,6 +325,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(authRepositoryProvider).currentUserId;
     final messagesAsync = ref.watch(_threadMessagesProvider(widget.threadId));
+    final pendingSent = ref.watch(pendingSentMessagesProvider(widget.threadId));
     final suggestionsAsync = ref.watch(chatSuggestionsProvider);
     final icebreakerList =
         suggestionsAsync.valueOrNull ?? _icebreakerSuggestions;
@@ -282,19 +335,21 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         : null;
 
     ref.listen(_threadMessagesProvider(widget.threadId), (prev, next) {
-      if (!next.hasValue || _pendingSent.isEmpty) return;
+      if (!next.hasValue || pendingSent.isEmpty) return;
       if (!context.mounted) return;
-      final list = next.value!;
-      setState(() {
-        _pendingSent.removeWhere(
-          (p) => list.any(
-            (m) =>
-                m.senderId == p.senderId &&
-                m.text == p.text &&
-                (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120),
-          ),
-        );
-      });
+      final serverList = next.value!;
+      ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+            (currentPending) => currentPending
+                .where(
+                  (p) => !serverList.any(
+                    (m) =>
+                        m.senderId == p.senderId &&
+                        m.text == p.text &&
+                        (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120),
+                  ),
+                )
+                .toList(),
+          );
     });
 
     final profile = profileAsync?.valueOrNull;
@@ -397,6 +452,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                   final messages = _mergeMessages(
                     serverMessages,
                     currentUserId,
+                    pendingSent,
                   );
                   if (messages.isEmpty) {
                     return Center(

@@ -9,14 +9,14 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'l10n/app_localizations.dart';
 
-class SaathiApp extends ConsumerStatefulWidget {
-  const SaathiApp({super.key});
+class ShubhmilanApp extends ConsumerStatefulWidget {
+  const ShubhmilanApp({super.key});
 
   @override
-  ConsumerState<SaathiApp> createState() => _SaathiAppState();
+  ConsumerState<ShubhmilanApp> createState() => _ShubhmilanAppState();
 }
 
-class _SaathiAppState extends ConsumerState<SaathiApp> {
+class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp> {
   @override
   void initState() {
     super.initState();

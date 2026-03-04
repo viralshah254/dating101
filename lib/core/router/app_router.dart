@@ -7,6 +7,7 @@ import '../location/app_location_service.dart';
 import '../../features/splash/screens/splash_screen.dart';
 import '../../features/splash/screens/tagline_screen.dart';
 import '../../features/location/screens/location_required_screen.dart';
+import '../../features/auth/screens/language_select_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/mode_select/screens/mode_select_screen.dart';
@@ -34,6 +35,7 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 const _publicPaths = [
   '/splash',
   '/tagline',
+  '/language-select',
   '/login',
   '/otp',
   '/location-required',
@@ -74,6 +76,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/tagline', builder: (_, __) => const TaglineScreen()),
       GoRoute(
+        path: '/language-select',
+        builder: (_, __) => const LanguageSelectScreen(),
+      ),
+      GoRoute(
         path: '/location-required',
         builder: (_, state) {
           final thenPath = state.uri.queryParameters['then'] ?? '/';
@@ -86,7 +92,12 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) {
           final phone = state.uri.queryParameters['phone'];
           final vid = state.uri.queryParameters['vid'];
-          return OtpScreen(phone: phone, verificationId: vid);
+          final refCode = state.uri.queryParameters['ref'];
+          return OtpScreen(
+            phone: phone,
+            verificationId: vid,
+            referralCode: refCode,
+          );
         },
       ),
       GoRoute(
@@ -154,7 +165,12 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) {
           final id = state.pathParameters['threadId'] ?? '';
           final otherUserId = state.uri.queryParameters['otherUserId'];
-          return ChatThreadScreen(threadId: id, otherUserId: otherUserId);
+          final initialAdToken = state.uri.queryParameters['initialAdToken'];
+          return ChatThreadScreen(
+            threadId: id,
+            otherUserId: otherUserId,
+            initialAdToken: initialAdToken,
+          );
         },
       ),
       StatefulShellRoute.indexedStack(

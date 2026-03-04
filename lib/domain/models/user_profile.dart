@@ -41,6 +41,9 @@ class UserProfile with _$UserProfile {
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
 
+    /// Whether this user has an active premium subscription (for badge). From API when viewing others.
+    @Default(false) bool isPremium,
+
     /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
     double? creationLat,
     double? creationLng,

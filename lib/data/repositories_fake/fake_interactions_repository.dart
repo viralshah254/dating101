@@ -21,10 +21,12 @@ class FakeInteractionsRepository implements InteractionsRepository {
     String toUserId, {
     String? message,
     String? source,
+    String? adCompletionToken,
   }) async {
     await Future.delayed(const Duration(milliseconds: 80));
     return ExpressInterestResult(
-      interactionId: 'int_fake_priority_${DateTime.now().millisecondsSinceEpoch}',
+      interactionId:
+          'int_fake_priority_${DateTime.now().millisecondsSinceEpoch}',
       mutualMatch: false,
       priorityRemaining: 4,
     );
@@ -43,18 +45,36 @@ class FakeInteractionsRepository implements InteractionsRepository {
     for (final entry in FakeData.allProfiles.entries) {
       if (entry.key == FakeData.myProfile.id) continue;
       if (i >= limit) break;
-      list.add(InteractionInboxItem(
-        interactionId: 'int_rec_$i',
-        otherUser: profileToSummary(entry.value),
-        message: type == 'priority_interest' ? 'Hi!' : null,
-        seenByRecipient: false,
-        status: status == 'all' ? (i % 2 == 0 ? 'pending' : 'accepted') : status,
-        type: i == 0 ? 'priority_interest' : 'interest',
-        createdAt: DateTime.now().subtract(Duration(hours: i)),
-      ));
+      list.add(
+        InteractionInboxItem(
+          interactionId: 'int_rec_$i',
+          otherUser: profileToSummary(entry.value),
+          message: type == 'priority_interest' ? 'Hi!' : null,
+          seenByRecipient: false,
+          status: status == 'all'
+              ? (i % 2 == 0 ? 'pending' : 'accepted')
+              : status,
+          type: i == 0 ? 'priority_interest' : 'interest',
+          createdAt: DateTime.now().subtract(Duration(hours: i)),
+        ),
+      );
       i++;
     }
     return list;
+  }
+
+  @override
+  Future<InboxUnlockResult?> unlockOneReceivedInteraction({
+    required String adCompletionToken,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    final list = await getReceivedInteractions(limit: 1);
+    if (list.isEmpty) return null;
+    return InboxUnlockResult(
+      item: list.first,
+      unlocksRemainingThisWeek: 1,
+      resetsAt: DateTime.now().add(const Duration(days: 7)),
+    );
   }
 
   @override

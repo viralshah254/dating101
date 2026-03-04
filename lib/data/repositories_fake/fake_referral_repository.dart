@@ -7,7 +7,7 @@ class FakeReferralRepository implements ReferralRepository {
     await Future.delayed(const Duration(milliseconds: 100));
     return const ReferralInfo(
       code: 'DESI-XXXX',
-      inviteLink: 'https://saathi.app/i/DESI-XXXX',
+      inviteLink: 'https://shubhmilan.app/i/DESI-XXXX',
       pendingCount: 0,
       earnedRewards: [],
     );

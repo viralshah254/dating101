@@ -23,10 +23,14 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String toUserId, {
     String? message,
     String? source,
+    String? adCompletionToken,
   }) async {
     final body = <String, dynamic>{'toUserId': toUserId};
     if (message != null && message.isNotEmpty) body['message'] = message;
     if (source != null && source.isNotEmpty) body['source'] = source;
+    if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
+      body['adCompletionToken'] = adCompletionToken;
+    }
     final res = await api.post('/interactions/priority-interest', body: body);
     return _parseResult(res);
   }
@@ -43,6 +47,27 @@ class ApiInteractionsRepository implements InteractionsRepository {
       query: {'status': status, 'type': type, 'page': '$page', 'limit': '$limit'},
     );
     return _parseInboxList(body['interactions'] as List? ?? [], isReceived: true);
+  }
+
+  @override
+  Future<InboxUnlockResult?> unlockOneReceivedInteraction({
+    required String adCompletionToken,
+  }) async {
+    final body = await api.post(
+      '/interactions/received/unlock-one',
+      body: {'adCompletionToken': adCompletionToken},
+    );
+    final list = body['interactions'] as List? ?? (body['interaction'] != null ? [body['interaction']] : null);
+    if (list == null || list.isEmpty) return null;
+    final parsed = _parseInboxList(list, isReceived: true);
+    if (parsed.isEmpty) return null;
+    final remaining = body['unlocksRemainingThisWeek'] as int? ?? 0;
+    final resetsAtStr = body['resetsAt'] as String?;
+    return InboxUnlockResult(
+      item: parsed.first,
+      unlocksRemainingThisWeek: remaining,
+      resetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
+    );
   }
 
   @override

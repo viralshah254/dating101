@@ -22,6 +22,9 @@ mixin _$ProfileSummary {
   int? get age => throw _privateConstructorUsedError;
   String? get city => throw _privateConstructorUsedError;
   String? get imageUrl => throw _privateConstructorUsedError;
+
+  /// When set, discovery card shows multiple photos with left/right tap to navigate.
+  List<String>? get imageUrls => throw _privateConstructorUsedError;
   double? get distanceKm => throw _privateConstructorUsedError;
   bool get verified => throw _privateConstructorUsedError;
   String? get matchReason => throw _privateConstructorUsedError;
@@ -42,7 +45,10 @@ mixin _$ProfileSummary {
   String? get incomeLabel => throw _privateConstructorUsedError;
   String? get employer => throw _privateConstructorUsedError;
   String? get familyType => throw _privateConstructorUsedError;
-  int get photoCount =>
+  int get photoCount => throw _privateConstructorUsedError;
+
+  /// Whether this user has an active premium subscription (for badge on profile/cards).
+  bool get isPremium =>
       throw _privateConstructorUsedError; // ML compatibility scoring
   double? get compatibilityScore => throw _privateConstructorUsedError;
   String? get compatibilityLabel => throw _privateConstructorUsedError;
@@ -72,6 +78,7 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     int? age,
     String? city,
     String? imageUrl,
+    List<String>? imageUrls,
     double? distanceKm,
     bool verified,
     String? matchReason,
@@ -91,6 +98,7 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     String? employer,
     String? familyType,
     int photoCount,
+    bool isPremium,
     double? compatibilityScore,
     String? compatibilityLabel,
     List<String> matchReasons,
@@ -119,6 +127,7 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? age = freezed,
     Object? city = freezed,
     Object? imageUrl = freezed,
+    Object? imageUrls = freezed,
     Object? distanceKm = freezed,
     Object? verified = null,
     Object? matchReason = freezed,
@@ -138,6 +147,7 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? employer = freezed,
     Object? familyType = freezed,
     Object? photoCount = null,
+    Object? isPremium = null,
     Object? compatibilityScore = freezed,
     Object? compatibilityLabel = freezed,
     Object? matchReasons = null,
@@ -166,6 +176,10 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.imageUrl
                 : imageUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            imageUrls: freezed == imageUrls
+                ? _value.imageUrls
+                : imageUrls // ignore: cast_nullable_to_non_nullable
+                      as List<String>?,
             distanceKm: freezed == distanceKm
                 ? _value.distanceKm
                 : distanceKm // ignore: cast_nullable_to_non_nullable
@@ -242,6 +256,10 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.photoCount
                 : photoCount // ignore: cast_nullable_to_non_nullable
                       as int,
+            isPremium: null == isPremium
+                ? _value.isPremium
+                : isPremium // ignore: cast_nullable_to_non_nullable
+                      as bool,
             compatibilityScore: freezed == compatibilityScore
                 ? _value.compatibilityScore
                 : compatibilityScore // ignore: cast_nullable_to_non_nullable
@@ -283,6 +301,7 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     int? age,
     String? city,
     String? imageUrl,
+    List<String>? imageUrls,
     double? distanceKm,
     bool verified,
     String? matchReason,
@@ -302,6 +321,7 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     String? employer,
     String? familyType,
     int photoCount,
+    bool isPremium,
     double? compatibilityScore,
     String? compatibilityLabel,
     List<String> matchReasons,
@@ -329,6 +349,7 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? age = freezed,
     Object? city = freezed,
     Object? imageUrl = freezed,
+    Object? imageUrls = freezed,
     Object? distanceKm = freezed,
     Object? verified = null,
     Object? matchReason = freezed,
@@ -348,6 +369,7 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? employer = freezed,
     Object? familyType = freezed,
     Object? photoCount = null,
+    Object? isPremium = null,
     Object? compatibilityScore = freezed,
     Object? compatibilityLabel = freezed,
     Object? matchReasons = null,
@@ -376,6 +398,10 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value.imageUrl
             : imageUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        imageUrls: freezed == imageUrls
+            ? _value._imageUrls
+            : imageUrls // ignore: cast_nullable_to_non_nullable
+                  as List<String>?,
         distanceKm: freezed == distanceKm
             ? _value.distanceKm
             : distanceKm // ignore: cast_nullable_to_non_nullable
@@ -452,6 +478,10 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value.photoCount
             : photoCount // ignore: cast_nullable_to_non_nullable
                   as int,
+        isPremium: null == isPremium
+            ? _value.isPremium
+            : isPremium // ignore: cast_nullable_to_non_nullable
+                  as bool,
         compatibilityScore: freezed == compatibilityScore
             ? _value.compatibilityScore
             : compatibilityScore // ignore: cast_nullable_to_non_nullable
@@ -486,6 +516,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     required this.age,
     required this.city,
     this.imageUrl,
+    final List<String>? imageUrls,
     this.distanceKm,
     this.verified = false,
     this.matchReason,
@@ -505,12 +536,14 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     this.employer,
     this.familyType,
     this.photoCount = 0,
+    this.isPremium = false,
     this.compatibilityScore,
     this.compatibilityLabel,
     final List<String> matchReasons = const [],
     final Map<String, double>? breakdown,
     this.roleManagingProfile,
-  }) : _interests = interests,
+  }) : _imageUrls = imageUrls,
+       _interests = interests,
        _sharedInterests = sharedInterests,
        _matchReasons = matchReasons,
        _breakdown = breakdown;
@@ -525,6 +558,20 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
   final String? city;
   @override
   final String? imageUrl;
+
+  /// When set, discovery card shows multiple photos with left/right tap to navigate.
+  final List<String>? _imageUrls;
+
+  /// When set, discovery card shows multiple photos with left/right tap to navigate.
+  @override
+  List<String>? get imageUrls {
+    final value = _imageUrls;
+    if (value == null) return null;
+    if (_imageUrls is EqualUnmodifiableListView) return _imageUrls;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   final double? distanceKm;
   @override
@@ -583,6 +630,11 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
   @override
   @JsonKey()
   final int photoCount;
+
+  /// Whether this user has an active premium subscription (for badge on profile/cards).
+  @override
+  @JsonKey()
+  final bool isPremium;
   // ML compatibility scoring
   @override
   final double? compatibilityScore;
@@ -613,7 +665,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
 
   @override
   String toString() {
-    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile)';
+    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile)';
   }
 
   @override
@@ -627,6 +679,10 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
             (identical(other.city, city) || other.city == city) &&
             (identical(other.imageUrl, imageUrl) ||
                 other.imageUrl == imageUrl) &&
+            const DeepCollectionEquality().equals(
+              other._imageUrls,
+              _imageUrls,
+            ) &&
             (identical(other.distanceKm, distanceKm) ||
                 other.distanceKm == distanceKm) &&
             (identical(other.verified, verified) ||
@@ -667,6 +723,8 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
                 other.familyType == familyType) &&
             (identical(other.photoCount, photoCount) ||
                 other.photoCount == photoCount) &&
+            (identical(other.isPremium, isPremium) ||
+                other.isPremium == isPremium) &&
             (identical(other.compatibilityScore, compatibilityScore) ||
                 other.compatibilityScore == compatibilityScore) &&
             (identical(other.compatibilityLabel, compatibilityLabel) ||
@@ -691,6 +749,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     age,
     city,
     imageUrl,
+    const DeepCollectionEquality().hash(_imageUrls),
     distanceKm,
     verified,
     matchReason,
@@ -710,6 +769,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     employer,
     familyType,
     photoCount,
+    isPremium,
     compatibilityScore,
     compatibilityLabel,
     const DeepCollectionEquality().hash(_matchReasons),
@@ -736,6 +796,7 @@ abstract class _ProfileSummary implements ProfileSummary {
     required final int? age,
     required final String? city,
     final String? imageUrl,
+    final List<String>? imageUrls,
     final double? distanceKm,
     final bool verified,
     final String? matchReason,
@@ -755,6 +816,7 @@ abstract class _ProfileSummary implements ProfileSummary {
     final String? employer,
     final String? familyType,
     final int photoCount,
+    final bool isPremium,
     final double? compatibilityScore,
     final String? compatibilityLabel,
     final List<String> matchReasons,
@@ -772,6 +834,10 @@ abstract class _ProfileSummary implements ProfileSummary {
   String? get city;
   @override
   String? get imageUrl;
+
+  /// When set, discovery card shows multiple photos with left/right tap to navigate.
+  @override
+  List<String>? get imageUrls;
   @override
   double? get distanceKm;
   @override
@@ -811,7 +877,11 @@ abstract class _ProfileSummary implements ProfileSummary {
   @override
   String? get familyType;
   @override
-  int get photoCount; // ML compatibility scoring
+  int get photoCount;
+
+  /// Whether this user has an active premium subscription (for badge on profile/cards).
+  @override
+  bool get isPremium; // ML compatibility scoring
   @override
   double? get compatibilityScore;
   @override

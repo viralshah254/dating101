@@ -11,9 +11,16 @@ import '../../../domain/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
-  const OtpScreen({super.key, this.phone, this.verificationId});
+  const OtpScreen({
+    super.key,
+    this.phone,
+    this.verificationId,
+    this.referralCode,
+  });
   final String? phone;
   final String? verificationId;
+  /// Optional referral code from login; sent to backend on verify for 30 days Premium.
+  final String? referralCode;
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -100,6 +107,24 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
     setState(() {});
   }
 
+  static Future<void> _showReferralSuccessDialog(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.referralPremiumTitle),
+        content: Text(l.referralPremiumMessage),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.continueButton),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onKeyPress(int index, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.backspace &&
@@ -122,15 +147,20 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
     final result = await authRepo.verifyOtp(
       verificationId: widget.verificationId ?? '',
       code: _fullCode,
+      referralCode: widget.referralCode,
     );
 
     if (!mounted) return;
     setState(() => _isVerifying = false);
 
     switch (result) {
-      case AuthSuccess(:final isNewUser):
+      case AuthSuccess(:final isNewUser, :final referralApplied):
         if (isNewUser) {
-          debugPrint('[OTP] New user → mode-select');
+          debugPrint('[OTP] New user → mode-select (referralApplied=$referralApplied)');
+          if (referralApplied) {
+            await _showReferralSuccessDialog(context);
+            if (!mounted) return;
+          }
           context.go('/mode-select');
         } else {
           // Returning user — verify they have a profile

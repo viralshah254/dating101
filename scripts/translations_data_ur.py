@@ -23,7 +23,7 @@ UR = {
     "appLanguage": "ایپ کی زبان",
     "chooseAppLanguage": "ایپ کی زبان منتخب کریں",
     "languageSetTo": "زبان {name} پر سیٹ ہو گئی",
-    "saathiMode": "saathi موڈ",
+    "saathiMode": "Shubhmilan موڈ",
     "accountAndData": "اکاؤنٹ اور ڈیٹا",
     "viewProfile": "پروفائل دیکھیں",
     "downloadMyData": "اپنا ڈیٹا ڈاؤن لوڈ کریں",

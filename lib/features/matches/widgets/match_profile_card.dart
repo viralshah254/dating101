@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/premium_badge.dart';
+import '../../../core/widgets/translatable_text.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
@@ -95,7 +97,7 @@ class MatchProfileCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _NameRow(profile: profile, onSurface: onSurface),
+                    _NameRow(profile: profile, onSurface: onSurface, isPremium: profile.isPremium),
                     if (profile.roleManagingProfile != null &&
                         profile.roleManagingProfile != ProfileRole.self) ...[
                       const SizedBox(height: 4),
@@ -117,7 +119,10 @@ class MatchProfileCard extends ConsumerWidget {
                     if (profile.bio.isNotEmpty &&
                         !_isPlaceholder(profile.bio)) ...[
                       const SizedBox(height: 6),
-                      _BioLine(bio: profile.bio, onSurface: onSurface),
+                      _BioSection(
+                        bio: profile.bio,
+                        onSurface: onSurface,
+                      ),
                     ],
                     if (_hasKeyDetails) ...[
                       const SizedBox(height: 8),
@@ -165,6 +170,73 @@ class MatchProfileCard extends ConsumerWidget {
       profile.educationDegree != null ||
       profile.heightCm != null ||
       profile.maritalStatus != null;
+}
+
+/// Bio with fixed max lines, ellipsis, and "View more" to show full text in a dialog (no scrollable description).
+class _BioSection extends ConsumerWidget {
+  const _BioSection({required this.bio, required this.onSurface});
+  final String bio;
+  final Color onSurface;
+
+  static const int _maxLines = 3;
+  static const int _showViewMoreThreshold = 100;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TranslatableText(
+          content: bio,
+          textStyle: AppTypography.bodySmall.copyWith(
+            color: onSurface.withValues(alpha: 0.6),
+            height: 1.3,
+          ),
+          maxLines: _maxLines,
+          showTranslateButton: true,
+        ),
+        if (bio.length > _showViewMoreThreshold) ...[
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () => _showViewMoreDialog(context, bio),
+            behavior: HitTestBehavior.opaque,
+            child: Text(
+              l.viewMore,
+              style: AppTypography.labelSmall.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static void _showViewMoreDialog(BuildContext context, String bio) {
+    final l = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.aboutMeSection),
+        content: SingleChildScrollView(
+          child: TranslatableText(
+            content: bio,
+            textStyle: AppTypography.bodyMedium.copyWith(height: 1.4),
+            showTranslateButton: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.close),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Photo header with match badge overlay ────────────────────────────────
@@ -453,20 +525,32 @@ class _MatchBadge extends StatelessWidget {
 // ── Name and subtitle ────────────────────────────────────────────────────
 
 class _NameRow extends StatelessWidget {
-  const _NameRow({required this.profile, required this.onSurface});
+  const _NameRow({
+    required this.profile,
+    required this.onSurface,
+    required this.isPremium,
+  });
   final ProfileSummary profile;
   final Color onSurface;
+  final bool isPremium;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      '${profile.name}${profile.age != null ? ', ${profile.age}' : ''}',
-      style: AppTypography.titleLarge.copyWith(
-        color: onSurface,
-        fontWeight: FontWeight.w600,
-        fontSize: 20,
-        letterSpacing: -0.3,
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '${profile.name}${profile.age != null ? ', ${profile.age}' : ''}',
+            style: AppTypography.titleLarge.copyWith(
+              color: onSurface,
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+        PremiumBadge(isPremium: isPremium, compact: true),
+      ],
     );
   }
 }
@@ -584,32 +668,6 @@ class _SubtitleRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _BioLine extends StatelessWidget {
-  const _BioLine({required this.bio, required this.onSurface});
-  final String bio;
-  final Color onSurface;
-
-  static const int _maxChars = 80;
-
-  @override
-  Widget build(BuildContext context) {
-    final trimmed = bio.trim();
-    if (trimmed.isEmpty) return const SizedBox.shrink();
-    final display = trimmed.length > _maxChars
-        ? '${trimmed.substring(0, _maxChars).trim()}...'
-        : trimmed;
-    return Text(
-      display,
-      style: AppTypography.bodySmall.copyWith(
-        color: onSurface.withValues(alpha: 0.6),
-        height: 1.3,
-      ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -764,7 +822,8 @@ class _ActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final canMessage = ent.canSendMessage || messageUnlockedByMatch;
+    // Free users: Message is locked until matched (or after watch-ad flow). Tapping always runs message flow (watch ad → auto-send interest → open chat).
+    final canMessageWithoutAd = ent.canSendMessage || messageUnlockedByMatch;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Row(
@@ -776,12 +835,10 @@ class _ActionBar extends StatelessWidget {
             onTap: onLike,
           ),
           _ActionButton(
-            icon: isPriorityInterested
-                ? Icons.chat_bubble_rounded
-                : Icons.star_border_rounded,
-            label: isPriorityInterested ? 'Message' : 'Priority interest',
-            color: isPriorityInterested ? accent : AppColors.saffron,
-            onTap: isPriorityInterested ? onMessage : onSuperLike,
+            icon: Icons.star_border_rounded,
+            label: isPriorityInterested ? 'Send another' : 'Priority interest',
+            color: AppColors.saffron,
+            onTap: onSuperLike,
           ),
           _ActionButton(
             icon: isShortlisted
@@ -792,11 +849,13 @@ class _ActionBar extends StatelessWidget {
             onTap: onShortlist,
           ),
           _ActionButton(
-            icon: canMessage ? Icons.chat_bubble_outline : Icons.lock_outline,
-            label: canMessage ? 'Message' : 'Premium',
-            color: canMessage ? accent : Colors.grey,
-            onTap: canMessage ? onMessage : onUpgrade,
-            showBadge: !canMessage,
+            icon: canMessageWithoutAd
+                ? Icons.chat_bubble_outline
+                : Icons.lock_outline,
+            label: 'Message',
+            color: canMessageWithoutAd ? accent : Colors.grey,
+            onTap: onMessage,
+            showBadge: !canMessageWithoutAd,
           ),
         ],
       ),

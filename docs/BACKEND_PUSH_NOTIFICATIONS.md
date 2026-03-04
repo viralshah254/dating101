@@ -1,4 +1,4 @@
-# Saathi Backend — Push Notifications (Firebase Cloud Messaging)
+# Shubhmilan Backend — Push Notifications (Firebase Cloud Messaging)
 
 **Purpose:** Feed this document to Cursor when implementing backend push notifications. The Flutter app uses Firebase Cloud Messaging (FCM); the backend is responsible for **sending** all push notifications when server-side events occur. The frontend only registers the device token and handles taps (deep links).
 

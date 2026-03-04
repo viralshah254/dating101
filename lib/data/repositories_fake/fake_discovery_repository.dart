@@ -47,6 +47,18 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   }
 
   @override
+  Future<DiscoveryPageResult> getRecommendedPage({
+    required AppMode mode,
+    String? city,
+    int limit = 30,
+    String? cursor,
+  }) async {
+    final profiles = await getRecommended(mode: mode, city: city, limit: limit, cursor: cursor);
+    final nextCursor = profiles.length >= limit ? 'cursor_${profiles.length}' : null;
+    return DiscoveryPageResult(profiles: profiles, nextCursor: nextCursor);
+  }
+
+  @override
   Future<List<ProfileSummary>> getExplore({
     required AppMode mode,
     int? ageMin,
@@ -87,6 +99,41 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       );
     }
     return getRecommended(mode: mode, limit: limit, cursor: cursor);
+  }
+
+  @override
+  Future<DiscoveryPageResult> getExplorePage({
+    required AppMode mode,
+    int? ageMin,
+    int? ageMax,
+    String? city,
+    String? religion,
+    String? education,
+    int? heightMinCm,
+    int? heightMaxCm,
+    String? diet,
+    String? bodyType,
+    String? maritalStatus,
+    int limit = 30,
+    String? cursor,
+  }) async {
+    final profiles = await getExplore(
+      mode: mode,
+      ageMin: ageMin,
+      ageMax: ageMax,
+      city: city,
+      religion: religion,
+      education: education,
+      heightMinCm: heightMinCm,
+      heightMaxCm: heightMaxCm,
+      diet: diet,
+      bodyType: bodyType,
+      maritalStatus: maritalStatus,
+      limit: limit,
+      cursor: cursor,
+    );
+    final nextCursor = profiles.length >= limit ? 'cursor_${profiles.length}' : null;
+    return DiscoveryPageResult(profiles: profiles, nextCursor: nextCursor);
   }
 
   @override

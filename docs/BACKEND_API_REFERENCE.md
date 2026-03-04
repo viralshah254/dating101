@@ -1,6 +1,8 @@
-# Saathi Backend API Reference
+# Shubhmilan Backend API Reference
 
-Complete API documentation for the Saathi dating/matrimony backend.
+Complete API documentation for the Shubhmilan dating/matrimony backend.
+
+**Quick list:** For a single-page table of every endpoint (method + path + purpose), see **[FRONTEND_API_LIST.md](./FRONTEND_API_LIST.md)**.
 
 ---
 
@@ -99,6 +101,7 @@ Content-Type: application/json
 |-------|------|----------|-------------|
 | verificationId | string | Yes | From send-otp response |
 | code | string | Yes | 4-digit OTP (e.g. `"1234"`). When `SMS_PROVIDER=mock`, use **`1111`**. |
+| referralCode | string | No | Optional. When provided at sign-up (new user), backend should validate the code and grant **30 days Premium** to the new user. Ignore if invalid or already applied. |
 
 **Success** `200 OK`
 
@@ -108,9 +111,14 @@ Content-Type: application/json
   "refreshToken": "eyJ...",
   "expiresIn": 3600,
   "userId": "usr_abc123",
-  "isNewUser": true
+  "isNewUser": true,
+  "referralApplied": true
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| referralApplied | boolean | Optional. `true` when a valid referral code was applied and 30 days Premium was granted; omit or `false` otherwise. App shows “30 days free Premium!” when true. See [BACKEND_REFERRAL.md](./BACKEND_REFERRAL.md). |
 
 **Errors**
 
@@ -703,7 +711,7 @@ DELETE /interests/:interestId
 
 ---
 
-## 5a. Interactions API (Saathi — Interest & Priority Interest)
+## 5a. Interactions API (Shubhmilan — Interest & Priority Interest)
 
 Same concepts as §5 but with a dedicated **requests inbox** and **priority interest** (boosted, limited per day). All require auth.
 
@@ -780,6 +788,24 @@ GET /interactions/received?status=pending&page=1&limit=20&type=all
 
 **Success** `200 OK` — `interactions[]` (each has `fromUser` summary, `message`, `seenByRecipient`) and `pagination` (`page`, `limit`, `total`, `hasMore`). Priority interests appear first.
 
+**Free users (premium gate):** Returns **403** with body so the app can show that many blurred cards and "Watch ad to unlock" (2 per week):
+
+```json
+{
+  "code": "PREMIUM_REQUIRED",
+  "message": "Only premium users can view the requests inbox",
+  "count": 5,
+  "inboxUnlocksRemainingThisWeek": 2,
+  "inboxUnlocksResetAt": "2026-03-07T00:00:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| count | integer | Number of pending received interactions. Show this many blurred cards when **count > 0**. |
+| inboxUnlocksRemainingThisWeek | integer | Ad-unlocks left this week (max 2). Hide "Watch ad" when 0. |
+| inboxUnlocksResetAt | string (ISO 8601) | When the weekly quota resets. Show "Unlocks reset next week" when remaining is 0. |
+
 ---
 
 ### 5a.5a Get received interests count (badge)
@@ -798,6 +824,28 @@ Authorization: Bearer <accessToken>
 ```json
 { "count": 5 }
 ```
+
+Use this for the **Requests** badge; use `GET /interactions/received` when the user opens the Requests tab. For free users you can return **200** with `count` (recommended) or **403** with `PREMIUM_REQUIRED` and optional `count`.
+
+---
+
+### 5a.5b Unlock one received interaction (after ad)
+
+After the user watches an ad, the app calls this to unlock **one** received interaction so they can view and accept/decline. Backend enforces **2 unlocks per user per week**.
+
+```http
+POST /interactions/received/unlock-one
+Content-Type: application/json
+Authorization: Bearer <accessToken>
+```
+
+**Request body:** `{ "adCompletionToken": "..." }` (required). Backend validates and consumes the token.
+
+**Success** `200 OK`: one interaction (same shape as from `GET /interactions/received`) plus `unlocksRemainingThisWeek`, `resetsAt`. Frontend uses these to show "Watch ad to unlock (N left this week)" or "Unlocks reset next week" when 0.
+
+**403** `INBOX_UNLOCKS_LIMIT_REACHED`: User has used all 2 request unlocks this week; body includes `inboxUnlocksResetAt`.
+
+**Errors:** `401`, `400 VALIDATION_ERROR`, `403 INVALID_AD_TOKEN`, `403 INBOX_UNLOCKS_LIMIT_REACHED`, `404 NO_PENDING_REQUESTS`. See [BACKEND_REQUESTS_INBOX_PREMIUM.md](./BACKEND_REQUESTS_INBOX_PREMIUM.md).
 
 ---
 
@@ -892,16 +940,17 @@ DELETE /shortlist/:profileId
 
 ---
 
-### 6.4 Get who shortlisted me
+### 6.4 Get who shortlisted me (Shortlisted you tab)
 
 ```http
 GET /shortlist/received?page=1&limit=20
 Authorization: Bearer <accessToken>
 ```
 
-Returns people who added the current user to their shortlist. Gated by entitlement **canSeeWhoShortlistedYou** (premium or female): when false, returns `profiles[]` with `profileId` and `blurred: true` only; when true, returns full minimal profile.
+- **Premium users:** `200 OK` with full list: `profiles[]`, `pagination`, `count`.
+- **Free users:** `403` with body below so the app can show a premium gate, blurred cards (when `count > 0`), and "Watch ad to unlock" when `shortlistUnlocksRemainingThisWeek > 0` (max 5 per week).
 
-**Success** `200 OK`
+**Success (premium)** `200 OK`
 
 ```json
 {
@@ -912,6 +961,24 @@ Returns people who added the current user to their shortlist. Gated by entitleme
   "count": 5
 }
 ```
+
+**Free user** `403 Forbidden`
+
+```json
+{
+  "code": "PREMIUM_REQUIRED",
+  "message": "Only premium users can see who shortlisted them",
+  "count": 3,
+  "shortlistUnlocksRemainingThisWeek": 5,
+  "shortlistUnlocksResetAt": "2026-03-07T00:00:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| count | integer | Number of people who shortlisted the user (show this many blurred cards when > 0). |
+| shortlistUnlocksRemainingThisWeek | integer | Ad-unlocks left this week (max 5). Hide "Watch ad" when 0. |
+| shortlistUnlocksResetAt | string (ISO 8601) | When the weekly quota resets. |
 
 ---
 
@@ -927,6 +994,30 @@ Authorization: Bearer <accessToken>
 ```json
 { "count": 3 }
 ```
+
+Use this for the **Shortlist** badge; use `GET /shortlist/received` when the user opens the Shortlisted you tab.
+
+---
+
+### 6.4b Unlock one "who shortlisted you" (watch ad)
+
+Free users can unlock one profile per ad watch, up to **5 per week** (e.g. Monday 00:00 UTC).
+
+```http
+POST /shortlist/received/unlock-one
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+**Body:** `{ "adCompletionToken": "uuid-from-client-after-ad" }`
+
+**Success** `200 OK`: one unlocked profile (entry) and `unlocksRemainingThisWeek`, `resetsAt`.
+
+**403** `SHORTLIST_UNLOCKS_LIMIT_REACHED`: quota exhausted; body includes `shortlistUnlocksResetAt`.
+
+**403** `INVALID_AD_TOKEN`: invalid or already-used token. **404**: No shortlisters or all already unlocked.
+
+See [BACKEND_SHORTLIST_RECEIVED_PREMIUM.md](./BACKEND_SHORTLIST_RECEIVED_PREMIUM.md).
 
 ---
 
@@ -1047,6 +1138,7 @@ All require auth. Used for **Request contact** on profile and **View contacts** 
 |--------|------|-------------|
 | GET | /contact-requests/status/:profileId | Status of my request toward that profile (none \| pending \| accepted \| declined); when accepted, includes sharedPhone for Call/WhatsApp. |
 | POST | /contact-requests | Send contact request (body: toUserId). |
+| GET | /contact-requests/received/count | Pending contact requests received count (for Requests badge). **Success** `200 OK`: `{ "count": N }`. |
 | GET | /contact-requests/received | Received contact requests (query: page, limit). |
 | POST | /contact-requests/:requestId/accept | Accept; share my contact with requester; notify requester. |
 | POST | /contact-requests/:requestId/decline | Decline; notify requester. |
@@ -1061,9 +1153,11 @@ Users can **hide their photos** (all or some) in preferences. Others **request t
 |--------|------|-------------|
 | PATCH | /profile/me | Set **photoVisibility**: `everyone` \| `on_request` \| `none`; optional **lockedPhotoIds**. Or use dedicated PATCH /profile/me/photo-visibility. |
 | GET | /profile/:userId | When caller is viewer: return **canViewPhotos**, **photoVisibility**, **photoViewRequestState**; full or masked **photoUrls**. |
-| GET | /photo-view-requests/status/:profileId | Status of my request toward that profile (none \| pending \| accepted \| declined). |
-| POST | /photo-view-requests | Send photo view request (body: **toUserId**). |
+| GET | /profile/:userId/photo-view-status | **App uses this.** Status of my request toward that profile (none \| pending \| accepted \| declined). Backend may alternatively expose GET /photo-view-requests/status/:profileId. |
+| GET | /photo-view-requests/status/:profileId | Alternative to above: status of my request toward that profile. |
+| POST | /photo-view-requests | Send photo view request (body: **toUserId** or **targetUserId**; app sends **targetUserId**). |
 | GET | /photo-view-requests/received | Received photo view requests (query: page, limit). |
+| GET | /photo-view-requests/received/count | Pending received count for badge. **Success** `200 OK`: `{ "count": N }`. |
 | POST | /photo-view-requests/:requestId/accept | Accept; grant requester access to my photos; notify requester. |
 | POST | /photo-view-requests/:requestId/decline | Decline; notify requester. |
 
@@ -1186,14 +1280,19 @@ Content-Type: application/json
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | text | string | Yes | Message content. |
+| adCompletionToken | string | No | Required for **free users** in **non‑match** threads only. After the user watches an ad, the app sends this token. **Match threads:** free users can send without ad; do not return AD_REQUIRED. |
 
-**Success** `201 Created` – body: single **ChatMessage**.
+**Success** `201 Created` – body: single **ChatMessage** (same shape as §7.3), or for free users in non‑match threads (when using ad): `{ messageRequestId, threadId, status: "pending" }` until the recipient accepts. When you accept a message, **persist it in this thread** and return it from **GET /chat/threads/:threadId/messages** for the sender so the thread does not look blank. See [chat_endpoint.md](./chat_endpoint.md).
+
+**Match threads:** If the two participants have a mutual match, **do not** require an ad. Free users can send messages in that thread without `adCompletionToken`. Return **403 AD_REQUIRED** only for free users in **non‑match** threads when the token is missing.
 
 **Errors**
 
 | HTTP | code | When |
 |------|------|------|
-| 403 | INTRO_LIMIT | Free user already sent one intro and not matched. |
+| 403 | AD_REQUIRED | Free user in a **non‑match** thread did not send `adCompletionToken`. App shows watch‑ad flow and resends with token. |
+| 403 | PREMIUM_REQUIRED | Messaging requires premium (app shows Upgrade). |
+| 403 | INTRO_LIMIT | Free user already sent one intro and not matched (if applicable). |
 | 404 | NOT_FOUND | threadId invalid. |
 
 ---
@@ -1547,34 +1646,40 @@ Used in discovery (recommended, search, nearby), profile summary, shortlist, vis
 | POST | /discovery/saved-searches/:id/viewed | Yes | Mark viewed (reset new-match badge) |
 | GET | /discovery/search | Yes | Search profiles |
 | GET | /discovery/nearby | Yes | Nearby profiles |
+| GET | /discovery/preferences | Yes | Current matching preferences (optional) |
+| POST | /discovery/feedback | Yes | Submit discovery feedback (e.g. “not interested” reason) |
 | POST | /interests | Yes | Send interest |
 | GET | /interests/received | Yes | Received interests |
 | GET | /interests/sent | Yes | Sent interests |
 | POST | /interests/:interestId/accept | Yes | Accept interest |
 | POST | /interests/:interestId/decline | Yes | Decline interest |
 | DELETE | /interests/:interestId | Yes | Withdraw interest |
-| POST | /interactions/interest | Yes | Express interest (Saathi) |
+| POST | /interactions/interest | Yes | Express interest (Shubhmilan) |
 | POST | /interactions/priority-interest | Yes | Priority interest |
 | PATCH | /interactions/:interactionId | Yes | Accept or decline (body: action; decline: optional message, reasonId) |
 | DELETE | /interactions/:interactionId | Yes | Withdraw pending interest |
 | GET | /interactions/received | Yes | Requests inbox |
 | GET | /interactions/received/count | Yes | Pending received count (badge) |
+| POST | /interactions/received/unlock-one | Yes | Unlock one received (after ad; 2/week) |
 | GET | /interactions/sent | Yes | Sent interests |
 | GET | /shortlist | Yes | Get shortlist (query: sort=recent\|most_interested, page, limit) |
 | PATCH | /shortlist/:shortlistId | Yes | Update note and/or sortOrder |
 | GET | /shortlist/received | Yes | Who shortlisted me (Shortlisted you tab) |
 | GET | /shortlist/received/count | Yes | Shortlist received count (badge) |
+| POST | /shortlist/received/unlock-one | Yes | Unlock one “who shortlisted you” via ad (5/week) |
 | POST | /shortlist | Yes | Add to shortlist |
 | DELETE | /shortlist/:profileId | Yes | Remove from shortlist |
 | GET | /shortlist/:userId/check | Yes | Check if shortlisted |
 | GET | /contact-requests/status/:profileId | Yes | Contact request status (sharedPhone when accepted) |
 | POST | /contact-requests | Yes | Send contact request (body: toUserId) |
+| GET | /contact-requests/received/count | Yes | Pending contact requests received count (for badge) |
 | GET | /contact-requests/received | Yes | Received contact requests (query: page, limit) |
 | POST | /contact-requests/:requestId/accept | Yes | Accept contact request; notify requester |
 | POST | /contact-requests/:requestId/decline | Yes | Decline contact request; notify requester |
 | GET | /profile/me/notifications | Yes | Get notification preferences (optional; 404 → app defaults) |
 | POST | /account/export | Yes | Request data export (see BACKEND_CROSS_CUTTING) |
 | POST | /account/deactivate | Yes | Deactivate account (reversible) |
+| POST | /account/reactivate | Yes | Reactivate account (after deactivate) |
 | POST | /account/delete | Yes | Permanently delete account |
 | POST | /visits | Yes | Record profile visit |
 | GET | /visits/received | Yes | My visitors |
@@ -1588,6 +1693,19 @@ Used in discovery (recommended, search, nearby), profile summary, shortlist, vis
 | GET | /chat/threads/:threadId/messages | Yes | Get messages |
 | POST | /chat/threads/:threadId/messages | Yes | Send message |
 | POST | /chat/threads/:threadId/read | Yes | Mark read |
+| GET | /chat/suggestions | Yes | Icebreaker / first-message suggestions (optional) |
+| POST | /translate | Yes | **Not implemented in this backend.** Optional: translate text (body: text, targetLocale?). App calls and degrades on 404/501. See [BACKEND_PROFILE_TRANSLATION.md](./BACKEND_PROFILE_TRANSLATION.md) §6. |
+| GET | /referral | Yes | Referral code, invite link, status |
+| POST | /referral/invite | Yes | Record invite sent (body: channel?) |
+| POST | /profile/me/boost | Yes | Start profile boost (body: durationHours?) |
+| GET | /profile/:userId/photo-view-status | Yes | Photo view request status (none \| pending \| accepted \| declined); alt to /photo-view-requests/status/:profileId |
+| GET | /photo-view-requests/received/count | Yes | Pending photo view requests received (badge) |
+| POST | /verification/id/upload-url | Yes | Get presigned URL for ID upload |
+| POST | /verification/id/submit | Yes | Submit ID verification (body: key) |
+| POST | /verification/photo | Yes | Submit photo/selfie verification (body: key?) |
+| GET | /verification/linkedin/auth-url | Yes | LinkedIn OAuth URL for verification |
+| POST | /verification/linkedin/callback | Yes | LinkedIn OAuth callback (body: code) |
+| POST | /verification/education | Yes | Submit education verification (body: institutionName?, degree?, documentKey?) |
 | GET | /subscription/me | Yes | Get subscription |
 | POST | /subscription/purchase | Yes | Purchase |
 | POST | /subscription/restore | Yes | Restore purchases |
@@ -1603,15 +1721,20 @@ If the backend returns `Foreign key constraint violated: Profile_userId_fkey` or
 
 **Related docs**
 
+- [ENDPOINT_CONNECTION_STATUS.md](./ENDPOINT_CONNECTION_STATUS.md) — ✓ Connected vs ○ Remaining (app integration checklist)
 - [BACKEND_PROFILE_SECTIONS.md](./BACKEND_PROFILE_SECTIONS.md) — Profile sections (app edit flow: section → fields, save & close, GET/PATCH usage)
 - [BACKEND_DISCOVERY_INTEGRATION.md](./BACKEND_DISCOVERY_INTEGRATION.md) — Discovery frontend contract (filters, travel, match reasons)
 - [BACKEND_FILTER_OPTIONS_AND_PREFERENCES.md](./BACKEND_FILTER_OPTIONS_AND_PREFERENCES.md) — Filter options & strict preferences
 - [BACKEND_SECURITY_BLOCK_REPORT.md](./BACKEND_SECURITY_BLOCK_REPORT.md) — Block/report API
 - [BACKEND_CHAT_INTEGRATION.md](./BACKEND_CHAT_INTEGRATION.md) — Chat integration checklist
+- [chat_endpoint.md](./chat_endpoint.md) — Chat API: threads, messages, send (ad/match), read, DTOs
+- [BACKEND_REQUESTS_INBOX_PREMIUM.md](./BACKEND_REQUESTS_INBOX_PREMIUM.md) — Requests inbox premium gate, 2/week ad unlock, inbox unlock-one
+- [BACKEND_SHORTLIST_RECEIVED_PREMIUM.md](./BACKEND_SHORTLIST_RECEIVED_PREMIUM.md) — Shortlisted you premium gate, 5/week ad unlock
 - [BACKEND_MATCHES_AND_VISITORS.md](./BACKEND_MATCHES_AND_VISITORS.md) — Mutual match definition, GET /matches, POST /visits/mark-seen
 - [BACKEND_REQUESTS_SHORTLIST_FAMILY.md](./BACKEND_REQUESTS_SHORTLIST_FAMILY.md) — Requests (decline message), contact gating, shortlist (notes, sort), family, horoscope, parent role
 - [BACKEND_SAVED_SEARCHES.md](./BACKEND_SAVED_SEARCHES.md) — Saved searches and new-match notifications (matrimony)
 - [BACKEND_CONTACT_REQUESTS.md](./BACKEND_CONTACT_REQUESTS.md) — Contact request flow, accept/decline, notifications, View contacts (Call/WhatsApp)
 - [BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md](./BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md) — Photo visibility preference (hide all/some), request to view pictures, accept/decline, notifications
+- [BACKEND_REFERRAL.md](./BACKEND_REFERRAL.md) — Referral code at sign-up, 30 days Premium for referred users, top-referrer contest (₹1 lakh)
 - [BACKEND_CROSS_CUTTING.md](./BACKEND_CROSS_CUTTING.md) — Notifications, privacy, account (export/deactivate/delete), profile boost, referral, deep links
 - [BACKEND_VERIFICATION.md](./BACKEND_VERIFICATION.md) — Verification screen: ID, face, LinkedIn, education; verificationStatus and safety score; optional upload/OAuth endpoints

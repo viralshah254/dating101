@@ -91,7 +91,11 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> sendMessage(String threadId, String text) async {
+  Future<void> sendMessage(
+    String threadId,
+    String text, {
+    String? adCompletionToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 50));
     final list = _threads[threadId] ?? [];
     list.add(
@@ -108,5 +112,21 @@ class FakeChatRepository implements ChatRepository {
   @override
   Future<void> markThreadRead(String threadId) async {
     await Future.delayed(const Duration(milliseconds: 20));
+  }
+
+  @override
+  Future<List<MessageRequest>> getMessageRequests({int limit = 20}) async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    return [];
+  }
+
+  @override
+  Future<void> acceptMessageRequest(String requestId) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
+
+  @override
+  Future<void> declineMessageRequest(String requestId) async {
+    await Future.delayed(const Duration(milliseconds: 50));
   }
 }

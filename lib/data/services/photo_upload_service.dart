@@ -116,8 +116,19 @@ class PhotoUploadService {
       throw Exception('S3 upload failed: ${s3Response.statusCode}');
     }
 
-    debugPrint('[PhotoUpload] Upload complete: $photoUrl');
-    return UploadResult(photoUrl: photoUrl, key: key);
+    // Register photo with backend (POST /profile/me/photos) so profile has the new photo.
+    String finalPhotoUrl = photoUrl;
+    try {
+      final addRes = await api.post('/profile/me/photos', body: {'key': key});
+      final fromApi = addRes['photoUrl'] as String?;
+      if (fromApi != null && fromApi.isNotEmpty) finalPhotoUrl = fromApi;
+    } catch (e) {
+      debugPrint('[PhotoUpload] POST /profile/me/photos failed: $e');
+      rethrow;
+    }
+
+    debugPrint('[PhotoUpload] Upload complete: $finalPhotoUrl');
+    return UploadResult(photoUrl: finalPhotoUrl, key: key);
   }
 
   /// Upload multiple local photos, returning CDN URLs for each.

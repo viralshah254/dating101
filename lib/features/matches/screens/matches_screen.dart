@@ -3,10 +3,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:uuid/uuid.dart';
+
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -14,6 +20,7 @@ import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../discovery/providers/discovery_providers.dart';
+import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/matches_providers.dart';
@@ -101,6 +108,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               onUpgrade: _onUpgrade,
               onBlock: _onBlock,
               onReport: _onReport,
+              onReached20thProfile: () {
+                if (mounted) _showReferralPopup(context, ref);
+              },
             ),
             _VisitorsTab(
               onTapProfile: _openProfile,
@@ -122,6 +132,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               onUpgrade: _onUpgrade,
               onBlock: _onBlock,
               onReport: _onReport,
+              onReached20thProfile: () {
+                if (mounted) _showReferralPopup(context, ref);
+              },
             ),
             _MatchesTab(
               onTapProfile: _openProfile,
@@ -137,22 +150,94 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   void _openProfile(ProfileSummary p) => context.push('/profile/${p.id}');
 
+  void _showReferralPopup(BuildContext context, WidgetRef ref) {
+    final storage = ref.read(referralPromoStorageProvider);
+    if (!storage.shouldShowPopup()) return;
+    final l = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        clipBehavior: Clip.antiAlias,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: ReferralPromoBanner(
+                      aspectRatio: 1.0,
+                      borderRadius: 12,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      if (context.mounted) context.push('/referral');
+                    },
+                    child: Text(l.referNow),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((_) {
+      ref.read(referralPromoStorageProvider).markShown();
+    });
+  }
+
   void _onLike(ProfileSummary p) async {
     try {
       final repo = ref.read(interactionsRepositoryProvider);
       final result = await repo.expressInterest(p.id, source: 'recommended');
       if (!mounted) return;
-      ref.invalidate(matchesRecommendedWithFallbackProvider);
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, p.id},
+          );
+      ref.invalidate(recommendedPaginatedProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
       ref.invalidate(sentInteractionsProvider);
-      if (result.mutualMatch && result.chatThreadId != null) {
-        context.push(
-          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
-        );
+      if (result.mutualMatch) {
+        ref.invalidate(mutualMatchesProvider);
+        ref.invalidate(matchedUserIdsProvider);
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != p.id).toList(),
+            );
+        if (!mounted) return;
+        _showMutualMatchCelebration(context, p, result.chatThreadId);
       }
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.toastInterestSent),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.message),
@@ -168,31 +253,76 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   }
 
   Future<void> _showPriorityInterestDialog(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
     final message = await showDialog<String?>(
       context: context,
       barrierDismissible: true,
       builder: (context) => _PriorityInterestDialog(profileName: p.name),
     );
     if (!mounted) return;
+    final ent = ref.read(entitlementsProvider);
+    String? adToken;
+    if (ent.dailyPriorityInterestLimit == 0) {
+      // Free user: must choose Watch ad or Upgrade to Premium. If they go to paywall and back, show choice again.
+      bool? watchAd = await _showWatchAdOrPremiumChoice(context);
+      while (watchAd != null && watchAd == false) {
+        await context.push('/paywall');
+        if (!mounted) return;
+        watchAd = await _showWatchAdOrPremiumChoice(context);
+      }
+      if (!mounted) return;
+      if (watchAd != true) return; // Dismissed
+      // User chose Watch ad: show loading dialog, then ad, then on success send priority interest + message.
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.priorityInterest);
+      if (!mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.adCouldntBeLoaded),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      adToken = const Uuid().v4();
+    }
     try {
       final repo = ref.read(interactionsRepositoryProvider);
       final result = await repo.expressPriorityInterest(
         p.id,
         message: message,
         source: 'recommended',
+        adCompletionToken: adToken,
       );
       if (!mounted) return;
-      ref.invalidate(matchesRecommendedWithFallbackProvider);
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, p.id},
+          );
+      ref.invalidate(recommendedPaginatedProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
       ref.invalidate(sentInteractionsProvider);
-      if (result.mutualMatch && result.chatThreadId != null) {
-        context.push(
-          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
-        );
+      if (result.mutualMatch) {
+        ref.invalidate(mutualMatchesProvider);
+        ref.invalidate(matchedUserIdsProvider);
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != p.id).toList(),
+            );
+        if (!mounted) return;
+        _showMutualMatchCelebration(context, p, result.chatThreadId);
       }
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.toastInterestSent),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.message),
@@ -203,13 +333,79 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     }
   }
 
+  /// Celebration dialog when both users have shown interest. Options: Send message or View profile.
+  void _showMutualMatchCelebration(
+    BuildContext context,
+    ProfileSummary p,
+    String? chatThreadId,
+  ) {
+    final l = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.toastMatchWith(p.name)),
+        content: Text(
+          l.mutualMatchCelebrationMessage,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.push('/profile/${p.id}');
+            },
+            child: Text(l.viewProfile),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (chatThreadId != null) {
+                context.push(
+                  '/chat/$chatThreadId?otherUserId=${Uri.encodeComponent(p.id)}',
+                );
+              } else {
+                context.push('/profile/${p.id}');
+              }
+            },
+            child: Text(l.ctaSendMessage),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shows dialog: Watch ad (true) or Upgrade to Premium (false). Returns null if dismissed.
+  Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.priorityInterest),
+        content: Text(
+          l.priorityInterestAdMessage,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.ctaUpgradeToPremium),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.watchAd),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onShortlist(ProfileSummary p) async {
     try {
       await ref.read(shortlistRepositoryProvider).addToShortlist(p.id);
       if (!mounted) return;
       ref.invalidate(shortlistProvider);
       ref.invalidate(shortlistedIdsProvider);
-      ref.invalidate(matchesRecommendedWithFallbackProvider);
+      ref.invalidate(recommendedPaginatedProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
     } on ApiException catch (e) {
@@ -225,6 +421,66 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   }
 
   void _onMessage(ProfileSummary p) async {
+    final ent = ref.read(entitlementsProvider);
+    if (ent.canSendMessageDirect) {
+      await _openChat(p);
+      return;
+    }
+    // Free user: matches can message without ad; non-matches must watch ad or subscribe.
+    final matchedIds = await ref.read(matchedUserIdsProvider.future);
+    if (matchedIds.contains(p.id)) {
+      await _openChat(p);
+      return;
+    }
+    await _onMessageAsFreeUser(p);
+  }
+
+  /// Free user: message only after watch ad or subscribe. After ad, auto-send interest (if needed) then open chat.
+  Future<void> _onMessageAsFreeUser(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
+    final watchAd = await _showWatchAdOrPremiumChoiceForMessage(context);
+    if (!mounted) return;
+    if (watchAd == null) return;
+    if (watchAd == false) {
+      context.push('/paywall');
+      return;
+    }
+    final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.sendMessage);
+    if (!mounted) return;
+    if (!shown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.failedToSendTryAgain),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final adToken = const Uuid().v4();
+    // Auto-send interest so backend allows creating the thread; then open message screen.
+    try {
+      await ref.read(interactionsRepositoryProvider).expressInterest(
+        p.id,
+        source: 'recommended',
+      );
+      if (!mounted) return;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, p.id},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider);
+      }
+      // Continue to open chat either way (connection may already exist).
+    }
+    await _openChat(p, initialAdToken: adToken);
+  }
+
+  Future<void> _openChat(ProfileSummary p, {String? initialAdToken}) async {
+    final l = AppLocalizations.of(context)!;
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
@@ -232,14 +488,18 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           .read(chatRepositoryProvider)
           .createThread(p.id, mode: modeStr);
       if (!mounted) return;
-      context.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
+      final query = 'otherUserId=${Uri.encodeComponent(p.id)}';
+      final tokenParam = initialAdToken != null
+          ? '&initialAdToken=${Uri.encodeComponent(initialAdToken)}'
+          : '';
+      context.push('/chat/$threadId?$query$tokenParam');
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             e.code == 'CONNECTION_REQUIRED'
-                ? 'Send or accept an interest first'
+                ? l.sendOrAcceptInterestFirst
                 : e.message,
           ),
           behavior: SnackBarBehavior.floating,
@@ -250,6 +510,30 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       if (!mounted) return;
       context.push('/chats');
     }
+  }
+
+  Future<bool?> _showWatchAdOrPremiumChoiceForMessage(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.premium),
+        content: Text(
+          l.watchAdToMessageMessage,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.ctaUpgradeToPremium),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.watchAd),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onUpgrade() => context.push('/paywall');
@@ -286,8 +570,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           .read(safetyRepositoryProvider)
           .block(p.id, reason, source: 'discover');
       if (!mounted) return;
-      ref.invalidate(matchesRecommendedWithFallbackProvider);
-      ref.invalidate(matchesExploreWithFallbackProvider);
+      ref.invalidate(recommendedPaginatedProvider);
+      ref.invalidate(explorePaginatedProvider);
       ref.invalidate(mutualMatchesProvider);
       ref.invalidate(matchedUserIdsProvider);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -829,6 +1113,7 @@ class _RecommendedTab extends ConsumerWidget {
     required this.onUpgrade,
     required this.onBlock,
     required this.onReport,
+    this.onReached20thProfile,
   });
   final void Function(ProfileSummary) onTapProfile;
   final void Function(ProfileSummary) onLike;
@@ -838,6 +1123,7 @@ class _RecommendedTab extends ConsumerWidget {
   final VoidCallback onUpgrade;
   final void Function(ProfileSummary) onBlock;
   final void Function(ProfileSummary) onReport;
+  final VoidCallback? onReached20thProfile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -849,13 +1135,19 @@ class _RecommendedTab extends ConsumerWidget {
     final sentPriorityIds =
         ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
         <String>{};
+    final excludedFromRecommended =
+        ref.watch(effectiveExcludedFromRecommendedIdsProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
-    final async = ref.watch(matchesRecommendedWithFallbackProvider);
+    final async = ref.watch(recommendedPaginatedProvider);
+    final notifier = ref.read(recommendedPaginatedProvider.notifier);
     return async.when(
-      data: (result) {
-        final filtered = result.profiles
-            .where((p) => !matchedIds.contains(p.id))
+      data: (state) {
+        // Exclude matches and profiles we already sent interest/priority to (API + optimistic so full-profile tap is reflected).
+        final filtered = state.profiles
+            .where((p) =>
+                !matchedIds.contains(p.id) &&
+                !excludedFromRecommended.contains(p.id))
             .toList();
         return _ProfileList(
           profiles: filtered,
@@ -873,18 +1165,23 @@ class _RecommendedTab extends ConsumerWidget {
           emptyIcon: Icons.diversity_3_rounded,
           emptyTitle: l.noRecommendationsYet,
           emptyBody: l.noRecommendationsYetBody,
-          widenedSearchBanner: result.isWidenedSearch && filtered.isNotEmpty
+          onReached20thProfile: filtered.length >= 20 ? onReached20thProfile : null,
+          showReferralCards: filtered.length >= 10,
+          widenedSearchBanner: state.isWidenedSearch && filtered.isNotEmpty
               ? _WidenedSearchBanner(
                   title: l.searchWidenedTitle,
                   body: l.searchWidenedBody,
                 )
               : null,
+          onLoadMore: state.hasMore ? notifier.loadMore : null,
+          hasMore: state.hasMore,
+          loadingMore: state.loadingMore,
         );
       },
       loading: () => const SkeletonCardList(),
       error: (_, __) => ErrorState(
         message: l.errorGeneric,
-        onRetry: () => ref.invalidate(matchesRecommendedWithFallbackProvider),
+        onRetry: () => ref.invalidate(recommendedPaginatedProvider),
         retryLabel: l.retry,
       ),
     );
@@ -943,9 +1240,8 @@ class _VisitorsTab extends ConsumerWidget {
           onMessage: onMessage,
           onUpgrade: onUpgrade,
           emptyIcon: Icons.visibility_outlined,
-          emptyTitle: 'No visitors yet',
-          emptyBody:
-              'Profiles who viewed you will appear here. Complete your profile to get noticed.',
+          emptyTitle: l.noVisitorsYet,
+          emptyBody: l.noVisitorsYetBody,
           onBlock: onBlock,
           onReport: onReport,
         );
@@ -973,6 +1269,7 @@ class _ExploreTab extends ConsumerWidget {
     required this.onUpgrade,
     required this.onBlock,
     required this.onReport,
+    this.onReached20thProfile,
   });
   final MatchesSearchFilters filters;
   final void Function(ProfileSummary) onTapProfile;
@@ -983,6 +1280,7 @@ class _ExploreTab extends ConsumerWidget {
   final VoidCallback onUpgrade;
   final void Function(ProfileSummary) onBlock;
   final void Function(ProfileSummary) onReport;
+  final VoidCallback? onReached20thProfile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1009,10 +1307,11 @@ class _ExploreTab extends ConsumerWidget {
 
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
-    final async = ref.watch(matchesExploreWithFallbackProvider(exploreArgs));
+    final async = ref.watch(explorePaginatedProvider(exploreArgs));
+    final notifier = ref.read(explorePaginatedProvider(exploreArgs).notifier);
     return async.when(
-      data: (result) {
-        final filtered = result.profiles
+      data: (state) {
+        final filtered = state.profiles
             .where((p) => !matchedIds.contains(p.id))
             .toList();
         return _ProfileList(
@@ -1027,25 +1326,27 @@ class _ExploreTab extends ConsumerWidget {
           onMessage: onMessage,
           onUpgrade: onUpgrade,
           emptyIcon: hasFilters ? Icons.search_off : Icons.explore_outlined,
-          emptyTitle: hasFilters ? 'No matches found' : 'Explore profiles',
-          emptyBody: hasFilters
-              ? 'Try adjusting your filters for more results.'
-              : 'Use the filter icon above to search by age, city, religion, education and more.',
+          emptyTitle: hasFilters ? l.noMatchesFound : l.exploreProfiles,
+          emptyBody: hasFilters ? l.tryAdjustingFilters : l.exploreProfilesBody,
           onBlock: onBlock,
           onReport: onReport,
-          widenedSearchBanner: result.isWidenedSearch && filtered.isNotEmpty
+          onReached20thProfile: filtered.length >= 20 ? onReached20thProfile : null,
+          showReferralCards: filtered.length >= 10,
+          widenedSearchBanner: state.isWidenedSearch && filtered.isNotEmpty
               ? _WidenedSearchBanner(
                   title: l.searchWidenedTitle,
                   body: l.searchWidenedBody,
                 )
               : null,
+          onLoadMore: state.hasMore ? () => notifier.loadMore(exploreArgs) : null,
+          hasMore: state.hasMore,
+          loadingMore: state.loadingMore,
         );
       },
       loading: () => const SkeletonCardList(),
       error: (_, __) => ErrorState(
         message: l.errorGeneric,
-        onRetry: () =>
-            ref.invalidate(matchesExploreWithFallbackProvider(exploreArgs)),
+        onRetry: () => ref.invalidate(explorePaginatedProvider(exploreArgs)),
         retryLabel: l.retry,
       ),
     );
@@ -1076,14 +1377,20 @@ class _MatchesTab extends ConsumerWidget {
           return EmptyState(
             icon: Icons.favorite_border_rounded,
             title: l.noMatchesYet,
-            body:
-                'When you and someone else both express interest, you\'ll match and appear here.',
+            body: l.noMatchesYetBody,
           );
         }
         final onSurface = Theme.of(context).colorScheme.onSurface;
         final accent = AppColors.lightAccent;
+        // Disable scrolling when list fits on screen (no overflow).
+        const approximateItemHeight = 88.0;
+        const verticalPadding = 36.0;
+        final viewportHeight = MediaQuery.sizeOf(context).height;
+        final maxVisibleItems = ((viewportHeight * 0.6 - verticalPadding) / approximateItemHeight).floor();
+        final shouldScroll = entries.length > maxVisibleItems.clamp(1, 999);
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          physics: shouldScroll ? null : const NeverScrollableScrollPhysics(),
           itemCount: entries.length,
           itemBuilder: (context, i) {
             final entry = entries[i];
@@ -1165,7 +1472,7 @@ class _MatchesTab extends ConsumerWidget {
                             Icons.chat_bubble_outline_rounded,
                             color: accent,
                           ),
-                          tooltip: 'Message',
+                          tooltip: l.messageTooltip,
                         ),
                         PopupMenuButton<String>(
                           icon: Icon(
@@ -1301,7 +1608,12 @@ class _ProfileList extends StatelessWidget {
     required this.emptyIcon,
     required this.emptyTitle,
     required this.emptyBody,
+    this.onReached20thProfile,
     this.widenedSearchBanner,
+    this.showReferralCards = false,
+    this.onLoadMore,
+    this.hasMore = false,
+    this.loadingMore = false,
   });
   final List<ProfileSummary> profiles;
   final Set<String>? shortlistedIds;
@@ -1318,11 +1630,20 @@ class _ProfileList extends StatelessWidget {
   final IconData emptyIcon;
   final String emptyTitle;
   final String emptyBody;
+  final VoidCallback? onReached20thProfile;
   final Widget? widenedSearchBanner;
+  final bool showReferralCards;
+  final VoidCallback? onLoadMore;
+  final bool hasMore;
+  final bool loadingMore;
+
+  static const int _profilesPerReferralCard = 10;
+  static const double _referralCardHeight = 160.0;
+  static const double _loadMoreTriggerPixels = 400;
 
   @override
   Widget build(BuildContext context) {
-    if (profiles.isEmpty) {
+    if (profiles.isEmpty && !loadingMore) {
       return EmptyState(icon: emptyIcon, title: emptyTitle, body: emptyBody);
     }
     final viewportHeight = MediaQuery.sizeOf(context).height;
@@ -1330,21 +1651,72 @@ class _ProfileList extends StatelessWidget {
     const horizontalPadding = 12.0;
     const peekGap = 12.0;
 
-    final list = ListView.builder(
-      padding: const EdgeInsets.fromLTRB(
-        horizontalPadding,
-        12,
-        horizontalPadding,
-        24,
-      ),
-      itemCount: profiles.length,
-      itemBuilder: (context, i) {
-        final p = profiles[i];
+    final useReferral = showReferralCards;
+    final adCount = useReferral ? (profiles.length / _profilesPerReferralCard).floor() : 0;
+    var itemCount = useReferral ? profiles.length + adCount : profiles.length;
+    if (onLoadMore != null && (hasMore || loadingMore)) itemCount += 1;
+
+    final list = NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification notification) {
+        if (onLoadMore == null || !hasMore || loadingMore) return false;
+        if (notification is ScrollEndNotification || notification is ScrollUpdateNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels >= metrics.maxScrollExtent - _loadMoreTriggerPixels) {
+            onLoadMore!();
+          }
+        }
+        return false;
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(
+          horizontalPadding,
+          12,
+          horizontalPadding,
+          24,
+        ),
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          if (index >= (useReferral ? profiles.length + adCount : profiles.length)) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: loadingMore
+                    ? const SizedBox(
+                        height: 32,
+                        width: 32,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            );
+          }
+        if (useReferral) {
+          final isAdSlot = (index + 1) % (_profilesPerReferralCard + 1) == 0 &&
+              (index + 1) ~/ (_profilesPerReferralCard + 1) <= adCount;
+          if (isAdSlot) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: peekGap),
+              child: SizedBox(
+                height: _referralCardHeight,
+                child: ReferralPromoBanner(
+                  aspectRatio: 1.15,
+                  borderRadius: 12,
+                ).animate().fadeIn(delay: (40 * index).ms).slideY(begin: 0.04, end: 0),
+              ),
+            );
+          }
+        }
+
+        final profileIndex = useReferral
+            ? index - (index + 1) ~/ (_profilesPerReferralCard + 1)
+            : index;
+        final p = profiles[profileIndex];
         final isShortlisted = shortlistedIds?.contains(p.id) ?? false;
         final isInterested = sentInterestIds?.contains(p.id) ?? false;
         final isPriorityInterested =
             sentPriorityInterestIds?.contains(p.id) ?? false;
-        return Padding(
+        final is20thProfile = onReached20thProfile != null && profileIndex == 19;
+        final card = Padding(
           padding: const EdgeInsets.only(bottom: peekGap),
           child: SizedBox(
             height: cardHeight,
@@ -1362,10 +1734,19 @@ class _ProfileList extends StatelessWidget {
               onUpgrade: onUpgrade,
               onBlock: () => onBlock(p),
               onReport: () => onReport(p),
-            ).animate().fadeIn(delay: (40 * i).ms).slideY(begin: 0.04, end: 0),
+            ).animate().fadeIn(delay: (40 * index).ms).slideY(begin: 0.04, end: 0),
           ),
         );
-      },
+        if (is20thProfile) {
+          final trigger = onReached20thProfile!;
+          return _ReferralPopupTrigger(
+            onTrigger: trigger,
+            child: card,
+          );
+        }
+        return card;
+        },
+      ),
     );
     if (widenedSearchBanner != null) {
       return Column(
@@ -1566,8 +1947,8 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
 
     final name = widget.profileName.split(' ').first;
     final greeting = name.isNotEmpty
-        ? 'Say hi to $name'
-        : 'Send a personal note';
+        ? l.sayHiToName(name)
+        : l.sendPersonalNote;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -1605,7 +1986,7 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                     const SizedBox(width: 18),
                     Expanded(
                       child: Text(
-                        'Priority interest',
+                        l.priorityInterest,
                         style: AppTypography.titleLarge.copyWith(
                           color: onSurface,
                           fontWeight: FontWeight.w700,
@@ -1698,4 +2079,29 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
       ),
     );
   }
+}
+
+/// Fires [onTrigger] once after the first frame when this widget is built.
+class _ReferralPopupTrigger extends StatefulWidget {
+  const _ReferralPopupTrigger({
+    required this.onTrigger,
+    required this.child,
+  });
+
+  final VoidCallback onTrigger;
+  final Widget child;
+
+  @override
+  State<_ReferralPopupTrigger> createState() => _ReferralPopupTriggerState();
+}
+
+class _ReferralPopupTriggerState extends State<_ReferralPopupTrigger> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => widget.onTrigger());
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

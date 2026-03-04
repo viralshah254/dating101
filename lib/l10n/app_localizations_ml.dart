@@ -9,7 +9,7 @@ class AppLocalizationsMl extends AppLocalizations {
   AppLocalizationsMl([String locale = 'ml']) : super(locale);
 
   @override
-  String get appTitle => 'saathi';
+  String get appTitle => 'Shubhmilan';
 
   @override
   String get appTagline => 'Sophisticated connections, globally.';
@@ -56,6 +56,9 @@ class AppLocalizationsMl extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get viewMore => 'കൂടുതൽ കാണുക';
+
+  @override
   String get submit => 'Submit';
 
   @override
@@ -74,7 +77,7 @@ class AppLocalizationsMl extends AppLocalizations {
   String get notNow => 'Not now';
 
   @override
-  String get loginTitle => 'saathi';
+  String get loginTitle => 'Shubhmilan';
 
   @override
   String get loginTagline => 'Sophisticated connections, globally.';
@@ -226,7 +229,7 @@ class AppLocalizationsMl extends AppLocalizations {
   String get ctaRequestContact => 'Request Contact';
 
   @override
-  String get ctaUpgradeToPremium => 'Upgrade to saathi Premium';
+  String get ctaUpgradeToPremium => 'Upgrade to Shubhmilan Premium';
 
   @override
   String get premiumRequired => 'Premium Feature';
@@ -300,7 +303,71 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get shortlistEmptyHint =>
-      'Shortlist profiles you like to review later.';
+      'പിന്നീട് അവലോകനം ചെയ്യാൻ ഇഷ്ടമുള്ള പ്രൊഫൈലുകൾ ഷോർട്ട്‌ലിസ്റ്റ് ചെയ്യുക.';
+
+  @override
+  String get shortlistedTab => 'ഷോർട്ട്‌ലിസ്റ്റ് ചെയ്തവ';
+
+  @override
+  String get shortlistedYouTab => 'നിങ്ങളെ ഷോർട്ട്‌ലിസ്റ്റ് ചെയ്തവർ';
+
+  @override
+  String get tabChats => 'ചാറ്റുകൾ';
+
+  @override
+  String get tabMessageRequests => 'അഭ്യർത്ഥനകൾ';
+
+  @override
+  String get circlesTab => 'സർക്കിളുകൾ';
+
+  @override
+  String get eventsTab => 'ഇവന്റുകൾ';
+
+  @override
+  String get upcomingTab => 'വരാനിരിക്കുന്നത്';
+
+  @override
+  String get myRsvpsTab => 'എന്റെ RSVP-കൾ';
+
+  @override
+  String get messageTooltip => 'സന്ദേശം';
+
+  @override
+  String get watchAd => 'പരസ്യം കാണുക';
+
+  @override
+  String get watchAdToUnlock => 'അൺലോക്ക് ചെയ്യാൻ പരസ്യം കാണുക';
+
+  @override
+  String get loadingAd => 'പരസ്യം ലോഡ് ചെയ്യുന്നു…';
+
+  @override
+  String get adCouldntBeLoaded =>
+      'പരസ്യം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കിൽ പ്രീമിയം അപ്‌ഗ്രേഡ് ചെയ്യുക.';
+
+  @override
+  String get mutualMatchCelebrationMessage =>
+      'നിങ്ങൾ രണ്ടുപേർക്കും പരസ്പരം താൽപ്പര്യമുണ്ട്! സന്ദേശം അയയ്ക്കുക അല്ലെങ്കിൽ പ്രൊഫൈൽ കാണുക.';
+
+  @override
+  String get priorityInterestAdMessage =>
+      'പ്രാഥമിക താൽപ്പര്യം അയയ്ക്കാൻ പരസ്യം കാണുക, അല്ലെങ്കിൽ പരസ്യമില്ലാതെ അയയ്ക്കാൻ പ്രീമിയം അപ്‌ഗ്രേഡ് ചെയ്യുക.';
+
+  @override
+  String get sendOrAcceptInterestFirst =>
+      'ആദ്യം താൽപ്പര്യം അയയ്ക്കുക അല്ലെങ്കിൽ സ്വീകരിക്കുക';
+
+  @override
+  String get watchAdToMessageMessage =>
+      'സന്ദേശം അയയ്ക്കാൻ പരസ്യം കാണുക, അല്ലെങ്കിൽ പ്രീമിയം അപ്‌ഗ്രേഡ് ചെയ്ത് പരസ്യമില്ലാതെ മെസ്സേജ് ചെയ്യുക.';
+
+  @override
+  String sayHiToName(String name) {
+    return '$name-ന് ഹലോ പറയുക';
+  }
+
+  @override
+  String get sendPersonalNote => 'വ്യക്തിഗത നോട്ട് അയയ്ക്കുക';
 
   @override
   String get profileTitle => 'Profile';
@@ -372,6 +439,23 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get subscription => 'Subscription';
+
+  @override
+  String subscriptionExpiresOn(String date) {
+    return '$date-ന് കാലഹരണം';
+  }
+
+  @override
+  String get subscriptionRenewSoon =>
+      'പ്രീമിയം തുടരാൻ അടുത്ത 7 ദിവസത്തിനുള്ളിൽ പുതുക്കുക';
+
+  @override
+  String subscriptionDaysLeft(int count) {
+    return '$count ദിവസം ബാക്കി';
+  }
+
+  @override
+  String get upgradeToPremiumSubtitle => 'എല്ലാ ഫീച്ചറുകളും അൺലോക്ക് ചെയ്യുക';
 
   @override
   String get legal => 'Legal';
@@ -501,7 +585,7 @@ class AppLocalizationsMl extends AppLocalizations {
   String get lookingForGroom => 'Groom';
 
   @override
-  String get paywallTitle => 'Unlock more with saathi';
+  String get paywallTitle => 'Unlock more with Shubhmilan';
 
   @override
   String get paywallDatingSubtitle =>
@@ -583,11 +667,21 @@ class AppLocalizationsMl extends AppLocalizations {
   String get inviteFriends => 'Invite friends';
 
   @override
+  String get referNow => 'ഇപ്പോൾ റഫർ ചെയ്യുക';
+
+  @override
   String get inviteCopy => 'Give friends a better way to connect';
 
   @override
   String get inviteReward =>
       'Share your invite code or link. When they join, you both get a reward.';
+
+  @override
+  String get referralBenefitReferred =>
+      'നിങ്ങളുടെ കോഡ് ഉപയോഗിച്ച് സൈൻ അപ്പ് ചെയ്യുന്ന എല്ലാവർക്കും 30 ദിവസം സൗജന്യ പ്രീമിയം.';
+
+  @override
+  String get referralContestMessage => 'ടോപ്പ് റഫറർ ₹1,00,000 വരെ നേടാം!';
 
   @override
   String get yourInviteCode => 'Your invite code';
@@ -609,6 +703,34 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get codeCopied => 'Code copied';
+
+  @override
+  String get referralCodeHint => 'റഫറൽ കോഡ് ഉണ്ടോ?';
+
+  @override
+  String get referralCodeOptional => 'റഫറൽ കോഡ് (ഓപ്ഷണൽ)';
+
+  @override
+  String get referralPremiumTitle => '30 ദിവസം സൗജന്യ പ്രീമിയം!';
+
+  @override
+  String get referralPremiumMessage =>
+      'നിങ്ങളുടെ റഫറൽ കോഡ് പ്രയോഗിച്ചു. നിങ്ങൾക്ക് 30 ദിവസം സൗജന്യ പ്രീമിയം ലഭിച്ചു. ആസ്വദിക്കുക!';
+
+  @override
+  String referralShareMessage(String code, String link) {
+    return 'Shubhmilan പരീക്ഷിക്കുക — ഡയാസ്പോറയ്ക്കുള്ള അർത്ഥപൂർണ്ണ ബന്ധങ്ങൾ.\n\nഇവിടെയുള്ള ആപ്പ് ഡൗൺലോഡ് ചെയ്യുക: $link\n\nസൈൻ അപ്പ് ചെയ്യുമ്പോൾ എന്റെ റഫറൽ കോഡ് നൽകുക: $code\n\nനിങ്ങൾക്ക് 30 ദിവസം സൗജന്യ പ്രീമിയം (ഇന്ത്യ മാത്രം). കൂടാതെ, ടോപ്പ് റഫറർമാർക്ക് പ്രതിമാസം ₹1,00,000 വരെ നേടാം!';
+  }
+
+  @override
+  String get referralTermsApply => 'നിബന്ധനകൾ ബാധകം';
+
+  @override
+  String get referralTermsTitle => 'റഫറൽ പ്രോഗ്രാം നിബന്ധനകൾ';
+
+  @override
+  String get referralTermsAndConditionsBody =>
+      'റഫറൽ പ്രോഗ്രാമിന്റെ പൂർണ്ണ നിബന്ധനകൾ ആപ്പിൽ ലഭ്യമാണ്.';
 
   @override
   String get loginHeroTitle => 'Find your\nperson';
@@ -639,7 +761,7 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get modeSelectSubtitle =>
-      'Choose how you\'d like to use saathi. You can switch anytime from settings.';
+      'Choose how you\'d like to use Shubhmilan. You can switch anytime from settings.';
 
   @override
   String get modeSwitchHint => 'You can switch anytime in Settings.';
@@ -1304,7 +1426,7 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get locationRequiredMessage =>
-      'saathi needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
+      'Shubhmilan needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.';
 
   @override
   String get locationAllow => 'Allow location';
@@ -1425,7 +1547,10 @@ class AppLocalizationsMl extends AppLocalizations {
   String get appLanguage => 'ആപ്പ് ഭാഷ';
 
   @override
-  String get chooseAppLanguage => 'ആപ്പ് ഭാഷ തിരഞ്ഞെടുക്കുക';
+  String get chooseAppLanguage => 'നിങ്ങളുടെ ഭാഷ തിരഞ്ഞെടുക്കുക';
+
+  @override
+  String get languageSelectSubtitle => 'പിന്നീട് സെറ്റിംഗ്സിൽ നിന്ന് മാറ്റാം.';
 
   @override
   String languageSetTo(Object name) {
@@ -1433,13 +1558,31 @@ class AppLocalizationsMl extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'saathi മോഡ്';
+  String get saathiMode => 'Shubhmilan മോഡ്';
 
   @override
   String get accountAndData => 'അക്കൗണ്ടും ഡാറ്റയും';
 
   @override
   String get viewProfile => 'പ്രൊഫൈൽ കാണുക';
+
+  @override
+  String get discoverPass => 'Pass';
+
+  @override
+  String get discoverLike => 'Like';
+
+  @override
+  String get discoverSuperLike => 'Super like';
+
+  @override
+  String get discoverSwipePassHint => 'Swipe left to pass';
+
+  @override
+  String get discoverSwipeLikeHint => 'Swipe right to like';
+
+  @override
+  String get discoverSwipeSuperLikeHint => 'Swipe up for super like';
 
   @override
   String get downloadMyData => 'എന്റെ ഡാറ്റ ഡൗൺലോഡ് ചെയ്യുക';
@@ -1633,6 +1776,24 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get lookingForTitle => 'എന്തിനായി';
+
+  @override
+  String get partnerPrefLocations => 'Locations';
+
+  @override
+  String get partnerPrefCountries => 'Countries';
+
+  @override
+  String get partnerPrefSettledAbroad => 'Settled abroad';
+
+  @override
+  String get partnerPrefHoroscopeMatch => 'Horoscope match';
+
+  @override
+  String get partnerPrefPreferred => 'Preferred';
+
+  @override
+  String get partnerPrefStrictSuffix => ' (Strict)';
 
   @override
   String get requestAgain => 'വീണ്ടും അഭ്യർത്ഥിക്കുക';
@@ -2091,4 +2252,44 @@ class AppLocalizationsMl extends AppLocalizations {
   @override
   String get reportDetailsHint =>
       'ഞങ്ങളുടെ ടീമിന് സഹായകമാകുന്ന ഏതെങ്കിലും സന്ദർഭം ചേർക്കുക';
+
+  @override
+  String get translate => 'പരിഭാഷപ്പെടുത്തുക';
+
+  @override
+  String get translating => 'പരിഭാഷപ്പെടുത്തുന്നു...';
+
+  @override
+  String get showOriginal => 'യഥാർത്ഥം കാണിക്കുക';
+
+  @override
+  String get showTranslation => 'പരിഭാഷ കാണിക്കുക';
+
+  @override
+  String get translationUnavailable => 'പരിഭാഷ ലഭ്യമല്ല';
+
+  @override
+  String get noVisitorsYet => 'ഇതുവരെ സന്ദർശകരില്ല';
+
+  @override
+  String get noVisitorsYetBody =>
+      'നിങ്ങളെ കണ്ട പ്രൊഫൈലുകൾ ഇവിടെ കാണാം. ശ്രദ്ധിക്കാൻ പ്രൊഫൈൽ പൂർത്തിയാക്കുക.';
+
+  @override
+  String get noMatchesYetBody =>
+      'നിങ്ങളും മറ്റൊരാളും താൽപ്പര്യം കാണിക്കുമ്പോൾ മാച്ച് ആയി ഇവിടെ കാണാം.';
+
+  @override
+  String get noMatchesFound => 'മാച്ചുകളൊന്നും കണ്ടെത്തിയില്ല';
+
+  @override
+  String get tryAdjustingFilters =>
+      'കൂടുതൽ ഫലങ്ങൾക്കായി ഫിൽട്ടറുകൾ ക്രമീകരിക്കുക.';
+
+  @override
+  String get exploreProfiles => 'പ്രൊഫൈലുകൾ എക്സ്പ്ലോർ ചെയ്യുക';
+
+  @override
+  String get exploreProfilesBody =>
+      'പ്രായം, നഗരം, മതം, വിദ്യാഭ്യാസം മുതലായവ കൊണ്ട് തിരയാൻ മുകളിലെ ഫിൽട്ടർ ഐക്കൺ ഉപയോഗിക്കുക.';
 }

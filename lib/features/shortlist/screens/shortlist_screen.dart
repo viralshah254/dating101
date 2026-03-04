@@ -1,7 +1,12 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
@@ -61,9 +66,9 @@ class ShortlistScreen extends ConsumerWidget {
             labelColor: AppColors.indiaGreen,
             unselectedLabelColor: onSurface.withValues(alpha: 0.6),
             indicatorColor: AppColors.indiaGreen,
-            tabs: const [
-              Tab(text: 'Shortlisted'),
-              Tab(text: 'Shortlisted you'),
+            tabs: [
+              Tab(text: AppLocalizations.of(context)!.shortlistedTab),
+              Tab(text: AppLocalizations.of(context)!.shortlistedYouTab),
             ],
           ),
         ),
@@ -88,9 +93,15 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       if (!context.mounted) return;
       final ctx = context;
       final l = AppLocalizations.of(ctx)!;
-      ref.invalidate(matchesRecommendedWithFallbackProvider);
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, p.id},
+          );
+      ref.invalidate(recommendedPaginatedProvider);
       ref.invalidate(sentInteractionsProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != p.id).toList(),
+            );
         showSuccessToast(ctx, l.toastMatchWith(p.name));
         ctx.push(
           '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
@@ -106,15 +117,46 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   }
 
   Future<void> _onSuperLike(ProfileSummary p) async {
+    final ent = ref.read(entitlementsProvider);
+    String? adToken;
+    if (ent.dailyPriorityInterestLimit == 0) {
+      bool? watchAd = await _showWatchAdOrPremiumChoice(context);
+      while (watchAd == false) {
+        await context.push('/paywall');
+        if (!context.mounted) return;
+        watchAd = await _showWatchAdOrPremiumChoice(context);
+      }
+      if (!context.mounted) return;
+      if (watchAd != true) return;
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.priorityInterest);
+      if (!context.mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.adCouldntBeLoaded),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      adToken = const Uuid().v4();
+    }
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressPriorityInterest(p.id, source: 'shortlist');
+          .expressPriorityInterest(p.id, source: 'shortlist', adCompletionToken: adToken);
       if (!context.mounted) return;
       final ctx = context;
       final l = AppLocalizations.of(ctx)!;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, p.id},
+          );
       ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != p.id).toList(),
+            );
         showSuccessToast(ctx, l.toastMatchWith(p.name));
         ctx.push(
           '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
@@ -129,7 +171,82 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     }
   }
 
+  Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.priorityInterest),
+        content: const Text(
+          'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.ctaUpgradeToPremium),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(AppLocalizations.of(context)!.watchAd),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onMessage(ProfileSummary p) async {
+    final ent = ref.read(entitlementsProvider);
+    if (!ent.canSendMessageDirect) {
+      await _onMessageAsFreeUser(p);
+      return;
+    }
+    await _openChat(p);
+  }
+
+  Future<void> _onMessageAsFreeUser(ProfileSummary p) async {
+    final l = AppLocalizations.of(context)!;
+    final watchAd = await _showWatchAdOrPremiumChoiceForMessage(context);
+    if (!context.mounted) return;
+    if (watchAd == null) return;
+    if (watchAd == false) {
+      context.push('/paywall');
+      return;
+    }
+    final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.sendMessage);
+    if (!context.mounted) return;
+    if (!shown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.failedToSendTryAgain),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final adToken = const Uuid().v4();
+    // Auto-send interest so backend allows creating the thread; then open message screen.
+    try {
+      await ref.read(interactionsRepositoryProvider).expressInterest(
+        p.id,
+        source: 'shortlist',
+      );
+      if (!context.mounted) return;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, p.id},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider);
+      }
+    }
+    await _openChat(p, initialAdToken: adToken);
+  }
+
+  Future<void> _openChat(ProfileSummary p, {String? initialAdToken}) async {
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
@@ -138,7 +255,11 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
           .createThread(p.id, mode: modeStr);
       if (!context.mounted) return;
       final ctx = context;
-      ctx.push('/chat/$threadId?otherUserId=${Uri.encodeComponent(p.id)}');
+      final query = 'otherUserId=${Uri.encodeComponent(p.id)}';
+      final tokenParam = initialAdToken != null
+          ? '&initialAdToken=${Uri.encodeComponent(initialAdToken)}'
+          : '';
+      ctx.push('/chat/$threadId?$query$tokenParam');
     } on ApiException catch (e) {
       if (!context.mounted) return;
       final ctx = context;
@@ -158,6 +279,30 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       final ctx = context;
       ctx.push('/chats');
     }
+  }
+
+  Future<bool?> _showWatchAdOrPremiumChoiceForMessage(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.premium),
+        content: const Text(
+          'Watch an ad to send a message, or upgrade to Premium to message without ads.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.ctaUpgradeToPremium),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(AppLocalizations.of(context)!.watchAd),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _onBlock(ProfileSummary p) async {
@@ -311,6 +456,8 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     final async = ref.watch(shortlistProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
 
     return async.when(
       data: (entries) {
@@ -392,6 +539,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
                       child: MatchProfileCard(
                         profile: p,
                         isShortlisted: true,
+                        isPriorityInterested: sentPriorityIds.contains(p.id),
                         messageUnlockedByMatch: matchedIds.contains(p.id),
                         onTap: () => context.push('/profile/${p.id}'),
                         onLike: () => _onLike(p),
@@ -426,12 +574,37 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   }
 }
 
-/// Tab 2: People who shortlisted me (premium section).
+/// Tab 2: People who shortlisted me. Free users get 403 → premium gate with blurred cards + watch ad (5/week).
 class _ShortlistedYouTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ent = ref.watch(entitlementsProvider);
     final whoAsync = ref.watch(whoShortlistedMeProvider);
+
+    // Backend returns 403 PREMIUM_REQUIRED for free users with count + quota (5/week)
+    final err = whoAsync.error;
+    if (whoAsync.hasError && err is ApiException && err.code == 'PREMIUM_REQUIRED') {
+      final count = err.details?['count'] as int? ?? 0;
+      final initialRemaining = err.details?['shortlistUnlocksRemainingThisWeek'] as int?;
+      final initialResetsAtStr = err.details?['shortlistUnlocksResetAt'] as String?;
+      return RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(whoShortlistedMeProvider);
+          ref.invalidate(whoShortlistedMeCountProvider);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: _ShortlistedYouPremiumGate(
+            message: err.message,
+            lockedCount: count,
+            initialRemaining: initialRemaining,
+            initialResetsAt: initialResetsAtStr != null ? DateTime.tryParse(initialResetsAtStr) : null,
+            onUpgrade: () => context.push('/paywall'),
+            onUnlockOne: () => _onUnlockOneShortlistedYou(context, ref),
+          ),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -442,22 +615,76 @@ class _ShortlistedYouTab extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
         child: _WhoShortlistedMeContent(
-          ent: ent,
           whoAsync: whoAsync,
           onUpgrade: () => context.push('/paywall'),
         ),
       ),
     );
   }
+
+  static Future<void> _onUnlockOneShortlistedYou(BuildContext context, WidgetRef ref) async {
+    final shown = await loadAndShowInterstitialWithLoading(
+      context,
+      ref,
+      AdRewardReason.viewAndRespondToRequest,
+    );
+    if (!context.mounted) return;
+    if (!shown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    try {
+      final result = await ref.read(shortlistRepositoryProvider).unlockOneWhoShortlistedMe(
+        adCompletionToken: const Uuid().v4(),
+      );
+      if (!context.mounted) return;
+      if (result != null) {
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+          (list) => [...list, result.entry],
+        );
+        ref.read(shortlistUnlocksQuotaProvider.notifier).state = (
+          remaining: result.unlocksRemainingThisWeek,
+          resetsAt: result.resetsAt,
+        );
+        ref.invalidate(whoShortlistedMeCountProvider);
+      }
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      if (e.code == 'SHORTLIST_UNLOCKS_LIMIT_REACHED') {
+        final resetsAt = e.details?['shortlistUnlocksResetAt'] as String?;
+        ref.read(shortlistUnlocksQuotaProvider.notifier).state = (
+          remaining: 0,
+          resetsAt: resetsAt != null ? DateTime.tryParse(resetsAt) : null,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              resetsAt != null
+                  ? 'You\'ve used all 5 unlocks this week. Resets soon.'
+                  : e.message,
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
 }
 
 class _WhoShortlistedMeContent extends StatelessWidget {
   const _WhoShortlistedMeContent({
-    required this.ent,
     required this.whoAsync,
     required this.onUpgrade,
   });
-  final Entitlements ent;
   final AsyncValue<List<WhoShortlistedMeEntry>> whoAsync;
   final VoidCallback onUpgrade;
 
@@ -507,134 +734,322 @@ class _WhoShortlistedMeContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          if (!ent.canSeeWhoShortlistedYou) ...[
-            _BlurredPreviewCard(firstName: 'S', age: 25, locked: true),
-            const SizedBox(height: 10),
-            _BlurredPreviewCard(firstName: 'A', age: 28, locked: true),
-            const SizedBox(height: 14),
-            _PremiumUpsellBanner(onUpgrade: onUpgrade),
-          ] else
-            whoAsync.when(
-              data: (list) {
-                if (list.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.people_outline,
-                            size: 40,
-                            color: onSurface.withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No one has shortlisted you yet.',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: onSurface.withValues(alpha: 0.6),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                return Column(
-                  children: list
-                      .map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _BlurredPreviewCard(
-                            firstName: e.firstName,
-                            age: e.age,
-                            locked: false,
-                          ),
+          whoAsync.when(
+            data: (list) {
+              if (list.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 40,
+                          color: onSurface.withValues(alpha: 0.3),
                         ),
-                      )
-                      .toList(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No one has shortlisted you yet.',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: onSurface.withValues(alpha: 0.6),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                 );
-              },
-              loading: () => const SizedBox(
-                height: 72,
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              ),
-              error: (_, __) => const SizedBox.shrink(),
+              }
+              return Column(
+                children: list
+                    .map(
+                      (e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _BlurredPreviewCard(
+                          firstName: e.firstName,
+                          age: e.age,
+                          locked: false,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+            loading: () => const SizedBox(
+              height: 72,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
         ],
       ),
     );
   }
 }
 
-class _PremiumUpsellBanner extends StatelessWidget {
-  const _PremiumUpsellBanner({required this.onUpgrade});
+/// Premium gate for "Shortlisted you": message, Subscribe, blurred cards (when count > 0), Watch ad (when quota remaining).
+class _ShortlistedYouPremiumGate extends ConsumerWidget {
+  const _ShortlistedYouPremiumGate({
+    required this.message,
+    required this.lockedCount,
+    this.initialRemaining,
+    this.initialResetsAt,
+    required this.onUpgrade,
+    required this.onUnlockOne,
+  });
+  final String message;
+  final int lockedCount;
+  final int? initialRemaining;
+  final DateTime? initialResetsAt;
   final VoidCallback onUpgrade;
+  final VoidCallback onUnlockOne;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final accent = AppColors.indiaGreen;
+    final unlocked = ref.watch(shortlistUnlockedEntriesProvider);
+    final quota = ref.watch(shortlistUnlocksQuotaProvider);
+    final remaining = quota?.remaining ?? initialRemaining ?? 5;
+    final resetsAt = quota?.resetsAt ?? initialResetsAt;
+    final canUnlockMore = remaining > 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: onSurface.withValues(alpha: 0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.star_rounded, size: 18, color: accent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'People who shortlisted you',
+                  style: AppTypography.titleSmall.copyWith(
+                    color: onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: accent.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  message,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: onSurface,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: onUpgrade,
+                  icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+                  label: Text(l.ctaUpgradeToPremium),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (unlocked.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...unlocked.map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: GestureDetector(
+                  onTap: () => context.push('/profile/${e.profileId}'),
+                  behavior: HitTestBehavior.opaque,
+                  child: _BlurredPreviewCard(
+                    firstName: e.firstName,
+                    age: e.age,
+                    locked: false,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (lockedCount > 0) ...[
+            const SizedBox(height: 12),
+            if (canUnlockMore)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '$remaining unlock${remaining == 1 ? '' : 's'} left this week',
+                  style: AppTypography.caption.copyWith(
+                    color: onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ...List.generate(
+              lockedCount,
+              (_) => _ShortlistBlurredCard(
+                onUnlock: canUnlockMore ? onUnlockOne : null,
+                limitReached: !canUnlockMore,
+                resetsAt: resetsAt,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Blurred card with "Watch ad to unlock" or "Unlocks reset next week" when limit reached.
+class _ShortlistBlurredCard extends StatelessWidget {
+  const _ShortlistBlurredCard({
+    required this.onUnlock,
+    required this.limitReached,
+    this.resetsAt,
+  });
+  final VoidCallback? onUnlock;
+  final bool limitReached;
+  final DateTime? resetsAt;
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = AppColors.indiaGreen;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onUpgrade,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                accent.withValues(alpha: 0.14),
-                accent.withValues(alpha: 0.08),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accent.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.workspace_premium_rounded,
-                  color: accent,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+        side: BorderSide(color: onSurface.withValues(alpha: 0.08)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
                   children: [
-                    Text(
-                      'Unlock who shortlisted you',
-                      style: AppTypography.titleSmall.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w700,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: onSurface.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'See names, photos & reach out first',
-                      style: AppTypography.caption.copyWith(
-                        color: accent.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 14,
+                            width: 100,
+                            decoration: BoxDecoration(
+                              color: onSurface.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 10,
+                            width: 60,
+                            decoration: BoxDecoration(
+                              color: onSurface.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: accent),
-            ],
-          ),
+            ),
+            Positioned.fill(
+              child: Container(color: onSurface.withValues(alpha: 0.15)),
+            ),
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: 24,
+                      color: onSurface.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(width: 10),
+                    if (onUnlock != null)
+                      Flexible(
+                        child: FilledButton.icon(
+                          onPressed: onUnlock,
+                          icon: const Icon(Icons.play_circle_outline, size: 16),
+                          label: Text(AppLocalizations.of(context)!.watchAdToUnlock),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: Text(
+                          resetsAt != null
+                              ? 'Unlocks reset next week'
+                              : '5 unlocks per week — try again later',
+                          style: AppTypography.caption.copyWith(
+                            color: onSurface.withValues(alpha: 0.7),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

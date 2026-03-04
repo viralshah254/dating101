@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:saathi/l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
@@ -55,7 +56,7 @@ class ErrorState extends StatelessWidget {
                 ),
               ),
               child: Text(
-                retryLabel ?? 'Retry',
+                retryLabel ?? AppLocalizations.of(context)?.retry ?? 'Retry',
                 style: AppTypography.labelLarge,
               ),
             ),

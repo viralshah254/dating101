@@ -1,4 +1,4 @@
-# Saathi — Chat API (Backend Endpoints)
+# Shubhmilan — Chat API (Backend Endpoints)
 
 Backend specification for **chat threads and messages**. Dating and matrimony use **separate** threads: no mixing. The frontend always passes `mode` (`dating` or `matrimony`) when listing and creating threads.
 
@@ -167,14 +167,32 @@ Content-Type: application/json
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | text | string | Yes | Message content. |
+| adCompletionToken | string | No | Sent by the app after a free user watches an ad; backend can validate and allow one send. |
 
-**Success** `201 Created` — body: single **ChatMessage** (same shape as in §3).
+**When to require an ad (403 AD_REQUIRED)**
+
+- For **free users** (e.g. non‑premium, or when your rules require an ad): you may return **403** with code **AD_REQUIRED** and message e.g. *"Free users must watch an ad to send a message. Send adCompletionToken after the ad completes."* so the app shows the watch‑ad flow and resends with `adCompletionToken`.
+- **Exception — matched threads:** If the two users in this thread are **matched** (mutual interest / connection in your system), **do not** require an ad. Allow free users to send messages in that thread **without** `adCompletionToken`. Return 403 AD_REQUIRED only when the user is free **and** the thread is **not** a match thread.  
+  So: **matches can message without watching ads.**
+
+**Success** `201 Created` — body either:
+
+- A single **ChatMessage** (same shape as in §3), or  
+- A **message request** payload, e.g. `{ "messageRequestId": "...", "threadId": "...", "status": "pending" }`.
+
+If you use a message-request / pending flow (e.g. `messageRequestId`, `status: "pending"`), you **must still** persist the message in the thread and return it from **GET /chat/threads/:threadId/messages** for the **sender** (see below). Otherwise the sender’s thread will show empty after the next fetch.
+
+**Message persistence and who sees messages**
+
+- **Sender side (unmatched or matched):** When you accept a message (with or without `adCompletionToken`), **persist it in this thread** and return it from **GET /chat/threads/:threadId/messages** for the **sender**. The sender must always see their own sent messages in the thread, even if the recipient has not yet accepted the request. This applies whether you return a ChatMessage in the POST body or a `messageRequestId`/`status: "pending"` object — in both cases, **GET .../messages for the sender must include this message**. If the backend does not add the message to the thread, the app will show it optimistically but the next fetch will return an empty list and the thread will look blank for the sender.
+- **Recipient side (after accepting):** The thread may exist before the recipient accepts the interest/request (e.g. the sender opened the thread and sent messages). When the **recipient** accepts the interest/request, the **same thread** and **all its messages** must become visible to them so the conversation continues seamlessly. Ensure GET /chat/threads and GET /chat/threads/:threadId/messages for the recipient return this thread and its messages once the request is accepted.
 
 **Errors**
 
 | HTTP | code | When |
 |------|------|------|
 | 403 | PREMIUM_REQUIRED | User not allowed to send messages. |
+| 403 | AD_REQUIRED | Free user sending in a **non‑match** thread without a valid `adCompletionToken`. Do **not** use for match threads. |
 | 403 | DAILY_LIMIT | Daily message limit reached. |
 | 404 | NOT_FOUND | threadId invalid. |
 

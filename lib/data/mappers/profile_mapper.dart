@@ -28,6 +28,7 @@ ProfileSummary profileToSummary(
     age: p.age,
     city: p.currentCity ?? p.displayLocation,
     imageUrl: photoUrl,
+    imageUrls: p.photoUrls.isNotEmpty ? p.photoUrls : null,
     distanceKm: distanceKm,
     verified: p.isVerified,
     matchReason: matchReason,

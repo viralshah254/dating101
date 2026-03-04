@@ -23,7 +23,7 @@ PA = {
     "appLanguage": "ਐਪ ਭਾਸ਼ਾ",
     "chooseAppLanguage": "ਐਪ ਭਾਸ਼ਾ ਚੁਣੋ",
     "languageSetTo": "ਭਾਸ਼ਾ {name} 'ਤੇ ਸੈੱਟ ਕੀਤੀ",
-    "saathiMode": "saathi ਮੋਡ",
+    "saathiMode": "Shubhmilan ਮੋਡ",
     "accountAndData": "ਖਾਤਾ ਅਤੇ ਡਾਟਾ",
     "viewProfile": "ਪ੍ਰੋਫਾਈਲ ਦੇਖੋ",
     "downloadMyData": "ਮੇਰਾ ਡਾਟਾ ਡਾਊਨਲੋਡ ਕਰੋ",

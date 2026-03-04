@@ -5,6 +5,10 @@ import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../domain/repositories/chat_repository.dart';
 
+/// Pending sent messages per thread (survives navigation). Backend may return messageRequestId and not include message in GET; we keep these until server list includes them so the thread does not look blank on re-entry.
+final pendingSentMessagesProvider =
+    StateProvider.family<List<ChatMessage>, String>((ref, threadId) => []);
+
 /// Chat threads for the current app mode (dating or matrimony). No mixing.
 final chatThreadsProvider = FutureProvider.autoDispose<List<ChatThreadSummary>>((ref) async {
   final mode = ref.watch(appModeProvider) ?? AppMode.dating;

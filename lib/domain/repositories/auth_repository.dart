@@ -21,12 +21,19 @@ sealed class AuthResult {
 }
 
 class AuthSuccess extends AuthResult {
-  const AuthSuccess({this.userId, this.isNewUser = false});
+  const AuthSuccess({
+    this.userId,
+    this.isNewUser = false,
+    this.referralApplied = false,
+  });
   final String? userId;
 
   /// true = user has no profile yet → route to mode-select / signup flow
   /// false = returning user → route to home
   final bool isNewUser;
+
+  /// true when backend applied a valid referral code and granted 30 days Premium (response field referralApplied).
+  final bool referralApplied;
 }
 
 class AuthFailure extends AuthResult {
@@ -41,7 +48,12 @@ abstract class AuthRepository {
   Future<SendOtpResult> sendOtp({required String countryCode, required String phone});
 
   /// Verify OTP code. Returns auth tokens + whether user is new or returning.
-  Future<AuthResult> verifyOtp({required String verificationId, required String code});
+  /// [referralCode] optional — when provided at sign-up, backend may grant 30 days Premium to the new user.
+  Future<AuthResult> verifyOtp({
+    required String verificationId,
+    required String code,
+    String? referralCode,
+  });
 
   /// Sign in with Google.
   Future<AuthResult> signInWithGoogle();

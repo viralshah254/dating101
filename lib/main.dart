@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'core/ads/ad_service.dart';
 import 'core/mode/mode_provider.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/providers/repository_providers.dart';
@@ -15,6 +16,7 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AdService.initialize();
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     if (Firebase.apps.isEmpty) {
@@ -44,7 +46,7 @@ void main() async {
         sharedPreferencesProvider.overrideWithValue(prefs),
         tokenStorageProvider.overrideWithValue(tokens),
       ],
-      child: const SaathiApp(),
+      child: const ShubhmilanApp(),
     ),
   );
 }

@@ -14,7 +14,10 @@ class ApiInterestsRepository implements InterestsRepository {
 
   @override
   Future<List<Interest>> getReceivedInterests({int limit = 50}) async {
-    final body = await api.get('/interests/received', query: {'limit': '$limit'});
+    final body = await api.get(
+      '/interests/received',
+      query: {'limit': '$limit'},
+    );
     return _parseList(body['interests'] as List? ?? []);
   }
 
@@ -55,9 +58,9 @@ class ApiInterestsRepository implements InterestsRepository {
       list.map((e) => _parse(e as Map<String, dynamic>)).toList();
 
   static InterestStatus _parseStatus(String? s) => switch (s) {
-        'accepted' => InterestStatus.accepted,
-        'rejected' => InterestStatus.rejected,
-        'withdrawn' => InterestStatus.withdrawn,
-        _ => InterestStatus.pending,
-      };
+    'accepted' => InterestStatus.accepted,
+    'rejected' => InterestStatus.rejected,
+    'withdrawn' => InterestStatus.withdrawn,
+    _ => InterestStatus.pending,
+  };
 }

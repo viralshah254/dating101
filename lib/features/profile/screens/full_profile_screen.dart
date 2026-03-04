@@ -5,13 +5,18 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/feature_flags/feature_flags.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/widgets/premium_badge.dart';
+import '../../../core/widgets/translatable_text.dart';
 import '../../../core/i18n/app_copy.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
-import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -132,7 +137,13 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _NameRow(profile: profile, accent: accent),
+                            _NameRow(
+                              profile: profile,
+                              accent: accent,
+                              isPremium: ref.read(authRepositoryProvider).currentUserId == profile.id
+                                  ? ent.isPremium
+                                  : profile.isPremium,
+                            ),
                             const SizedBox(height: 4),
                             _LocationRow(
                               profile: profile,
@@ -168,12 +179,13 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                     _SectionTitle(l.about, onSurface),
                     const SizedBox(height: 6),
                     if (profile.aboutMe.isNotEmpty)
-                      Text(
-                        profile.aboutMe,
-                        style: AppTypography.bodyLarge.copyWith(
+                      TranslatableText(
+                        content: profile.aboutMe,
+                        textStyle: AppTypography.bodyLarge.copyWith(
                           color: onSurface.withValues(alpha: 0.85),
                           height: 1.5,
                         ),
+                        showTranslateButton: true,
                       ),
                     if (mat?.aboutEducation != null &&
                         mat!.aboutEducation!.isNotEmpty) ...[
@@ -325,8 +337,15 @@ class _FloatingActionBar extends ConsumerWidget {
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final shortlistedIds =
         ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        <String>{};
     final isMatched = matchedIds.contains(profileId);
     final isShortlisted = shortlistedIds.contains(profileId);
+    final isSentInterest = sentInterestIds.contains(profileId);
+    final isPrioritySent = sentPriorityIds.contains(profileId);
     final contactGatingOn = flags.contactRequestGating;
     final canRequestContactNow =
         !contactGatingOn || isMatched || ent.canRequestContact;
@@ -354,34 +373,15 @@ class _FloatingActionBar extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: isMatched
-                        ? FilledButton.icon(
-                            onPressed: () => _onMessage(context, ref),
-                            icon: const Icon(
-                              Icons.chat_bubble_outline,
-                              size: 20,
-                            ),
-                            label: Text(l.ctaSendMessage),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: accent,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          )
-                        : FilledButton.icon(
-                            onPressed: () => _onExpressInterest(context, ref),
-                            icon: const Icon(Icons.favorite_border, size: 20),
-                            label: Text(l.ctaSendInterest),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: accent,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          ),
+                    child: _buildPrimaryActionButton(
+                      context,
+                      ref,
+                      l: l,
+                      accent: accent,
+                      isMatched: isMatched,
+                      isSentInterest: isSentInterest,
+                      isPrioritySent: isPrioritySent,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   _FloatingIconBtn(
@@ -425,24 +425,74 @@ class _FloatingActionBar extends ConsumerWidget {
     );
   }
 
+  Widget _buildPrimaryActionButton(
+    BuildContext context,
+    WidgetRef ref, {
+    required AppLocalizations l,
+    required Color accent,
+    required bool isMatched,
+    required bool isSentInterest,
+    required bool isPrioritySent,
+  }) {
+    final style = FilledButton.styleFrom(
+      backgroundColor: accent,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+    );
+    if (isMatched) {
+      return FilledButton.icon(
+        onPressed: () => _onMessage(context, ref),
+        icon: const Icon(Icons.chat_bubble_outline, size: 20),
+        label: Text(l.ctaSendMessage),
+        style: style,
+      );
+    }
+    if (isPrioritySent) {
+      return FilledButton.icon(
+        onPressed: null,
+        icon: const Icon(Icons.check_circle_outline, size: 20),
+        label: Text(l.toastInterestSent),
+        style: style.copyWith(
+          backgroundColor: WidgetStatePropertyAll(accent.withValues(alpha: 0.7)),
+        ),
+      );
+    }
+    if (isSentInterest) {
+      return FilledButton.icon(
+        onPressed: () => _onExpressPriorityInterest(context, ref),
+        icon: const Icon(Icons.auto_awesome, size: 20),
+        label: Text(l.priorityInterest),
+        style: style,
+      );
+    }
+    return FilledButton.icon(
+      onPressed: () => _onExpressInterest(context, ref),
+      icon: const Icon(Icons.favorite_border, size: 20),
+      label: Text(l.ctaSendInterest),
+      style: style,
+    );
+  }
+
   Future<void> _onExpressInterest(BuildContext context, WidgetRef ref) async {
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
           .expressInterest(profileId, source: 'profile');
       if (!context.mounted) return;
-      if (result.mutualMatch && result.chatThreadId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastMatchWith(profileName),
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        context.push(
-          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profileId)}',
-        );
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, profileId},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
+      if (result.mutualMatch) {
+        ref.invalidate(mutualMatchesProvider);
+        ref.invalidate(matchedUserIdsProvider);
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != profileId).toList(),
+            );
+        _showMutualMatchCelebration(context, result.chatThreadId);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -455,10 +505,316 @@ class _FloatingActionBar extends ConsumerWidget {
       }
     } on ApiException catch (e) {
       if (!context.mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.toastInterestSent),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
     }
+  }
+
+  Future<void> _onExpressPriorityInterest(
+      BuildContext context, WidgetRef ref) async {
+    final message = await _showPriorityMessageDialog(context);
+    if (!context.mounted) return;
+    final ent = ref.read(entitlementsProvider);
+    String? adToken;
+    if (ent.dailyPriorityInterestLimit == 0) {
+      final watchAd = await _showWatchAdOrPremiumChoice(context);
+      if (!context.mounted) return;
+      if (watchAd == null) return;
+      if (watchAd == false) {
+        context.push('/paywall');
+        return;
+      }
+      final shown = await loadAndShowInterstitialWithLoading(
+        context,
+        ref,
+        AdRewardReason.priorityInterest,
+      );
+      if (!context.mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ad couldn\'t be loaded. Try again or upgrade to Premium.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      adToken = const Uuid().v4();
+    }
+    try {
+      final result = await ref
+          .read(interactionsRepositoryProvider)
+          .expressPriorityInterest(
+            profileId,
+            message: message,
+            source: 'profile',
+            adCompletionToken: adToken,
+          );
+      if (!context.mounted) return;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, profileId},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
+      if (result.mutualMatch) {
+        ref.invalidate(mutualMatchesProvider);
+        ref.invalidate(matchedUserIdsProvider);
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != profileId).toList(),
+            );
+        _showMutualMatchCelebration(context, result.chatThreadId);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.toastInterestSentTo(profileName),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.toastInterestSent),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<String?> _showPriorityMessageDialog(BuildContext context) async {
+    final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final surface = theme.colorScheme.surface;
+    final accent = AppColors.saffron;
+    final width = MediaQuery.sizeOf(context).width;
+    final dialogWidth = (width * 0.9).clamp(320.0, 420.0);
+    final warmBg = Color.lerp(surface, accent, 0.03) ?? surface;
+    final warmFill = Color.lerp(surface, accent, 0.06) ?? surface;
+    final name = profileName.split(' ').first;
+    final greeting =
+        name.isNotEmpty ? loc.sayHiToName(name) : loc.sendPersonalNote;
+
+    final controller = TextEditingController();
+    return showDialog<String?>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding:
+            EdgeInsets.symmetric(horizontal: (width - dialogWidth) / 2),
+        child: Material(
+          borderRadius: BorderRadius.circular(28),
+          color: warmBg,
+          elevation: 12,
+          shadowColor: accent.withValues(alpha: 0.15),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: dialogWidth),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(26, 30, 26, 26),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              accent.withValues(alpha: 0.2),
+                              accent.withValues(alpha: 0.08),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          color: accent,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Text(
+                          loc.priorityInterest,
+                          style: AppTypography.titleLarge.copyWith(
+                            color: onSurface,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    greeting,
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: onSurface.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'A short note goes a long way — optional, but they\'ll love it.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: onSurface.withValues(alpha: 0.6),
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  TextField(
+                    controller: controller,
+                    maxLines: 4,
+                    minLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText:
+                          'e.g. Hi! Something in your profile caught my eye...',
+                      hintStyle: TextStyle(
+                        color: onSurface.withValues(alpha: 0.4),
+                        fontWeight: FontWeight.w400,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide(
+                          color: onSurface.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide(color: accent, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: warmFill,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  FilledButton(
+                    onPressed: () {
+                      final text = controller.text.trim();
+                      Navigator.of(ctx).pop(text.isEmpty ? null : text);
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(loc.sendYourNote),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(null),
+                    style: TextButton.styleFrom(
+                      foregroundColor: onSurface.withValues(alpha: 0.55),
+                    ),
+                    child: Text(loc.skipForNow),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.priorityInterest),
+        content: const Text(
+          'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.ctaUpgradeToPremium),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Watch ad'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMutualMatchCelebration(BuildContext context, String? chatThreadId) {
+    final l = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.toastMatchWith(profileName)),
+        content: const Text(
+          'You\'re both interested in each other! Send a message or view their profile.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.push('/profile/$profileId');
+            },
+            child: Text(l.viewProfile),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (chatThreadId != null) {
+                context.push(
+                  '/chat/$chatThreadId?otherUserId=${Uri.encodeComponent(profileId)}',
+                );
+              } else {
+                context.push('/profile/$profileId');
+              }
+            },
+            child: Text(l.ctaSendMessage),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _onShortlist(
@@ -1181,7 +1537,17 @@ class _DatingFloatingBar extends ConsumerWidget {
           .read(interactionsRepositoryProvider)
           .expressInterest(profileId, source: 'profile');
       if (!context.mounted) return;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, profileId},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
+        ref.invalidate(mutualMatchesProvider);
+        ref.invalidate(matchedUserIdsProvider);
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != profileId).toList(),
+            );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1601,9 +1967,14 @@ class _AvatarFallback extends StatelessWidget {
 }
 
 class _NameRow extends StatelessWidget {
-  const _NameRow({required this.profile, required this.accent});
+  const _NameRow({
+    required this.profile,
+    required this.accent,
+    required this.isPremium,
+  });
   final UserProfile profile;
   final Color accent;
+  final bool isPremium;
 
   @override
   Widget build(BuildContext context) {
@@ -1623,6 +1994,8 @@ class _NameRow extends StatelessWidget {
           const SizedBox(width: 8),
           Icon(Icons.verified, size: 22, color: accent),
         ],
+        const SizedBox(width: 8),
+        PremiumBadge(isPremium: isPremium, compact: true),
       ],
     );
   }
@@ -2651,34 +3024,41 @@ class _PartnerPrefsCard extends StatelessWidget {
     return map != null && map[key] == true;
   }
 
-  String _val(String value, String strictKey) {
-    return _strict(prefs, strictKey) ? '$value (Strict)' : value;
+  String _val(String value, String strictKey, String strictSuffix) {
+    return _strict(prefs, strictKey) ? '$value$strictSuffix' : value;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final rows = <_DetailRow>[];
-    rows.add(_DetailRow('Age range', '${prefs.ageMin} – ${prefs.ageMax}'));
+    rows.add(_DetailRow(l.ageRange, '${prefs.ageMin} – ${prefs.ageMax}'));
     if (prefs.heightMinCm != null || prefs.heightMaxCm != null) {
       final hMin = prefs.heightMinCm != null
           ? '${prefs.heightMinCm} cm'
-          : 'Any';
+          : l.anyOption;
       final hMax = prefs.heightMaxCm != null
           ? '${prefs.heightMaxCm} cm'
-          : 'Any';
-      rows.add(_DetailRow('Height', '$hMin – $hMax'));
+          : l.anyOption;
+      rows.add(_DetailRow(l.height, '$hMin – $hMax'));
     }
-    // Always show Body type (Any when not set) so the preference is visible.
     final bodyVal = (prefs.preferredBodyTypes as List?)?.isNotEmpty == true
         ? (prefs.preferredBodyTypes as List).join(', ')
-        : 'Any';
-    rows.add(_DetailRow('Body type', _val(bodyVal, 'bodyType')));
+        : l.anyOption;
+    rows.add(_DetailRow(
+      l.bodyTypeQuestion,
+      _val(bodyVal, 'bodyType', l.partnerPrefStrictSuffix),
+    ));
     if (prefs.preferredReligions != null &&
         (prefs.preferredReligions as List).isNotEmpty) {
       rows.add(
         _DetailRow(
-          'Religion',
-          _val((prefs.preferredReligions as List).join(', '), 'religion'),
+          l.religion,
+          _val(
+            (prefs.preferredReligions as List).join(', '),
+            'religion',
+            l.partnerPrefStrictSuffix,
+          ),
         ),
       );
     }
@@ -2686,7 +3066,7 @@ class _PartnerPrefsCard extends StatelessWidget {
         (prefs.preferredCommunities as List).isNotEmpty) {
       rows.add(
         _DetailRow(
-          'Community',
+          l.communityLabel,
           (prefs.preferredCommunities as List).join(', '),
         ),
       );
@@ -2695,33 +3075,45 @@ class _PartnerPrefsCard extends StatelessWidget {
         (prefs.preferredMotherTongues as List).isNotEmpty) {
       rows.add(
         _DetailRow(
-          'Mother tongue',
+          l.motherTongue,
           _val(
             (prefs.preferredMotherTongues as List).join(', '),
             'motherTongue',
+            l.partnerPrefStrictSuffix,
           ),
         ),
       );
     }
     if (prefs.educationPreference != null) {
       rows.add(
-        _DetailRow('Education', _val(prefs.educationPreference!, 'education')),
+        _DetailRow(
+          l.educationLevel,
+          _val(
+            prefs.educationPreference!,
+            'education',
+            l.partnerPrefStrictSuffix,
+          ),
+        ),
       );
     }
     if (prefs.occupationPreference != null) {
-      rows.add(_DetailRow('Occupation', prefs.occupationPreference!));
+      rows.add(_DetailRow(l.occupation, prefs.occupationPreference!));
     }
     if (prefs.incomePreference != null) {
-      rows.add(_DetailRow('Income', _val(prefs.incomePreference!, 'income')));
+      rows.add(_DetailRow(
+        l.income,
+        _val(prefs.incomePreference!, 'income', l.partnerPrefStrictSuffix),
+      ));
     }
     if (prefs.maritalStatusPreference != null &&
         (prefs.maritalStatusPreference as List).isNotEmpty) {
       rows.add(
         _DetailRow(
-          'Marital status',
+          l.maritalStatus,
           _val(
             (prefs.maritalStatusPreference as List).join(', '),
             'maritalStatus',
+            l.partnerPrefStrictSuffix,
           ),
         ),
       );
@@ -2729,38 +3121,65 @@ class _PartnerPrefsCard extends StatelessWidget {
     if (prefs.preferredLocations != null &&
         (prefs.preferredLocations as List).isNotEmpty) {
       rows.add(
-        _DetailRow('Locations', (prefs.preferredLocations as List).join(', ')),
+        _DetailRow(
+          l.partnerPrefLocations,
+          (prefs.preferredLocations as List).join(', '),
+        ),
       );
     }
     if (prefs.preferredCountries != null &&
         (prefs.preferredCountries as List).isNotEmpty) {
       rows.add(
-        _DetailRow('Countries', (prefs.preferredCountries as List).join(', ')),
+        _DetailRow(
+          l.partnerPrefCountries,
+          (prefs.preferredCountries as List).join(', '),
+        ),
       );
     }
     if (prefs.settledAbroadPreference != null) {
       rows.add(
         _DetailRow(
-          'Settled abroad',
-          _val(prefs.settledAbroadPreference!, 'settledAbroad'),
+          l.partnerPrefSettledAbroad,
+          _val(
+            prefs.settledAbroadPreference!,
+            'settledAbroad',
+            l.partnerPrefStrictSuffix,
+          ),
         ),
       );
     }
     if (prefs.dietPreference != null) {
-      rows.add(_DetailRow('Diet', _val(prefs.dietPreference!, 'diet')));
+      rows.add(_DetailRow(
+        l.diet,
+        _val(prefs.dietPreference!, 'diet', l.partnerPrefStrictSuffix),
+      ));
     }
     if (prefs.drinkingPreference != null) {
       rows.add(
-        _DetailRow('Drinking', _val(prefs.drinkingPreference!, 'drinking')),
+        _DetailRow(
+          l.drinkQuestion,
+          _val(
+            prefs.drinkingPreference!,
+            'drinking',
+            l.partnerPrefStrictSuffix,
+          ),
+        ),
       );
     }
     if (prefs.smokingPreference != null) {
       rows.add(
-        _DetailRow('Smoking', _val(prefs.smokingPreference!, 'smoking')),
+        _DetailRow(
+          l.smokeQuestion,
+          _val(
+            prefs.smokingPreference!,
+            'smoking',
+            l.partnerPrefStrictSuffix,
+          ),
+        ),
       );
     }
     if (prefs.horoscopeMatchPreferred == true) {
-      rows.add(const _DetailRow('Horoscope match', 'Preferred'));
+      rows.add(_DetailRow(l.partnerPrefHoroscopeMatch, l.partnerPrefPreferred));
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(

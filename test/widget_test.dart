@@ -1,4 +1,4 @@
-// Basic Flutter widget test for saathi.
+// Basic Flutter widget test for Shubhmilan.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,9 +9,9 @@ void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
-        child: SaathiApp(),
+        child: ShubhmilanApp(),
       ),
     );
-    expect(find.text('saathi'), findsOneWidget);
+    expect(find.text('Shubhmilan'), findsOneWidget);
   });
 }

@@ -31,6 +31,16 @@ class DiscoveryPreferences {
   final List<Map<String, dynamic>> suggestions;
 }
 
+/// One page of discovery results (profiles + cursor for next page).
+class DiscoveryPageResult {
+  const DiscoveryPageResult({
+    required this.profiles,
+    this.nextCursor,
+  });
+  final List<ProfileSummary> profiles;
+  final String? nextCursor;
+}
+
 /// Discovery (dating) / Matches (matrimony) feed and search.
 abstract class DiscoveryRepository {
   /// Recommended profiles with ML compatibility scores (uses saved preferences).
@@ -38,6 +48,14 @@ abstract class DiscoveryRepository {
     required AppMode mode,
     String? city,
     int limit = 20,
+    String? cursor,
+  });
+
+  /// One page of recommended profiles; use [nextCursor] for pagination.
+  Future<DiscoveryPageResult> getRecommendedPage({
+    required AppMode mode,
+    String? city,
+    int limit = 30,
     String? cursor,
   });
 
@@ -55,6 +73,23 @@ abstract class DiscoveryRepository {
     String? bodyType,
     String? maritalStatus,
     int limit = 20,
+    String? cursor,
+  });
+
+  /// One page of explore results; use [nextCursor] for pagination.
+  Future<DiscoveryPageResult> getExplorePage({
+    required AppMode mode,
+    int? ageMin,
+    int? ageMax,
+    String? city,
+    String? religion,
+    String? education,
+    int? heightMinCm,
+    int? heightMaxCm,
+    String? diet,
+    String? bodyType,
+    String? maritalStatus,
+    int limit = 30,
     String? cursor,
   });
 

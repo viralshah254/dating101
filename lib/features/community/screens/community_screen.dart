@@ -25,10 +25,10 @@ class CommunityScreen extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'Circles'),
-              Tab(text: 'Events'),
+              Tab(text: l.circlesTab),
+              Tab(text: l.eventsTab),
             ],
           ),
         ),

@@ -24,20 +24,26 @@ class Entitlements {
   /// Express interest: free for everyone
   bool get canExpressInterest => true;
 
-  /// Shortlist: free for everyone
+  /// Shortlist (add to shortlist): free for everyone
   bool get canShortlist => true;
 
   /// View full profiles: free for everyone
   bool get canViewFullProfile => true;
 
-  /// Send a message/intro: free for women, premium for men
+  /// Can send a message at all (women free, men need premium or ad → message request)
   bool get canSendMessage => isPremium || isFemale;
+
+  /// If true, messages go to normal chat; if false, sent as message request (after ad for free).
+  bool get canSendMessageDirect => isPremium || isFemale;
 
   /// See who liked you: free for women, premium for men
   bool get canSeeWhoLikedYou => isPremium || isFemale;
 
   /// See who shortlisted you (premium only)
   bool get canSeeWhoShortlistedYou => isPremium;
+
+  /// See requests inbox (received interests, contact requests, etc.). Premium only.
+  bool get canSeeRequestsInbox => isPremium;
 
   /// Request contact details: free for women, premium for men
   bool get canRequestContact => isPremium || isFemale;
@@ -47,19 +53,25 @@ class Entitlements {
   /// Daily express-interest limit
   int get dailyInterestLimit => isPremium ? 999 : (isFemale ? 30 : 10);
 
-  /// Daily message limit
+  /// Daily message limit (direct messages; free women get 20, men 0 unless ad → request)
   int get dailyMessageLimit {
     if (isPremium) return 999;
     if (isFemale) return 20;
     return 0;
   }
 
+  /// Priority interests per day: premium 10, free 0 (free can send one per ad).
+  int get dailyPriorityInterestLimit => isPremium ? 10 : 0;
+
+  /// Free user can send one priority interest after watching an ad.
+  bool get canSendPriorityInterestWithAd => !isPremium;
+
   // ── Discovery & visibility ────────────────────────────────────────
 
   /// Travel mode: premium only
   bool get canUseTravelMode => isPremium;
 
-  /// Profile boost: premium only
+  /// Profile boost: purchasable (premium or separate product)
   bool get canBoostProfile => isPremium;
 
   /// Priority in discovery: premium only
@@ -67,6 +79,9 @@ class Entitlements {
 
   /// Read receipts: premium only
   bool get hasReadReceipts => isPremium;
+
+  /// For premium: must watch ad per request before viewing/accepting (backend can require token).
+  bool get requiresAdPerRequestToView => isPremium;
 
   // ── Photos & profile ──────────────────────────────────────────────
 

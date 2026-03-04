@@ -13,6 +13,8 @@ class ProfileSummary with _$ProfileSummary {
     required int? age,
     required String? city,
     String? imageUrl,
+    /// When set, discovery card shows multiple photos with left/right tap to navigate.
+    List<String>? imageUrls,
     double? distanceKm,
     @Default(false) bool verified,
     String? matchReason,
@@ -34,6 +36,8 @@ class ProfileSummary with _$ProfileSummary {
     String? employer,
     String? familyType,
     @Default(0) int photoCount,
+    /// Whether this user has an active premium subscription (for badge on profile/cards).
+    @Default(false) bool isPremium,
     // ML compatibility scoring
     double? compatibilityScore,
     String? compatibilityLabel,

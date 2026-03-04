@@ -1,4 +1,5 @@
 import '../models/shortlist_entry.dart';
+import '../models/shortlist_unlock_quota.dart';
 import '../models/who_shortlisted_me_entry.dart';
 
 /// Matrimony: shortlist (saved profiles) and who shortlisted me.
@@ -25,10 +26,16 @@ abstract class ShortlistRepository {
   Future<bool> isShortlisted(String userId);
 
   /// People who shortlisted the current user (GET /shortlist/received).
-  /// When not entitled, backend may return entries with [WhoShortlistedMeEntry.blurred] true.
+  /// For free users backend may return 403 PREMIUM_REQUIRED with count + shortlistUnlocksRemainingThisWeek.
   Future<List<WhoShortlistedMeEntry>> getWhoShortlistedMe({
     int page = 1,
     int limit = 20,
+  });
+
+  /// Unlock one "who shortlisted you" entry after user watches an ad. Backend enforces 5/week.
+  /// Returns result with entry and remaining quota, or null if limit reached / error.
+  Future<ShortlistUnlockResult?> unlockOneWhoShortlistedMe({
+    required String adCompletionToken,
   });
 
   /// Lightweight count of people who shortlisted you for nav badge. GET /shortlist/received/count.

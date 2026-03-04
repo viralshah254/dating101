@@ -76,13 +76,60 @@ class ApiChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> sendMessage(String threadId, String text) async {
-    await api.post('/chat/threads/$threadId/messages', body: {'text': text});
+  Future<void> sendMessage(
+    String threadId,
+    String text, {
+    String? adCompletionToken,
+  }) async {
+    final body = <String, dynamic>{'text': text};
+    if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
+      body['adCompletionToken'] = adCompletionToken;
+    }
+    await api.post('/chat/threads/$threadId/messages', body: body);
   }
 
   @override
   Future<void> markThreadRead(String threadId) async {
     await api.post('/chat/threads/$threadId/read', body: <String, dynamic>{});
+  }
+
+  @override
+  Future<List<MessageRequest>> getMessageRequests({int limit = 20}) async {
+    try {
+      final body = await api.get('/chat/message-requests', query: {'limit': '$limit'});
+      final list = body['requests'] ?? body['messageRequests'] ?? body;
+      final items = list is List ? list : <dynamic>[];
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(_parseMessageRequest)
+          .toList();
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return [];
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> acceptMessageRequest(String requestId) async {
+    await api.post('/chat/message-requests/$requestId/accept', body: <String, dynamic>{});
+  }
+
+  @override
+  Future<void> declineMessageRequest(String requestId) async {
+    await api.post('/chat/message-requests/$requestId/decline', body: <String, dynamic>{});
+  }
+
+  static MessageRequest _parseMessageRequest(Map<String, dynamic> j) {
+    final other = j['otherUser'] ?? j['fromUser'] ?? j;
+    final otherMap = other is Map<String, dynamic> ? other : <String, dynamic>{};
+    return MessageRequest(
+      requestId: j['requestId'] ?? j['id'] ?? '',
+      otherUserId: otherMap['id'] ?? j['otherUserId'] ?? '',
+      otherName: otherMap['name'] ?? j['otherName'] as String?,
+      text: j['text'] ?? j['message'] as String?,
+      createdAt: j['createdAt'] != null ? DateTime.tryParse(j['createdAt'] as String) : null,
+      threadId: j['threadId'] as String?,
+    );
   }
 
   static ChatThreadSummary _parseThread(Map<String, dynamic> j) {

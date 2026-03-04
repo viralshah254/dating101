@@ -48,6 +48,9 @@ mixin _$UserProfile {
       throw _privateConstructorUsedError;
   DateTime? get lastActiveAt => throw _privateConstructorUsedError;
 
+  /// Whether this user has an active premium subscription (for badge). From API when viewing others.
+  bool get isPremium => throw _privateConstructorUsedError;
+
   /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
   double? get creationLat => throw _privateConstructorUsedError;
   double? get creationLng => throw _privateConstructorUsedError;
@@ -92,6 +95,7 @@ abstract class $UserProfileCopyWith<$Res> {
     MatrimonyExtensions? matrimonyExtensions,
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
+    bool isPremium,
     double? creationLat,
     double? creationLng,
     DateTime? creationAt,
@@ -142,6 +146,7 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? matrimonyExtensions = freezed,
     Object? partnerPreferences = freezed,
     Object? lastActiveAt = freezed,
+    Object? isPremium = null,
     Object? creationLat = freezed,
     Object? creationLng = freezed,
     Object? creationAt = freezed,
@@ -241,6 +246,10 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
                 ? _value.lastActiveAt
                 : lastActiveAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            isPremium: null == isPremium
+                ? _value.isPremium
+                : isPremium // ignore: cast_nullable_to_non_nullable
+                      as bool,
             creationLat: freezed == creationLat
                 ? _value.creationLat
                 : creationLat // ignore: cast_nullable_to_non_nullable
@@ -354,6 +363,7 @@ abstract class _$$UserProfileImplCopyWith<$Res>
     MatrimonyExtensions? matrimonyExtensions,
     PartnerPreferences? partnerPreferences,
     DateTime? lastActiveAt,
+    bool isPremium,
     double? creationLat,
     double? creationLng,
     DateTime? creationAt,
@@ -407,6 +417,7 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? matrimonyExtensions = freezed,
     Object? partnerPreferences = freezed,
     Object? lastActiveAt = freezed,
+    Object? isPremium = null,
     Object? creationLat = freezed,
     Object? creationLng = freezed,
     Object? creationAt = freezed,
@@ -506,6 +517,10 @@ class __$$UserProfileImplCopyWithImpl<$Res>
             ? _value.lastActiveAt
             : lastActiveAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        isPremium: null == isPremium
+            ? _value.isPremium
+            : isPremium // ignore: cast_nullable_to_non_nullable
+                  as bool,
         creationLat: freezed == creationLat
             ? _value.creationLat
             : creationLat // ignore: cast_nullable_to_non_nullable
@@ -554,6 +569,7 @@ class _$UserProfileImpl extends _UserProfile {
     this.matrimonyExtensions,
     this.partnerPreferences,
     this.lastActiveAt,
+    this.isPremium = false,
     this.creationLat,
     this.creationLng,
     this.creationAt,
@@ -647,6 +663,11 @@ class _$UserProfileImpl extends _UserProfile {
   @override
   final DateTime? lastActiveAt;
 
+  /// Whether this user has an active premium subscription (for badge). From API when viewing others.
+  @override
+  @JsonKey()
+  final bool isPremium;
+
   /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
   @override
   final double? creationLat;
@@ -659,7 +680,7 @@ class _$UserProfileImpl extends _UserProfile {
 
   @override
   String toString() {
-    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
+    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
   }
 
   @override
@@ -716,6 +737,8 @@ class _$UserProfileImpl extends _UserProfile {
                 other.partnerPreferences == partnerPreferences) &&
             (identical(other.lastActiveAt, lastActiveAt) ||
                 other.lastActiveAt == lastActiveAt) &&
+            (identical(other.isPremium, isPremium) ||
+                other.isPremium == isPremium) &&
             (identical(other.creationLat, creationLat) ||
                 other.creationLat == creationLat) &&
             (identical(other.creationLng, creationLng) ||
@@ -752,6 +775,7 @@ class _$UserProfileImpl extends _UserProfile {
     matrimonyExtensions,
     partnerPreferences,
     lastActiveAt,
+    isPremium,
     creationLat,
     creationLng,
     creationAt,
@@ -792,6 +816,7 @@ abstract class _UserProfile extends UserProfile {
     final MatrimonyExtensions? matrimonyExtensions,
     final PartnerPreferences? partnerPreferences,
     final DateTime? lastActiveAt,
+    final bool isPremium,
     final double? creationLat,
     final double? creationLng,
     final DateTime? creationAt,
@@ -849,6 +874,10 @@ abstract class _UserProfile extends UserProfile {
   PartnerPreferences? get partnerPreferences;
   @override
   DateTime? get lastActiveAt;
+
+  /// Whether this user has an active premium subscription (for badge). From API when viewing others.
+  @override
+  bool get isPremium;
 
   /// Where the profile was created (lat/lng/timestamp) for safety and support tracking.
   @override

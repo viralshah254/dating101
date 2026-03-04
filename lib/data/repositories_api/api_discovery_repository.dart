@@ -31,6 +31,23 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }
 
   @override
+  Future<DiscoveryPageResult> getRecommendedPage({
+    required AppMode mode,
+    String? city,
+    int limit = 30,
+    String? cursor,
+  }) async {
+    final query = <String, String>{
+      'mode': mode.isMatrimony ? 'matrimony' : 'dating',
+      'limit': '$limit',
+    };
+    if (city != null) query['city'] = city;
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+    final body = await api.get('/discovery/recommended', query: query);
+    return _parsePage(body);
+  }
+
+  @override
   Future<List<ProfileSummary>> getExplore({
     required AppMode mode,
     int? ageMin,
@@ -67,6 +84,44 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
 
     final body = await api.get('/discovery/explore', query: query);
     return _parseProfiles(body);
+  }
+
+  @override
+  Future<DiscoveryPageResult> getExplorePage({
+    required AppMode mode,
+    int? ageMin,
+    int? ageMax,
+    String? city,
+    String? religion,
+    String? education,
+    int? heightMinCm,
+    int? heightMaxCm,
+    String? diet,
+    String? bodyType,
+    String? maritalStatus,
+    int limit = 30,
+    String? cursor,
+  }) async {
+    final query = <String, String>{
+      'mode': mode.isMatrimony ? 'matrimony' : 'dating',
+      'limit': '$limit',
+    };
+    if (ageMin != null) query['ageMin'] = '$ageMin';
+    if (ageMax != null) query['ageMax'] = '$ageMax';
+    if (city != null && city.isNotEmpty) query['city'] = city;
+    if (religion != null && religion.isNotEmpty) query['religion'] = religion;
+    if (education != null && education.isNotEmpty) {
+      query['education'] = education;
+    }
+    if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
+    if (heightMaxCm != null) query['heightMaxCm'] = '$heightMaxCm';
+    if (diet != null && diet.isNotEmpty) query['diet'] = diet;
+    if (bodyType != null && bodyType.isNotEmpty) query['bodyType'] = bodyType;
+    if (maritalStatus != null && maritalStatus.isNotEmpty)
+      query['maritalStatus'] = maritalStatus;
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+    final body = await api.get('/discovery/explore', query: query);
+    return _parsePage(body);
   }
 
   @override
@@ -346,13 +401,26 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }
 
   static List<ProfileSummary> _parseProfiles(Map<String, dynamic> body) {
+    final result = _parsePage(body);
+    return result.profiles;
+  }
+
+  static DiscoveryPageResult _parsePage(Map<String, dynamic> body) {
     final list = body['profiles'] as List? ?? [];
-    return list
-        .map(
-          (e) => ApiProfileRepository.parseSummaryPublic(
-            e as Map<String, dynamic>,
-          ),
-        )
-        .toList();
+    if (list.isEmpty && body.containsKey('count')) {
+      debugPrint(
+        '[Discovery] Backend returned {"count": ...} but no "profiles" array. '
+        'GET /discovery/recommended and GET /discovery/explore must return {"profiles": [...], "nextCursor": "..."}.',
+      );
+    }
+    final profiles = list.map((e) {
+      final map = e as Map<String, dynamic>;
+      final profileMap = map['profile'] is Map<String, dynamic>
+          ? map['profile'] as Map<String, dynamic>
+          : map;
+      return ApiProfileRepository.parseSummaryPublic(profileMap);
+    }).toList();
+    final nextCursor = body['nextCursor'] as String?;
+    return DiscoveryPageResult(profiles: profiles, nextCursor: nextCursor);
   }
 }

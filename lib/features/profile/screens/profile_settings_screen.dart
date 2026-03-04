@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/feature_flags/feature_flags.dart';
-import '../../../core/locale/app_locale_provider.dart';
+import '../../../core/locale/language_picker_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
@@ -16,6 +17,7 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
+import '../../../domain/repositories/subscription_repository.dart';
 
 final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
   debugPrint('[ProfileSettings] Fetching my profile...');
@@ -30,6 +32,10 @@ final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
     debugPrint('[ProfileSettings] Error fetching profile: $e');
     rethrow;
   }
+});
+
+final _subscriptionStateProvider = FutureProvider<SubscriptionState>((ref) async {
+  return ref.watch(subscriptionRepositoryProvider).getSubscriptionState();
 });
 
 /// Profile & Settings — user's own profile and app settings.
@@ -90,6 +96,11 @@ class ProfileSettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 24),
+          _SubscriptionCard(
+            onSurface: onSurface,
+            primary: primary,
           ),
           const SizedBox(height: 32),
           _SectionHeader(title: l.saathiMode, onSurface: onSurface),
@@ -194,7 +205,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
               ),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showLanguagePicker(context, ref),
+            onTap: () => showLanguagePickerSheet(context, ref),
           ),
           const SizedBox(height: 24),
           _SectionHeader(title: l.accountAndData, onSurface: onSurface),
@@ -673,85 +684,6 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
   );
 }
 
-void _showLanguagePicker(BuildContext context, WidgetRef ref) {
-  final l = AppLocalizations.of(context)!;
-  final currentCode = ref.read(appLocaleProvider);
-  final locales = supportedAppLocales;
-  final localeNames = <String, String>{
-    'en': 'English',
-    'hi': 'हिन्दी',
-    'bn': 'বাংলা',
-    'te': 'తెలుగు',
-    'mr': 'मराठी',
-    'ta': 'தமிழ்',
-    'ur': 'اردو',
-    'gu': 'ગુજરાતી',
-    'kn': 'ಕನ್ನಡ',
-    'ml': 'മലയാളം',
-    'pa': 'ਪੰਜਾਬੀ',
-  };
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(ctx).size.height * 0.6,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l.appLanguage,
-                style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: locales.length,
-                  itemBuilder: (_, index) {
-                    final locale = locales[index];
-                    final code = locale.languageCode;
-                    final name = localeNames[code] ?? code;
-                    final isSelected = currentCode == code;
-                    return ListTile(
-                      title: Text(name),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_rounded)
-                          : null,
-                      onTap: () {
-                        ref.read(appLocaleProvider.notifier).setLocale(code);
-                        Navigator.pop(ctx);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(l.languageSetTo(name)),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 Future<void> _requestDataExport(BuildContext context, WidgetRef ref) async {
   try {
     final result = await ref
@@ -910,6 +842,151 @@ class _ModeSwitchTile extends StatelessWidget {
                 Icons.chevron_right,
                 color: onSurface.withValues(alpha: 0.5),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Prominent subscription status card: active (with expiry / renew-soon) or upgrade CTA.
+class _SubscriptionCard extends ConsumerWidget {
+  const _SubscriptionCard({
+    required this.onSurface,
+    required this.primary,
+  });
+
+  final Color onSurface;
+  final Color primary;
+
+  static const int _renewWarningDays = 7;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final subscriptionAsync = ref.watch(_subscriptionStateProvider);
+
+    return subscriptionAsync.when(
+      loading: () => _buildCard(
+        context,
+        ref: ref,
+        onSurface: onSurface,
+        primary: primary,
+        leading: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2, color: primary),
+        ),
+        title: l.subscription,
+        subtitle: null,
+        trailing: const Icon(Icons.chevron_right),
+      ),
+      error: (_, __) => _buildCard(
+        context,
+        ref: ref,
+        onSurface: onSurface,
+        primary: primary,
+        leading: Icon(Icons.workspace_premium_outlined, color: primary, size: 28),
+        title: l.subscription,
+        subtitle: l.upgradeToPremiumSubtitle,
+        trailing: const Icon(Icons.chevron_right),
+      ),
+      data: (state) {
+        final isActive = state.isActive && state.expiresAt != null;
+        if (isActive) {
+          final expiresAt = state.expiresAt!;
+          final daysLeft = expiresAt.difference(DateTime.now()).inDays;
+          final dateStr = DateFormat('d MMM yyyy').format(expiresAt);
+          final showRenew = daysLeft <= _renewWarningDays && daysLeft >= 0;
+          return _buildCard(
+            context,
+            ref: ref,
+            onSurface: onSurface,
+            primary: primary,
+            leading: Icon(Icons.workspace_premium, color: primary, size: 28),
+            title: l.premium,
+            subtitle: showRenew
+                ? '${l.subscriptionExpiresOn(dateStr)} • ${l.subscriptionDaysLeft(daysLeft)}'
+                : l.subscriptionExpiresOn(dateStr),
+            subtitleStyle: showRenew
+                ? AppTypography.bodySmall.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w500,
+                  )
+                : null,
+            trailing: const Icon(Icons.chevron_right),
+          );
+        }
+        return _buildCard(
+          context,
+          ref: ref,
+          onSurface: onSurface,
+          primary: primary,
+          leading: Icon(Icons.workspace_premium_outlined, color: primary, size: 28),
+          title: l.upgrade,
+          subtitle: l.upgradeToPremiumSubtitle,
+          trailing: const Icon(Icons.chevron_right),
+        );
+      },
+    );
+  }
+
+  Widget _buildCard(
+    BuildContext context, {
+    required WidgetRef ref,
+    required Color onSurface,
+    required Color primary,
+    required Widget leading,
+    required String title,
+    String? subtitle,
+    TextStyle? subtitleStyle,
+    required Widget trailing,
+  }) {
+    final defaultSubtitleStyle = AppTypography.bodySmall.copyWith(
+      color: onSurface.withValues(alpha: 0.7),
+    );
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          await context.push('/paywall');
+          if (context.mounted) ref.invalidate(_subscriptionStateProvider);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border.all(color: primary.withValues(alpha: 0.4), width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              leading,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: subtitleStyle ?? defaultSubtitleStyle,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              trailing,
             ],
           ),
         ),

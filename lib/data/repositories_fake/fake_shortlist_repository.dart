@@ -1,4 +1,5 @@
 import '../../domain/models/shortlist_entry.dart';
+import '../../domain/models/shortlist_unlock_quota.dart';
 import '../../domain/models/who_shortlisted_me_entry.dart';
 import '../../domain/repositories/shortlist_repository.dart';
 import '../mappers/profile_mapper.dart';
@@ -62,6 +63,20 @@ class FakeShortlistRepository implements ShortlistRepository {
       const WhoShortlistedMeEntry(profileId: 'usr_fake1', firstName: 'Priya', age: 27, blurred: false),
       const WhoShortlistedMeEntry(profileId: 'usr_fake2', firstName: 'Ananya', age: 25, blurred: false),
     ];
+  }
+
+  @override
+  Future<ShortlistUnlockResult?> unlockOneWhoShortlistedMe({
+    required String adCompletionToken,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    final list = await getWhoShortlistedMe(limit: 1);
+    if (list.isEmpty) return null;
+    return ShortlistUnlockResult(
+      entry: list.first,
+      unlocksRemainingThisWeek: 4,
+      resetsAt: DateTime.now().add(const Duration(days: 7)),
+    );
   }
 
   @override

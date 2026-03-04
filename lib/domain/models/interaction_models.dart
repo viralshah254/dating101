@@ -78,7 +78,19 @@ class InteractionInboxItem {
   final DateTime createdAt;
 }
 
-/// Result of expressing interest or priority interest (Saathi interactions API).
+/// Result of unlocking one received (inbox) interaction after watch-ad. Backend enforces 2/week.
+class InboxUnlockResult {
+  const InboxUnlockResult({
+    required this.item,
+    this.unlocksRemainingThisWeek = 0,
+    this.resetsAt,
+  });
+  final InteractionInboxItem item;
+  final int unlocksRemainingThisWeek;
+  final DateTime? resetsAt;
+}
+
+/// Result of expressing interest or priority interest (Shubhmilan interactions API).
 class ExpressInterestResult {
   const ExpressInterestResult({
     required this.interactionId,

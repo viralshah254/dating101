@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'saathi'**
+  /// **'Shubhmilan'**
   String get appTitle;
 
   /// No description provided for @appTagline.
@@ -206,6 +206,12 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get close;
 
+  /// No description provided for @viewMore.
+  ///
+  /// In en, this message translates to:
+  /// **'View more'**
+  String get viewMore;
+
   /// No description provided for @submit.
   ///
   /// In en, this message translates to:
@@ -245,7 +251,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginTitle.
   ///
   /// In en, this message translates to:
-  /// **'saathi'**
+  /// **'Shubhmilan'**
   String get loginTitle;
 
   /// No description provided for @loginTagline.
@@ -527,7 +533,7 @@ abstract class AppLocalizations {
   /// No description provided for @ctaUpgradeToPremium.
   ///
   /// In en, this message translates to:
-  /// **'Upgrade to saathi Premium'**
+  /// **'Upgrade to Shubhmilan Premium'**
   String get ctaUpgradeToPremium;
 
   /// No description provided for @premiumRequired.
@@ -668,6 +674,120 @@ abstract class AppLocalizations {
   /// **'Shortlist profiles you like to review later.'**
   String get shortlistEmptyHint;
 
+  /// No description provided for @shortlistedTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortlisted'**
+  String get shortlistedTab;
+
+  /// No description provided for @shortlistedYouTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortlisted you'**
+  String get shortlistedYouTab;
+
+  /// No description provided for @tabChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get tabChats;
+
+  /// No description provided for @tabMessageRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get tabMessageRequests;
+
+  /// No description provided for @circlesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Circles'**
+  String get circlesTab;
+
+  /// No description provided for @eventsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get eventsTab;
+
+  /// No description provided for @upcomingTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get upcomingTab;
+
+  /// No description provided for @myRsvpsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'My RSVPs'**
+  String get myRsvpsTab;
+
+  /// No description provided for @messageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get messageTooltip;
+
+  /// No description provided for @watchAd.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad'**
+  String get watchAd;
+
+  /// No description provided for @watchAdToUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad to unlock'**
+  String get watchAdToUnlock;
+
+  /// No description provided for @loadingAd.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading ad…'**
+  String get loadingAd;
+
+  /// No description provided for @adCouldntBeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad couldn\'t be loaded. Try again or upgrade to Premium.'**
+  String get adCouldntBeLoaded;
+
+  /// No description provided for @mutualMatchCelebrationMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re both interested in each other! Send a message or view their profile.'**
+  String get mutualMatchCelebrationMessage;
+
+  /// No description provided for @priorityInterestAdMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.'**
+  String get priorityInterestAdMessage;
+
+  /// No description provided for @sendOrAcceptInterestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Send or accept an interest first'**
+  String get sendOrAcceptInterestFirst;
+
+  /// No description provided for @watchAdToMessageMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to send a message, or upgrade to Premium to message without ads.'**
+  String get watchAdToMessageMessage;
+
+  /// No description provided for @sayHiToName.
+  ///
+  /// In en, this message translates to:
+  /// **'Say hi to {name}'**
+  String sayHiToName(String name);
+
+  /// No description provided for @sendPersonalNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a personal note'**
+  String get sendPersonalNote;
+
   /// No description provided for @profileTitle.
   ///
   /// In en, this message translates to:
@@ -805,6 +925,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subscription'**
   String get subscription;
+
+  /// No description provided for @subscriptionExpiresOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {date}'**
+  String subscriptionExpiresOn(String date);
+
+  /// No description provided for @subscriptionRenewSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Renew in the next 7 days to keep Premium'**
+  String get subscriptionRenewSoon;
+
+  /// No description provided for @subscriptionDaysLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days left'**
+  String subscriptionDaysLeft(int count);
+
+  /// No description provided for @upgradeToPremiumSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock all features'**
+  String get upgradeToPremiumSubtitle;
 
   /// No description provided for @legal.
   ///
@@ -1043,7 +1187,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallTitle.
   ///
   /// In en, this message translates to:
-  /// **'Unlock more with saathi'**
+  /// **'Unlock more with Shubhmilan'**
   String get paywallTitle;
 
   /// No description provided for @paywallDatingSubtitle.
@@ -1196,6 +1340,12 @@ abstract class AppLocalizations {
   /// **'Invite friends'**
   String get inviteFriends;
 
+  /// No description provided for @referNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Refer Now'**
+  String get referNow;
+
   /// No description provided for @inviteCopy.
   ///
   /// In en, this message translates to:
@@ -1207,6 +1357,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share your invite code or link. When they join, you both get a reward.'**
   String get inviteReward;
+
+  /// No description provided for @referralBenefitReferred.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days free Premium for everyone who signs up with your code.'**
+  String get referralBenefitReferred;
+
+  /// No description provided for @referralContestMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Top referrer wins up to ₹1,00,000!'**
+  String get referralContestMessage;
 
   /// No description provided for @yourInviteCode.
   ///
@@ -1249,6 +1411,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Code copied'**
   String get codeCopied;
+
+  /// No description provided for @referralCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a referral code?'**
+  String get referralCodeHint;
+
+  /// No description provided for @referralCodeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral code (optional)'**
+  String get referralCodeOptional;
+
+  /// No description provided for @referralPremiumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days free Premium!'**
+  String get referralPremiumTitle;
+
+  /// No description provided for @referralPremiumMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your referral code was applied. You have 30 days of free Premium. Enjoy!'**
+  String get referralPremiumMessage;
+
+  /// No description provided for @referralShareMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Try Shubhmilan — meaningful connections for the diaspora.\n\nDownload the app here: {link}\n\nWhen you sign up, enter my referral code: {code}\n\nYou get 30 days free Premium (India only). Plus, top referrers can win up to ₹1,00,000 every month!'**
+  String referralShareMessage(String code, String link);
+
+  /// No description provided for @referralTermsApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms & conditions apply'**
+  String get referralTermsApply;
+
+  /// No description provided for @referralTermsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral Programme Terms & Conditions'**
+  String get referralTermsTitle;
+
+  /// No description provided for @referralTermsAndConditionsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Programme. The Shubhmilan Referral Programme (\"Programme\") lets you share a unique referral code or link. When an eligible new user signs up using your code/link in accordance with these terms, they may receive a referral benefit (e.g., 30 days of Premium), and you may be eligible for the monthly referrer contest (\"Contest\").\n\n2. Territory (India only). The Programme, referral benefits, and Contest are offered only in India. Participation is valid only for users who are physically located in India at the time of sign-up and participation, and who have an Indian mobile number. Shubhmilan may use reasonable methods (including phone number, device signals, IP/location indicators) to confirm eligibility. If you are outside India, you are not eligible for referral benefits or prizes.\n\n3. Age requirement (18+ only). You must be 18 years or older to participate. By participating, you confirm you are 18+. Any user found (or reasonably suspected) to be under 18 will be immediately disqualified from the Programme and Contest, may forfeit any benefits or prizes, and may have their account removed/suspended.\n\n4. Eligibility. To be eligible as a referrer, you must be a registered Shubhmilan user in good standing and comply with these terms and our main Terms of Service and Privacy Policy. Referred users must be new (first-time sign-up on Shubhmilan), must sign up using a valid referral code/link during registration, and must not have previously created an account (including via another phone number, email, device, or identity).\n\n5. Referral benefit (30-day Premium). If the referral code/link is successfully applied during registration and the referred user is eligible, the referred user receives 30 days of Premium (or other benefit as shown in-app). The referral benefit is limited to one per person and is not transferable, exchangeable, or redeemable for cash. Shubhmilan may reject invalid, duplicate, or fraudulent sign-ups.\n\n6. Contest period and monthly winner. Shubhmilan may run a monthly Contest where the top eligible referrer based on qualifying referrals may win a prize pool of up to ₹1,00,000 (\"Prize\"). Each month will have one (1) winner who may win the maximum prize pool for that month, subject to verification and these terms. Contest details, including the month and measurement rules, will be communicated in-app.\n\n7. Qualifying referrals. A \"qualifying referral\" is counted only when: (a) the referred user is eligible and new; (b) the referral code/link is applied at registration; (c) the account passes fraud/duplicate checks; and (d) Shubhmilan reasonably determines the sign-up is genuine. Shubhmilan may exclude referrals that appear to be incentivized improperly, spam-driven, or otherwise abusive.\n\n8. Prohibited conduct (anti-fraud). You may not use fake accounts, bots, scripts, click-farms, paid installs, spam, misleading claims, impersonation, mass messaging in violation of law/policies, or any fraudulent or abusive methods to earn referrals or Contest standing. You may not sell, trade, or publish referral codes/links on coupon/referral marketplaces. Any such activity may result in disqualification, forfeiture of benefits/prizes, and suspension/termination of your account.\n\n9. Verification, decision rights, and tie-breaks. Shubhmilan reserves the right to verify eligibility and compliance, including requesting proof of age and identity. If verification is not completed or fails, the user is disqualified. In case of a tie or suspected manipulation, Shubhmilan may use additional criteria (e.g., referral quality signals, time to qualify, integrity checks) or conduct a tie-break process at its sole discretion. Shubhmilan’s decision is final.\n\n10. Prize payment timeline and review date. Prize payouts (if any) will be processed only after the monthly competition ends and Shubhmilan completes verification and review. For the Contest cycle ending in August 2026, winner review will be completed by August 31, 2026, and payouts will be initiated after review is finalized. Shubhmilan may delay or withhold payouts where verification, compliance checks, or legal requirements are pending.\n\n11. Taxes, KYC, and payment method. Prizes may be subject to applicable Indian taxes, withholding (TDS), reporting, and KYC requirements. Winners must provide required details (e.g., PAN, bank account, ID) to receive the Prize. If a winner does not provide required information within the timeframe communicated, the Prize may be forfeited or awarded to an alternate eligible winner.\n\n12. Privacy and communications. We will handle personal data in accordance with our Privacy Policy. We may contact participants about eligibility, verification, and prize distribution.\n\n13. Changes, suspension, and termination. Shubhmilan may modify, suspend, or end the Programme/Contest or these terms at any time (including prize pool amounts and rules) where reasonably necessary (e.g., to prevent abuse, comply with law, or operational reasons). Continued participation after changes constitutes acceptance of the updated terms.\n\n14. Liability. To the maximum extent permitted by law, Shubhmilan is not liable for any loss arising from participation in the Programme/Contest, including technical issues, delayed or failed tracking, or disqualification decisions made in good faith.\n\n15. Governing law and disputes. These Referral Terms are governed by the laws of India. Courts of competent jurisdiction in India will have exclusive jurisdiction over disputes arising from the Programme/Contest.\n\n16. General. These Referral Terms are in addition to our main Terms of Service and Privacy Policy. If there is a conflict, these Referral Terms apply to the Programme/Contest only.'**
+  String get referralTermsAndConditionsBody;
 
   /// No description provided for @loginHeroTitle.
   ///
@@ -1301,7 +1511,7 @@ abstract class AppLocalizations {
   /// No description provided for @modeSelectSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose how you\'d like to use saathi. You can switch anytime from settings.'**
+  /// **'Choose how you\'d like to use Shubhmilan. You can switch anytime from settings.'**
   String get modeSelectSubtitle;
 
   /// No description provided for @modeSwitchHint.
@@ -2561,7 +2771,7 @@ abstract class AppLocalizations {
   /// No description provided for @locationRequiredMessage.
   ///
   /// In en, this message translates to:
-  /// **'saathi needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.'**
+  /// **'Shubhmilan needs your location to keep the community safe and to record where your profile is created. We use it only for safety and support—never shared without your consent.'**
   String get locationRequiredMessage;
 
   /// No description provided for @locationAllow.
@@ -2777,8 +2987,14 @@ abstract class AppLocalizations {
   /// No description provided for @chooseAppLanguage.
   ///
   /// In en, this message translates to:
-  /// **'Choose app language'**
+  /// **'Choose your language'**
   String get chooseAppLanguage;
+
+  /// No description provided for @languageSelectSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You can change this later in settings.'**
+  String get languageSelectSubtitle;
 
   /// No description provided for @languageSetTo.
   ///
@@ -2789,7 +3005,7 @@ abstract class AppLocalizations {
   /// No description provided for @saathiMode.
   ///
   /// In en, this message translates to:
-  /// **'saathi mode'**
+  /// **'Shubhmilan mode'**
   String get saathiMode;
 
   /// No description provided for @accountAndData.
@@ -2803,6 +3019,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View profile'**
   String get viewProfile;
+
+  /// No description provided for @discoverPass.
+  ///
+  /// In en, this message translates to:
+  /// **'Pass'**
+  String get discoverPass;
+
+  /// No description provided for @discoverLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get discoverLike;
+
+  /// No description provided for @discoverSuperLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Super like'**
+  String get discoverSuperLike;
+
+  /// No description provided for @discoverSwipePassHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left to pass'**
+  String get discoverSwipePassHint;
+
+  /// No description provided for @discoverSwipeLikeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe right to like'**
+  String get discoverSwipeLikeHint;
+
+  /// No description provided for @discoverSwipeSuperLikeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe up for super like'**
+  String get discoverSwipeSuperLikeHint;
 
   /// No description provided for @downloadMyData.
   ///
@@ -3169,6 +3421,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Looking for'**
   String get lookingForTitle;
+
+  /// No description provided for @partnerPrefLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'Locations'**
+  String get partnerPrefLocations;
+
+  /// No description provided for @partnerPrefCountries.
+  ///
+  /// In en, this message translates to:
+  /// **'Countries'**
+  String get partnerPrefCountries;
+
+  /// No description provided for @partnerPrefSettledAbroad.
+  ///
+  /// In en, this message translates to:
+  /// **'Settled abroad'**
+  String get partnerPrefSettledAbroad;
+
+  /// No description provided for @partnerPrefHoroscopeMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Horoscope match'**
+  String get partnerPrefHoroscopeMatch;
+
+  /// No description provided for @partnerPrefPreferred.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred'**
+  String get partnerPrefPreferred;
+
+  /// No description provided for @partnerPrefStrictSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **' (Strict)'**
+  String get partnerPrefStrictSuffix;
 
   /// No description provided for @requestAgain.
   ///
@@ -3967,6 +4255,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add any context that might help our team'**
   String get reportDetailsHint;
+
+  /// No description provided for @translate.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate'**
+  String get translate;
+
+  /// No description provided for @translating.
+  ///
+  /// In en, this message translates to:
+  /// **'Translating...'**
+  String get translating;
+
+  /// No description provided for @showOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show original'**
+  String get showOriginal;
+
+  /// No description provided for @showTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Show translation'**
+  String get showTranslation;
+
+  /// No description provided for @translationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation unavailable'**
+  String get translationUnavailable;
+
+  /// No description provided for @noVisitorsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No visitors yet'**
+  String get noVisitorsYet;
+
+  /// No description provided for @noVisitorsYetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles who viewed you will appear here. Complete your profile to get noticed.'**
+  String get noVisitorsYetBody;
+
+  /// No description provided for @noMatchesYetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When you and someone else both express interest, you\'ll match and appear here.'**
+  String get noMatchesYetBody;
+
+  /// No description provided for @noMatchesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches found'**
+  String get noMatchesFound;
+
+  /// No description provided for @tryAdjustingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Try adjusting your filters for more results.'**
+  String get tryAdjustingFilters;
+
+  /// No description provided for @exploreProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore profiles'**
+  String get exploreProfiles;
+
+  /// No description provided for @exploreProfilesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the filter icon above to search by age, city, religion, education and more.'**
+  String get exploreProfilesBody;
 }
 
 class _AppLocalizationsDelegate

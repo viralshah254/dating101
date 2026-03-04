@@ -23,12 +23,21 @@ final shortlistedIdsProvider =
 });
 
 /// People who shortlisted the current user (GET /shortlist/received).
-/// When not entitled, backend may return blurred entries.
+/// For free users backend may return 403 PREMIUM_REQUIRED with count + quota.
 final whoShortlistedMeProvider =
     FutureProvider.autoDispose<List<WhoShortlistedMeEntry>>((ref) async {
   final repo = ref.watch(shortlistRepositoryProvider);
   return repo.getWhoShortlistedMe(limit: 50);
 });
+
+/// Entries unlocked via "Watch ad" on Shortlisted you tab (backend enforces 5/week).
+/// Not autoDispose so unlocked entries remain visible for the session; remove when user matches.
+final shortlistUnlockedEntriesProvider =
+    StateProvider<List<WhoShortlistedMeEntry>>((ref) => []);
+
+/// Remaining ad-unlocks this week and when they reset. Set from 403 body or from unlock-one response.
+final shortlistUnlocksQuotaProvider =
+    StateProvider.autoDispose<({int remaining, DateTime? resetsAt})?>((ref) => null);
 
 /// Count of people who shortlisted you — for nav badge. Uses GET /shortlist/received/count.
 final whoShortlistedMeCountProvider = FutureProvider.autoDispose<int>((ref) async {

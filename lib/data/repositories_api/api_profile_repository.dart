@@ -261,6 +261,7 @@ class ApiProfileRepository implements ProfileRepository {
       lastActiveAt: j['lastActiveAt'] != null
           ? DateTime.tryParse(j['lastActiveAt'] as String)
           : null,
+      isPremium: _safeBool(j['isPremium'], false),
       creationLat: (j['creationLat'] as num?)?.toDouble(),
       creationLng: (j['creationLng'] as num?)?.toDouble(),
       creationAt: j['creationAt'] != null
@@ -440,15 +441,26 @@ class ApiProfileRepository implements ProfileRepository {
   static ProfileSummary parseSummaryPublic(Map<String, dynamic> j) =>
       _parseSummary(j);
 
-  /// URLs under /seed/ often return 403 from CloudFront; treat as no image.
+  /// URLs that often return 403 from CloudFront; treat as no image to avoid exceptions.
   static String? _sanitizeImageUrl(String? url) {
     if (url == null || url.isEmpty) return null;
     if (url.contains('/seed/')) return null;
+    if (url.contains('daeidwfwa5d0x.cloudfront.net')) return null;
     return url;
   }
 
   /// Public for other repos that set imageUrl from API (e.g. shortlist).
   static String? sanitizeImageUrl(String? url) => _sanitizeImageUrl(url);
+
+  static List<String>? _parseImageUrls(dynamic v) {
+    if (v == null || v is! List) return null;
+    final raw = v;
+    final list = raw
+        .map((e) => _sanitizeImageUrl(e is String ? e : e?.toString()))
+        .whereType<String>()
+        .toList();
+    return list.isEmpty ? null : list;
+  }
 
   static String? _roleString(dynamic v) {
     if (v == null) return null;
@@ -503,6 +515,7 @@ class ApiProfileRepository implements ProfileRepository {
       age: _safeInt(j['age']),
       city: j['city'] as String?,
       imageUrl: _sanitizeImageUrl(j['imageUrl'] as String?),
+      imageUrls: _parseImageUrls(j['photoUrls'] ?? j['imageUrls']),
       distanceKm: (j['distanceKm'] is num)
           ? (j['distanceKm'] as num).toDouble()
           : null,
@@ -524,6 +537,7 @@ class ApiProfileRepository implements ProfileRepository {
       employer: j['employer'] as String?,
       familyType: j['familyType'] as String?,
       photoCount: _safeInt(j['photoCount']) ?? 0,
+      isPremium: _safeBool(j['isPremium'], false),
       compatibilityScore: (j['compatibilityScore'] as num?)?.toDouble(),
       compatibilityLabel: j['compatibilityLabel'] as String?,
       matchReasons: _strList(j['matchReasons']),

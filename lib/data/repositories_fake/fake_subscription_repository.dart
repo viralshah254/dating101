@@ -32,7 +32,10 @@ class FakeSubscriptionRepository implements SubscriptionRepository {
   }
 
   @override
-  Future<bool> restorePurchases() async {
+  Future<bool> restorePurchases({
+    String? platform,
+    String? receiptOrToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 800));
     return false;
   }
@@ -46,6 +49,27 @@ class FakeSubscriptionRepository implements SubscriptionRepository {
       canSeeWhoShortlistedYou: false,
       dailyInterestLimit: 10,
       dailyMessageLimit: 0,
+    );
+  }
+
+  @override
+  Future<BoostStatus> getBoostStatus() async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return const BoostStatus();
+  }
+
+  @override
+  Future<BoostStatus> purchaseBoost({
+    required String platform,
+    required String receiptOrToken,
+    required String productId,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return BoostStatus(
+      activeUntil: DateTime.now().add(const Duration(hours: 24)),
+      hoursRemainingToday: 1,
+      peakWindowStart: '18:00',
+      peakWindowEnd: '22:00',
     );
   }
 }

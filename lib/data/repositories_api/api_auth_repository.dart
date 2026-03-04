@@ -52,16 +52,22 @@ class ApiAuthRepository implements AuthRepository {
   Future<AuthResult> verifyOtp({
     required String verificationId,
     required String code,
+    String? referralCode,
   }) async {
-    debugPrint('[Auth] verifyOtp → vid=$verificationId, code=$code');
+    debugPrint('[Auth] verifyOtp → vid=$verificationId, code=$code, referralCode=${referralCode != null ? "***" : null}');
     try {
-      final body = await api.postNoAuth('/auth/verify-otp', body: {
+      final requestBody = <String, dynamic>{
         'verificationId': verificationId,
         'code': code,
-      });
+      };
+      if (referralCode != null && referralCode.trim().isNotEmpty) {
+        requestBody['referralCode'] = referralCode.trim();
+      }
+      final body = await api.postNoAuth('/auth/verify-otp', body: requestBody);
       final userId = body['userId'] as String;
       final isNewUser = body['isNewUser'] as bool? ?? false;
-      debugPrint('[Auth] verifyOtp ✓ userId=$userId, isNewUser=$isNewUser');
+      final referralApplied = body['referralApplied'] as bool? ?? false;
+      debugPrint('[Auth] verifyOtp ✓ userId=$userId, isNewUser=$isNewUser, referralApplied=$referralApplied');
       await tokenStorage.save(
         accessToken: body['accessToken'] as String,
         refreshToken: body['refreshToken'] as String,
@@ -69,7 +75,7 @@ class ApiAuthRepository implements AuthRepository {
         isNewUser: isNewUser,
       );
       _authStateController.add(userId);
-      return AuthSuccess(userId: userId, isNewUser: isNewUser);
+      return AuthSuccess(userId: userId, isNewUser: isNewUser, referralApplied: referralApplied);
     } on ApiException catch (e) {
       debugPrint('[Auth] verifyOtp ✗ ${e.code}: ${e.message}');
       return AuthFailure(e.message, code: e.code);

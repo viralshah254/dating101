@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ads/ad_service.dart';
+import '../../core/locale/app_locale_provider.dart';
 import '../../core/location/app_location_service.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../data/api/api_client.dart';
@@ -23,6 +25,8 @@ import '../../data/repositories_api/api_contact_request_repository.dart';
 import '../../data/repositories_api/api_photo_view_request_repository.dart';
 import '../../data/repositories_api/api_visits_repository.dart';
 import '../../data/repositories_api/api_referral_repository.dart';
+import '../../data/repositories_api/api_notifications_repository.dart';
+import '../../data/repositories_api/api_translate_repository.dart';
 import '../../data/repositories_api/api_verification_repository.dart';
 import '../../data/repositories_fake/fake_account_repository.dart';
 import '../../data/repositories_fake/fake_auth_repository.dart';
@@ -39,6 +43,8 @@ import '../../data/repositories_fake/fake_contact_request_repository.dart';
 import '../../data/repositories_fake/fake_photo_view_request_repository.dart';
 import '../../data/repositories_fake/fake_visits_repository.dart';
 import '../../data/repositories_fake/fake_referral_repository.dart';
+import '../../data/repositories_fake/fake_notifications_repository.dart';
+import '../../data/repositories_fake/fake_translate_repository.dart';
 import '../../data/repositories_fake/fake_verification_repository.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -48,11 +54,13 @@ import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/discovery_repository.dart';
 import '../../domain/repositories/interactions_repository.dart';
 import '../../domain/repositories/interests_repository.dart';
+import '../../domain/repositories/notifications_repository.dart';
 import '../../domain/repositories/matches_repository.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../domain/repositories/safety_repository.dart';
 import '../../domain/repositories/shortlist_repository.dart';
 import '../../domain/repositories/subscription_repository.dart';
+import '../../domain/repositories/translate_repository.dart';
 import '../../domain/repositories/visits_repository.dart';
 import '../../domain/repositories/referral_repository.dart';
 import '../../domain/repositories/verification_repository.dart';
@@ -73,6 +81,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     baseUrl: _config.baseUrl,
     tokenStorage: ref.watch(tokenStorageProvider),
+    localeGetter: () => ref.read(appLocaleProvider) ?? 'en',
   );
 });
 
@@ -147,9 +156,19 @@ final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
   return ApiReferralRepository(api: ref.watch(apiClientProvider));
 });
 
+final translateRepositoryProvider = Provider<TranslateRepository>((ref) {
+  if (_config.useFakeBackend) return FakeTranslateRepository();
+  return ApiTranslateRepository(api: ref.watch(apiClientProvider));
+});
+
 final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
   if (_config.useFakeBackend) return FakeVerificationRepository();
   return ApiVerificationRepository(api: ref.watch(apiClientProvider));
+});
+
+final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {
+  if (_config.useFakeBackend) return FakeNotificationsRepository();
+  return ApiNotificationsRepository(api: ref.watch(apiClientProvider));
 });
 
 final contactRequestRepositoryProvider = Provider<ContactRequestRepository>((ref) {
@@ -183,6 +202,9 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
     onLogoutCallback: () => profileRepo.deleteFcmToken(),
   );
 });
+
+/// Ad service for interstitials (e.g. free user: watch ad to send message / priority interest / view request).
+final adServiceProvider = Provider<AdService>((_) => AdService());
 
 /// One-shot: when read (e.g. from shell), registers FCM token with backend if user is logged in.
 final registerFcmTokenProvider = FutureProvider<void>((ref) async {

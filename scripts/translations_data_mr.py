@@ -23,7 +23,7 @@ MR = {
     "appLanguage": "ॲप भाषा",
     "chooseAppLanguage": "ॲप भाषा निवडा",
     "languageSetTo": "भाषा {name} वर सेट केली",
-    "saathiMode": "saathi मोड",
+    "saathiMode": "Shubhmilan मोड",
     "accountAndData": "खाते आणि डेटा",
     "viewProfile": "प्रोफाइल पहा",
     "downloadMyData": "माझा डेटा डाउनलोड करा",

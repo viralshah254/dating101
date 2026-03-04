@@ -20,6 +20,24 @@ class ChatThreadSummary {
   final String? mode;
 }
 
+/// Pending message request (from GET /chat/message-requests).
+class MessageRequest {
+  const MessageRequest({
+    required this.requestId,
+    required this.otherUserId,
+    this.otherName,
+    this.text,
+    this.createdAt,
+    this.threadId,
+  });
+  final String requestId;
+  final String otherUserId;
+  final String? otherName;
+  final String? text;
+  final DateTime? createdAt;
+  final String? threadId;
+}
+
 /// Single message in a thread.
 class ChatMessage {
   const ChatMessage({
@@ -49,7 +67,21 @@ abstract class ChatRepository {
 
   Stream<List<ChatMessage>> watchMessages(String threadId);
 
-  Future<void> sendMessage(String threadId, String text);
+  /// [adCompletionToken] — when provided (e.g. after free user watches ad), backend may create a message request instead of direct message.
+  Future<void> sendMessage(
+    String threadId,
+    String text, {
+    String? adCompletionToken,
+  });
 
   Future<void> markThreadRead(String threadId);
+
+  /// Message requests (GET /chat/message-requests). Pending messages from non-matches.
+  Future<List<MessageRequest>> getMessageRequests({int limit = 20});
+
+  /// Accept a message request (POST /chat/message-requests/:requestId/accept).
+  Future<void> acceptMessageRequest(String requestId);
+
+  /// Decline a message request (POST /chat/message-requests/:requestId/decline).
+  Future<void> declineMessageRequest(String requestId);
 }

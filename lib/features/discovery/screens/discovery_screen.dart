@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/design/design.dart';
-import '../../../core/i18n/app_copy.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../matches/providers/matches_providers.dart';
+import '../../referral/widgets/referral_promo_banner.dart';
+import '../../requests/providers/requests_providers.dart';
+import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/discovery_providers.dart';
 import '../widgets/discovery_filters_sheet.dart';
-import '../widgets/profile_card.dart';
+import '../widgets/discovery_swipe_card.dart';
+import '../widgets/discovery_swipeable_card.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -25,6 +29,22 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
 }
 
 class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  bool _hasTriggeredReferralAt20 = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -60,9 +80,24 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         ],
       ),
       body: asyncProfiles.when(
-        data: (profiles) =>
-            _buildBody(context, ref, mode, accent, l, profiles, travelCity),
-        loading: () => SkeletonCardList(itemCount: 5, itemHeight: 200),
+        data: (profiles) {
+          // Backend is expected to return only self-managed profiles for dating when that's enforced.
+          // No client-side filter so the feed isn't empty when API returns test/mixed data.
+          void onReached20thProfile() {
+            if (mounted) _maybeShowReferralPopup(context, ref);
+          }
+          return _buildBody(
+            context,
+            ref,
+            mode,
+            accent,
+            l,
+            profiles,
+            travelCity,
+            onReached20thProfile: profiles.length >= 20 ? onReached20thProfile : null,
+          );
+        },
+        loading: () => loadingSpinner(context),
         error: (_, __) => ErrorState(
           message: l.errorGeneric,
           onRetry: () => ref.invalidate(discoveryFeedProvider),
@@ -79,53 +114,62 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     Color accent,
     AppLocalizations l,
     List<ProfileSummary> profiles,
-    String? travelCity,
-  ) {
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      cacheExtent: 300,
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 12),
-                Text(
-                  l.dailyCuratedSet,
-                  style: AppTypography.titleSmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
+    String? travelCity, {
+    VoidCallback? onReached20thProfile,
+  }) {
+    if (profiles.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _profileCount != profiles.length) {
+          setState(() => _profileCount = profiles.length);
+        }
+      });
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Compact header: curated set + city
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                l.dailyCuratedSet,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _CityChip(
+                city: travelCity,
+                onTap: () => _showCityPicker(context, ref),
+                exploreLabel: l.exploreCity(travelCity ?? ''),
+                changeCityLabel: l.changeCity,
+              ),
+              if (travelCity != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 14, color: accent.withValues(alpha: 0.9)),
+                      const SizedBox(width: 6),
+                      Text(
+                        l.travelModeHint,
+                        style: AppTypography.caption.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _CityChip(
-                  city: travelCity,
-                  onTap: () => _showCityPicker(context, ref),
-                  exploreLabel: l.exploreCity(travelCity ?? ''),
-                  changeCityLabel: l.changeCity,
-                ),
-                if (travelCity != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 16, color: accent),
-                        const SizedBox(width: 6),
-                        Text(l.travelModeHint, style: AppTypography.caption),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              const SizedBox(height: 12),
+            ],
           ),
         ),
         if (profiles.isEmpty)
-          SliverFillRemaining(
+          Expanded(
             child: EmptyState(
               icon: Icons.explore_outlined,
               title: l.emptyStateGeneric,
@@ -133,35 +177,39 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             ),
           )
         else
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: profiles.length,
+              onPageChanged: (index) {
+                setState(() => _currentPage = index);
+                if (index == 19 &&
+                    onReached20thProfile != null &&
+                    !_hasTriggeredReferralAt20) {
+                  _hasTriggeredReferralAt20 = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) onReached20thProfile();
+                  });
+                }
+              },
+              itemBuilder: (context, index) {
                 final profile = profiles[index];
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-                  child: RepaintBoundary(
-                    child:
-                        ProfileCard(
-                              profile: profile,
-                              sendPrimaryLabel: AppCopy.ctaSendPrimary(
-                                context,
-                                mode,
-                              ),
-                              onTap: () =>
-                                  context.push('/profile/${profile.id}'),
-                              onSendIntro: () => _onSendIntro(profile),
-                              onBlock: () => _onBlock(profile),
-                              onReport: () => _onReport(profile),
-                            )
-                            .animate()
-                            .fadeIn(delay: (50 * index).ms)
-                            .slideY(begin: 0.03, end: 0),
+                return DiscoverySwipeableCard(
+                  onPass: () => _onPass(profile),
+                  onLike: () => _onLike(profile),
+                  onSuperLike: () => _onSuperLike(profile),
+                  child: DiscoverySwipeCard(
+                    profile: profile,
+                    onTap: () => context.push('/profile/${profile.id}'),
+                    onPass: () => _onPass(profile),
+                    onLike: () => _onLike(profile),
+                    onSuperLike: () => _onSuperLike(profile),
+                    onBlock: () => _onBlock(profile),
+                    onReport: () => _onReport(profile),
+                    showManagedByChip: mode != AppMode.dating,
                   ),
                 );
               },
-              childCount: profiles.length,
-              addAutomaticKeepAlives: true,
-              addRepaintBoundaries: true,
             ),
           ),
       ],
@@ -236,13 +284,100 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     );
   }
 
-  Future<void> _onSendIntro(ProfileSummary profile) async {
+  void _maybeShowReferralPopup(BuildContext context, WidgetRef ref) {
+    final storage = ref.read(referralPromoStorageProvider);
+    if (!storage.shouldShowPopup()) return;
+    final l = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        clipBehavior: Clip.antiAlias,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: ReferralPromoBanner(
+                      aspectRatio: 1.0,
+                      borderRadius: 12,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      if (context.mounted) context.push('/referral');
+                    },
+                    child: Text(l.referNow),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((_) {
+      ref.read(referralPromoStorageProvider).markShown();
+    });
+  }
+
+  int _profileCount = 0;
+
+  void _advanceToNext() {
+    if (_currentPage < _profileCount - 1 && _pageController.hasClients) {
+      _pageController.animateToPage(
+        _currentPage + 1,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Future<void> _onPass(ProfileSummary profile) async {
+    try {
+      await ref.read(discoveryRepositoryProvider).sendFeedback(
+            candidateId: profile.id,
+            action: 'pass',
+            source: 'discovery',
+          );
+    } catch (_) {}
+    if (!mounted) return;
+    _advanceToNext();
+  }
+
+  Future<void> _onLike(ProfileSummary profile) async {
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressInterest(profile.id, source: 'recommended');
+          .expressInterest(profile.id, source: 'discovery');
       if (!mounted) return;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, profile.id},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != profile.id).toList(),
+            );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -265,6 +400,53 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         );
       }
       ref.invalidate(discoveryFeedProvider);
+      _advanceToNext();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> _onSuperLike(ProfileSummary profile) async {
+    try {
+      final result = await ref
+          .read(interactionsRepositoryProvider)
+          .expressPriorityInterest(profile.id, source: 'discovery');
+      if (!mounted) return;
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (s) => {...s, profile.id},
+          );
+      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(recommendedPaginatedProvider);
+      if (result.mutualMatch && result.chatThreadId != null) {
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != profile.id).toList(),
+            );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.toastMatchWith(profile.name),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profile.id)}',
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.toastInterestSentTo(profile.name),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      ref.invalidate(discoveryFeedProvider);
+      _advanceToNext();
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -379,12 +561,13 @@ class _CityChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: accent.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(12),
+            color: accent.withValues(alpha: 0.06),
+            border: Border.all(color: accent.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -415,3 +598,4 @@ class _CityChip extends StatelessWidget {
     );
   }
 }
+

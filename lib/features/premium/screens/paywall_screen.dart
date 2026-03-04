@@ -9,22 +9,41 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
+import '../providers/iap_products_provider.dart';
+import '../services/iap_purchase_service.dart';
 
 class PaywallScreen extends ConsumerWidget {
   const PaywallScreen({super.key});
 
   Future<void> _onSubscribe(BuildContext context, WidgetRef ref) async {
     final platform = Platform.isIOS ? 'ios' : 'android';
+    final products = await ref.read(iapProductsProvider.future);
     try {
-      // In production, the receipt/token comes from StoreKit or Google Play billing.
-      // For now, trigger the purchase flow which the backend will validate.
-      await ref
-          .read(subscriptionRepositoryProvider)
-          .purchaseSubscription(
-            platform: platform,
-            receiptOrToken: 'placeholder_receipt',
-            planId: 'premium_monthly',
+      String receiptOrToken = 'placeholder_receipt';
+      if (products.isNotEmpty && products.containsKey(IapProductIds.premiumMonthly)) {
+        final result = await runIapPurchase(
+          products: products,
+          productId: IapProductIds.premiumMonthly,
+        );
+        if (result.isSuccess && result.verificationData != null) {
+          receiptOrToken = result.verificationData!;
+        } else if (result.error != null) {
+          if (!context.mounted) return;
+          final l = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l.purchaseFailed(result.error!)),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
+          return;
+        }
+      }
+      await ref.read(subscriptionRepositoryProvider).purchaseSubscription(
+        platform: platform,
+        receiptOrToken: receiptOrToken,
+        planId: IapProductIds.premiumMonthly,
+      );
       ref.invalidate(entitlementsProvider);
       if (context.mounted) {
         final l = AppLocalizations.of(context)!;
@@ -52,9 +71,11 @@ class PaywallScreen extends ConsumerWidget {
 
   Future<void> _onRestore(BuildContext context, WidgetRef ref) async {
     try {
-      final restored = await ref
-          .read(subscriptionRepositoryProvider)
-          .restorePurchases();
+      final restoreResult = await runIapRestore();
+      final restored = await ref.read(subscriptionRepositoryProvider).restorePurchases(
+        platform: restoreResult.platform,
+        receiptOrToken: restoreResult.receiptOrToken,
+      );
       ref.invalidate(entitlementsProvider);
       if (!context.mounted) return;
       final l = AppLocalizations.of(context)!;
@@ -69,7 +90,9 @@ class PaywallScreen extends ConsumerWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l.noActivePurchases),
+            content: Text(
+              restoreResult.error ?? l.noActivePurchases,
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -91,6 +114,13 @@ class PaywallScreen extends ConsumerWidget {
     final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
     final ent = ref.watch(entitlementsProvider);
+    final productsAsync = ref.watch(iapProductsProvider);
+
+    // Prices from store (Google Play / App Store); fallback when not loaded or not in console
+    final premiumProduct = productsAsync.valueOrNull?[IapProductIds.premiumMonthly];
+    final boostProduct = productsAsync.valueOrNull?[IapProductIds.boostOneTime];
+    final premiumPrice = premiumProduct?.price ?? '£9.99';
+    final boostPrice = boostProduct?.price ?? '£4.99';
 
     final maleFeatures = [
       'Send messages & intros',
@@ -140,7 +170,7 @@ class PaywallScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Unlock more with saathi',
+              'Unlock more with Shubhmilan',
               style: AppTypography.displaySmall,
               textAlign: TextAlign.center,
             ).animate().fadeIn().slideY(begin: -0.05, end: 0),
@@ -194,7 +224,7 @@ class PaywallScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             _PlanCard(
               title: l.premium,
-              price: '£9.99',
+              price: premiumPrice,
               period: '/month',
               features: features,
               accent: accent,
@@ -203,7 +233,7 @@ class PaywallScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _PlanCard(
               title: l.boostPack,
-              price: '£4.99',
+              price: boostPrice,
               period: ' one-time',
               features: const [
                 '1 profile boost (24h)',

@@ -23,7 +23,7 @@ TA = {
     "appLanguage": "ஆப் மொழி",
     "chooseAppLanguage": "ஆப் மொழியைத் தேர்ந்தெடுக்கவும்",
     "languageSetTo": "மொழி {name} ஆக அமைக்கப்பட்டது",
-    "saathiMode": "saathi மோட்",
+    "saathiMode": "Shubhmilan மோட்",
     "accountAndData": "கணக்கு மற்றும் தரவு",
     "viewProfile": "சுயவிவரம் பார்க்கவும்",
     "downloadMyData": "எனது தரவைப் பதிவிறக்கவும்",

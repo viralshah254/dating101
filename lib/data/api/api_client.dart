@@ -24,18 +24,29 @@ class ApiClient {
     required this.baseUrl,
     required this.tokenStorage,
     http.Client? httpClient,
-  }) : _http = httpClient ?? http.Client();
+    /// When set, adds Accept-Language header so backend can return translated profile content (bio, marital status, etc.).
+    String? Function()? localeGetter,
+  })  : _http = httpClient ?? http.Client(),
+        _localeGetter = localeGetter;
 
   final String baseUrl;
   final TokenStorage tokenStorage;
   final http.Client _http;
+  final String? Function()? _localeGetter;
   bool _isRefreshing = false;
 
-  Map<String, String> get _headers => {
-    HttpHeaders.contentTypeHeader: 'application/json',
-    if (tokenStorage.accessToken != null)
-      HttpHeaders.authorizationHeader: 'Bearer ${tokenStorage.accessToken}',
-  };
+  Map<String, String> get _headers {
+    final headers = <String, String>{
+      HttpHeaders.contentTypeHeader: 'application/json',
+      if (tokenStorage.accessToken != null)
+        HttpHeaders.authorizationHeader: 'Bearer ${tokenStorage.accessToken}',
+    };
+    final locale = _localeGetter?.call();
+    if (locale != null && locale.isNotEmpty) {
+      headers['Accept-Language'] = locale;
+    }
+    return headers;
+  }
 
   // ── Public HTTP methods ──────────────────────────────────────────────
 
@@ -169,7 +180,8 @@ class ApiClient {
       final body = jsonDecode(resp.body) as Map<String, dynamic>;
       code = body['code'] as String? ?? code;
       message = body['message'] as String? ?? message;
-      details = body['details'] as Map<String, dynamic>?;
+      // Include full body as details so consumers can read count, lockedPreview, etc.
+      details = body;
     } catch (_) {}
     debugPrint('[API] THROW: $code — $message (${resp.statusCode})');
     throw ApiException(resp.statusCode, code, message, details);
