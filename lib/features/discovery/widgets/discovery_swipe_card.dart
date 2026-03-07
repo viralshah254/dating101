@@ -191,62 +191,31 @@ class DiscoverySwipeCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Content: bio and actions (no gap — connected to image)
+            // Content: minimal fixed block — no scroll, no extra info (rest is on profile page)
             Expanded(
               flex: 4,
-              child: SingleChildScrollView(
+              child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (showManagedByChip &&
-                        profile.roleManagingProfile != null &&
-                        profile.roleManagingProfile != ProfileRole.self)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _ManagedByChip(
-                          role: profile.roleManagingProfile!,
-                          onSurface: onSurface,
-                        ),
-                      ),
-                    _ProfileBio(
-                      bio: profile.bio,
-                      onSurface: onSurface,
-                      showViewMore: false,
-                    ),
-                    if ((profile.promptAnswer ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.15),
-                            width: 1,
+                      if (showManagedByChip &&
+                          profile.roleManagingProfile != null &&
+                          profile.roleManagingProfile != ProfileRole.self)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ManagedByChip(
+                            role: profile.roleManagingProfile!,
+                            onSurface: onSurface,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l.prompt,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: onSurface.withValues(alpha: 0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              profile.promptAnswer!,
-                              style: AppTypography.bodySmall.copyWith(
-                                color: onSurface.withValues(alpha: 0.9),
-                              ),
-                            ),
-                          ],
-                        ),
+                      _ProfileBio(
+                        bio: profile.bio,
+                        onSurface: onSurface,
+                        showViewMore: false,
                       ),
-                    ],
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
                     // Pass | Super like | Like — main actions (super like in the middle)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
