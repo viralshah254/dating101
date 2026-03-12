@@ -20,12 +20,6 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
   final _promptController = TextEditingController();
   final List<String> _selectedLifestyleTags = [];
 
-  static const _stepTitles = [
-    'Basic info',
-    'Photos',
-    'Interests & prompts',
-    'Voice intro',
-  ];
   static const _lifestyleTags = [
     'Coffee lover',
     'Fitness',
@@ -64,6 +58,12 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
     final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final stepTitles = [
+      l.onboardingStepBasic,
+      l.profileBuilderPhotos,
+      l.interestsAndHobbies,
+      l.recordYourIntro,
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -72,7 +72,7 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
           children: [
             Text(l.yourProfile),
             Text(
-              _stepTitles[_currentStep],
+              stepTitles[_currentStep],
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
                 fontWeight: FontWeight.normal,
@@ -162,7 +162,7 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
                         context.go('/');
                       }
                     },
-                    child: Text(_currentStep < 3 ? 'Next' : 'Finish'),
+                    child: Text(_currentStep < 3 ? l.next : l.finish),
                   ),
                 ),
               ],
@@ -194,7 +194,7 @@ class _QuickProfileStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Basic info',
+            l.onboardingStepBasic,
             style: AppTypography.headlineMedium.copyWith(
               color: onSurface,
               fontWeight: FontWeight.w600,
@@ -202,7 +202,7 @@ class _QuickProfileStep extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tell others who you are. You can edit this anytime.',
+            l.profileSetupSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.8),
             ),
@@ -222,8 +222,8 @@ class _QuickProfileStep extends StatelessWidget {
                   const SizedBox(height: 8),
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. Priya, Arjun',
+                    decoration: InputDecoration(
+                      hintText: l.nameHint,
                       border: OutlineInputBorder(),
                     ),
                     onChanged: (_) => onChanged(),
@@ -237,9 +237,8 @@ class _QuickProfileStep extends StatelessWidget {
                   TextField(
                     controller: bioController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText:
-                          'Share what matters to you — work, interests, what you\'re looking for.',
+                    decoration: InputDecoration(
+                      hintText: l.aboutMeHint,
                       alignLabelWithHint: true,
                       border: OutlineInputBorder(),
                     ),
@@ -269,7 +268,7 @@ class _PhotosStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Add your photos',
+            AppLocalizations.of(context)!.profileBuilderPhotos,
             style: AppTypography.headlineMedium.copyWith(
               color: onSurface,
               fontWeight: FontWeight.w600,
@@ -277,7 +276,7 @@ class _PhotosStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Add at least 2 photos. Profiles with clear face photos get more matches.',
+            AppLocalizations.of(context)!.profileSetupPhotosHint,
             style: AppTypography.bodyLarge.copyWith(
               color: onSurface.withValues(alpha: 0.85),
             ),
@@ -298,7 +297,7 @@ class _PhotosStep extends StatelessWidget {
                     Icon(Icons.lightbulb_outline, size: 20, color: primary),
                     const SizedBox(width: 8),
                     Text(
-                      'Tips for great photos',
+                      AppLocalizations.of(context)!.profilePhotoTipsTitle,
                       style: AppTypography.labelLarge.copyWith(
                         color: onSurface,
                       ),
@@ -307,7 +306,7 @@ class _PhotosStep extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '• Use clear, well-lit photos\n• Include at least one clear face photo\n• Avoid group photos for your main picture\n• Smile — it helps others connect',
+                  AppLocalizations.of(context)!.profilePhotoTipsBody,
                   style: AppTypography.bodySmall.copyWith(
                     color: onSurface.withValues(alpha: 0.85),
                     height: 1.4,
@@ -380,7 +379,7 @@ class _PhotoSlot extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    'Main',
+                    AppLocalizations.of(context)!.primaryPhoto,
                     style: AppTypography.labelSmall.copyWith(
                       color: Colors.white,
                     ),
@@ -417,7 +416,7 @@ class _PromptsAndTagsStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Conversation starter',
+            AppLocalizations.of(context)!.conversationStarter,
             style: AppTypography.titleMedium.copyWith(
               color: onSurface,
               fontWeight: FontWeight.w600,
@@ -425,7 +424,7 @@ class _PromptsAndTagsStep extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Answer a prompt so matches have something to talk about.',
+            AppLocalizations.of(context)!.conversationStarterHint,
             style: AppTypography.bodySmall.copyWith(
               color: onSurface.withValues(alpha: 0.8),
             ),
@@ -434,16 +433,15 @@ class _PromptsAndTagsStep extends StatelessWidget {
           TextField(
             controller: promptController,
             maxLines: 2,
-            decoration: const InputDecoration(
-              hintText:
-                  'e.g. Best way to spend a Sunday? Chai and a book. Or: My ideal weekend is…',
+            decoration: InputDecoration(
+              hintText: AppLocalizations.of(context)!.conversationStarterFieldHint,
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => onPromptChanged(),
           ),
           const SizedBox(height: 28),
           Text(
-            'Interests',
+            AppLocalizations.of(context)!.interests,
             style: AppTypography.titleMedium.copyWith(
               color: onSurface,
               fontWeight: FontWeight.w600,
@@ -451,7 +449,7 @@ class _PromptsAndTagsStep extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Select any that describe you. Helps with better matches.',
+            AppLocalizations.of(context)!.interestsAndHobbiesSubtitle,
             style: AppTypography.bodySmall.copyWith(
               color: onSurface.withValues(alpha: 0.8),
             ),
@@ -496,7 +494,7 @@ class _VoiceIntroStep extends StatelessWidget {
         children: [
           const SizedBox(height: 24),
           Text(
-            'Voice intro',
+            AppLocalizations.of(context)!.recordYourIntro,
             style: AppTypography.headlineMedium.copyWith(
               color: onSurface,
               fontWeight: FontWeight.w600,
@@ -504,7 +502,7 @@ class _VoiceIntroStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Record a short voice note (up to 30 seconds) so matches can hear your personality. It makes your profile stand out.',
+            AppLocalizations.of(context)!.voiceIntroDescription,
             style: AppTypography.bodyLarge.copyWith(
               color: onSurface.withValues(alpha: 0.85),
             ),
@@ -524,14 +522,25 @@ class _VoiceIntroStep extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.voiceIntroSaved),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                context.go('/');
+              },
               icon: const Icon(Icons.mic, size: 20),
               label: Text(l.recordYourIntro),
             ),
           ),
           const SizedBox(height: 12),
           Center(
-            child: TextButton(onPressed: () {}, child: Text(l.skipForNow)),
+            child: TextButton(
+              onPressed: () => context.go('/'),
+              child: Text(l.skipForNow),
+            ),
           ),
         ],
       ),

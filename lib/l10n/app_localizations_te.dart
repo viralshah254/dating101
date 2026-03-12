@@ -142,6 +142,13 @@ class AppLocalizationsTe extends AppLocalizations {
       'Find a life partner. Extended profiles, partner preferences, and family-friendly matching.';
 
   @override
+  String get modeBoth => 'Both';
+
+  @override
+  String get modeBothSubtitle =>
+      'Use dating and matrimony. You\'ll see only profiles who are also on both. Switch between them anytime in Settings.';
+
+  @override
   String get navDiscover => 'Discover';
 
   @override
@@ -154,7 +161,64 @@ class AppLocalizationsTe extends AppLocalizations {
   String get navCommunities => 'Communities';
 
   @override
+  String get navLikes => 'ఇష్టాలు';
+
+  @override
   String get navProfile => 'Profile';
+
+  @override
+  String get likesTabLikedYou => 'మీకు ఇష్టపడ్డారు';
+
+  @override
+  String get likesTabVisitors => 'సందర్శకులు';
+
+  @override
+  String get likesTabYouLiked => 'మీరు ఇష్టపడినవి';
+
+  @override
+  String get likesEmptyLikedYou => 'ఇంకా ఎవరూ మీకు ఇష్టపడలేదు';
+
+  @override
+  String get likesEmptyLikedYouBody =>
+      'అన్వేషిస్తూ ఉండండి — ఎవరైనా మీకు ఇష్టపడినప్పుడు వారు ఇక్కడ కనిపిస్తారు.';
+
+  @override
+  String get likesEmptyVisitors => 'ఇంకా సందర్శకులు లేరు';
+
+  @override
+  String get likesEmptyVisitorsBody =>
+      'ఎవరైనా మీ ప్రొఫైల్ చూసినప్పుడు వారు ఇక్కడ కనిపిస్తారు.';
+
+  @override
+  String get likesEmptyYouLiked => 'మీరు ఇంకా ఎవరినీ ఇష్టపడలేదు';
+
+  @override
+  String get likesEmptyYouLikedBody =>
+      'డిస్కవర్ నుండి మీకు ఇష్టమైన ప్రొఫైల్‌లు ఇక్కడ కనిపిస్తాయి.';
+
+  @override
+  String get sendReminder => 'Send reminder';
+
+  @override
+  String reminderSentToast(String name) {
+    return 'Reminder sent to $name';
+  }
+
+  @override
+  String get likedYouPremiumGateMessage =>
+      'మీకు ఇష్టపడిన వారందరినీ చూడడానికి అప్‌గ్రేడ్ చేయండి, లేదా వారానికి ఒక ప్రొఫైల్ అన్‌లాక్ చేయడానికి ప్రకటన చూడండి (వారానికి ౨).';
+
+  @override
+  String watchAdToUnlockOne(int remaining) {
+    return 'ఒకటి అన్‌లాక్ చేయడానికి ప్రకటన చూడండి (ఈ వారం $remaining మిగిలివి)';
+  }
+
+  @override
+  String get likedYouUnlockedProfiles => 'అన్‌లాక్ చేసిన ప్రొఫైల్‌లు';
+
+  @override
+  String get likedYouNoRequestToUnlock =>
+      'ఇప్పుడు అన్‌లాక్‌కు అభ్యర్థన లేదు. తర్వాత మళ్లీ ప్రయత్నించండి.';
 
   @override
   String get navMatches => 'Matches';
@@ -194,6 +258,22 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get discoverTitle => 'Discover';
+
+  @override
+  String get discoverNoMoreProfilesTitle => 'ఇప్పుడు మరింత ప్రొఫైల్‌లు లేవు';
+
+  @override
+  String get discoverNoMoreProfilesBody =>
+      'కొత్త మ్యాచ్‌ల కోసం తర్వాత మళ్లీ తనిఖీ చేయండి, లేదా మీ నగరం లేదా ఫిల్టర్‌లను మార్చి ప్రయత్నించండి.';
+
+  @override
+  String discoverNoProfilesInCityTitle(String city) {
+    return '$cityలో ఇంకా ప్రొఫైల్‌లు లేవు';
+  }
+
+  @override
+  String get discoverNoProfilesInCityBody =>
+      'దగ్గరి ప్రొఫైల్‌లు చూడటానికి \"మీ ప్రాంతం\" ప్రయత్నించండి, లేదా వేరే నగరాన్ని ఎంచుకోండి.';
 
   @override
   String get dailyCuratedSet => 'Daily curated set';
@@ -274,6 +354,24 @@ class AppLocalizationsTe extends AppLocalizations {
   String get whyMatch => 'Why this match';
 
   @override
+  String get dailyMatchesTitle => 'Your daily matches';
+
+  @override
+  String get dailyMatchesSubtitle =>
+      'Send a free interest to profiles you like';
+
+  @override
+  String get dailyMatchesSendFreeInterest => 'Send free interest';
+
+  @override
+  String dailyMatchesSendFreeInterestToCount(int count) {
+    return 'Send free interest to $count';
+  }
+
+  @override
+  String get dailyMatchesMaybeLater => 'Maybe later';
+
+  @override
   String get requestsReceived => 'Received';
 
   @override
@@ -294,6 +392,18 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get requestsEmptyHint =>
       'When someone sends you an interest, it will appear here.';
+
+  @override
+  String get requestsSeeWhosInterested => 'ఎవరికి ఆసక్తి ఉంది చూడండి';
+
+  @override
+  String get requestsUpgradeToView =>
+      'మీ అభ్యర్థనలను చూడడానికి మరియు ప్రతిస్పందించడానికి ప్రీమియంకు అప్‌గ్రేడ్ చేయండి.';
+
+  @override
+  String requestsUpgradeOrUnlock(int count) {
+    return 'మీకు $count అభ్యర్థన(లు) ఉన్నాయి. అన్నీ చూడడానికి అప్‌గ్రేడ్ చేయండి, లేదా ఒకటి అన్‌లాక్ చేయడానికి ప్రకటన చూడండి.';
+  }
 
   @override
   String get shortlistTitle => 'Shortlist';
@@ -362,6 +472,24 @@ class AppLocalizationsTe extends AppLocalizations {
       'సందేశం పంపడానికి ప్రకటన చూడండి, లేదా ప్రీమియం అప్‌గ్రేడ్ చేసి ప్రకటన లేకుండా మెసేజ్ చేయండి.';
 
   @override
+  String get datingMessageGateTitle => 'సందేశం పంపండి';
+
+  @override
+  String get datingMessageGateBody =>
+      'సందేశం పంపడానికి ప్రకటన చూడండి (రోజుకు ౫ వరకు). మీ సందేశం వారి మెసేజ్ అభ్యర్థనలకు వెళ్తుంది. అపరిమిత మెసేజింగ్ కోసం ప్రీమియంకు అప్‌గ్రేడ్ చేయండి.';
+
+  @override
+  String get watchAdToSendMessage => 'సందేశం పంపడానికి ప్రకటన చూడండి';
+
+  @override
+  String get datingMessageAdLimitReached =>
+      'ఈ రోజు మీ ౫ ఉచిత సందేశాలు పంపబడ్డాయి. అపరిమిత మెసేజింగ్ కోసం ప్రీమియంకు అప్‌గ్రేడ్ చేయండి.';
+
+  @override
+  String get likedOpenChatFromChats =>
+      'మీరు వారిని ఇష్టపడ్డారు. వారు ఇష్టపడినప్పుడు చాట్ తెరిచి సంభాషణ ప్రారంభించండి.';
+
+  @override
   String sayHiToName(String name) {
     return '$nameకు హలో చెప్పండి';
   }
@@ -426,6 +554,9 @@ class AppLocalizationsTe extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
+  String get editProfile => 'Edit profile';
+
+  @override
   String get account => 'Account';
 
   @override
@@ -487,6 +618,54 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String completeProfile(Object percent) {
     return 'Complete your profile — $percent%';
+  }
+
+  @override
+  String get aboutMeHint =>
+      'Share what matters to you — work, interests, and what you\'re looking for.';
+
+  @override
+  String get profileSetupPhotosHint =>
+      'Add at least 2 photos. Profiles with clear face photos get more matches.';
+
+  @override
+  String get profilePhotoTipsTitle => 'Tips for great photos';
+
+  @override
+  String get profilePhotoTipsBody =>
+      'Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.';
+
+  @override
+  String get primaryPhoto => 'Main';
+
+  @override
+  String get conversationStarterHint =>
+      'Answer a prompt so matches have something to talk about.';
+
+  @override
+  String get conversationStarterFieldHint =>
+      'e.g. Best way to spend a Sunday? Chai and a book.';
+
+  @override
+  String get voiceIntroDescription =>
+      'Record a short voice note (up to 30 seconds) so matches can hear your personality.';
+
+  @override
+  String get voiceIntroSaved => 'Voice intro saved. You can update it anytime.';
+
+  @override
+  String get saveAndClose => 'Save & close';
+
+  @override
+  String get saveAndContinue => 'Save & continue';
+
+  @override
+  String get bothModeSetupHint =>
+      'You selected both modes. We collect shared details first, then matrimony and dating specifics.';
+
+  @override
+  String stepOfTotal(int current, int total) {
+    return 'Step $current of $total';
   }
 
   @override
@@ -658,6 +837,14 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get safetyScore => 'Safety score';
+
+  @override
+  String get safetyScoreDescription =>
+      'మీ భద్రత స్కోర్ మరియు దృశ్యతను పెంచడానికి ధృవీకరణలను పూర్తి చేయండి.';
+
+  @override
+  String get verificationIntro =>
+      'ధృవీకరించిన ప్రొఫైల్‌లకు ఎక్కువ మ్యాచ్‌లు లభిస్తాయి. క్రింద ఒకటి లేదా అంతకంటే ఎక్కువ ధృవీకరణలను జోడించండి.';
 
   @override
   String get uploadIdHint =>
@@ -1569,22 +1756,67 @@ class AppLocalizationsTe extends AppLocalizations {
   String get viewProfile => 'ప్రొఫైల్ చూడండి';
 
   @override
-  String get discoverPass => 'Pass';
+  String get discoverPass => 'పాస్';
 
   @override
-  String get discoverLike => 'Like';
+  String get discoverLike => 'ఇష్టం';
 
   @override
-  String get discoverSuperLike => 'Super like';
+  String get discoverSuperLike => 'సూపర్ లైక్';
 
   @override
-  String get discoverSwipePassHint => 'Swipe left to pass';
+  String get trustBadgeStrong => 'High trust';
 
   @override
-  String get discoverSwipeLikeHint => 'Swipe right to like';
+  String get trustBadgeGood => 'Verified trust';
 
   @override
-  String get discoverSwipeSuperLikeHint => 'Swipe up for super like';
+  String get trustBadgeBasic => 'Growing trust';
+
+  @override
+  String sharedInterestsReason(String interests) {
+    return 'Shared interests: $interests';
+  }
+
+  @override
+  String get suggestedOpenersTitle => 'Suggested openers';
+
+  @override
+  String get suggestedOpenersSubtitle =>
+      'Pick one to start the conversation faster.';
+
+  @override
+  String openerHiName(String name) {
+    return 'Hi $name, great to match with you!';
+  }
+
+  @override
+  String openerSharedInterest(String interest) {
+    return 'I noticed we both like $interest. What got you into it?';
+  }
+
+  @override
+  String get openerWeekendQuestion => 'What does your ideal weekend look like?';
+
+  @override
+  String openerCityQuestion(String city) {
+    return 'How do you like living in $city?';
+  }
+
+  @override
+  String get chatEmojiTooltip => 'Emoji';
+
+  @override
+  String get chatMessageHint => 'Message...';
+
+  @override
+  String get discoverSwipePassHint => 'పాస్ చేయడానికి ఎడమ స్వైప్ చేయండి';
+
+  @override
+  String get discoverSwipeLikeHint => 'ఇష్టపడడానికి కుడి స్వైప్ చేయండి';
+
+  @override
+  String get discoverSwipeSuperLikeHint => 'సూపర్ లైక్ కోసం పైకి స్వైప్ చేయండి';
 
   @override
   String get downloadMyData => 'నా డేటా డౌన్‌లోడ్ చేయండి';
@@ -1656,6 +1888,20 @@ class AppLocalizationsTe extends AppLocalizations {
   String get switchButton => 'మార్చు';
 
   @override
+  String addOtherModeTitle(Object mode) {
+    return '$mode జోడించాలా?';
+  }
+
+  @override
+  String get addOtherModeBody =>
+      'మీరు ఇప్పుడు డేటింగ్ మరియు వివాహం రెండు మోడ్‌లలో ఉంటారు. మీ ప్రొఫైల్ సమాచారం భాగస్వామ్యం — చాలా వివరాలు ఇప్పటికే మీ ప్రస్తుత మోడ్ నుండి నిండి ఉన్నాయి. సెట్టింగ్‌ల నుండి ఎప్పుడైనా మార్చవచ్చు.';
+
+  @override
+  String addOtherModeCta(Object mode) {
+    return '$mode జోడించండి';
+  }
+
+  @override
   String get requestFailedTryAgain =>
       'అభ్యర్థన విఫలమైంది. తర్వాత మళ్ళీ ప్రయత్నించండి.';
 
@@ -1670,6 +1916,17 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get deleteAccountConfirm => 'ఖాతాను శాశ్వతంగా తొలగించాలా?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'దీన్ని రద్దు చేయలేము. మీ అన్ని డేటా శాశ్వతంగా తొలగించబడుతుంది.';
+
+  @override
+  String get deleteAccountTypeToConfirm =>
+      'నిర్ధారించడానికి క్రింద DELETE టైప్ చేయండి.';
+
+  @override
+  String get deleteAccountConfirmationPlaceholder => 'DELETE';
 
   @override
   String get deleteFailed => 'తొలగింపు విఫలమైంది. మళ్ళీ ప్రయత్నించండి.';
@@ -1780,22 +2037,22 @@ class AppLocalizationsTe extends AppLocalizations {
   String get lookingForTitle => 'ఏమి కోరుకుంటున్నారు';
 
   @override
-  String get partnerPrefLocations => 'Locations';
+  String get partnerPrefLocations => 'స్థానాలు';
 
   @override
-  String get partnerPrefCountries => 'Countries';
+  String get partnerPrefCountries => 'దేశాలు';
 
   @override
-  String get partnerPrefSettledAbroad => 'Settled abroad';
+  String get partnerPrefSettledAbroad => 'విదేశంలో నివాసం';
 
   @override
-  String get partnerPrefHoroscopeMatch => 'Horoscope match';
+  String get partnerPrefHoroscopeMatch => 'జ్యోతిష్యం జోడింపు';
 
   @override
-  String get partnerPrefPreferred => 'Preferred';
+  String get partnerPrefPreferred => 'ప్రాధాన్యం';
 
   @override
-  String get partnerPrefStrictSuffix => ' (Strict)';
+  String get partnerPrefStrictSuffix => ' (కఠినం)';
 
   @override
   String get requestAgain => 'మళ్ళీ అభ్యర్థించండి';
@@ -1841,6 +2098,18 @@ class AppLocalizationsTe extends AppLocalizations {
   String get priorityInterest => 'ప్రాధాన్య ఆసక్తి';
 
   @override
+  String get prioritySent => 'ప్రాధాన్యం పంపబడింది';
+
+  @override
+  String get addPriority => 'ప్రాధాన్యం జోడించండి';
+
+  @override
+  String get saveLabel => 'సేవ్ చేయండి';
+
+  @override
+  String get messageLabel => 'సందేశం';
+
+  @override
   String get withdrawInterest => 'ఆసక్తిని వెనక్కి తీసుకోండి';
 
   @override
@@ -1880,6 +2149,17 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get showProfilesNearYou => 'మీకు దగ్గర్లో ఉన్న ప్రొఫైల్‌లను చూపించండి';
+
+  @override
+  String get nearbyCities => 'దగ్గరి నగరాలు';
+
+  @override
+  String get browseByCountry => 'దేశం ద్వారా బ్రౌజ్ చేయండి';
+
+  @override
+  String activeUsersCount(int count) {
+    return '$count సక్రియం';
+  }
 
   @override
   String unblocked(Object name) {
@@ -2069,8 +2349,17 @@ class AppLocalizationsTe extends AppLocalizations {
       'మీ ప్రొఫైల్ దాచబడుతుంది మరియు మ్యాచ్‌లు లేదా మెసేజ్‌లు రావు. తర్వాత మళ్ళీ సక్రియం చేయవచ్చు.';
 
   @override
-  String get deleteAccountConfirmBody =>
-      'దీన్ని రద్దు చేయలేము. మీ అన్ని డేటా శాశ్వతంగా తొలగించబడుతుంది.';
+  String get reactivateAccountPromptTitle => 'ఖాతా నిష్క్రియం';
+
+  @override
+  String get reactivateAccountPromptBody =>
+      'మీ ఖాతా నిష్క్రియంగా ఉంది. మళ్లీ సక్రియం చేయాలనుకుంటున్నారా?';
+
+  @override
+  String get reactivateAccountYes => 'అవును, మళ్లీ సక్రియం చేయండి';
+
+  @override
+  String get reactivateAccountNo => 'కాదు, సైన్ అవుట్ అవుతూ ఉండండి';
 
   @override
   String get showInVisitorsSubtitle =>
@@ -2228,6 +2517,12 @@ class AppLocalizationsTe extends AppLocalizations {
       'ఎవరైనా మీకు ఆసక్తి పంపినప్పుడు, చాట్ ప్రారంభించడానికి ఇక్కడ అంగీకరించవచ్చు.';
 
   @override
+  String get inboundRequest => 'పొందినది';
+
+  @override
+  String get outboundRequest => 'పంపినది';
+
+  @override
   String get noContactRequestsBody =>
       'ఎవరైనా మీ సంప్రదింపును అభ్యర్థించినప్పుడు, ఇక్కడ అంగీకరించవచ్చు లేదా తిరస్కరించవచ్చు.';
 
@@ -2269,6 +2564,25 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get noVisitorsYetBody =>
       'మిమ్మల్ని చూసిన ప్రొఫైల్‌లు ఇక్కడ కనిపిస్తాయి. గమనించడానికి ప్రొఫైల్ పూర్తి చేయండి.';
+
+  @override
+  String get visitorUnlockTitle => 'ఈ ప్రొఫైల్ అన్‌లాక్ చేయండి';
+
+  @override
+  String visitorUnlockWatchAd(int remaining) {
+    return 'అన్‌లాక్ చేయడానికి ప్రకటన చూడండి (ఈ వారం $remaining మిగిలివి)';
+  }
+
+  @override
+  String get visitorUnlockLimitReached =>
+      'ఈ వారం మీ ౨ అన్‌లాక్‌లు ఉపయోగించబడ్డాయి. తర్వాత మళ్లీ ప్రయత్నించండి లేదా ప్రీమియంకు అప్‌గ్రేడ్ చేయండి.';
+
+  @override
+  String get visitorUnlockUpgrade => 'ప్రీమియంకు అప్‌గ్రేడ్ చేయండి';
+
+  @override
+  String get visitorUnlockPremiumRequired =>
+      'మిమ్మల్ని ఎవరు చూశారు చూడడానికి ప్రీమియంకు అప్‌గ్రేడ్ చేయండి, లేదా వారానికి ౨ ప్రొఫైల్‌లు అన్‌లాక్ చేయడానికి ప్రకటన చూడండి.';
 
   @override
   String get noMatchesYetBody =>

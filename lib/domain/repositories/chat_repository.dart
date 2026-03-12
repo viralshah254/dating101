@@ -21,6 +21,7 @@ class ChatThreadSummary {
 }
 
 /// Pending message request (from GET /chat/message-requests).
+/// [isInbound] true = received by current user (show on top); false = sent by current user (outbound).
 class MessageRequest {
   const MessageRequest({
     required this.requestId,
@@ -29,6 +30,7 @@ class MessageRequest {
     this.text,
     this.createdAt,
     this.threadId,
+    this.isInbound = true,
   });
   final String requestId;
   final String otherUserId;
@@ -36,6 +38,8 @@ class MessageRequest {
   final String? text;
   final DateTime? createdAt;
   final String? threadId;
+  /// true = inbound (received); false = outbound (sent). Used to sort inbound on top.
+  final bool isInbound;
 }
 
 /// Single message in a thread.
@@ -76,8 +80,11 @@ abstract class ChatRepository {
 
   Future<void> markThreadRead(String threadId);
 
-  /// Message requests (GET /chat/message-requests). Pending messages from non-matches.
-  Future<List<MessageRequest>> getMessageRequests({int limit = 20});
+  /// Message requests (GET /chat/message-requests). Pending messages from non-matches. [mode] = dating | matrimony.
+  Future<List<MessageRequest>> getMessageRequests({int limit = 20, String? mode});
+
+  /// Count of inbound message requests for current user (for recipient badge). [mode] = dating | matrimony.
+  Future<int> getMessageRequestsCount({String? mode});
 
   /// Accept a message request (POST /chat/message-requests/:requestId/accept).
   Future<void> acceptMessageRequest(String requestId);

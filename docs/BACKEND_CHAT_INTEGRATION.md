@@ -83,6 +83,49 @@ So: **matches should not have to watch ads** to send messages. The app already s
 
 ---
 
+## 5a. Send message from profile (dating) — message requests & 5/day ad limit
+
+When a user taps **Message** on a dating profile (full profile screen):
+
+- **Premium users:** App calls **POST /chat/threads** with `otherUserId` and `mode: "dating"`, then opens the thread. No ad.
+- **Free users:** App shows a gate: “Watch ad to send message (up to 5 per day)” or “Upgrade to Premium”. If they tap **Watch ad**, the app plays an interstitial, then ensures interest is sent (POST /interactions/interest if not already), then **POST /chat/threads** with `otherUserId` and `mode: "dating"`, then opens the thread with an **initialAdToken** in the URL. The **first message** sent in that thread is submitted with **`adCompletionToken`** in **POST /chat/threads/:threadId/messages**. The backend should treat that as a **message request** (dating) for the recipient, not as a direct chat, until they accept.
+
+**Backend requirements:**
+
+1. **POST /chat/threads**  
+   - Body: `{ "otherUserId": "...", "mode": "dating" }`.  
+   - For free users the app may call this **after** they watch an ad; the thread is created so they can type. The actual “send” happens on **POST /chat/threads/:threadId/messages** with `adCompletionToken`.
+
+2. **POST /chat/threads/:threadId/messages**  
+   - When a **free** user sends the **first** message in a **non-match** thread (e.g. from profile), the app sends **`adCompletionToken`** in the body.  
+   - Backend should:  
+     - Enforce **max 5 such “ad-send” messages per user per day** for dating (e.g. by counting sends that included `adCompletionToken` in the last 24h).  
+     - If over limit, return **403** with code **`DAILY_MESSAGE_AD_LIMIT_REACHED`** and a message like “You've used your 5 free message sends today.”  
+     - Otherwise, accept the message and create/store it as a **message request** (dating) for the recipient so it appears in their **message requests** (e.g. GET /chat/message-requests or equivalent for dating).  
+   - **Match threads:** Do **not** require `adCompletionToken` and do **not** count toward the 5/day limit; allow sends as in §5.
+
+3. **Message requests (dating)**  
+   - Messages sent by free users via ad (with `adCompletionToken`) should appear on the **recipient’s** side as **inbound** message requests (dating), and on the **sender’s** side as **outbound** message requests.  
+   - **GET /chat/message-requests?mode=dating** (or `mode=matrimony`) must return both inbound and outbound requests. Each item should include **`isInbound`** (boolean) or **`direction`** (`"inbound"` | `"outbound"`) so the app can sort **inbound requests on top**.  
+   - **GET /chat/message-requests/count?mode=dating** must return the **count of inbound** message requests for the current user (for recipient badge). Response: `{ "count": number }`.  
+   - **Accept** / **decline** (e.g. **POST /chat/message-requests/:id/accept** and **decline**) so the recipient can move the thread to the main chat list or dismiss it.
+
+**App flow (watch ad to message)**  
+- When a free user taps “Watch ad to send message” on a profile, the app **likes the profile automatically** (POST /interactions/interest if not already sent), then creates the thread (POST /chat/threads) and **opens the chat screen** with an initial ad token. The first message they send uses `adCompletionToken` and becomes an **outbound message request** for the sender and **inbound** for the recipient.  
+- **Ordering:** When listing message requests, **inbound must appear before outbound** (app sorts by `isInbound` / `direction`).
+
+**Summary**
+
+| Scenario | Backend behavior |
+|----------|------------------|
+| Free user sends first message from profile (with `adCompletionToken`) | Count toward 5/day; store as message request (dating) for recipient; sender sees outbound, recipient sees inbound. |
+| Same user has already sent 5 such messages today | Return 403 `DAILY_MESSAGE_AD_LIMIT_REACHED`. |
+| Premium user sends from profile | No `adCompletionToken`; allow send (direct or message request per your product rules). |
+| Match thread (mutual interest) | Do not require `adCompletionToken`; do not count toward 5/day. |
+| GET /chat/message-requests | Return list with `isInbound` or `direction`; GET /chat/message-requests/count returns inbound count for recipient badge. |
+
+---
+
 ## 6. Full spec and error codes
 
 - **Full request/response and DTOs:** [chat_endpoint.md](./chat_endpoint.md)

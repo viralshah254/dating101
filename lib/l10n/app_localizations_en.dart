@@ -142,6 +142,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Find a life partner. Extended profiles, partner preferences, and family-friendly matching.';
 
   @override
+  String get modeBoth => 'Both';
+
+  @override
+  String get modeBothSubtitle =>
+      'Use dating and matrimony. You\'ll see only profiles who are also on both. Switch between them anytime in Settings.';
+
+  @override
   String get navDiscover => 'Discover';
 
   @override
@@ -154,7 +161,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navCommunities => 'Communities';
 
   @override
+  String get navLikes => 'Likes';
+
+  @override
   String get navProfile => 'Profile';
+
+  @override
+  String get likesTabLikedYou => 'Liked you';
+
+  @override
+  String get likesTabVisitors => 'Visitors';
+
+  @override
+  String get likesTabYouLiked => 'You liked';
+
+  @override
+  String get likesEmptyLikedYou => 'No one has liked you yet';
+
+  @override
+  String get likesEmptyLikedYouBody =>
+      'Keep exploring — when someone likes you, they\'ll show up here.';
+
+  @override
+  String get likesEmptyVisitors => 'No visitors yet';
+
+  @override
+  String get likesEmptyVisitorsBody =>
+      'When someone views your profile, they\'ll appear here.';
+
+  @override
+  String get likesEmptyYouLiked => 'You haven\'t liked anyone yet';
+
+  @override
+  String get likesEmptyYouLikedBody =>
+      'Profiles you like from Discover will show up here.';
+
+  @override
+  String get sendReminder => 'Send reminder';
+
+  @override
+  String reminderSentToast(String name) {
+    return 'Reminder sent to $name';
+  }
+
+  @override
+  String get likedYouPremiumGateMessage =>
+      'Upgrade to see everyone who liked you, or watch an ad to unlock one profile (2 per week).';
+
+  @override
+  String watchAdToUnlockOne(int remaining) {
+    return 'Watch ad to unlock one ($remaining left this week)';
+  }
+
+  @override
+  String get likedYouUnlockedProfiles => 'Unlocked profiles';
+
+  @override
+  String get likedYouNoRequestToUnlock =>
+      'No request to unlock right now. Try again later.';
 
   @override
   String get navMatches => 'Matches';
@@ -194,6 +258,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get discoverTitle => 'Discover';
+
+  @override
+  String get discoverNoMoreProfilesTitle => 'No more profiles right now';
+
+  @override
+  String get discoverNoMoreProfilesBody =>
+      'Check back later for new matches, or try changing your city or filters.';
+
+  @override
+  String discoverNoProfilesInCityTitle(String city) {
+    return 'No profiles in $city yet';
+  }
+
+  @override
+  String get discoverNoProfilesInCityBody =>
+      'Try \"Your area\" to see profiles near you, or pick a different city.';
 
   @override
   String get dailyCuratedSet => 'Daily curated set';
@@ -274,6 +354,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get whyMatch => 'Why this match';
 
   @override
+  String get dailyMatchesTitle => 'Your daily matches';
+
+  @override
+  String get dailyMatchesSubtitle =>
+      'Send a free interest to profiles you like';
+
+  @override
+  String get dailyMatchesSendFreeInterest => 'Send free interest';
+
+  @override
+  String dailyMatchesSendFreeInterestToCount(int count) {
+    return 'Send free interest to $count';
+  }
+
+  @override
+  String get dailyMatchesMaybeLater => 'Maybe later';
+
+  @override
   String get requestsReceived => 'Received';
 
   @override
@@ -294,6 +392,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get requestsEmptyHint =>
       'When someone sends you an interest, it will appear here.';
+
+  @override
+  String get requestsSeeWhosInterested => 'See who\'s interested';
+
+  @override
+  String get requestsUpgradeToView =>
+      'Upgrade to Premium to view and respond to your requests.';
+
+  @override
+  String requestsUpgradeOrUnlock(int count) {
+    return 'You have $count request(s). Upgrade to view all, or watch an ad to unlock one.';
+  }
 
   @override
   String get shortlistTitle => 'Shortlist';
@@ -361,6 +471,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Watch an ad to send a message, or upgrade to Premium to message without ads.';
 
   @override
+  String get datingMessageGateTitle => 'Send a message';
+
+  @override
+  String get datingMessageGateBody =>
+      'Watch an ad to send a message (up to 5 per day). Your message will go to their message requests. Upgrade to Premium for unlimited messaging.';
+
+  @override
+  String get watchAdToSendMessage => 'Watch ad to send message';
+
+  @override
+  String get datingMessageAdLimitReached =>
+      'You\'ve used your 5 free message sends today. Upgrade to Premium for unlimited messaging.';
+
+  @override
+  String get likedOpenChatFromChats =>
+      'You\'ve liked them. Open Chats to start the conversation when they like you back.';
+
+  @override
   String sayHiToName(String name) {
     return 'Say hi to $name';
   }
@@ -425,6 +553,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
+  String get editProfile => 'Edit profile';
+
+  @override
   String get account => 'Account';
 
   @override
@@ -486,6 +617,54 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String completeProfile(Object percent) {
     return 'Complete your profile — $percent%';
+  }
+
+  @override
+  String get aboutMeHint =>
+      'Share what matters to you — work, interests, and what you\'re looking for.';
+
+  @override
+  String get profileSetupPhotosHint =>
+      'Add at least 2 photos. Profiles with clear face photos get more matches.';
+
+  @override
+  String get profilePhotoTipsTitle => 'Tips for great photos';
+
+  @override
+  String get profilePhotoTipsBody =>
+      'Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.';
+
+  @override
+  String get primaryPhoto => 'Main';
+
+  @override
+  String get conversationStarterHint =>
+      'Answer a prompt so matches have something to talk about.';
+
+  @override
+  String get conversationStarterFieldHint =>
+      'e.g. Best way to spend a Sunday? Chai and a book.';
+
+  @override
+  String get voiceIntroDescription =>
+      'Record a short voice note (up to 30 seconds) so matches can hear your personality.';
+
+  @override
+  String get voiceIntroSaved => 'Voice intro saved. You can update it anytime.';
+
+  @override
+  String get saveAndClose => 'Save & close';
+
+  @override
+  String get saveAndContinue => 'Save & continue';
+
+  @override
+  String get bothModeSetupHint =>
+      'You selected both modes. We collect shared details first, then matrimony and dating specifics.';
+
+  @override
+  String stepOfTotal(int current, int total) {
+    return 'Step $current of $total';
   }
 
   @override
@@ -657,6 +836,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get safetyScore => 'Safety score';
+
+  @override
+  String get safetyScoreDescription =>
+      'Complete verifications to increase your safety score and visibility.';
+
+  @override
+  String get verificationIntro =>
+      'Verified profiles get more matches. Add one or more verifications below.';
 
   @override
   String get uploadIdHint =>
@@ -1575,6 +1762,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverSuperLike => 'Super like';
 
   @override
+  String get trustBadgeStrong => 'High trust';
+
+  @override
+  String get trustBadgeGood => 'Verified trust';
+
+  @override
+  String get trustBadgeBasic => 'Growing trust';
+
+  @override
+  String sharedInterestsReason(String interests) {
+    return 'Shared interests: $interests';
+  }
+
+  @override
+  String get suggestedOpenersTitle => 'Suggested openers';
+
+  @override
+  String get suggestedOpenersSubtitle =>
+      'Pick one to start the conversation faster.';
+
+  @override
+  String openerHiName(String name) {
+    return 'Hi $name, great to match with you!';
+  }
+
+  @override
+  String openerSharedInterest(String interest) {
+    return 'I noticed we both like $interest. What got you into it?';
+  }
+
+  @override
+  String get openerWeekendQuestion => 'What does your ideal weekend look like?';
+
+  @override
+  String openerCityQuestion(String city) {
+    return 'How do you like living in $city?';
+  }
+
+  @override
+  String get chatEmojiTooltip => 'Emoji';
+
+  @override
+  String get chatMessageHint => 'Message...';
+
+  @override
   String get discoverSwipePassHint => 'Swipe left to pass';
 
   @override
@@ -1651,6 +1883,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchButton => 'Switch';
 
   @override
+  String addOtherModeTitle(Object mode) {
+    return 'Add $mode?';
+  }
+
+  @override
+  String get addOtherModeBody =>
+      'You\'ll now be on both Dating and Matrimony. Your profile info is shared—most details are already filled from your current mode. You can switch between them anytime in Settings.';
+
+  @override
+  String addOtherModeCta(Object mode) {
+    return 'Add $mode';
+  }
+
+  @override
   String get requestFailedTryAgain => 'Request failed. Try again later.';
 
   @override
@@ -1664,6 +1910,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteAccountConfirm => 'Delete account permanently?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'This cannot be undone. All your data will be permanently deleted.';
+
+  @override
+  String get deleteAccountTypeToConfirm => 'To confirm, type DELETE below.';
+
+  @override
+  String get deleteAccountConfirmationPlaceholder => 'DELETE';
 
   @override
   String get deleteFailed => 'Delete failed. Try again.';
@@ -1834,6 +2090,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get priorityInterest => 'Priority interest';
 
   @override
+  String get prioritySent => 'Priority sent';
+
+  @override
+  String get addPriority => 'Add priority';
+
+  @override
+  String get saveLabel => 'Save';
+
+  @override
+  String get messageLabel => 'Message';
+
+  @override
   String get withdrawInterest => 'Withdraw interest';
 
   @override
@@ -1873,6 +2141,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showProfilesNearYou => 'Show profiles near you';
+
+  @override
+  String get nearbyCities => 'Nearby cities';
+
+  @override
+  String get browseByCountry => 'Browse by country';
+
+  @override
+  String activeUsersCount(int count) {
+    return '$count active';
+  }
 
   @override
   String unblocked(Object name) {
@@ -2061,8 +2340,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your profile will be hidden and you won\'t receive matches or messages. You can reactivate later.';
 
   @override
-  String get deleteAccountConfirmBody =>
-      'This cannot be undone. All your data will be permanently deleted.';
+  String get reactivateAccountPromptTitle => 'Account deactivated';
+
+  @override
+  String get reactivateAccountPromptBody =>
+      'Your account is deactivated. Do you want to reactivate it?';
+
+  @override
+  String get reactivateAccountYes => 'Yes, reactivate';
+
+  @override
+  String get reactivateAccountNo => 'No, stay signed out';
 
   @override
   String get showInVisitorsSubtitle =>
@@ -2218,6 +2506,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'When someone sends you an interest, you can accept here to start chatting.';
 
   @override
+  String get inboundRequest => 'Received';
+
+  @override
+  String get outboundRequest => 'Sent';
+
+  @override
   String get noContactRequestsBody =>
       'When someone requests your contact, you can accept or decline here.';
 
@@ -2257,6 +2551,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noVisitorsYetBody =>
       'Profiles who viewed you will appear here. Complete your profile to get noticed.';
+
+  @override
+  String get visitorUnlockTitle => 'Unlock this profile';
+
+  @override
+  String visitorUnlockWatchAd(int remaining) {
+    return 'Watch an ad to unlock ($remaining left this week)';
+  }
+
+  @override
+  String get visitorUnlockLimitReached =>
+      'You\'ve used all 2 unlocks this week. Try again later or upgrade to Premium.';
+
+  @override
+  String get visitorUnlockUpgrade => 'Upgrade to Premium';
+
+  @override
+  String get visitorUnlockPremiumRequired =>
+      'Upgrade to Premium to see who visited you, or unlock 2 profiles per week by watching an ad.';
 
   @override
   String get noMatchesYetBody =>

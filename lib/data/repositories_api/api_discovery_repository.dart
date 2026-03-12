@@ -48,6 +48,27 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }
 
   @override
+  Future<List<ProfileSummary>> getDailyMatches({int limit = 9}) async {
+    try {
+      final body = await api.get(
+        '/matrimony/daily-matches',
+        query: {'limit': '$limit'},
+      );
+      final profiles = _parseProfiles(body);
+      if (profiles.isNotEmpty) return profiles;
+    } on ApiException catch (e) {
+      // Fallback when endpoint not yet implemented (404) or returns empty
+      if (e.statusCode != 404) rethrow;
+    }
+    // Fallback: use recommended feed until backend implements daily-matches
+    final page = await getRecommendedPage(
+      mode: AppMode.matrimony,
+      limit: limit,
+    );
+    return page.profiles;
+  }
+
+  @override
   Future<List<ProfileSummary>> getExplore({
     required AppMode mode,
     int? ageMin,
@@ -199,9 +220,10 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? source,
     String? reason,
     String? details,
+    AppMode? mode,
   }) async {
     debugPrint(
-      '[Discovery] sendFeedback($candidateId, $action, reason: $reason)',
+      '[Discovery] sendFeedback($candidateId, $action, mode: $mode, reason: $reason)',
     );
     final payload = <String, dynamic>{
       'candidateId': candidateId,
@@ -211,6 +233,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (source != null) payload['source'] = source;
     if (reason != null) payload['reason'] = reason;
     if (details != null) payload['details'] = details;
+    if (mode != null && mode.isSingleMode) payload['mode'] = mode.name;
     await api.post('/discovery/feedback', body: payload);
   }
 

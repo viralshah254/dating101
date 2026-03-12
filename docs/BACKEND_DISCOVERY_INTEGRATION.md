@@ -3,7 +3,9 @@
 This doc describes **what the frontend expects** from the discovery backend. Use it to implement or update APIs so the app’s Discovery screen (filters, travel mode, match reasons) works end-to-end.
 
 **Related specs:**  
+- [BACKEND_DISCOVERY_CITY_FILTER.md](./BACKEND_DISCOVERY_CITY_FILTER.md) — **City filter implementation** (critical for travel mode)  
 - [BACKEND_FILTER_OPTIONS_AND_PREFERENCES.md](./BACKEND_FILTER_OPTIONS_AND_PREFERENCES.md) — filter options and strict preferences  
+- [BACKEND_LOCATION_AND_GEOLOCATION.md](./BACKEND_LOCATION_AND_GEOLOCATION.md) — location privacy, city picker, map zoom  
 - [MATCHING_AND_COMPATIBILITY.md](./MATCHING_AND_COMPATIBILITY.md) — matching pipeline and match reasons  
 
 ---
@@ -36,6 +38,8 @@ GET /discovery/recommended?mode={dating|matrimony}&limit=20&city=London
 | limit | number | No | Default 20, max 50 |
 | cursor | string | No | Pagination (last profile id) |
 | **city** | string | No | **Travel mode:** when set, return recommendations for this city only. |
+
+**Critical — city filtering:** When `city` is present (e.g. `city=Mumbai`), the backend **must** return only profiles whose `currentCity` (or equivalent) matches the given city. Case-insensitive exact match is expected. Do **not** return profiles from other cities (e.g. Mysore when user selected Mumbai). If no profiles match, return an empty `profiles` array.
 
 **Response:** `200 OK`
 
@@ -80,12 +84,14 @@ GET /discovery/explore?mode={dating|matrimony}&limit=20
 | limit | number | No | Default 20 |
 | cursor | string | No | Pagination |
 | ageMin, ageMax | number | No | Age range filter |
-| city | string | No | City filter |
+| city | string | No | City filter — only profiles in this city (same as recommended) |
 | religion | string | No | Religion filter |
 | education | string | No | Education level filter |
 | heightMinCm | number | No | Min height (cm) filter |
 
 **Response:** same as recommended (`profiles[]` with **`matchReasons`** per item, plus `nextCursor`).
+
+**City filter:** When `city` is present, return only profiles whose `currentCity` matches (case-insensitive). See [BACKEND_DISCOVERY_CITY_FILTER.md](./BACKEND_DISCOVERY_CITY_FILTER.md).
 
 Backend must enforce strict preferences server-side: if the user has a strict preference (e.g. religion = Hindu), ignore or override conflicting filter values. See BACKEND_FILTER_OPTIONS_AND_PREFERENCES §7.
 

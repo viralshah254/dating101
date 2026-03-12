@@ -22,7 +22,17 @@ class CirclesScreen extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showSearch<void>(
+                context: context,
+                delegate: _CirclesSearchDelegate(circles),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -43,7 +53,7 @@ class CirclesScreen extends StatelessWidget {
               child:
                   Card(
                         child: InkWell(
-                          onTap: () {},
+                          onTap: () => _showCircleDetails(context, c),
                           borderRadius: BorderRadius.circular(16),
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -122,6 +132,81 @@ class CirclesScreen extends StatelessWidget {
           }),
         ],
       ),
+    );
+  }
+}
+
+void _showCircleDetails(BuildContext context, _Circle circle) {
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(circle.name, style: AppTypography.headlineSmall),
+          const SizedBox(height: 8),
+          Text(circle.description, style: AppTypography.bodyMedium),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _CirclesSearchDelegate extends SearchDelegate<void> {
+  _CirclesSearchDelegate(this.circles);
+
+  final List<_Circle> circles;
+
+  @override
+  List<Widget>? buildActions(BuildContext context) => [
+        if (query.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => query = '',
+          ),
+      ];
+
+  @override
+  Widget? buildLeading(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => close(context, null),
+      );
+
+  @override
+  Widget buildResults(BuildContext context) => _build(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _build(context);
+
+  Widget _build(BuildContext context) {
+    final q = query.trim().toLowerCase();
+    final matches = q.isEmpty
+        ? circles
+        : circles.where((c) => c.name.toLowerCase().contains(q)).toList();
+    if (matches.isEmpty) {
+      return const Center(child: Text('No circles found.'));
+    }
+    return ListView.builder(
+      itemCount: matches.length,
+      itemBuilder: (context, i) {
+        final c = matches[i];
+        return ListTile(
+          title: Text(c.name),
+          subtitle: Text('${c.memberCount} members'),
+          onTap: () {
+            close(context, null);
+            _showCircleDetails(context, c);
+          },
+        );
+      },
     );
   }
 }

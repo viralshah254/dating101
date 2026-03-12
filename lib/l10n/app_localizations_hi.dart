@@ -140,6 +140,13 @@ class AppLocalizationsHi extends AppLocalizations {
       'जीवन साथी ढूंढें। विस्तृत प्रोफ़ाइल, पार्टनर पसंद और परिवार-अनुकूल मैचिंग।';
 
   @override
+  String get modeBoth => 'Both';
+
+  @override
+  String get modeBothSubtitle =>
+      'Use dating and matrimony. You\'ll see only profiles who are also on both. Switch between them anytime in Settings.';
+
+  @override
   String get navDiscover => 'खोजें';
 
   @override
@@ -152,7 +159,64 @@ class AppLocalizationsHi extends AppLocalizations {
   String get navCommunities => 'समुदाय';
 
   @override
+  String get navLikes => 'पसंद';
+
+  @override
   String get navProfile => 'प्रोफ़ाइल';
+
+  @override
+  String get likesTabLikedYou => 'आपको पसंद किया';
+
+  @override
+  String get likesTabVisitors => 'विज़िटर';
+
+  @override
+  String get likesTabYouLiked => 'आपने पसंद किया';
+
+  @override
+  String get likesEmptyLikedYou => 'अभी तक किसी ने आपको पसंद नहीं किया';
+
+  @override
+  String get likesEmptyLikedYouBody =>
+      'खोजते रहें — जब कोई आपको पसंद करेगा, वे यहाँ दिखेंगे।';
+
+  @override
+  String get likesEmptyVisitors => 'अभी तक कोई विज़िटर नहीं';
+
+  @override
+  String get likesEmptyVisitorsBody =>
+      'जब कोई आपकी प्रोफ़ाइल देखेगा, वे यहाँ दिखेंगे।';
+
+  @override
+  String get likesEmptyYouLiked => 'आपने अभी तक किसी को पसंद नहीं किया';
+
+  @override
+  String get likesEmptyYouLikedBody =>
+      'डिस्कवर से आप जिन प्रोफ़ाइल को पसंद करेंगे वे यहाँ दिखेंगी।';
+
+  @override
+  String get sendReminder => 'Send reminder';
+
+  @override
+  String reminderSentToast(String name) {
+    return 'Reminder sent to $name';
+  }
+
+  @override
+  String get likedYouPremiumGateMessage =>
+      'जिन्होंने आपको पसंद किया सबको देखने के लिए अपग्रेड करें, या सप्ताह में एक प्रोफ़ाइल अनलॉक करने के लिए ऐड देखें (सप्ताह में २)।';
+
+  @override
+  String watchAdToUnlockOne(int remaining) {
+    return 'एक अनलॉक करने के लिए ऐड देखें (इस सप्ताह $remaining बाकी)';
+  }
+
+  @override
+  String get likedYouUnlockedProfiles => 'अनलॉक की गई प्रोफ़ाइल';
+
+  @override
+  String get likedYouNoRequestToUnlock =>
+      'अभी अनलॉक के लिए कोई अनुरोध नहीं। बाद में पुनः प्रयास करें।';
 
   @override
   String get navMatches => 'मैच';
@@ -191,6 +255,22 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get discoverTitle => 'खोजें';
+
+  @override
+  String get discoverNoMoreProfilesTitle => 'अभी और प्रोफ़ाइल नहीं';
+
+  @override
+  String get discoverNoMoreProfilesBody =>
+      'नए मैच के लिए बाद में देखें, या शहर या फ़िल्टर बदलकर प्रयास करें।';
+
+  @override
+  String discoverNoProfilesInCityTitle(String city) {
+    return '$city में अभी प्रोफ़ाइल नहीं';
+  }
+
+  @override
+  String get discoverNoProfilesInCityBody =>
+      'पास के प्रोफ़ाइल देखने के लिए \"आपका इलाका\" आज़माएं, या कोई और शहर चुनें।';
 
   @override
   String get dailyCuratedSet => 'रोज़ की चयनित सूची';
@@ -271,6 +351,24 @@ class AppLocalizationsHi extends AppLocalizations {
   String get whyMatch => 'यह मैच क्यों';
 
   @override
+  String get dailyMatchesTitle => 'Your daily matches';
+
+  @override
+  String get dailyMatchesSubtitle =>
+      'Send a free interest to profiles you like';
+
+  @override
+  String get dailyMatchesSendFreeInterest => 'Send free interest';
+
+  @override
+  String dailyMatchesSendFreeInterestToCount(int count) {
+    return 'Send free interest to $count';
+  }
+
+  @override
+  String get dailyMatchesMaybeLater => 'Maybe later';
+
+  @override
   String get requestsReceived => 'प्राप्त';
 
   @override
@@ -290,6 +388,18 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get requestsEmptyHint => 'जब कोई आपको रुचि भेजेगा, यहाँ दिखेगा।';
+
+  @override
+  String get requestsSeeWhosInterested => 'कौन रुचि रखता है देखें';
+
+  @override
+  String get requestsUpgradeToView =>
+      'अपने अनुरोध देखने और जवाब देने के लिए प्रीमियम पर अपग्रेड करें।';
+
+  @override
+  String requestsUpgradeOrUnlock(int count) {
+    return 'आपके $count अनुरोध हैं। सभी देखने के लिए अपग्रेड करें, या एक अनलॉक करने के लिए ऐड देखें।';
+  }
 
   @override
   String get shortlistTitle => 'शॉर्टलिस्ट';
@@ -357,6 +467,24 @@ class AppLocalizationsHi extends AppLocalizations {
       'संदेश भेजने के लिए विज्ञापन देखें, या बिना विज्ञापन के मैसेज करने के लिए प्रीमियम अपग्रेड करें।';
 
   @override
+  String get datingMessageGateTitle => 'संदेश भेजें';
+
+  @override
+  String get datingMessageGateBody =>
+      'संदेश भेजने के लिए ऐड देखें (दिन में ५ तक)। आपका संदेश उनके मैसेज रिक्वेस्ट में जाएगा। अनलिमिटेड मैसेजिंग के लिए प्रीमियम पर अपग्रेड करें।';
+
+  @override
+  String get watchAdToSendMessage => 'संदेश भेजने के लिए ऐड देखें';
+
+  @override
+  String get datingMessageAdLimitReached =>
+      'आज आपके ५ मुफ्त संदेश भेजे जा चुके। अनलिमिटेड मैसेजिंग के लिए प्रीमियम पर अपग्रेड करें।';
+
+  @override
+  String get likedOpenChatFromChats =>
+      'आपने उन्हें पसंद किया। वे पसंद करें तो चैट खोलकर बात शुरू करें।';
+
+  @override
   String sayHiToName(String name) {
     return '$name को नमस्ते कहें';
   }
@@ -421,6 +549,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get signOut => 'साइन आउट';
 
   @override
+  String get editProfile => 'Edit profile';
+
+  @override
   String get account => 'खाता';
 
   @override
@@ -482,6 +613,54 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String completeProfile(Object percent) {
     return 'अपनी प्रोफ़ाइल पूरी करें — $percent%';
+  }
+
+  @override
+  String get aboutMeHint =>
+      'Share what matters to you — work, interests, and what you\'re looking for.';
+
+  @override
+  String get profileSetupPhotosHint =>
+      'Add at least 2 photos. Profiles with clear face photos get more matches.';
+
+  @override
+  String get profilePhotoTipsTitle => 'Tips for great photos';
+
+  @override
+  String get profilePhotoTipsBody =>
+      'Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.';
+
+  @override
+  String get primaryPhoto => 'Main';
+
+  @override
+  String get conversationStarterHint =>
+      'Answer a prompt so matches have something to talk about.';
+
+  @override
+  String get conversationStarterFieldHint =>
+      'e.g. Best way to spend a Sunday? Chai and a book.';
+
+  @override
+  String get voiceIntroDescription =>
+      'Record a short voice note (up to 30 seconds) so matches can hear your personality.';
+
+  @override
+  String get voiceIntroSaved => 'Voice intro saved. You can update it anytime.';
+
+  @override
+  String get saveAndClose => 'Save & close';
+
+  @override
+  String get saveAndContinue => 'Save & continue';
+
+  @override
+  String get bothModeSetupHint =>
+      'You selected both modes. We collect shared details first, then matrimony and dating specifics.';
+
+  @override
+  String stepOfTotal(int current, int total) {
+    return 'Step $current of $total';
   }
 
   @override
@@ -653,6 +832,14 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get safetyScore => 'सुरक्षा स्कोर';
+
+  @override
+  String get safetyScoreDescription =>
+      'अपना सुरक्षा स्कोर और दृश्यता बढ़ाने के लिए सत्यापन पूरे करें।';
+
+  @override
+  String get verificationIntro =>
+      'सत्यापित प्रोफ़ाइल को ज़्यादा मैच मिलते हैं। नीचे एक या अधिक सत्यापन जोड़ें।';
 
   @override
   String get uploadIdHint =>
@@ -1563,22 +1750,67 @@ class AppLocalizationsHi extends AppLocalizations {
   String get viewProfile => 'प्रोफ़ाइल देखें';
 
   @override
-  String get discoverPass => 'Pass';
+  String get discoverPass => 'पास';
 
   @override
-  String get discoverLike => 'Like';
+  String get discoverLike => 'पसंद';
 
   @override
-  String get discoverSuperLike => 'Super like';
+  String get discoverSuperLike => 'सुपर लाइक';
 
   @override
-  String get discoverSwipePassHint => 'Swipe left to pass';
+  String get trustBadgeStrong => 'High trust';
 
   @override
-  String get discoverSwipeLikeHint => 'Swipe right to like';
+  String get trustBadgeGood => 'Verified trust';
 
   @override
-  String get discoverSwipeSuperLikeHint => 'Swipe up for super like';
+  String get trustBadgeBasic => 'Growing trust';
+
+  @override
+  String sharedInterestsReason(String interests) {
+    return 'Shared interests: $interests';
+  }
+
+  @override
+  String get suggestedOpenersTitle => 'Suggested openers';
+
+  @override
+  String get suggestedOpenersSubtitle =>
+      'Pick one to start the conversation faster.';
+
+  @override
+  String openerHiName(String name) {
+    return 'Hi $name, great to match with you!';
+  }
+
+  @override
+  String openerSharedInterest(String interest) {
+    return 'I noticed we both like $interest. What got you into it?';
+  }
+
+  @override
+  String get openerWeekendQuestion => 'What does your ideal weekend look like?';
+
+  @override
+  String openerCityQuestion(String city) {
+    return 'How do you like living in $city?';
+  }
+
+  @override
+  String get chatEmojiTooltip => 'Emoji';
+
+  @override
+  String get chatMessageHint => 'Message...';
+
+  @override
+  String get discoverSwipePassHint => 'पास करने बाएँ स्वाइप करें';
+
+  @override
+  String get discoverSwipeLikeHint => 'पसंद करने दाएँ स्वाइप करें';
+
+  @override
+  String get discoverSwipeSuperLikeHint => 'सुपर लाइक के लिए ऊपर स्वाइप करें';
 
   @override
   String get downloadMyData => 'मेरा डेटा डाउनलोड करें';
@@ -1650,6 +1882,20 @@ class AppLocalizationsHi extends AppLocalizations {
   String get switchButton => 'स्विच करें';
 
   @override
+  String addOtherModeTitle(Object mode) {
+    return '$mode जोड़ें?';
+  }
+
+  @override
+  String get addOtherModeBody =>
+      'अब आप डेटिंग और विवाह दोनों मोड पर होंगे। आपकी प्रोफ़ाइल जानकारी साझा है — ज़्यादातर विवरण पहले से मौजूदा मोड से भरे हैं। सेटिंग्स से कभी भी बदल सकते हैं।';
+
+  @override
+  String addOtherModeCta(Object mode) {
+    return '$mode जोड़ें';
+  }
+
+  @override
   String get requestFailedTryAgain => 'अनुरोध विफल। बाद में पुनः प्रयास करें।';
 
   @override
@@ -1663,6 +1909,17 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get deleteAccountConfirm => 'खाता स्थायी रूप से हटाएं?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'इसे पूर्ववत नहीं किया जा सकता। आपका सारा डेटा स्थायी रूप से हट जाएगा।';
+
+  @override
+  String get deleteAccountTypeToConfirm =>
+      'पुष्टि करने के लिए नीचे DELETE टाइप करें।';
+
+  @override
+  String get deleteAccountConfirmationPlaceholder => 'DELETE';
 
   @override
   String get deleteFailed => 'हटाना विफल। पुनः प्रयास करें।';
@@ -1772,22 +2029,22 @@ class AppLocalizationsHi extends AppLocalizations {
   String get lookingForTitle => 'तलाश';
 
   @override
-  String get partnerPrefLocations => 'Locations';
+  String get partnerPrefLocations => 'स्थान';
 
   @override
-  String get partnerPrefCountries => 'Countries';
+  String get partnerPrefCountries => 'देश';
 
   @override
-  String get partnerPrefSettledAbroad => 'Settled abroad';
+  String get partnerPrefSettledAbroad => 'विदेश में बसे';
 
   @override
-  String get partnerPrefHoroscopeMatch => 'Horoscope match';
+  String get partnerPrefHoroscopeMatch => 'राशि मिलान';
 
   @override
-  String get partnerPrefPreferred => 'Preferred';
+  String get partnerPrefPreferred => 'पसंदीदा';
 
   @override
-  String get partnerPrefStrictSuffix => ' (Strict)';
+  String get partnerPrefStrictSuffix => ' (सख्त)';
 
   @override
   String get requestAgain => 'फिर से अनुरोध करें';
@@ -1833,6 +2090,18 @@ class AppLocalizationsHi extends AppLocalizations {
   String get priorityInterest => 'प्राथमिकता रुचि';
 
   @override
+  String get prioritySent => 'प्राथमिकता भेजी गई';
+
+  @override
+  String get addPriority => 'प्राथमिकता जोड़ें';
+
+  @override
+  String get saveLabel => 'सहेजें';
+
+  @override
+  String get messageLabel => 'संदेश';
+
+  @override
   String get withdrawInterest => 'रुचि वापस लें';
 
   @override
@@ -1872,6 +2141,17 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get showProfilesNearYou => 'आपके पास के प्रोफ़ाइल दिखाएं';
+
+  @override
+  String get nearbyCities => 'नज़दीकी शहर';
+
+  @override
+  String get browseByCountry => 'देश के अनुसार ब्राउज़ करें';
+
+  @override
+  String activeUsersCount(int count) {
+    return '$count सक्रिय';
+  }
 
   @override
   String unblocked(Object name) {
@@ -2062,8 +2342,17 @@ class AppLocalizationsHi extends AppLocalizations {
       'आपकी प्रोफ़ाइल छिप जाएगी और आपको मैच या संदेश नहीं मिलेंगे। बाद में पुनः सक्रिय कर सकते हैं।';
 
   @override
-  String get deleteAccountConfirmBody =>
-      'इसे पूर्ववत नहीं किया जा सकता। आपका सारा डेटा स्थायी रूप से हट जाएगा।';
+  String get reactivateAccountPromptTitle => 'खाता निष्क्रिय';
+
+  @override
+  String get reactivateAccountPromptBody =>
+      'आपका खाता निष्क्रिय है। क्या पुनः सक्रिय करना चाहते हैं?';
+
+  @override
+  String get reactivateAccountYes => 'हाँ, पुनः सक्रिय करें';
+
+  @override
+  String get reactivateAccountNo => 'नहीं, साइन आउट रहें';
 
   @override
   String get showInVisitorsSubtitle =>
@@ -2218,6 +2507,12 @@ class AppLocalizationsHi extends AppLocalizations {
       'जब कोई आपको रुचि भेजेगा, आप यहाँ स्वीकार कर चैट शुरू कर सकते हैं।';
 
   @override
+  String get inboundRequest => 'प्राप्त';
+
+  @override
+  String get outboundRequest => 'भेजा गया';
+
+  @override
   String get noContactRequestsBody =>
       'जब कोई आपका संपर्क मांगेगा, आप यहाँ स्वीकार या अस्वीकार कर सकते हैं।';
 
@@ -2257,6 +2552,25 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get noVisitorsYetBody =>
       'जिन प्रोफ़ाइलों ने आपको देखा वे यहाँ दिखेंगी। ध्यान पाने के लिए अपनी प्रोफ़ाइल पूरी करें।';
+
+  @override
+  String get visitorUnlockTitle => 'इस प्रोफ़ाइल को अनलॉक करें';
+
+  @override
+  String visitorUnlockWatchAd(int remaining) {
+    return 'अनलॉक करने के लिए ऐड देखें (इस सप्ताह $remaining बाकी)';
+  }
+
+  @override
+  String get visitorUnlockLimitReached =>
+      'इस सप्ताह आपके २ अनलॉक इस्तेमाल हो चुके। बाद में पुनः प्रयास करें या प्रीमियम पर अपग्रेड करें।';
+
+  @override
+  String get visitorUnlockUpgrade => 'प्रीमियम पर अपग्रेड करें';
+
+  @override
+  String get visitorUnlockPremiumRequired =>
+      'किसने आपको देखा देखने के लिए प्रीमियम पर अपग्रेड करें, या सप्ताह में २ प्रोफ़ाइल अनलॉक करने के लिए ऐड देखें।';
 
   @override
   String get noMatchesYetBody =>

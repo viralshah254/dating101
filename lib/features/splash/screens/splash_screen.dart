@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/locale/app_locale_provider.dart';
 import '../../../core/location/app_location_service.dart';
+import '../../../core/location/location_service_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
+import '../../../l10n/app_localizations.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -23,6 +25,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void initState() {
     super.initState();
     _navigateAfterSplash();
+  }
+
+  static Future<bool?> _showReactivatePrompt(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.reactivateAccountPromptTitle),
+        content: Text(l.reactivateAccountPromptBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.reactivateAccountNo),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.reactivateAccountYes),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _navigateAfterSplash() async {
@@ -40,8 +64,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     } else {
       // User is authenticated — check if they have a profile
       debugPrint('[Splash] User authenticated ($userId), checking profile...');
+      final profileRepo = ref.read(profileRepositoryProvider);
       try {
-        final profileRepo = ref.read(profileRepositoryProvider);
         final profile = await profileRepo.getMyProfile();
         if (profile != null) {
           debugPrint(
@@ -53,7 +77,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           destination = '/mode-select';
         }
       } catch (e) {
-        if (e is ApiException && (e.statusCode == 401 || e.statusCode == 403)) {
+        if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {
+          debugPrint('[Splash] Account deactivated, showing reactivate prompt');
+          final reactivate = await _showReactivatePrompt(context);
+          if (!mounted) return;
+          if (reactivate == true) {
+            try {
+              await ref.read(accountRepositoryProvider).reactivateAccount();
+              if (!mounted) return;
+              final profile = await profileRepo.getMyProfile();
+              destination = profile != null ? '/' : '/mode-select';
+            } catch (_) {
+              await authRepo.signOut();
+              destination = '/login';
+            }
+          } else {
+            await authRepo.signOut();
+            destination = '/login';
+          }
+        } else if (e is ApiException && (e.statusCode == 401 || e.statusCode == 403)) {
           debugPrint(
             '[Splash] Auth invalid (${e.statusCode}), signing out and routing to login',
           );
@@ -69,7 +111,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
 
     if (!mounted) return;
-    final access = await AppLocationService.instance.checkAccess();
+    final access = await ref.read(locationServiceProvider).checkAccess();
     if (!mounted) return;
 
     if (access == LocationAccess.granted) {

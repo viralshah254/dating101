@@ -29,11 +29,13 @@ class ChatThreadScreen extends ConsumerStatefulWidget {
     required this.threadId,
     this.otherUserId,
     this.initialAdToken,
+    this.initialText,
   });
 
   final String threadId;
   final String? otherUserId;
   final String? initialAdToken;
+  final String? initialText;
 
   @override
   ConsumerState<ChatThreadScreen> createState() => _ChatThreadScreenState();
@@ -574,7 +576,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               ),
             ),
           ),
-          _TypingBar(onSend: (text) => _sendMessageText(context, ref, text)),
+          _TypingBar(
+            initialText: widget.initialText,
+            onSend: (text) => _sendMessageText(context, ref, text),
+          ),
         ],
       ),
     );
@@ -747,8 +752,9 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _TypingBar extends StatefulWidget {
-  const _TypingBar({required this.onSend});
+  const _TypingBar({required this.onSend, this.initialText});
   final ValueChanged<String> onSend;
+  final String? initialText;
 
   @override
   State<_TypingBar> createState() => _TypingBarState();
@@ -756,6 +762,16 @@ class _TypingBar extends StatefulWidget {
 
 class _TypingBarState extends State<_TypingBar> {
   final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialText;
+    if (initial != null && initial.trim().isNotEmpty) {
+      _controller.text = initial.trim();
+      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+    }
+  }
 
   void _showEmojiPicker() {
     showModalBottomSheet<void>(
@@ -821,6 +837,7 @@ class _TypingBarState extends State<_TypingBar> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     return SafeArea(
       child: Padding(
@@ -834,13 +851,13 @@ class _TypingBarState extends State<_TypingBar> {
                 color: onSurface.withValues(alpha: 0.6),
               ),
               onPressed: _showEmojiPicker,
-              tooltip: 'Emoji',
+              tooltip: l.chatEmojiTooltip,
             ),
             Expanded(
               child: TextField(
                 controller: _controller,
                 decoration: InputDecoration(
-                  hintText: 'Message...',
+                  hintText: l.chatMessageHint,
                   filled: true,
                   fillColor: onSurface.withValues(alpha: 0.06),
                   border: OutlineInputBorder(

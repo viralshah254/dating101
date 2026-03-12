@@ -10,6 +10,7 @@ import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
+import '../../../domain/models/discovery_filter_params.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
@@ -17,9 +18,9 @@ import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/discovery_providers.dart';
+import '../widgets/city_picker_sheet.dart';
+import '../widgets/discovery_card_stack.dart';
 import '../widgets/discovery_filters_sheet.dart';
-import '../widgets/discovery_swipe_card.dart';
-import '../widgets/discovery_swipeable_card.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -29,21 +30,8 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
 }
 
 class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
-  late PageController _pageController;
   int _currentPage = 0;
   bool _hasTriggeredReferralAt20 = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,41 +39,63 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final accent = Theme.of(context).colorScheme.primary;
     final travelCity = ref.watch(discoveryTravelCityProvider);
+    final filterParams = ref.watch(discoveryFilterParamsProvider);
+    final hasCityFilter = _effectiveCity(filterParams, travelCity)
+        ?.isNotEmpty == true;
     final asyncProfiles = ref.watch(discoveryFeedProvider);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           l.discoverTitle,
           style: AppTypography.titleLarge.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.5,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: Icon(
+              Icons.tune_rounded,
+              size: 22,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
             onPressed: () => _showFilters(context),
           ),
           IconButton(
             icon: Icon(
-              travelCity != null ? Icons.flight_takeoff : Icons.location_city,
+              hasCityFilter ? Icons.flight_takeoff_rounded : Icons.location_on_rounded,
+              size: 22,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
-            onPressed: () => _showCityPicker(context, ref),
+            onPressed: () => showCityPickerSheet(context, ref),
           ),
         ],
       ),
       body: asyncProfiles.when(
         data: (profiles) {
-          // Backend is expected to return only self-managed profiles for dating when that's enforced.
-          // No client-side filter so the feed isn't empty when API returns test/mixed data.
-          void onReached20thProfile() {
-            if (mounted) _maybeShowReferralPopup(context, ref);
+          // When returning from profile after liking (e.g. watch-ad message flow), advance past this card.
+          final advanceId = ref.watch(discoveryAdvancePastProfileIdProvider);
+          if (advanceId != null &&
+              profiles.isNotEmpty &&
+              _currentPage < profiles.length &&
+              profiles[_currentPage].id == advanceId) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _advanceToNext();
+                ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = null;
+              }
+            });
           }
+          final filterParams = ref.watch(discoveryFilterParamsProvider);
+          final effectiveCity = _effectiveCity(filterParams, travelCity);
           return _buildBody(
             context,
             ref,
@@ -93,8 +103,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             accent,
             l,
             profiles,
-            travelCity,
-            onReached20thProfile: profiles.length >= 20 ? onReached20thProfile : null,
+            effectiveCity,
           );
         },
         loading: () => loadingSpinner(context),
@@ -107,6 +116,12 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     );
   }
 
+  String? _effectiveCity(DiscoveryFilterParams? fp, String? travelCity) {
+    final c = fp?.city;
+    if (c != null && c.isNotEmpty) return c;
+    return travelCity;
+  }
+
   Widget _buildBody(
     BuildContext context,
     WidgetRef ref,
@@ -114,9 +129,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     Color accent,
     AppLocalizations l,
     List<ProfileSummary> profiles,
-    String? travelCity, {
-    VoidCallback? onReached20thProfile,
-  }) {
+    String? effectiveCity,
+  ) {
     if (profiles.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _profileCount != profiles.length) {
@@ -127,44 +141,42 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Compact header: curated set + city
+        // Minimal header
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          child: Row(
             children: [
-              const SizedBox(height: 8),
-              Text(
-                l.dailyCuratedSet,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.dailyCuratedSet,
+                      style: AppTypography.caption.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _CityChip(
+                      city: effectiveCity,
+                      onTap: () => showCityPickerSheet(context, ref),
+                      exploreLabel: l.exploreCity(effectiveCity ?? ''),
+                      changeCityLabel: l.changeCity,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              _CityChip(
-                city: travelCity,
-                onTap: () => _showCityPicker(context, ref),
-                exploreLabel: l.exploreCity(travelCity ?? ''),
-                changeCityLabel: l.changeCity,
-              ),
-              if (travelCity != null)
+              if (effectiveCity != null && effectiveCity.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, size: 14, color: accent.withValues(alpha: 0.9)),
-                      const SizedBox(width: 6),
-                      Text(
-                        l.travelModeHint,
-                        style: AppTypography.caption.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ],
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Icon(
+                    Icons.flight_takeoff_rounded,
+                    size: 18,
+                    color: accent.withValues(alpha: 0.8),
                   ),
                 ),
-              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -172,44 +184,40 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           Expanded(
             child: EmptyState(
               icon: Icons.explore_outlined,
-              title: l.emptyStateGeneric,
-              body: l.dailyCuratedSet,
+              title: effectiveCity != null && effectiveCity.isNotEmpty
+                  ? l.discoverNoProfilesInCityTitle(effectiveCity)
+                  : l.discoverNoMoreProfilesTitle,
+              body: effectiveCity != null && effectiveCity.isNotEmpty
+                  ? l.discoverNoProfilesInCityBody
+                  : l.discoverNoMoreProfilesBody,
+              ctaLabel: effectiveCity != null && effectiveCity.isNotEmpty
+                  ? l.yourArea
+                  : null,
+              onCta: effectiveCity != null && effectiveCity.isNotEmpty
+                  ? () {
+                      ref.read(discoveryTravelCityProvider.notifier).state = null;
+                      final fp = ref.read(discoveryFilterParamsProvider);
+                      if (fp != null) {
+                        ref.read(discoveryFilterParamsProvider.notifier).state =
+                            fp.copyWith(city: '');
+                      }
+                      ref.invalidate(discoveryFeedProvider);
+                    }
+                  : null,
             ),
           )
         else
           Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: profiles.length,
-              onPageChanged: (index) {
-                setState(() => _currentPage = index);
-                if (index == 19 &&
-                    onReached20thProfile != null &&
-                    !_hasTriggeredReferralAt20) {
-                  _hasTriggeredReferralAt20 = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) onReached20thProfile();
-                  });
-                }
-              },
-              itemBuilder: (context, index) {
-                final profile = profiles[index];
-                return DiscoverySwipeableCard(
-                  onPass: () => _onPass(profile),
-                  onLike: () => _onLike(profile),
-                  onSuperLike: () => _onSuperLike(profile),
-                  child: DiscoverySwipeCard(
-                    profile: profile,
-                    onTap: () => context.push('/profile/${profile.id}'),
-                    onPass: () => _onPass(profile),
-                    onLike: () => _onLike(profile),
-                    onSuperLike: () => _onSuperLike(profile),
-                    onBlock: () => _onBlock(profile),
-                    onReport: () => _onReport(profile),
-                    showManagedByChip: mode != AppMode.dating,
-                  ),
-                );
-              },
+            child: DiscoveryCardStack(
+              profiles: profiles,
+              currentIndex: _currentPage,
+              onPass: _onPass,
+              onLike: _onLike,
+              onSuperLike: _onSuperLike,
+              onTapProfile: (p) => context.push('/profile/${p.id}'),
+              onBlock: _onBlock,
+              onReport: _onReport,
+              showManagedByChip: mode != AppMode.dating,
             ),
           ),
       ],
@@ -221,65 +229,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       context: context,
       isScrollControlled: true,
       builder: (ctx) => DiscoveryFiltersSheet(
-        initialParams: ref.read(discoveryFilterParamsProvider),
+        initialParams: ref.read(discoveryFilterParamsProvider) ??
+            (ref.read(discoveryTravelCityProvider) != null
+                ? DiscoveryFilterParams(
+                    city: ref.read(discoveryTravelCityProvider))
+                : null),
         onApply: (params) {
           ref.read(discoveryFilterParamsProvider.notifier).state = params;
           ref.invalidate(discoveryFeedProvider);
         },
-      ),
-    );
-  }
-
-  void _showCityPicker(BuildContext context, WidgetRef ref) {
-    final optsAsync = ref.read(filterOptionsProvider);
-    final cities =
-        optsAsync.valueOrNull?.cities.options ??
-        const ['London', 'Dubai', 'Mumbai', 'New York', 'Singapore'];
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-              child: Text(
-                AppLocalizations.of(context)!.changeCity,
-                style: AppTypography.headlineSmall,
-              ),
-            ),
-            ListTile(
-              title: Text(AppLocalizations.of(context)!.yourArea),
-              subtitle: Text(AppLocalizations.of(context)!.showProfilesNearYou),
-              leading: const Icon(Icons.my_location),
-              onTap: () {
-                ref.read(discoveryTravelCityProvider.notifier).state = null;
-                if (context.mounted) Navigator.pop(ctx);
-              },
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                itemCount: cities.length,
-                itemBuilder: (_, i) {
-                  final city = cities[i];
-                  return ListTile(
-                    title: Text(city),
-                    leading: const Icon(Icons.location_city_outlined),
-                    onTap: () {
-                      ref.read(discoveryTravelCityProvider.notifier).state =
-                          city;
-                      if (context.mounted) Navigator.pop(ctx);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -342,37 +300,46 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   int _profileCount = 0;
 
   void _advanceToNext() {
-    if (_currentPage < _profileCount - 1 && _pageController.hasClients) {
-      _pageController.animateToPage(
-        _currentPage + 1,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-      );
+    if (_currentPage < _profileCount - 1) {
+      setState(() => _currentPage++);
+      if (_currentPage == 19 &&
+          _profileCount >= 20 &&
+          !_hasTriggeredReferralAt20 &&
+          mounted) {
+        _hasTriggeredReferralAt20 = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _maybeShowReferralPopup(context, ref);
+        });
+      }
     }
   }
 
   Future<void> _onPass(ProfileSummary profile) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       await ref.read(discoveryRepositoryProvider).sendFeedback(
             candidateId: profile.id,
             action: 'pass',
             source: 'discovery',
+            mode: mode,
           );
     } catch (_) {}
     if (!mounted) return;
+    ref.read(passedProfileIdsProvider.notifier).update((s) => {...s, profile.id});
     _advanceToNext();
   }
 
   Future<void> _onLike(ProfileSummary profile) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressInterest(profile.id, source: 'discovery');
+          .expressInterest(profile.id, source: 'discovery', mode: mode);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, profile.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
@@ -386,8 +353,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
+        final opener = await _pickOpenerSuggestion(profile);
+        if (!mounted) return;
+        final openerQuery = opener != null && opener.isNotEmpty
+            ? '&initialText=${Uri.encodeComponent(opener)}'
+            : '';
         context.push(
-          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profile.id)}',
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profile.id)}$openerQuery',
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -410,15 +382,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Future<void> _onSuperLike(ProfileSummary profile) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressPriorityInterest(profile.id, source: 'discovery');
+          .expressPriorityInterest(profile.id, source: 'discovery', mode: mode);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, profile.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
@@ -432,8 +405,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
+        final opener = await _pickOpenerSuggestion(profile);
+        if (!mounted) return;
+        final openerQuery = opener != null && opener.isNotEmpty
+            ? '&initialText=${Uri.encodeComponent(opener)}'
+            : '';
         context.push(
-          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profile.id)}',
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profile.id)}$openerQuery',
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -540,6 +518,89 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       );
     } catch (_) {}
   }
+
+  Future<String?> _pickOpenerSuggestion(ProfileSummary profile) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    List<String> suggestions = _smartOpeners(
+      profile,
+      AppLocalizations.of(context)!,
+    );
+    try {
+      final apiSuggestions = await ref
+          .read(interactionsRepositoryProvider)
+          .getOpenerSuggestions(toUserId: profile.id, mode: mode);
+      if (apiSuggestions.isNotEmpty) {
+        suggestions = apiSuggestions.take(3).toList();
+      }
+    } on ApiException {
+      // Backend can roll out later; local templates keep UX unblocked.
+    } catch (_) {}
+    if (!mounted) return null;
+    final l = AppLocalizations.of(context)!;
+    return showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l.suggestedOpenersTitle,
+                style: AppTypography.titleMedium.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l.suggestedOpenersSubtitle,
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.75),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...suggestions.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    tileColor: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                    title: Text(s),
+                    onTap: () => Navigator.of(ctx).pop(s),
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(null),
+                  child: Text(l.skip),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<String> _smartOpeners(ProfileSummary profile, AppLocalizations l) {
+    final firstName = profile.name.trim().split(' ').first;
+    final shared = profile.sharedInterests.isNotEmpty ? profile.sharedInterests.first : null;
+    final openers = <String>[
+      l.openerHiName(firstName),
+      if (shared != null && shared.isNotEmpty)
+        l.openerSharedInterest(shared),
+      l.openerWeekendQuestion,
+      l.openerCityQuestion(profile.city ?? l.yourArea),
+    ];
+    return openers.toSet().toList().take(3).toList();
+  }
 }
 
 class _CityChip extends StatelessWidget {
@@ -557,22 +618,23 @@ class _CityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: accent.withValues(alpha: 0.06),
-            border: Border.all(color: accent.withValues(alpha: 0.35)),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accent.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.location_on, size: 20, color: accent),
+              Icon(Icons.location_on_rounded, size: 18, color: accent),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,13 +642,19 @@ class _CityChip extends StatelessWidget {
                 children: [
                   Text(
                     changeCityLabel,
-                    style: AppTypography.labelLarge.copyWith(color: accent),
+                    style: AppTypography.labelMedium.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   if (city != null && city!.isNotEmpty)
                     Text(
                       exploreLabel,
                       style: AppTypography.caption.copyWith(
-                        color: accent.withValues(alpha: 0.9),
+                        color: onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
                       ),
                     ),
                 ],

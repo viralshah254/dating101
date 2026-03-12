@@ -1,3 +1,4 @@
+import '../../core/mode/app_mode.dart';
 import '../../domain/models/interaction_models.dart';
 import '../../domain/repositories/interactions_repository.dart';
 import '../mappers/profile_mapper.dart';
@@ -8,6 +9,7 @@ class FakeInteractionsRepository implements InteractionsRepository {
   Future<ExpressInterestResult> expressInterest(
     String toUserId, {
     String? source,
+    AppMode? mode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 80));
     return ExpressInterestResult(
@@ -22,6 +24,7 @@ class FakeInteractionsRepository implements InteractionsRepository {
     String? message,
     String? source,
     String? adCompletionToken,
+    AppMode? mode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 80));
     return ExpressInterestResult(
@@ -38,6 +41,7 @@ class FakeInteractionsRepository implements InteractionsRepository {
     String type = 'all',
     int page = 1,
     int limit = 20,
+    AppMode? mode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final list = <InteractionInboxItem>[];
@@ -78,9 +82,9 @@ class FakeInteractionsRepository implements InteractionsRepository {
   }
 
   @override
-  Future<int> getReceivedInteractionsCount({String status = 'pending'}) async {
+  Future<int> getReceivedInteractionsCount({String status = 'pending', AppMode? mode}) async {
     await Future.delayed(const Duration(milliseconds: 50));
-    final list = await getReceivedInteractions(status: status, limit: 1000);
+    final list = await getReceivedInteractions(status: status, limit: 1000, mode: mode);
     return list.length;
   }
 
@@ -89,9 +93,26 @@ class FakeInteractionsRepository implements InteractionsRepository {
     String status = 'pending',
     int page = 1,
     int limit = 20,
+    AppMode? mode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return [];
+    final list = <InteractionInboxItem>[];
+    var i = 0;
+    for (final entry in FakeData.allProfiles.entries) {
+      if (entry.key == FakeData.myProfile.id) continue;
+      if (i >= 5) break;
+      list.add(
+        InteractionInboxItem(
+          interactionId: 'int_sent_$i',
+          otherUser: profileToSummary(entry.value),
+          status: status,
+          type: i == 0 ? 'priority_interest' : 'interest',
+          createdAt: DateTime.now().subtract(Duration(days: i + 3)),
+        ),
+      );
+      i++;
+    }
+    return list;
   }
 
   @override
@@ -112,5 +133,29 @@ class FakeInteractionsRepository implements InteractionsRepository {
   @override
   Future<void> withdrawInteraction(String interactionId) async {
     await Future.delayed(const Duration(milliseconds: 50));
+  }
+
+  @override
+  Future<void> sendReminder(String interactionId) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+
+  @override
+  Future<List<String>> getOpenerSuggestions({
+    required String toUserId,
+    AppMode? mode,
+    String context = 'mutual_match',
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    final profile = FakeData.allProfiles[toUserId];
+    final name = (profile?.name ?? 'there').split(' ').first;
+    final shared = (profile?.interests.isNotEmpty ?? false)
+        ? profile!.interests.first
+        : null;
+    return [
+      'Hi $name, great to match with you!',
+      if (shared != null) 'I noticed you like $shared. What do you enjoy most about it?',
+      'What does your ideal weekend look like?',
+    ];
   }
 }

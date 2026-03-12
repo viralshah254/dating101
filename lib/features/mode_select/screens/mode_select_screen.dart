@@ -83,6 +83,18 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
                       onTap: () => setState(() => _selected = AppMode.matrimony),
                     ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.03, end: 0),
 
+                    const SizedBox(height: 16),
+
+                    _ModeOption(
+                      mode: AppMode.both,
+                      title: l.modeBoth,
+                      subtitle: l.modeBothSubtitle,
+                      gradientColors: [AppColors.saffron, AppColors.indiaGreen],
+                      icon: Icons.people_alt_rounded,
+                      isSelected: _selected == AppMode.both,
+                      onTap: () => setState(() => _selected = AppMode.both),
+                    ).animate().fadeIn(delay: 350.ms).slideX(begin: -0.03, end: 0),
+
                     const SizedBox(height: 24),
 
                     Center(
@@ -119,7 +131,9 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       backgroundColor: _selected == AppMode.matrimony
                           ? AppColors.indiaGreen
-                          : null,
+                          : _selected == AppMode.both
+                              ? AppColors.saffron
+                              : null,
                     ),
                     child: Text(
                       l.continueButton,

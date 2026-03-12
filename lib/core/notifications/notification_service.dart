@@ -68,9 +68,11 @@ String? notificationDataToPath(Map<String, dynamic>? data) {
       case 'matches':
         return '/'; // Home tab has matches
       case 'visitors':
-        return '/community';
+        return '/likes';
       case 'profile_settings':
         return '/profile-settings';
+      case 'notifications':
+        return '/notifications';
     }
   }
 
@@ -91,17 +93,22 @@ String? notificationDataToPath(Map<String, dynamic>? data) {
     case 'interest_received':
     case 'priority_interest_received':
       return '/requests';
+    case 'interest_reminder':
+      if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
+      return '/requests';
+    case 'interest_reminder_prompt':
+      return '/likes';
     case 'interest_declined':
       return '/';
     case 'profile_visited':
-      return '/community'; // Visitors tab
+      return '/likes'; // Visitors tab
     case 'contact_request_accepted':
       if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
       return '/';
     case 'contact_request_declined':
       return '/';
     default:
-      return '/';
+      return '/notifications';
   }
 }
 

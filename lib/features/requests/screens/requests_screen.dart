@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -41,6 +44,15 @@ class _GroupedRequest {
   }
 
   String? get message => priorityItem?.message ?? interestItem?.message;
+
+  /// Oldest pending item eligible for reminder (2+ days old). Priority over interest.
+  InteractionInboxItem? get reminderEligibleItem {
+    const threshold = Duration(days: 2);
+    final item = priorityItem ?? interestItem;
+    if (item == null || item.status != 'pending') return null;
+    if (DateTime.now().difference(item.createdAt) < threshold) return null;
+    return item;
+  }
 }
 
 List<_GroupedRequest> _groupByUser(List<InteractionInboxItem> items) {
@@ -71,7 +83,8 @@ class RequestsScreen extends ConsumerWidget {
 
     final receivedCount =
         ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
-    final sentList = ref.watch(sentInteractionsProvider).valueOrNull;
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+    final sentList = ref.watch(sentInteractionsProvider(mode)).valueOrNull;
     final sentCount = sentList?.length ?? 0;
 
     return DefaultTabController(
@@ -102,18 +115,30 @@ class RequestsScreen extends ConsumerWidget {
   }
 }
 
-/// Received tab: all received requests in one list (interest, contact, photo view). Premium only to see list.
+/// Received tab: all received requests in one list. Always fetches; if backend returns 403, show gate with upgrade + watch ad to unlock.
 class _ReceivedTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final ent = ref.watch(entitlementsProvider);
-    if (!ent.canSeeRequestsInbox) {
-      return _RequestsPremiumGate(onUpgrade: () => context.push('/paywall'));
-    }
     final interactionsAsync = ref.watch(receivedInteractionsProvider);
     final contactAsync = ref.watch(receivedContactRequestsProvider);
     final photoViewAsync = ref.watch(receivedPhotoViewRequestsProvider);
+
+    // When backend returns 403 PREMIUM_REQUIRED for received interactions, show gate + unlocked list + watch ad.
+    final err = interactionsAsync.error;
+    if (interactionsAsync.hasError &&
+        err is ApiException &&
+        err.code == 'PREMIUM_REQUIRED') {
+      final lockedCount = err.details?['count'] as int? ?? 0;
+      final initialRemaining = err.details?['inboxUnlocksRemainingThisWeek'] as int? ?? 2;
+      final resetsAtStr = err.details?['inboxUnlocksResetAt'] as String?;
+      return _RequestsReceivedPremiumGate(
+        lockedCount: lockedCount,
+        initialRemaining: initialRemaining,
+        initialResetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
+        onUpgrade: () => context.push('/paywall'),
+      );
+    }
 
     final isLoading =
         interactionsAsync.isLoading ||
@@ -449,7 +474,8 @@ class _SentTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final async = ref.watch(sentInteractionsProvider);
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+    final async = ref.watch(sentInteractionsProvider(mode));
 
     return async.when(
       data: (items) {
@@ -460,11 +486,11 @@ class _SentTab extends ConsumerWidget {
             title: l.requestsEmpty,
             body: l.requestsEmptyHint,
             ctaLabel: l.retry,
-            onCta: () => ref.invalidate(sentInteractionsProvider),
+            onCta: () => ref.invalidate(sentInteractionsProvider(mode)),
           );
         }
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(sentInteractionsProvider),
+          onRefresh: () async => ref.invalidate(sentInteractionsProvider(mode)),
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             itemCount: groups.length,
@@ -483,6 +509,14 @@ class _SentTab extends ConsumerWidget {
                 onWithdrawPriority: group.priorityItem != null
                     ? () => _withdrawPriorityAndInterest(context, ref, group)
                     : null,
+                onSendReminder: group.reminderEligibleItem != null
+                    ? () => _sendReminder(
+                        context,
+                        ref,
+                        group.reminderEligibleItem!,
+                        group.user.name,
+                      )
+                    : null,
                 onTap: () => context.push('/profile/${group.user.id}'),
               );
             },
@@ -492,7 +526,7 @@ class _SentTab extends ConsumerWidget {
       loading: () => loadingSpinner(context),
       error: (_, __) => ErrorState(
         message: l.errorGeneric,
-        onRetry: () => ref.invalidate(sentInteractionsProvider),
+        onRetry: () => ref.invalidate(sentInteractionsProvider(mode)),
         retryLabel: l.retry,
       ),
     );
@@ -504,16 +538,47 @@ class _SentTab extends ConsumerWidget {
     String interactionId,
   ) async {
     try {
+      final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       await ref
           .read(interactionsRepositoryProvider)
           .withdrawInteraction(interactionId);
       if (!context.mounted) return;
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _sendReminder(
+    BuildContext context,
+    WidgetRef ref,
+    InteractionInboxItem item,
+    String name,
+  ) async {
+    final l = AppLocalizations.of(context)!;
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
+    try {
+      await ref.read(interactionsRepositoryProvider).sendReminder(item.interactionId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.reminderSentToast(name)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      ref.invalidate(sentInteractionsProvider(mode));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.errorGeneric),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -527,6 +592,7 @@ class _SentTab extends ConsumerWidget {
     WidgetRef ref,
     _GroupedRequest group,
   ) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     final repo = ref.read(interactionsRepositoryProvider);
     try {
       if (group.priorityItem != null) {
@@ -536,7 +602,7 @@ class _SentTab extends ConsumerWidget {
         await repo.withdrawInteraction(group.interestItem!.interactionId);
       }
       if (!context.mounted) return;
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -550,7 +616,209 @@ class _SentTab extends ConsumerWidget {
   }
 }
 
-/// Premium gate for Requests (Received tab): free users cannot see the requests list.
+/// Gate when backend returns 403 for Received: upgrade + watch ad to unlock one + list of unlocked profiles (openable).
+class _RequestsReceivedPremiumGate extends ConsumerWidget {
+  const _RequestsReceivedPremiumGate({
+    required this.lockedCount,
+    required this.initialRemaining,
+    this.initialResetsAt,
+    required this.onUpgrade,
+  });
+  final int lockedCount;
+  final int initialRemaining;
+  final DateTime? initialResetsAt;
+  final VoidCallback onUpgrade;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final accent = AppColors.saffron;
+    final unlocked = ref.watch(unlockedReceivedProvider);
+    final quota = ref.watch(inboxUnlocksQuotaProvider);
+    final remaining = quota?.remaining ?? initialRemaining;
+    final canUnlockMore = remaining > 0;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      children: [
+        Icon(Icons.inbox_outlined, size: 56, color: onSurface.withValues(alpha: 0.35)),
+        const SizedBox(height: 16),
+        Text(
+          l.requestsSeeWhosInterested,
+          style: AppTypography.titleLarge.copyWith(
+            color: onSurface,
+            fontWeight: FontWeight.w700,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          lockedCount > 0
+              ? l.requestsUpgradeOrUnlock(lockedCount)
+              : l.requestsUpgradeToView,
+          style: AppTypography.bodyMedium.copyWith(
+            color: onSurface.withValues(alpha: 0.7),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        FilledButton.icon(
+          onPressed: onUpgrade,
+          icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+          label: Text(l.ctaUpgradeToPremium),
+          style: FilledButton.styleFrom(
+            backgroundColor: accent,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          ),
+        ),
+        if (canUnlockMore) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _onUnlockOne(context, ref),
+            icon: const Icon(Icons.play_circle_outline, size: 20),
+            label: Text(l.watchAdToUnlockOne(remaining)),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            ),
+          ),
+        ],
+        if (unlocked.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          Text(
+            l.likedYouUnlockedProfiles,
+            style: AppTypography.titleSmall.copyWith(
+              color: onSurface.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...unlocked.map((item) => _RequestProfileTile(
+                profile: item.otherUser,
+                onTap: () => context.push('/profile/${item.otherUser.id}'),
+              )),
+        ],
+      ],
+    );
+  }
+
+  static Future<void> _onUnlockOne(BuildContext context, WidgetRef ref) async {
+    final l = AppLocalizations.of(context)!;
+    final shown = await loadAndShowInterstitialWithLoading(
+      context,
+      ref,
+      AdRewardReason.viewAndRespondToRequest,
+    );
+    if (!context.mounted) return;
+    if (!shown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.failedToSendTryAgain), behavior: SnackBarBehavior.floating),
+      );
+      return;
+    }
+    final token = const Uuid().v4();
+    try {
+      final result = await ref.read(interactionsRepositoryProvider).unlockOneReceivedInteraction(
+            adCompletionToken: token,
+          );
+      if (!context.mounted) return;
+      if (result != null) {
+        ref.read(unlockedReceivedProvider.notifier).update((list) => [...list, result.item]);
+        ref.read(inboxUnlocksQuotaProvider.notifier).state = (
+          remaining: result.unlocksRemainingThisWeek,
+          resetsAt: result.resetsAt,
+        );
+        ref.invalidate(receivedInteractionsProvider);
+        ref.invalidate(receivedRequestsCountProvider);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.likedYouNoRequestToUnlock), behavior: SnackBarBehavior.floating),
+        );
+      }
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      if (e.code == 'INBOX_UNLOCKS_LIMIT_REACHED') {
+        final resetsAtStr = e.details?['inboxUnlocksResetAt'] as String?;
+        ref.read(inboxUnlocksQuotaProvider.notifier).state = (
+          remaining: 0,
+          resetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
+        );
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+}
+
+class _RequestProfileTile extends StatelessWidget {
+  const _RequestProfileTile({required this.profile, required this.onTap});
+  final ProfileSummary profile;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final imageUrl = profile.imageUrls?.isNotEmpty == true
+        ? profile.imageUrls!.first
+        : profile.imageUrl;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.saffron.withValues(alpha: 0.15),
+                backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                    ? NetworkImage(imageUrl)
+                    : null,
+                child: imageUrl == null || imageUrl.isEmpty
+                    ? Text(
+                        profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                        style: AppTypography.titleMedium.copyWith(color: AppColors.saffron),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.name,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (profile.city != null && profile.city!.isNotEmpty)
+                      Text(
+                        profile.city!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: onSurface.withValues(alpha: 0.65),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: onSurface.withValues(alpha: 0.5)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Legacy gate (unused; 403 case uses _RequestsReceivedPremiumGate). Kept for reference.
+// ignore: unused_element
 class _RequestsPremiumGate extends StatelessWidget {
   const _RequestsPremiumGate({required this.onUpgrade});
   final VoidCallback onUpgrade;
@@ -618,6 +886,10 @@ class _PhotoViewRequestCard extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final p = request.fromUser;
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final avatarUrl = p.imageUrls?.isNotEmpty == true
+        ? p.imageUrls!.first
+        : p.imageUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -644,10 +916,8 @@ class _PhotoViewRequestCard extends StatelessWidget {
                         alpha: 0.15,
                       ),
                       backgroundImage:
-                          p.imageUrl != null && p.imageUrl!.isNotEmpty
-                          ? NetworkImage(p.imageUrl!)
-                          : null,
-                      child: p.imageUrl == null || p.imageUrl!.isEmpty
+                          hasAvatar ? NetworkImage(avatarUrl) : null,
+                      child: !hasAvatar
                           ? Text(
                               p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
                               style: AppTypography.titleMedium.copyWith(
@@ -734,6 +1004,10 @@ class _ContactRequestCard extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final p = request.fromUser;
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final avatarUrl = p.imageUrls?.isNotEmpty == true
+        ? p.imageUrls!.first
+        : p.imageUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -760,10 +1034,8 @@ class _ContactRequestCard extends StatelessWidget {
                         alpha: 0.15,
                       ),
                       backgroundImage:
-                          p.imageUrl != null && p.imageUrl!.isNotEmpty
-                          ? NetworkImage(p.imageUrl!)
-                          : null,
-                      child: p.imageUrl == null || p.imageUrl!.isEmpty
+                          hasAvatar ? NetworkImage(avatarUrl) : null,
+                      child: !hasAvatar
                           ? Text(
                               p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
                               style: AppTypography.titleMedium.copyWith(
@@ -841,6 +1113,7 @@ class _GroupedRequestCard extends StatelessWidget {
     this.onDecline,
     this.onWithdrawInterest,
     this.onWithdrawPriority,
+    this.onSendReminder,
     required this.onTap,
   });
 
@@ -850,6 +1123,7 @@ class _GroupedRequestCard extends StatelessWidget {
   final VoidCallback? onDecline;
   final VoidCallback? onWithdrawInterest;
   final VoidCallback? onWithdrawPriority;
+  final VoidCallback? onSendReminder;
   final VoidCallback onTap;
 
   @override
@@ -858,6 +1132,10 @@ class _GroupedRequestCard extends StatelessWidget {
     final p = group.user;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final surface = Theme.of(context).colorScheme.surface;
+    final avatarUrl = p.imageUrls?.isNotEmpty == true
+        ? p.imageUrls!.first
+        : p.imageUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -885,10 +1163,8 @@ class _GroupedRequestCard extends StatelessWidget {
                         alpha: 0.15,
                       ),
                       backgroundImage:
-                          p.imageUrl != null && p.imageUrl!.isNotEmpty
-                          ? NetworkImage(p.imageUrl!)
-                          : null,
-                      child: p.imageUrl == null || p.imageUrl!.isEmpty
+                          hasAvatar ? NetworkImage(avatarUrl) : null,
+                      child: !hasAvatar
                           ? Text(
                               p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
                               style: AppTypography.titleLarge.copyWith(
@@ -1024,12 +1300,32 @@ class _GroupedRequestCard extends StatelessWidget {
               ],
               if (!isReceived &&
                   (onWithdrawInterest != null ||
-                      onWithdrawPriority != null)) ...[
+                      onWithdrawPriority != null ||
+                      onSendReminder != null)) ...[
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 10,
                   runSpacing: 8,
                   children: [
+                    if (onSendReminder != null)
+                      OutlinedButton.icon(
+                        onPressed: onSendReminder,
+                        icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                        label: Text(l.sendReminder),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          foregroundColor: AppColors.saffron,
+                          side: BorderSide(
+                            color: AppColors.saffron.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
                     if (onWithdrawInterest != null)
                       OutlinedButton.icon(
                         onPressed: onWithdrawInterest,

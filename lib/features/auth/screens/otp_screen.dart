@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../data/api/api_client.dart';
 import '../../../domain/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -125,6 +126,29 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
     );
   }
 
+  /// Shows "Account deactivated. Do you want to reactivate?" Returns true if user chose Yes, false if No.
+  static Future<bool?> _showReactivatePrompt(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.reactivateAccountPromptTitle),
+        content: Text(l.reactivateAccountPromptBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.reactivateAccountNo),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.reactivateAccountYes),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onKeyPress(int index, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.backspace &&
@@ -178,8 +202,37 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
               context.go('/mode-select');
             }
           } catch (e) {
-            debugPrint('[OTP] Error checking profile: $e → home');
-            if (mounted) context.go('/');
+            if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {
+              final reactivate = await _showReactivatePrompt(context);
+              if (!mounted) return;
+              if (reactivate == true) {
+                try {
+                  await ref.read(accountRepositoryProvider).reactivateAccount();
+                  if (!mounted) return;
+                  final profile = await ref
+                      .read(profileRepositoryProvider)
+                      .getMyProfile();
+                  if (!mounted) return;
+                  context.go(profile != null ? '/' : '/mode-select');
+                } catch (err) {
+                  debugPrint('[OTP] Reactivate failed: $err');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context)!.requestFailedTryAgain),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              } else {
+                await ref.read(authRepositoryProvider).signOut();
+                if (mounted) context.go('/login');
+              }
+            } else {
+              debugPrint('[OTP] Error checking profile: $e → home');
+              if (mounted) context.go('/');
+            }
           }
         }
       case AuthFailure(:final message):

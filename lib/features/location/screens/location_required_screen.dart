@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/location/app_location_service.dart';
+import '../../../core/location/location_service_provider.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Shown when the app requires location permission. User must allow to continue.
 /// [then] query param = path to go to after permission is granted (e.g. /profile-setup, /).
-class LocationRequiredScreen extends StatefulWidget {
+class LocationRequiredScreen extends ConsumerStatefulWidget {
   const LocationRequiredScreen({
     super.key,
     this.thenPath = '/',
@@ -16,16 +18,17 @@ class LocationRequiredScreen extends StatefulWidget {
   final String thenPath;
 
   @override
-  State<LocationRequiredScreen> createState() => _LocationRequiredScreenState();
+  ConsumerState<LocationRequiredScreen> createState() =>
+      _LocationRequiredScreenState();
 }
 
-class _LocationRequiredScreenState extends State<LocationRequiredScreen> {
-  final _locationService = AppLocationService.instance;
+class _LocationRequiredScreenState extends ConsumerState<LocationRequiredScreen> {
   bool _isRequesting = false;
   String? _error;
 
   Future<void> _checkAndRedirect() async {
-    final access = await _locationService.checkAccess();
+    final locationService = ref.read(locationServiceProvider);
+    final access = await locationService.checkAccess();
     if (access == LocationAccess.granted && mounted) {
       context.go(widget.thenPath);
     }
@@ -34,7 +37,8 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen> {
   /// When screen appears, if permission isn't granted yet, automatically
   /// trigger the system "Allow location?" dialog so the user doesn't have to tap.
   Future<void> _autoRequestLocation() async {
-    final access = await _locationService.checkAccess();
+    final locationService = ref.read(locationServiceProvider);
+    final access = await locationService.checkAccess();
     if (!mounted) return;
     if (access == LocationAccess.granted) {
       context.go(widget.thenPath);
@@ -58,7 +62,8 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen> {
       _error = null;
     });
 
-    final access = await _locationService.requestPermission();
+    final locationService = ref.read(locationServiceProvider);
+    final access = await locationService.requestPermission();
 
     if (!mounted) return;
     setState(() => _isRequesting = false);
@@ -81,7 +86,7 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen> {
   }
 
   Future<void> _onOpenSettings() async {
-    await _locationService.openAppSettings();
+    await ref.read(locationServiceProvider).openAppSettings();
     // After returning from settings, re-check
     await _checkAndRedirect();
   }

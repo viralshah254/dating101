@@ -22,7 +22,7 @@ class FakeAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<void> deleteAccount({String? reason}) async {
+  Future<void> deleteAccount({String? reason, String? confirmation}) async {
     await Future.delayed(const Duration(milliseconds: 150));
   }
 }

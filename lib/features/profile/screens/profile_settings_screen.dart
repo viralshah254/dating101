@@ -6,13 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/feature_flags/feature_flags.dart';
 import '../../../core/locale/language_picker_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
-import '../../../core/mode/mode_switch_helper.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -106,7 +106,15 @@ class ProfileSettingsScreen extends ConsumerWidget {
           _SectionHeader(title: l.saathiMode, onSurface: onSurface),
           _ModeSwitchTile(
             currentMode: mode,
-            onSwitch: () => _showModeSwitch(context, ref, mode),
+            preference: ref.watch(modePreferenceProvider).valueOrNull,
+            onSwitch: () {
+              final pref = ref.read(modePreferenceProvider).valueOrNull;
+              if (pref == AppMode.both) {
+                _showModeSwitch(context, ref, mode);
+              } else {
+                _showAddOtherModeDialog(context, ref, mode);
+              }
+            },
           ),
           const SizedBox(height: 24),
           _SectionHeader(title: l.account, onSurface: onSurface),
@@ -175,7 +183,8 @@ class ProfileSettingsScreen extends ConsumerWidget {
               ),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showNotificationSettings(context, ref),
+            onTap: () => context.push('/notifications'),
+            onLongPress: () => _showNotificationSettings(context, ref),
           ),
           ListTile(
             leading: const Icon(Icons.lock_outline),
@@ -278,7 +287,10 @@ class ProfileSettingsScreen extends ConsumerWidget {
               ),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => _openSupportUrl(
+              context,
+              Uri.parse('https://desilink.app/help'),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.description_outlined),
@@ -290,7 +302,10 @@ class ProfileSettingsScreen extends ConsumerWidget {
               ),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => _openSupportUrl(
+              context,
+              Uri.parse('https://desilink.app/terms'),
+            ),
           ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
@@ -328,6 +343,17 @@ class ProfileSettingsScreen extends ConsumerWidget {
       child: Icon(Icons.person, size: radius, color: primary),
     );
   }
+}
+
+Future<void> _openSupportUrl(BuildContext context, Uri uri) async {
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (ok || !context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(AppLocalizations.of(context)!.errorGeneric),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
 }
 
 void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
@@ -675,9 +701,53 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
         FilledButton(
           onPressed: () async {
             Navigator.pop(ctx);
-            await switchAppMode(context, ref, newMode);
+            await ref.read(appModeProvider.notifier).setCurrentView(newMode);
+            if (!context.mounted) return;
+            context.go('/');
           },
           child: Text(l.switchButton),
+        ),
+      ],
+    ),
+  );
+}
+
+/// When user is on Dating only or Matrimony only: offer to add the other mode (become "Both").
+void _showAddOtherModeDialog(BuildContext context, WidgetRef ref, AppMode currentMode) {
+  final l = AppLocalizations.of(context)!;
+  final otherMode = currentMode == AppMode.dating ? AppMode.matrimony : AppMode.dating;
+  final otherLabel = otherMode == AppMode.dating ? l.modeDating : l.modeMatrimony;
+  final onSurface = Theme.of(context).colorScheme.onSurface;
+
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.addOtherModeTitle(otherLabel)),
+      content: Text(
+        l.addOtherModeBody,
+        style: AppTypography.bodyMedium.copyWith(
+          color: onSurface.withValues(alpha: 0.8),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(
+            l.notNow,
+            style: TextStyle(color: onSurface.withValues(alpha: 0.7)),
+          ),
+        ),
+        FilledButton(
+          onPressed: () async {
+            Navigator.pop(ctx);
+            final notifier = ref.read(appModeProvider.notifier);
+            await notifier.setMode(AppMode.both);
+            await notifier.setCurrentView(currentMode);
+            ref.invalidate(modePreferenceProvider);
+            if (!context.mounted) return;
+            context.go('/');
+          },
+          child: Text(l.addOtherModeCta(otherLabel)),
         ),
       ],
     ),
@@ -711,87 +781,210 @@ Future<void> _requestDataExport(BuildContext context, WidgetRef ref) async {
 }
 
 void _showDeactivateConfirm(BuildContext context, WidgetRef ref) {
-  final l = AppLocalizations.of(context)!;
   showDialog<void>(
     context: context,
-    builder: (ctx) => AlertDialog(
+    barrierDismissible: false,
+    builder: (ctx) => _DeactivateConfirmDialog(ref: ref),
+  );
+}
+
+class _DeactivateConfirmDialog extends StatefulWidget {
+  const _DeactivateConfirmDialog({required this.ref});
+  final WidgetRef ref;
+
+  @override
+  State<_DeactivateConfirmDialog> createState() => _DeactivateConfirmDialogState();
+}
+
+class _DeactivateConfirmDialogState extends State<_DeactivateConfirmDialog> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return AlertDialog(
       title: Text(l.deactivateAccountConfirm),
       content: Text(l.deactivateAccountConfirmBody),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.pop(context),
+          child: Text(l.cancel),
+        ),
         FilledButton(
-          onPressed: () async {
-            Navigator.pop(ctx);
-            try {
-              await ref.read(accountRepositoryProvider).deactivateAccount();
-              if (!context.mounted) return;
-              await ref.read(profileRepositoryProvider).deleteFcmToken();
-              await ref.read(authRepositoryProvider).signOut();
-              if (context.mounted) context.go('/login');
-            } catch (_) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l.deactivationFailed),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          },
-          child: Text(l.deactivate),
+          onPressed: _loading
+              ? null
+              : () async {
+                  setState(() => _loading = true);
+                  try {
+                    await widget.ref.read(accountRepositoryProvider).deactivateAccount();
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
+                    await widget.ref.read(authRepositoryProvider).signOut();
+                    if (mounted) context.go('/login');
+                  } catch (_) {
+                    if (!mounted) return;
+                    setState(() => _loading = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l.deactivationFailed),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+          child: _loading
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                )
+              : Text(l.deactivate),
         ),
       ],
-    ),
-  );
+    );
+  }
 }
 
 void _showDeleteAccountConfirm(BuildContext context, WidgetRef ref) {
-  final l = AppLocalizations.of(context)!;
-  final errorColor = Theme.of(context).colorScheme.error;
   showDialog<void>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(l.deleteAccountConfirm),
-      content: Text(l.deleteAccountConfirmBody),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
-        FilledButton(
-          onPressed: () async {
-            Navigator.pop(ctx);
-            try {
-              await ref.read(accountRepositoryProvider).deleteAccount();
-              if (!context.mounted) return;
-              await ref.read(profileRepositoryProvider).deleteFcmToken();
-              await ref.read(authRepositoryProvider).signOut();
-              if (context.mounted) context.go('/login');
-            } catch (_) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l.deleteFailed),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          },
-          style: FilledButton.styleFrom(backgroundColor: errorColor),
-          child: Text(l.deletePermanently),
-        ),
-      ],
-    ),
+    barrierDismissible: false,
+    builder: (ctx) => _DeleteAccountConfirmDialog(ref: ref),
   );
 }
 
+class _DeleteAccountConfirmDialog extends StatefulWidget {
+  const _DeleteAccountConfirmDialog({required this.ref});
+  final WidgetRef ref;
+
+  @override
+  State<_DeleteAccountConfirmDialog> createState() => _DeleteAccountConfirmDialogState();
+}
+
+class _DeleteAccountConfirmDialogState extends State<_DeleteAccountConfirmDialog> {
+  bool _loading = false;
+  final TextEditingController _confirmController = TextEditingController();
+
+  static const String _confirmationWord = 'DELETE';
+
+  @override
+  void dispose() {
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final errorColor = Theme.of(context).colorScheme.error;
+    return AlertDialog(
+      title: Text(l.deleteAccountConfirm),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.deleteAccountConfirmBody),
+            const SizedBox(height: 20),
+            Text(
+              l.deleteAccountTypeToConfirm,
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _confirmController,
+              decoration: InputDecoration(
+                hintText: l.deleteAccountConfirmationPlaceholder,
+                border: const OutlineInputBorder(),
+                errorBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: errorColor),
+                ),
+              ),
+              autofillHints: const [],
+              textCapitalization: TextCapitalization.characters,
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.pop(context),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          onPressed: _loading
+              ? null
+              : (_confirmController.text.trim() != _confirmationWord
+                  ? null
+                  : () async {
+                      setState(() => _loading = true);
+                      try {
+                        await widget.ref.read(accountRepositoryProvider).deleteAccount(
+                          confirmation: _confirmationWord,
+                        );
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
+                        await widget.ref.read(authRepositoryProvider).signOut();
+                        if (mounted) context.go('/login');
+                      } catch (_) {
+                        if (!mounted) return;
+                        setState(() => _loading = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l.deleteFailed),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    }),
+          style: FilledButton.styleFrom(backgroundColor: errorColor),
+          child: _loading
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.onError,
+                  ),
+                )
+              : Text(l.deletePermanently),
+        ),
+      ],
+    );
+  }
+}
+
 class _ModeSwitchTile extends StatelessWidget {
-  const _ModeSwitchTile({required this.currentMode, required this.onSwitch});
+  const _ModeSwitchTile({
+    required this.currentMode,
+    required this.preference,
+    required this.onSwitch,
+  });
   final AppMode currentMode;
-  final VoidCallback onSwitch;
+  final AppMode? preference;
+  final VoidCallback? onSwitch;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final isDating = currentMode == AppMode.dating;
+    final isBoth = preference == AppMode.both;
+    final subtitle = isBoth
+        ? (isDating
+            ? l.switchToModeLabel(l.modeMatrimony)
+            : l.switchToModeLabel(l.modeDating))
+        : (isDating
+            ? l.addOtherModeCta(l.modeMatrimony)
+            : l.addOtherModeCta(l.modeDating));
     return Material(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(12),
@@ -828,9 +1021,7 @@ class _ModeSwitchTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      isDating
-                          ? l.switchToModeLabel(l.modeMatrimony)
-                          : l.switchToModeLabel(l.modeDating),
+                      subtitle,
                       style: AppTypography.bodySmall.copyWith(
                         color: onSurface.withValues(alpha: 0.6),
                       ),

@@ -4,33 +4,77 @@ Prices shown on the paywall come from **Google Play** and **App Store**, not fro
 
 **Backend:** Purchase and restore are tied to the **logged-in user**. The app sends the store receipt/token to your backend; the backend validates it with Apple/Google and stores the subscription for that user. See **[BACKEND_SUBSCRIPTION_IAP.md](./BACKEND_SUBSCRIPTION_IAP.md)** for user linkage, validation, and implementation checklist.
 
-## Product IDs (must match exactly)
+---
 
-| Product ID         | Type        | App display      |
-|--------------------|------------|------------------|
-| `premium_monthly`  | Subscription | Premium (£9.99/month) |
-| `boost_one_time`   | One-time     | Boost pack (£4.99)    |
+## 1. Product IDs (must match exactly)
 
-## Where to set prices
+### Subscriptions (3 tiers)
+
+| Product ID          | Type        | USD (example) | INR (example) |
+|---------------------|-------------|---------------|---------------|
+| `premium_monthly`   | Subscription | $20.99/month  | ₹800/month    |
+| `premium_quarterly` | Subscription | $44.97/3 mo   | ₹1,800/3 mo   |
+| `premium_annual`    | Subscription | $120/year     | ₹3,500/year   |
+
+**Pricing logic:** Each tier goes down in effective monthly cost. Annual is best value (~$10/mo USD, ~₹292/mo INR).
+
+### One-time
+
+| Product ID       | Type     | USD (example) | INR (example) |
+|------------------|----------|---------------|---------------|
+| `boost_one_time` | One-time | $4.99         | ₹299          |
+
+---
+
+## 2. Recommended prices by region
+
+### United States (USD)
+
+| Plan     | Price   | Effective/month |
+|----------|---------|-----------------|
+| Monthly  | $20.99  | $20.99          |
+| Quarterly| $44.97  | ~$15.00         |
+| Annual   | $120.00 | $10.00          |
+
+### India (INR)
+
+| Plan     | Price   | Effective/month |
+|----------|---------|-----------------|
+| Monthly  | ₹800    | ₹800            |
+| Quarterly| ₹1,800  | ~₹600           |
+| Annual   | ₹3,500  | ~₹292           |
+
+---
+
+## 3. Where to set prices
 
 ### Google Play Console
 
-1. Open your app → **Monetize** → **Products** → **Subscriptions** (or **In-app products**).
-2. Create a **subscription** with ID `premium_monthly` and set price per country (or use default).
-3. Create an **in-app product** with ID `boost_one_time` and set price.
-4. Activate the products so they are available to the app.
+1. **Monetize** → **Products** → **Subscriptions**
+2. Create 3 subscriptions:
+   - `premium_monthly` — Base plan: monthly, set price per country
+   - `premium_quarterly` — Base plan: every 3 months
+   - `premium_annual` — Base plan: yearly
+3. **In-app products** → `boost_one_time` (one-time)
+4. Activate all products
 
 ### App Store Connect (iOS)
 
-1. Open your app → **Features** → **In-App Purchases**.
-2. Create an **auto-renewable subscription** with product ID `premium_monthly`, set price and territory.
-3. Create a **non-consumable** (or consumable) with product ID `boost_one_time`, set price.
-4. Submit for review so they appear in production; for **Sandbox** they can stay in “Ready to submit”.
+1. **Features** → **In-App Purchases**
+2. Create **subscription group** (e.g. "Premium")
+3. Add 3 auto-renewable subscriptions:
+   - `premium_monthly` — 1 month
+   - `premium_quarterly` — 3 months
+   - `premium_annual` — 1 year
+4. Create **non-consumable** `boost_one_time`
+5. Set prices per territory (USD, INR, etc.)
 
-## Behaviour in the app
+---
 
-- On paywall open, the app calls the store API to fetch product details (including `price` and optional `title`).
-- The store returns the **localised price** for the user’s region (e.g. £9.99, $9.99, ₹799).
-- If the store is unavailable (e.g. simulator, no products in console yet), the app shows fallback text: **£9.99/month** and **£4.99 one-time**.
+## 4. Behaviour in the app
 
-So: **you configure pricing in the consoles**; the app only displays whatever the store returns.
+- On paywall open, the app fetches product details (including `price`) from the store.
+- The store returns the **localised price** for the user's region (e.g. $20.99, ₹800).
+- If the store is unavailable (e.g. simulator, products not in console yet), the app shows fallback: **$20.99**, **$44.97**, **$120** for the three tiers.
+- User selects a plan (Monthly, Quarterly, or Annual) and taps Subscribe.
+- Backend receives `planId` as one of: `premium_monthly`, `premium_quarterly`, `premium_annual`.

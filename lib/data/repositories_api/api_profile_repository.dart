@@ -500,6 +500,7 @@ class ApiProfileRepository implements ProfileRepository {
     final roleStr =
         _roleString(j['roleManagingProfile']) ??
         _roleString(j['managedBy']) ??
+        _roleString(j['profileManagedBy']) ??
         _roleString(mat?['roleManagingProfile']) ??
         _roleString(mat?['managedBy']);
     final roleManagingProfile = _parseProfileRole(roleStr);
@@ -509,13 +510,15 @@ class ApiProfileRepository implements ProfileRepository {
       );
     }
 
+    final imageUrls = _parseImageUrls(j['photoUrls'] ?? j['imageUrls']);
+    final singleImage = _sanitizeImageUrl(j['imageUrl'] as String?);
     return ProfileSummary(
       id: j['id'] as String? ?? '',
       name: j['name'] as String? ?? '',
       age: _safeInt(j['age']),
       city: j['city'] as String?,
-      imageUrl: _sanitizeImageUrl(j['imageUrl'] as String?),
-      imageUrls: _parseImageUrls(j['photoUrls'] ?? j['imageUrls']),
+      imageUrl: singleImage ?? (imageUrls?.isNotEmpty == true ? imageUrls!.first : null),
+      imageUrls: imageUrls,
       distanceKm: (j['distanceKm'] is num)
           ? (j['distanceKm'] as num).toDouble()
           : null,

@@ -786,7 +786,7 @@ GET /interactions/received?status=pending&page=1&limit=20&type=all
 | type | all | `interest`, `priority_interest`, `all` |
 | page, limit | 1, 20 | Pagination |
 
-**Success** `200 OK` — `interactions[]` (each has `fromUser` summary, `message`, `seenByRecipient`) and `pagination` (`page`, `limit`, `total`, `hasMore`). Priority interests appear first.
+**Success** `200 OK` — `interactions[]` (each has `fromUser` summary, `message`, `seenByRecipient`) and `pagination` (`page`, `limit`, `total`, `hasMore`). Priority interests appear first. The **`fromUser`** profile summary must include **`imageUrl`** (string) and/or **`photoUrls`** (array of strings) so the app can show the requester’s photo on the request card; if both are omitted, the app shows an initial placeholder.
 
 **Free users (premium gate):** Returns **403** with body so the app can show that many blurred cards and "Watch ad to unlock" (2 per week):
 
@@ -855,7 +855,7 @@ Authorization: Bearer <accessToken>
 GET /interactions/sent?status=pending&page=1&limit=20&type=all
 ```
 
-Same query params and response shape; each item has `toUser` instead of `fromUser`.
+Same query params and response shape; each item has `toUser` instead of `fromUser`. The **`toUser`** profile summary must include **`imageUrl`** and/or **`photoUrls`** for the card avatar (same as `fromUser` in §5a.5).
 
 ---
 
@@ -1163,15 +1163,16 @@ Users can **hide their photos** (all or some) in preferences. Others **request t
 
 ---
 
-## 6e. Account (export, deactivate, delete)
+## 6e. Account (export, deactivate, reactivate, delete)
 
-See [BACKEND_CROSS_CUTTING.md §5.3](BACKEND_CROSS_CUTTING.md#53-account-and-data).
+**Full contract:** [BACKEND_ACCOUNT_LIFECYCLE.md](BACKEND_ACCOUNT_LIFECYCLE.md).
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | /account/export | Request a copy of user data; returns requestId, status, message (e.g. "We'll email you when ready"). |
 | POST | /account/deactivate | Deactivate account (reversible). Body optional: `{ "reason": "..." }`. |
-| POST | /account/delete | Permanently delete account. Body optional: `{ "reason": "..." }`. 403 if e.g. active subscription. |
+| POST | /account/reactivate | Reactivate a deactivated account. |
+| POST | /account/delete | Permanently delete account. Body: optional `reason`; app sends `confirmation: "DELETE"` when user types DELETE. 403 if e.g. active subscription. |
 
 ---
 

@@ -12,37 +12,67 @@ import '../../../l10n/app_localizations.dart';
 import '../providers/iap_products_provider.dart';
 import '../services/iap_purchase_service.dart';
 
-class PaywallScreen extends ConsumerWidget {
+/// Selected subscription plan for purchase.
+enum PremiumPlan { monthly, quarterly, annual }
+
+extension PremiumPlanX on PremiumPlan {
+  String get productId {
+    switch (this) {
+      case PremiumPlan.monthly:
+        return IapProductIds.premiumMonthly;
+      case PremiumPlan.quarterly:
+        return IapProductIds.premiumQuarterly;
+      case PremiumPlan.annual:
+        return IapProductIds.premiumAnnual;
+    }
+  }
+}
+
+class PaywallScreen extends ConsumerStatefulWidget {
   const PaywallScreen({super.key});
+
+  @override
+  ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
+}
+
+class _PaywallScreenState extends ConsumerState<PaywallScreen> {
+  PremiumPlan _selectedPlan = PremiumPlan.annual;
 
   Future<void> _onSubscribe(BuildContext context, WidgetRef ref) async {
     final platform = Platform.isIOS ? 'ios' : 'android';
     final products = await ref.read(iapProductsProvider.future);
+    final productId = _selectedPlan.productId;
     try {
-      String receiptOrToken = 'placeholder_receipt';
-      if (products.isNotEmpty && products.containsKey(IapProductIds.premiumMonthly)) {
-        final result = await runIapPurchase(
-          products: products,
-          productId: IapProductIds.premiumMonthly,
+      if (products.isEmpty || !products.containsKey(productId)) {
+        if (!context.mounted) return;
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.purchaseFailed('Store not available. Try again later.')),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        if (result.isSuccess && result.verificationData != null) {
-          receiptOrToken = result.verificationData!;
-        } else if (result.error != null) {
-          if (!context.mounted) return;
-          final l = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l.purchaseFailed(result.error!)),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          return;
-        }
+        return;
+      }
+      final result = await runIapPurchase(
+        products: products,
+        productId: productId,
+      );
+      if (!result.isSuccess || result.verificationData == null) {
+        if (!context.mounted) return;
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.purchaseFailed(result.error ?? 'Purchase failed')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
       }
       await ref.read(subscriptionRepositoryProvider).purchaseSubscription(
         platform: platform,
-        receiptOrToken: receiptOrToken,
-        planId: IapProductIds.premiumMonthly,
+        receiptOrToken: result.verificationData!,
+        planId: productId,
       );
       ref.invalidate(entitlementsProvider);
       if (context.mounted) {
@@ -110,17 +140,16 @@ class PaywallScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
     final ent = ref.watch(entitlementsProvider);
     final productsAsync = ref.watch(iapProductsProvider);
 
-    // Prices from store (Google Play / App Store); fallback when not loaded or not in console
-    final premiumProduct = productsAsync.valueOrNull?[IapProductIds.premiumMonthly];
-    final boostProduct = productsAsync.valueOrNull?[IapProductIds.boostOneTime];
-    final premiumPrice = premiumProduct?.price ?? '£9.99';
-    final boostPrice = boostProduct?.price ?? '£4.99';
+    final products = productsAsync.valueOrNull ?? {};
+    final monthlyPrice = products[IapProductIds.premiumMonthly]?.price ?? '\$20.99';
+    final quarterlyPrice = products[IapProductIds.premiumQuarterly]?.price ?? '\$44.97';
+    final annualPrice = products[IapProductIds.premiumAnnual]?.price ?? '\$120';
 
     final maleFeatures = [
       'Send messages & intros',
@@ -178,9 +207,7 @@ class PaywallScreen extends ConsumerWidget {
             Text(
               ent.upgradeReason,
               style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 80.ms),
@@ -222,26 +249,63 @@ class PaywallScreen extends ConsumerWidget {
             ],
 
             const SizedBox(height: 24),
-            _PlanCard(
-              title: l.premium,
-              price: premiumPrice,
+            _SubscriptionPlanTile(
+              title: 'Monthly',
+              price: monthlyPrice,
               period: '/month',
-              features: features,
+              savings: null,
+              isSelected: _selectedPlan == PremiumPlan.monthly,
               accent: accent,
-              isPopular: true,
+              onTap: () => setState(() => _selectedPlan = PremiumPlan.monthly),
+            ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.03, end: 0),
+            const SizedBox(height: 8),
+            _SubscriptionPlanTile(
+              title: 'Quarterly',
+              price: quarterlyPrice,
+              period: '/3 months',
+              savings: 'Save 29%',
+              isSelected: _selectedPlan == PremiumPlan.quarterly,
+              accent: accent,
+              onTap: () => setState(() => _selectedPlan = PremiumPlan.quarterly),
             ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.03, end: 0),
-            const SizedBox(height: 12),
-            _PlanCard(
-              title: l.boostPack,
-              price: boostPrice,
-              period: ' one-time',
-              features: const [
-                '1 profile boost (24h)',
-                'Stand out in discovery',
-              ],
+            const SizedBox(height: 8),
+            _SubscriptionPlanTile(
+              title: 'Annual',
+              price: annualPrice,
+              period: '/year',
+              savings: 'Best value',
+              isSelected: _selectedPlan == PremiumPlan.annual,
               accent: accent,
-              isPopular: false,
-            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.03, end: 0),
+              onTap: () => setState(() => _selectedPlan = PremiumPlan.annual),
+            ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.03, end: 0),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'All plans include:',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...features.take(5).map(
+                    (f) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle, size: 18, color: accent),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(f, style: AppTypography.bodySmall)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 210.ms),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: () => _onSubscribe(context, ref),
@@ -258,6 +322,14 @@ class PaywallScreen extends ConsumerWidget {
               onPressed: () => _onRestore(context, ref),
               child: Text(l.restorePurchases),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Profile boost available separately',
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -266,70 +338,109 @@ class PaywallScreen extends ConsumerWidget {
   }
 }
 
-class _PlanCard extends StatelessWidget {
-  const _PlanCard({
+class _SubscriptionPlanTile extends StatelessWidget {
+  const _SubscriptionPlanTile({
     required this.title,
     required this.price,
     required this.period,
-    required this.features,
+    required this.savings,
+    required this.isSelected,
     required this.accent,
-    required this.isPopular,
+    required this.onTap,
   });
   final String title;
   final String price;
   final String period;
-  final List<String> features;
+  final String? savings;
+  final bool isSelected;
   final Color accent;
-  final bool isPopular;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: isPopular ? 2 : 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isPopular ? BorderSide(color: accent, width: 2) : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isPopular)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Most popular',
-                  style: AppTypography.labelSmall.copyWith(color: accent),
-                ),
-              ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(title, style: AppTypography.titleLarge),
-                const SizedBox(width: 12),
-                Text(
-                  price,
-                  style: AppTypography.headlineSmall.copyWith(color: accent),
-                ),
-                Text(period, style: AppTypography.bodySmall),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? accent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+              width: isSelected ? 2 : 1,
             ),
-            const SizedBox(height: 12),
-            ...features.map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
+            color: isSelected ? accent.withValues(alpha: 0.06) : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? accent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                  color: isSelected ? accent : Colors.transparent,
+                ),
+                child: isSelected
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.check_circle, size: 20, color: accent),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(f, style: AppTypography.bodySmall)),
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (savings != null && savings!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              savings!,
+                              style: AppTypography.labelSmall.copyWith(
+                                color: accent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$price$period',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-          ],
+              Text(
+                price,
+                style: AppTypography.titleMedium.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

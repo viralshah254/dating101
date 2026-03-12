@@ -9,6 +9,7 @@ import '../../discovery/providers/discovery_providers.dart';
 import '../../../domain/models/mutual_match_entry.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../domain/models/saved_search.dart';
+import '../../../domain/models/visitor_entry.dart';
 
 /// Result of a discovery feed that may have used a fallback (widened search).
 class DiscoveryFeedResult {
@@ -425,15 +426,30 @@ final matchesNearbyProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
   return repo.getNearby(lat: lat, lng: lng, radiusKm: 25, limit: 20);
 });
 
-/// Visitors (who viewed my profile). Uses GET /visits/received and marks as seen on load.
-final visitorsProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+/// Visitor entries (with visitId) for Likes → Visitors tab. Free users see blurred name+age; unlock via ad (2/week) or premium.
+final visitorsEntriesProvider = FutureProvider.autoDispose<List<VisitorEntry>>((
   ref,
 ) async {
   final repo = ref.watch(visitsRepositoryProvider);
   final result = await repo.getVisitors(page: 1, limit: 50);
   await repo.markVisitorsSeen();
-  return result.visitors.map((e) => e.visitor).toList();
+  return result.visitors;
 });
+
+/// Visitors (who viewed my profile). Uses GET /visits/received and marks as seen on load.
+final visitorsProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+  ref,
+) async {
+  final result = await ref.watch(visitorsEntriesProvider.future);
+  return result.map((e) => e.visitor).toList();
+});
+
+/// Visitor unlock quota: remaining unlocks this week (2 max). Set from unlock-one response or 403.
+final visitorUnlocksQuotaProvider =
+    StateProvider.autoDispose<({int remaining, DateTime? resetsAt})?>((ref) => null);
+
+/// Profile IDs unlocked via "Watch ad" on Visitors tab this session. Premium users don't need unlock.
+final unlockedVisitorIdsProvider = StateProvider<Set<String>>((ref) => {});
 
 /// Records a profile visit when viewing someone's full profile (POST /visits). Fire-and-forget.
 final recordProfileVisitProvider = FutureProvider.autoDispose

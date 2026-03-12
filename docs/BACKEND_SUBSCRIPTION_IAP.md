@@ -28,7 +28,7 @@ So the app must send a valid auth header on every request. The backend must:
 |----------------|--------|----------|-------------|
 | platform       | string | Yes      | `"ios"` or `"android"` |
 | receiptOrToken | string | Yes      | **iOS:** base64 app receipt or `serverVerificationData` from the client. **Android:** purchase token (JSON or token string from `serverVerificationData`). |
-| planId         | string | Yes      | Product ID, e.g. `"premium_monthly"`. Must match what you have in App Store Connect / Google Play. |
+| planId         | string | Yes      | Product ID: `premium_monthly`, `premium_quarterly`, or `premium_annual`. Must match App Store Connect / Google Play. |
 
 **Flow**
 

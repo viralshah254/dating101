@@ -1,3 +1,4 @@
+import '../../core/mode/app_mode.dart';
 import '../../domain/models/interaction_models.dart';
 import '../../domain/repositories/interactions_repository.dart';
 import '../api/api_client.dart';
@@ -11,9 +12,11 @@ class ApiInteractionsRepository implements InteractionsRepository {
   Future<ExpressInterestResult> expressInterest(
     String toUserId, {
     String? source,
+    AppMode? mode,
   }) async {
     final body = <String, dynamic>{'toUserId': toUserId};
     if (source != null && source.isNotEmpty) body['source'] = source;
+    if (mode != null && mode.isSingleMode) body['mode'] = mode.name;
     final res = await api.post('/interactions/interest', body: body);
     return _parseResult(res);
   }
@@ -24,6 +27,7 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String? message,
     String? source,
     String? adCompletionToken,
+    AppMode? mode,
   }) async {
     final body = <String, dynamic>{'toUserId': toUserId};
     if (message != null && message.isNotEmpty) body['message'] = message;
@@ -31,6 +35,7 @@ class ApiInteractionsRepository implements InteractionsRepository {
     if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
       body['adCompletionToken'] = adCompletionToken;
     }
+    if (mode != null && mode.isSingleMode) body['mode'] = mode.name;
     final res = await api.post('/interactions/priority-interest', body: body);
     return _parseResult(res);
   }
@@ -41,11 +46,16 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String type = 'all',
     int page = 1,
     int limit = 20,
+    AppMode? mode,
   }) async {
-    final body = await api.get(
-      '/interactions/received',
-      query: {'status': status, 'type': type, 'page': '$page', 'limit': '$limit'},
-    );
+    final query = <String, String>{
+      'status': status,
+      'type': type,
+      'page': '$page',
+      'limit': '$limit',
+    };
+    if (mode != null && mode.isSingleMode) query['mode'] = mode.name;
+    final body = await api.get('/interactions/received', query: query);
     return _parseInboxList(body['interactions'] as List? ?? [], isReceived: true);
   }
 
@@ -71,11 +81,10 @@ class ApiInteractionsRepository implements InteractionsRepository {
   }
 
   @override
-  Future<int> getReceivedInteractionsCount({String status = 'pending'}) async {
-    final body = await api.get(
-      '/interactions/received/count',
-      query: {'status': status},
-    );
+  Future<int> getReceivedInteractionsCount({String status = 'pending', AppMode? mode}) async {
+    final query = <String, String>{'status': status};
+    if (mode != null && mode.isSingleMode) query['mode'] = mode.name;
+    final body = await api.get('/interactions/received/count', query: query);
     return body['count'] as int? ?? 0;
   }
 
@@ -84,11 +93,15 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String status = 'pending',
     int page = 1,
     int limit = 20,
+    AppMode? mode,
   }) async {
-    final body = await api.get(
-      '/interactions/sent',
-      query: {'status': status, 'page': '$page', 'limit': '$limit'},
-    );
+    final query = <String, String>{
+      'status': status,
+      'page': '$page',
+      'limit': '$limit',
+    };
+    if (mode != null && mode.isSingleMode) query['mode'] = mode.name;
+    final body = await api.get('/interactions/sent', query: query);
     return _parseInboxList(body['interactions'] as List? ?? [], isReceived: false);
   }
 
@@ -109,8 +122,31 @@ class ApiInteractionsRepository implements InteractionsRepository {
   }
 
   @override
+  Future<void> sendReminder(String interactionId) async {
+    await api.post('/interactions/$interactionId/remind', body: {});
+  }
+
+  @override
   Future<void> withdrawInteraction(String interactionId) async {
     await api.delete('/interactions/$interactionId');
+  }
+
+  @override
+  Future<List<String>> getOpenerSuggestions({
+    required String toUserId,
+    AppMode? mode,
+    String context = 'mutual_match',
+  }) async {
+    final query = <String, String>{
+      'toUserId': toUserId,
+      'context': context,
+    };
+    if (mode != null && mode.isSingleMode) query['mode'] = mode.name;
+    final body = await api.get('/interactions/openers', query: query);
+    return (body['suggestions'] as List? ?? [])
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   List<InteractionInboxItem> _parseInboxList(List list, {required bool isReceived}) {

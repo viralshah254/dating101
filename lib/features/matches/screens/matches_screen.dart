@@ -12,9 +12,11 @@ import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/daily_matches/daily_matches_provider.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
@@ -24,6 +26,7 @@ import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/matches_providers.dart';
+import '../widgets/daily_matches_popup.dart';
 import '../widgets/match_profile_card.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
@@ -36,6 +39,7 @@ class MatchesScreen extends ConsumerStatefulWidget {
 class _MatchesScreenState extends ConsumerState<MatchesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _hasTriggeredDailyMatches = false;
 
   MatchesSearchFilters _filters = const MatchesSearchFilters();
   int _activeFilterCount = 0;
@@ -67,7 +71,15 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.lightAccent;
+    final accent = Theme.of(context).colorScheme.primary;
+
+    if (!_hasTriggeredDailyMatches) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted || _hasTriggeredDailyMatches) return;
+        _hasTriggeredDailyMatches = true;
+        _showDailyMatchesPopup(context, ref);
+      });
+    }
 
     return Scaffold(
       body: NestedScrollView(
@@ -76,11 +88,16 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             floating: true,
             snap: true,
             pinned: true,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text(
               l.navDiscover,
               style: AppTypography.headlineSmall.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
               ),
             ),
             actions: [
@@ -91,7 +108,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               ),
             ],
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(48),
+              preferredSize: const Size.fromHeight(54),
               child: _TabBarSection(controller: _tabController, accent: accent),
             ),
           ),
@@ -205,18 +222,46 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     });
   }
 
+  Future<void> _showDailyMatchesPopup(BuildContext context, WidgetRef ref) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
+    if (!mode.isMatrimony) return;
+    final storage = ref.read(dailyMatchesStorageProvider);
+    if (!storage.shouldShowPopup()) return;
+    List<ProfileSummary> profiles;
+    try {
+      profiles = await ref.read(dailyMatchesProvider.future);
+    } catch (_) {
+      return; // API error or network failure; skip popup
+    }
+    if (!mounted) return;
+    if (profiles.isEmpty) return;
+    if (!context.mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => DailyMatchesPopup(
+        profiles: profiles,
+        onDismiss: () {},
+        onSent: () {},
+      ),
+    ).then((_) async {
+      await ref.read(dailyMatchesStorageProvider).markShown();
+    });
+  }
+
   void _onLike(ProfileSummary p) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     try {
       final repo = ref.read(interactionsRepositoryProvider);
-      final result = await repo.expressInterest(p.id, source: 'recommended');
+      final result = await repo.expressInterest(p.id, source: 'recommended', mode: mode);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, p.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(recommendedPaginatedProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch) {
         ref.invalidate(mutualMatchesProvider);
         ref.invalidate(matchedUserIdsProvider);
@@ -229,7 +274,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
-        ref.invalidate(sentInteractionsProvider);
+        ref.invalidate(sentInteractionsProvider(mode));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.toastInterestSent),
@@ -286,6 +331,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       }
       adToken = const Uuid().v4();
     }
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     try {
       final repo = ref.read(interactionsRepositoryProvider);
       final result = await repo.expressPriorityInterest(
@@ -293,15 +339,16 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
         message: message,
         source: 'recommended',
         adCompletionToken: adToken,
+        mode: mode,
       );
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, p.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(recommendedPaginatedProvider);
       ref.invalidate(matchesSearchProvider);
       ref.invalidate(matchesNearbyProvider);
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch) {
         ref.invalidate(mutualMatchesProvider);
         ref.invalidate(matchedUserIdsProvider);
@@ -314,7 +361,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
-        ref.invalidate(sentInteractionsProvider);
+        ref.invalidate(sentInteractionsProvider(mode));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.toastInterestSent),
@@ -456,23 +503,25 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       );
       return;
     }
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     final adToken = const Uuid().v4();
     // Auto-send interest so backend allows creating the thread; then open message screen.
     try {
       await ref.read(interactionsRepositoryProvider).expressInterest(
         p.id,
         source: 'recommended',
+        mode: mode,
       );
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, p.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
-        ref.invalidate(sentInteractionsProvider);
+        ref.invalidate(sentInteractionsProvider(mode));
       }
       // Continue to open chat either way (connection may already exist).
     }
@@ -1072,29 +1121,38 @@ class _TabBarSection extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: onSurface.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
+        color: onSurface.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppTokens.radius14),
+        border: Border.all(color: onSurface.withValues(alpha: 0.06)),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(4),
       child: TabBar(
         controller: controller,
         indicator: BoxDecoration(
           color: accent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppTokens.radius12),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.35),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: onSurface.withValues(alpha: 0.6),
+        unselectedLabelColor: onSurface.withValues(alpha: 0.65),
         labelStyle: AppTypography.labelLarge.copyWith(
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
         ),
-        unselectedLabelStyle: AppTypography.labelLarge,
+        unselectedLabelStyle: AppTypography.labelLarge.copyWith(fontSize: 13),
         tabs: [
-          Tab(text: l.matchesRecommended, height: 38),
-          Tab(text: l.navVisitors, height: 38),
-          Tab(text: l.matchesSearch, height: 38),
-          Tab(text: l.navMatches, height: 38),
+          Tab(text: l.matchesRecommended, height: 42),
+          Tab(text: l.navVisitors, height: 42),
+          Tab(text: l.matchesSearch, height: 42),
+          Tab(text: l.navMatches, height: 42),
         ],
       ),
     );
@@ -1128,12 +1186,13 @@ class _RecommendedTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final shortlistedIds =
         ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds =
-        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
     final sentPriorityIds =
-        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
         <String>{};
     final excludedFromRecommended =
         ref.watch(effectiveExcludedFromRecommendedIdsProvider);
@@ -1213,12 +1272,13 @@ class _VisitorsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final shortlistedIds =
         ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds =
-        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
     final sentPriorityIds =
-        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
         <String>{};
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
@@ -1291,9 +1351,9 @@ class _ExploreTab extends ConsumerWidget {
     final shortlistedIds =
         ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
     final sentInterestIds =
-        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
     final sentPriorityIds =
-        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
         <String>{};
 
     final hasFilters =
@@ -1396,17 +1456,32 @@ class _MatchesTab extends ConsumerWidget {
             final entry = entries[i];
             final p = entry.profile;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Material(
-                color: onSurface.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                elevation: 0,
+                shadowColor: Colors.transparent,
                 child: InkWell(
                   onTap: () => onTapProfile(p),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: onSurface.withValues(alpha: 0.06),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                      horizontal: 14,
+                      vertical: 12,
                     ),
                     child: Row(
                       children: [
@@ -1787,7 +1862,7 @@ class _FilterButton extends StatelessWidget {
               color: activeCount > 0
                   ? accent.withValues(alpha: 0.12)
                   : onSurface.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTokens.radius12),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

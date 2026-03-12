@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';
+import 'app_tokens.dart';
 import 'app_typography.dart';
 
 enum AppThemeMode { light, dark }
@@ -43,9 +44,27 @@ class AppTheme {
         elevation: 0,
         color: AppColors.lightSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radius20),
+        ),
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.lightAccent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, 48),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.space24,
+            vertical: AppTokens.space12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTokens.radius14),
+          ),
+          textStyle: AppTypography.labelLarge,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -55,7 +74,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppTokens.radius14),
           ),
           textStyle: AppTypography.labelLarge,
         ),
@@ -67,7 +86,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppTokens.radius14),
           ),
           textStyle: AppTypography.labelLarge,
         ),
@@ -82,23 +101,40 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.lightSurfaceVariant,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
           borderSide: const BorderSide(color: AppColors.lightDivider),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
           borderSide: const BorderSide(color: AppColors.lightAccent, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
           borderSide: const BorderSide(color: AppColors.lightError),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         hintStyle: AppTypography.bodyMedium.copyWith(
           color: AppColors.lightTextTertiary,
         ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.lightTextPrimary,
+          minimumSize: const Size(40, 40),
+          padding: const EdgeInsets.all(AppTokens.space8),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: AppColors.lightAccent,
+        unselectedLabelColor: AppColors.lightTextSecondary,
+        indicatorColor: AppColors.lightAccent,
+        dividerColor: Colors.transparent,
+        labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
+        unselectedLabelStyle: AppTypography.labelLarge,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.lightSurface,
@@ -115,15 +151,22 @@ class AppTheme {
         backgroundColor: AppColors.lightSurfaceVariant,
         selectedColor: AppColors.lightAccentLight.withValues(alpha: 0.35),
         labelStyle: AppTypography.labelMedium,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        showDragHandle: true,
+        backgroundColor: AppColors.lightSurface,
+        surfaceTintColor: Colors.transparent,
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.lightSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radius24),
+        ),
         titleTextStyle: AppTypography.headlineSmall.copyWith(color: AppColors.lightTextPrimary),
         contentTextStyle: AppTypography.bodyMedium.copyWith(color: AppColors.lightTextSecondary),
       ),
@@ -177,9 +220,27 @@ class AppTheme {
         elevation: 0,
         color: AppColors.darkSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radius20),
+        ),
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.darkAccent,
+          foregroundColor: AppColors.darkBackground,
+          elevation: 0,
+          minimumSize: const Size(0, 48),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.space24,
+            vertical: AppTokens.space12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTokens.radius14),
+          ),
+          textStyle: AppTypography.labelLarge,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -189,7 +250,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppTokens.radius14),
           ),
           textStyle: AppTypography.labelLarge,
         ),
@@ -201,7 +262,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppTokens.radius14),
           ),
           textStyle: AppTypography.labelLarge,
         ),
@@ -216,23 +277,40 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.darkSurfaceVariant,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
           borderSide: const BorderSide(color: AppColors.darkDivider),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
           borderSide: const BorderSide(color: AppColors.darkAccent, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
           borderSide: const BorderSide(color: AppColors.darkError),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         hintStyle: AppTypography.bodyMedium.copyWith(
           color: AppColors.darkTextTertiary,
         ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.darkTextPrimary,
+          minimumSize: const Size(40, 40),
+          padding: const EdgeInsets.all(AppTokens.space8),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: AppColors.darkAccent,
+        unselectedLabelColor: AppColors.darkTextSecondary,
+        indicatorColor: AppColors.darkAccent,
+        dividerColor: Colors.transparent,
+        labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
+        unselectedLabelStyle: AppTypography.labelLarge,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,
@@ -249,15 +327,22 @@ class AppTheme {
         backgroundColor: AppColors.darkSurfaceVariant,
         selectedColor: AppColors.darkAccentDim.withValues(alpha: 0.35),
         labelStyle: AppTypography.labelMedium,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        showDragHandle: true,
+        backgroundColor: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.darkSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radius24),
+        ),
         titleTextStyle: AppTypography.headlineSmall.copyWith(color: AppColors.darkTextPrimary),
         contentTextStyle: AppTypography.bodyMedium.copyWith(color: AppColors.darkTextSecondary),
       ),

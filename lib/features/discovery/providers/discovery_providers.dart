@@ -13,6 +13,9 @@ import '../../../domain/repositories/discovery_repository.dart';
 /// Travel mode: when non-null, discovery shows profiles for this city (from "Change city").
 final discoveryTravelCityProvider = StateProvider<String?>((ref) => null);
 
+/// When set, discovery should advance past this profile (e.g. after liking from full profile so the card is dismissed when returning).
+final discoveryAdvancePastProfileIdProvider = StateProvider<String?>((ref) => null);
+
 /// Applied discovery filters (from filters sheet). When non-null, feed uses getExplore with these params.
 final discoveryFilterParamsProvider = StateProvider<DiscoveryFilterParams?>(
   (ref) => null,
@@ -27,12 +30,13 @@ final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
   final filterParams = ref.watch(discoveryFilterParamsProvider);
   final repo = ref.watch(discoveryRepositoryProvider);
 
+  final effectiveCity = filterParams?.city ?? travelCity;
   if (filterParams != null && filterParams.hasFilters) {
     return repo.getExplore(
       mode: mode,
       ageMin: filterParams.ageMin,
       ageMax: filterParams.ageMax,
-      city: filterParams.city,
+      city: effectiveCity,
       religion: filterParams.religion,
       education: filterParams.education,
       heightMinCm: filterParams.heightMinCm,

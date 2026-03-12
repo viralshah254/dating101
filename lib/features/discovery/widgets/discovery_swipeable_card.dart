@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,12 +10,18 @@ class DiscoverySwipeableCard extends StatefulWidget {
   const DiscoverySwipeableCard({
     super.key,
     required this.child,
+    required this.likeLabel,
+    required this.passLabel,
+    required this.superLikeLabel,
     this.onPass,
     this.onLike,
     this.onSuperLike,
   });
 
   final Widget child;
+  final String likeLabel;
+  final String passLabel;
+  final String superLikeLabel;
   final VoidCallback? onPass;
   final VoidCallback? onLike;
   final VoidCallback? onSuperLike;
@@ -253,8 +260,8 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
             top: size.height * 0.26,
             child: _SwipeOverlay(
               icon: Icons.favorite_rounded,
-              label: 'LIKE',
-              color: const Color(0xFF34D399),
+              label: widget.likeLabel.toUpperCase(),
+              color: const Color(0xFF07D170),
               progress: (_dragDx / _maxDrag).clamp(0.0, 1.0),
             ),
           ),
@@ -264,8 +271,8 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
             top: size.height * 0.26,
             child: _SwipeOverlay(
               icon: Icons.close_rounded,
-              label: 'PASS',
-              color: const Color(0xFFF87171),
+              label: widget.passLabel.toUpperCase(),
+              color: const Color(0xFFFF4757),
               progress: (-_dragDx / _maxDrag).clamp(0.0, 1.0),
             ),
           ),
@@ -277,8 +284,8 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
             child: Center(
               child: _SwipeOverlay(
                 icon: Icons.star_rounded,
-                label: 'SUPER LIKE',
-                color: const Color(0xFF60A5FA),
+                label: widget.superLikeLabel.toUpperCase(),
+                color: const Color(0xFF00A8FF),
                 progress: (-_dragDy / _maxDrag).clamp(0.0, 1.0),
               ),
             ),
@@ -305,42 +312,48 @@ class _SwipeOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final opacity = (0.4 + 0.6 * progress).clamp(0.0, 1.0);
-    final scale = 0.85 + 0.15 * progress;
+    final opacity = (0.5 + 0.5 * progress).clamp(0.0, 1.0);
+    final scale = 0.9 + 0.1 * progress;
     return IgnorePointer(
       child: Opacity(
         opacity: opacity,
         child: Transform.scale(
           scale: scale,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: color, width: 4),
-              borderRadius: BorderRadius.circular(14),
-              color: color.withValues(alpha: 0.25),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  spreadRadius: 0,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+                  color: color.withValues(alpha: 0.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 34, color: color),
-                const SizedBox(width: 10),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.0,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 28, color: color),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

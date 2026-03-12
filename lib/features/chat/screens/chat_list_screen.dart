@@ -23,15 +23,103 @@ import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/chat_providers.dart';
 
+class _ChatThreadSearchDelegate extends SearchDelegate<ChatThreadSummary?> {
+  _ChatThreadSearchDelegate(this.threads, this.searchLabel);
+
+  final List<ChatThreadSummary> threads;
+  final String searchLabel;
+
+  @override
+  String? get searchFieldLabel => searchLabel;
+
+  List<ChatThreadSummary> get _results {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return threads;
+    return threads.where((t) {
+      return t.otherName.toLowerCase().contains(q) ||
+          (t.lastMessage ?? '').toLowerCase().contains(q);
+    }).toList();
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => query = '',
+        ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildList(context);
+
+  Widget _buildList(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final results = _results;
+    if (results.isEmpty) {
+      return EmptyState(
+        icon: Icons.search_off_rounded,
+        title: l.noMatchesFound,
+        body: l.noConversationsYetBody,
+      );
+    }
+    return ListView.separated(
+      itemCount: results.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final t = results[i];
+        return ListTile(
+          leading: CircleAvatar(
+            child: Text(
+              t.otherName.isNotEmpty ? t.otherName[0].toUpperCase() : '?',
+            ),
+          ),
+          title: Text(t.otherName),
+          subtitle: Text(
+            t.lastMessage ?? l.navChats,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: t.unreadCount > 0
+              ? CircleAvatar(
+                  radius: 11,
+                  child: Text(
+                    '${t.unreadCount}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                )
+              : null,
+          onTap: () => close(context, t),
+        );
+      },
+    );
+  }
+}
+
 /// Chat screen: Chats (threads by mode) + Chat requests (received interests). Dating and matrimony separate.
 class ChatListScreen extends ConsumerWidget {
   const ChatListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final modeLabel = mode.isMatrimony ? 'Matrimony' : 'Dating';
+    final modeLabel = mode.isMatrimony ? l.modeMatrimony : l.modeDating;
+    final cachedThreads = ref.watch(chatThreadsProvider).valueOrNull ?? const <ChatThreadSummary>[];
 
     return DefaultTabController(
       length: 2,
@@ -43,7 +131,7 @@ class ChatListScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Chats',
+                l.tabChats,
                 style: AppTypography.headlineSmall.copyWith(
                   color: onSurface,
                   fontWeight: FontWeight.w700,
@@ -65,13 +153,35 @@ class ChatListScreen extends ConsumerWidget {
                 Icons.search_rounded,
                 color: onSurface.withValues(alpha: 0.8),
               ),
-              onPressed: () {},
+              onPressed: () async {
+                if (cachedThreads.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.of(context)!.noConversationsYet),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                final selected = await showSearch<ChatThreadSummary?>(
+                  context: context,
+                  delegate: _ChatThreadSearchDelegate(
+                    cachedThreads,
+                    l.matchesSearch,
+                  ),
+                );
+                if (selected == null || !context.mounted) return;
+                await context.push(
+                  '/chat/${selected.id}?otherUserId=${Uri.encodeComponent(selected.otherUserId)}',
+                );
+                if (context.mounted) ref.invalidate(chatThreadsProvider);
+              },
             ),
           ],
           bottom: TabBar(
-            labelColor: AppColors.saffron,
+            labelColor: Theme.of(context).colorScheme.primary,
             unselectedLabelColor: onSurface.withValues(alpha: 0.6),
-            indicatorColor: AppColors.saffron,
+            indicatorColor: Theme.of(context).colorScheme.primary,
             labelStyle: AppTypography.labelLarge.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -143,16 +253,17 @@ class _ChatsTab extends ConsumerWidget {
   }
 }
 
-/// Chat requests tab: received interests (accept to open chat).
+/// Chat requests tab: message requests (inbound on top, then outbound) + received interest requests.
 class _ChatRequestsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final async = ref.watch(receivedInteractionsProvider);
+    final asyncInteractions = ref.watch(receivedInteractionsProvider);
+    final asyncMessageRequests = ref.watch(messageRequestsProvider);
 
     // Premium required: show friendly gate; only show blurred cards when backend says there are requests (count > 0). Backend limit 2 ad-unlocks per week.
-    final err = async.error;
-    if (async.hasError && err is ApiException && err.code == 'PREMIUM_REQUIRED') {
+    final err = asyncInteractions.error;
+    if (asyncInteractions.hasError && err is ApiException && err.code == 'PREMIUM_REQUIRED') {
       final count = err.details?['count'] as int? ?? 0;
       final initialRemaining = err.details?['inboxUnlocksRemainingThisWeek'] as int? ?? 2;
       final resetsAtStr = err.details?['inboxUnlocksResetAt'] as String?;
@@ -167,10 +278,14 @@ class _ChatRequestsTab extends ConsumerWidget {
       );
     }
 
-    return async.when(
+    return asyncInteractions.when(
       data: (items) {
         final groups = _groupByUser(items);
-        if (groups.isEmpty) {
+        final hasInteractions = groups.isNotEmpty;
+        final messageRequests = asyncMessageRequests.valueOrNull ?? [];
+        final hasMessageRequests = messageRequests.isNotEmpty;
+
+        if (!hasInteractions && !hasMessageRequests) {
           return EmptyState(
             icon: Icons.mail_outline_rounded,
             title: l.noChatRequests,
@@ -178,6 +293,7 @@ class _ChatRequestsTab extends ConsumerWidget {
             ctaLabel: l.retry,
             onCta: () {
               ref.invalidate(receivedInteractionsProvider);
+              ref.invalidate(messageRequestsProvider);
               ref.invalidate(receivedRequestsCountProvider);
             },
           );
@@ -185,21 +301,30 @@ class _ChatRequestsTab extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(receivedInteractionsProvider);
+            ref.invalidate(messageRequestsProvider);
+            ref.invalidate(messageRequestsCountProvider);
             ref.invalidate(receivedRequestsCountProvider);
             ref.invalidate(chatThreadsProvider);
           },
-          child: ListView.builder(
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: groups.length,
-            itemBuilder: (context, i) {
-              final group = groups[i];
-              return _ChatRequestCard(
-                group: group,
-                onAccept: () => _acceptAndMaybeOpenChat(context, ref, group),
-                onDecline: () => _declineAll(context, ref, group),
-                onTap: () => context.push('/profile/${group.user.id}'),
-              );
-            },
+            children: [
+              if (hasMessageRequests)
+                ...messageRequests.map((req) => _MessageRequestTile(
+                      request: req,
+                      onAccept: () => _acceptMessageRequest(context, ref, req),
+                      onDecline: () => _declineMessageRequest(context, ref, req),
+                      onTap: () => context.push('/profile/${req.otherUserId}'),
+                    )),
+              if (hasMessageRequests && hasInteractions) const SizedBox(height: 16),
+              if (hasInteractions)
+                ...groups.map((group) => _ChatRequestCard(
+                      group: group,
+                      onAccept: () => _acceptAndMaybeOpenChat(context, ref, group),
+                      onDecline: () => _declineAll(context, ref, group),
+                      onTap: () => context.push('/profile/${group.user.id}'),
+                    )),
+            ],
           ),
         );
       },
@@ -208,11 +333,50 @@ class _ChatRequestsTab extends ConsumerWidget {
         message: l.errorGeneric,
         onRetry: () {
           ref.invalidate(receivedInteractionsProvider);
+          ref.invalidate(messageRequestsProvider);
           ref.invalidate(receivedRequestsCountProvider);
         },
         retryLabel: l.retry,
       ),
     );
+  }
+
+  static Future<void> _acceptMessageRequest(
+    BuildContext context,
+    WidgetRef ref,
+    MessageRequest req,
+  ) async {
+    try {
+      await ref.read(chatRepositoryProvider).acceptMessageRequest(req.requestId);
+      if (!context.mounted) return;
+      ref.invalidate(messageRequestsProvider);
+      ref.invalidate(messageRequestsCountProvider);
+      ref.invalidate(receivedRequestsCountProvider);
+      ref.invalidate(chatThreadsProvider);
+      if (req.threadId != null) {
+        context.push('/chat/${req.threadId}?otherUserId=${Uri.encodeComponent(req.otherUserId)}');
+      }
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      showErrorToast(context, e.message);
+    }
+  }
+
+  static Future<void> _declineMessageRequest(
+    BuildContext context,
+    WidgetRef ref,
+    MessageRequest req,
+  ) async {
+    try {
+      await ref.read(chatRepositoryProvider).declineMessageRequest(req.requestId);
+      if (!context.mounted) return;
+      ref.invalidate(messageRequestsProvider);
+      ref.invalidate(messageRequestsCountProvider);
+      ref.invalidate(receivedRequestsCountProvider);
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      showErrorToast(context, e.message);
+    }
   }
 
   static Future<void> _onUnlockOneRequest(BuildContext context, WidgetRef ref) async {
@@ -246,8 +410,8 @@ class _ChatRequestsTab extends ConsumerWidget {
         ref.invalidate(receivedRequestsCountProvider);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No request to unlock right now. Try again later.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.errorGeneric),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -805,6 +969,137 @@ class _ChatThreadTile extends ConsumerWidget {
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';
     return '${d.day}/${d.month}';
+  }
+}
+
+// ─── Message request tile (chat message requests: inbound on top) ───────────
+
+class _MessageRequestTile extends StatelessWidget {
+  const _MessageRequestTile({
+    required this.request,
+    required this.onAccept,
+    required this.onDecline,
+    required this.onTap,
+  });
+  final MessageRequest request;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final accent = AppColors.saffron;
+    final initial = (request.otherName ?? request.otherUserId).isNotEmpty
+        ? (request.otherName ?? request.otherUserId)[0].toUpperCase()
+        : '?';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: onSurface.withValues(alpha: 0.08)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: accent.withValues(alpha: 0.12),
+                    child: Text(
+                      initial,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                request.otherName ?? request.otherUserId,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: (request.isInbound ? accent : onSurface.withValues(alpha: 0.15)).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                request.isInbound ? l.inboundRequest : l.outboundRequest,
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: request.isInbound ? accent : onSurface.withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (request.text != null && request.text!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            request.text!,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: onSurface.withValues(alpha: 0.75),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (request.isInbound) ...[
+                    TextButton(
+                      onPressed: () => onDecline(),
+                      child: Text(l.decline),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  FilledButton(
+                    onPressed: () => request.isInbound ? onAccept() : onTap(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(request.isInbound ? l.accept : l.viewProfile),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/premium_badge.dart';
-import '../../../core/widgets/translatable_text.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
@@ -67,13 +66,18 @@ class MatchProfileCard extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: onSurface.withValues(alpha: 0.04)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: onSurface.withValues(alpha: 0.06)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -81,68 +85,12 @@ class MatchProfileCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 3,
+              flex: 5,
               child: _PhotoHeader(
                 profile: profile,
                 accent: accent,
                 onBlock: onBlock,
                 onReport: onReport,
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _NameRow(profile: profile, onSurface: onSurface, isPremium: profile.isPremium),
-                    if (profile.roleManagingProfile != null &&
-                        profile.roleManagingProfile != ProfileRole.self) ...[
-                      const SizedBox(height: 4),
-                      _ManagedByChip(
-                        role: profile.roleManagingProfile!,
-                        onSurface: onSurface,
-                      ),
-                    ],
-                    if (profile.city != null &&
-                        !_isPlaceholder(profile.city)) ...[
-                      const SizedBox(height: 2),
-                      _LocationRow(city: profile.city!, onSurface: onSurface),
-                    ],
-                    if (profile.occupation != null &&
-                        !_isPlaceholder(profile.occupation)) ...[
-                      const SizedBox(height: 2),
-                      _SubtitleRow(profile: profile, onSurface: onSurface),
-                    ],
-                    if (profile.bio.isNotEmpty &&
-                        !_isPlaceholder(profile.bio)) ...[
-                      const SizedBox(height: 6),
-                      _BioSection(
-                        bio: profile.bio,
-                        onSurface: onSurface,
-                      ),
-                    ],
-                    if (_hasKeyDetails) ...[
-                      const SizedBox(height: 8),
-                      _QuickDetails(
-                        profile: profile,
-                        accent: accent,
-                        onSurface: onSurface,
-                      ),
-                    ],
-                    if (profile.interests.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      _InterestRow(
-                        interests: profile.interests,
-                        sharedInterests: profile.sharedInterests,
-                        accent: accent,
-                        onSurface: onSurface,
-                      ),
-                    ],
-                  ],
-                ),
               ),
             ),
             const Divider(height: 1, indent: 16, endIndent: 16),
@@ -165,78 +113,6 @@ class MatchProfileCard extends ConsumerWidget {
     );
   }
 
-  bool get _hasKeyDetails =>
-      profile.religion != null ||
-      profile.educationDegree != null ||
-      profile.heightCm != null ||
-      profile.maritalStatus != null;
-}
-
-/// Bio with fixed max lines, ellipsis, and "View more" to show full text in a dialog (no scrollable description).
-class _BioSection extends ConsumerWidget {
-  const _BioSection({required this.bio, required this.onSurface});
-  final String bio;
-  final Color onSurface;
-
-  static const int _maxLines = 3;
-  static const int _showViewMoreThreshold = 100;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TranslatableText(
-          content: bio,
-          textStyle: AppTypography.bodySmall.copyWith(
-            color: onSurface.withValues(alpha: 0.6),
-            height: 1.3,
-          ),
-          maxLines: _maxLines,
-          showTranslateButton: true,
-        ),
-        if (bio.length > _showViewMoreThreshold) ...[
-          const SizedBox(height: 4),
-          GestureDetector(
-            onTap: () => _showViewMoreDialog(context, bio),
-            behavior: HitTestBehavior.opaque,
-            child: Text(
-              l.viewMore,
-              style: AppTypography.labelSmall.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  static void _showViewMoreDialog(BuildContext context, String bio) {
-    final l = AppLocalizations.of(context)!;
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.aboutMeSection),
-        content: SingleChildScrollView(
-          child: TranslatableText(
-            content: bio,
-            textStyle: AppTypography.bodyMedium.copyWith(height: 1.4),
-            showTranslateButton: true,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.close),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Photo header with match badge overlay ────────────────────────────────
@@ -265,7 +141,7 @@ class _PhotoHeader extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: profile.imageUrl != null
                 ? Image.network(
                     profile.imageUrl!,
@@ -280,7 +156,7 @@ class _PhotoHeader extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            height: 80,
+            height: 120,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.vertical(
@@ -291,10 +167,106 @@ class _PhotoHeader extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withValues(alpha: 0.5),
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.black.withValues(alpha: 0.85),
                   ],
+                  stops: const [0.0, 0.4, 1.0],
                 ),
               ),
+            ),
+          ),
+          // Name, age, city, occupation — compact bio as one overlay
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${profile.name}${profile.age != null ? ', ${profile.age}' : ''}',
+                        style: AppTypography.titleLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (profile.isPremium)
+                      PremiumBadge(isPremium: true, compact: true),
+                  ],
+                ),
+                if (profile.roleManagingProfile != null &&
+                    profile.roleManagingProfile != ProfileRole.self) ...[
+                  const SizedBox(height: 4),
+                  _ManagedByChip(
+                    role: profile.roleManagingProfile!,
+                    onSurface: Colors.white,
+                  ),
+                ],
+                if ((profile.city != null && !_isPlaceholder(profile.city)) ||
+                    (profile.occupation != null && !_isPlaceholder(profile.occupation))) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (profile.city != null && !_isPlaceholder(profile.city)) ...[
+                        Icon(Icons.location_on, size: 14, color: Colors.white.withValues(alpha: 0.95)),
+                        const SizedBox(width: 4),
+                        Text(
+                          profile.city!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (profile.city != null && !_isPlaceholder(profile.city) &&
+                          profile.occupation != null && !_isPlaceholder(profile.occupation))
+                        Text(
+                          ' • ',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      if (profile.occupation != null && !_isPlaceholder(profile.occupation))
+                        Flexible(
+                          child: Text(
+                            profile.occupation!,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
           if (profile.verified)
@@ -466,17 +438,23 @@ class _MatchBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = score >= 70
         ? accent
-        : (score >= 45 ? AppColors.saffron : Colors.grey);
+        : (score >= 45 ? AppColors.saffron : AppColors.lightTextTertiary);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -484,8 +462,8 @@ class _MatchBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 24,
-            height: 24,
+            width: 26,
+            height: 26,
             child: CircularProgressIndicator(
               value: score / 100,
               strokeWidth: 2.5,
@@ -493,7 +471,7 @@ class _MatchBadge extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -502,16 +480,16 @@ class _MatchBadge extends StatelessWidget {
                 '$score%',
                 style: AppTypography.labelLarge.copyWith(
                   color: color,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
                 ),
               ),
               Text(
                 'Match',
                 style: TextStyle(
-                  color: color.withValues(alpha: 0.75),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
+                  color: color.withValues(alpha: 0.8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -522,40 +500,7 @@ class _MatchBadge extends StatelessWidget {
   }
 }
 
-// ── Name and subtitle ────────────────────────────────────────────────────
-
-class _NameRow extends StatelessWidget {
-  const _NameRow({
-    required this.profile,
-    required this.onSurface,
-    required this.isPremium,
-  });
-  final ProfileSummary profile;
-  final Color onSurface;
-  final bool isPremium;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            '${profile.name}${profile.age != null ? ', ${profile.age}' : ''}',
-            style: AppTypography.titleLarge.copyWith(
-              color: onSurface,
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ),
-        PremiumBadge(isPremium: isPremium, compact: true),
-      ],
-    );
-  }
-}
-
-/// Compact "Managed by parent/sibling/..." for discovery cards (matrimony).
+/// Compact "Managed by parent/sibling/..." for overlay on photo.
 class _ManagedByChip extends StatelessWidget {
   const _ManagedByChip({required this.role, required this.onSurface});
   final ProfileRole role;
@@ -613,184 +558,6 @@ class _ManagedByChip extends StatelessWidget {
   }
 }
 
-class _LocationRow extends StatelessWidget {
-  const _LocationRow({required this.city, required this.onSurface});
-  final String city;
-  final Color onSurface;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Icons.location_on_outlined,
-          size: 14,
-          color: onSurface.withValues(alpha: 0.5),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            city,
-            style: AppTypography.bodySmall.copyWith(
-              color: onSurface.withValues(alpha: 0.65),
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SubtitleRow extends StatelessWidget {
-  const _SubtitleRow({required this.profile, required this.onSurface});
-  final ProfileSummary profile;
-  final Color onSurface;
-
-  @override
-  Widget build(BuildContext context) {
-    if (profile.occupation == null) return const SizedBox.shrink();
-    return Row(
-      children: [
-        Icon(
-          Icons.work_outline,
-          size: 14,
-          color: onSurface.withValues(alpha: 0.45),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            profile.occupation!,
-            style: AppTypography.bodySmall.copyWith(
-              color: onSurface.withValues(alpha: 0.65),
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Quick detail pills ───────────────────────────────────────────────────
-
-class _QuickDetails extends StatelessWidget {
-  const _QuickDetails({
-    required this.profile,
-    required this.accent,
-    required this.onSurface,
-  });
-  final ProfileSummary profile;
-  final Color accent;
-  final Color onSurface;
-
-  @override
-  Widget build(BuildContext context) {
-    final pills = <_PillData>[];
-    if (profile.religion != null && !_isPlaceholder(profile.religion)) {
-      pills.add(_PillData(profile.religion!));
-    }
-    if (profile.educationDegree != null &&
-        !_isPlaceholder(profile.educationDegree)) {
-      pills.add(_PillData(profile.educationDegree!));
-    }
-    if (profile.heightCm != null) {
-      final ft = profile.heightCm! ~/ 30.48;
-      final inches = ((profile.heightCm! % 30.48) / 2.54).round();
-      pills.add(_PillData('$ft\'$inches"'));
-    }
-    if (profile.maritalStatus != null &&
-        !_isPlaceholder(profile.maritalStatus)) {
-      pills.add(_PillData(profile.maritalStatus!));
-    }
-    if (profile.motherTongue != null && !_isPlaceholder(profile.motherTongue)) {
-      pills.add(_PillData(profile.motherTongue!));
-    }
-
-    if (pills.isEmpty) return const SizedBox.shrink();
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: pills
-          .map(
-            (p) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                p.label,
-                style: AppTypography.caption.copyWith(
-                  color: onSurface.withValues(alpha: 0.75),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _PillData {
-  const _PillData(this.label);
-  final String label;
-}
-
-// ── Interest chips ───────────────────────────────────────────────────────
-
-class _InterestRow extends StatelessWidget {
-  const _InterestRow({
-    required this.interests,
-    required this.sharedInterests,
-    required this.accent,
-    required this.onSurface,
-  });
-  final List<String> interests;
-  final List<String> sharedInterests;
-  final Color accent;
-  final Color onSurface;
-
-  @override
-  Widget build(BuildContext context) {
-    final sharedSet = sharedInterests.map((s) => s.toLowerCase()).toSet();
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: interests.take(4).map((i) {
-        final isShared = sharedSet.contains(i.toLowerCase());
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: isShared
-                ? accent.withValues(alpha: 0.12)
-                : onSurface.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isShared) ...[
-                Icon(Icons.favorite, size: 12, color: accent),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                i,
-                style: AppTypography.caption.copyWith(
-                  color: isShared ? accent : onSurface.withValues(alpha: 0.7),
-                  fontWeight: isShared ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
 // ── Action bar with 4 actions ────────────────────────────────────────────
 
 class _ActionBar extends StatelessWidget {
@@ -821,41 +588,62 @@ class _ActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    // Free users: Message is locked until matched (or after watch-ad flow). Tapping always runs message flow (watch ad → auto-send interest → open chat).
     final canMessageWithoutAd = ent.canSendMessage || messageUnlockedByMatch;
+
+    // Primary CTA: one clear action that changes by state (Express interest → Add priority → Priority sent)
+    String primaryLabel;
+    IconData primaryIcon;
+    VoidCallback? primaryOnTap;
+    bool primaryEnabled = true;
+    Color primaryColor = accent;
+
+    if (isPriorityInterested) {
+      primaryLabel = l.prioritySent;
+      primaryIcon = Icons.check_circle_rounded;
+      primaryOnTap = null;
+      primaryEnabled = false;
+      primaryColor = onSurface.withValues(alpha: 0.5);
+    } else if (isInterested) {
+      primaryLabel = l.addPriority;
+      primaryIcon = Icons.auto_awesome;
+      primaryOnTap = onSuperLike;
+      primaryColor = AppColors.saffron;
+    } else {
+      primaryLabel = l.ctaSendInterest;
+      primaryIcon = Icons.favorite_border_rounded;
+      primaryOnTap = onLike;
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       child: Row(
         children: [
-          _ActionButton(
-            icon: isInterested ? Icons.favorite_rounded : Icons.favorite_border,
-            label: isInterested ? 'Interested' : 'Interested',
-            color: accent,
-            onTap: onLike,
+          Expanded(
+            flex: 3,
+            child: _PrimaryActionButton(
+              icon: primaryIcon,
+              label: primaryLabel,
+              color: primaryColor,
+              onTap: primaryOnTap,
+              enabled: primaryEnabled,
+            ),
           ),
-          _ActionButton(
-            icon: Icons.star_border_rounded,
-            label: isPriorityInterested ? 'Send another' : 'Priority interest',
-            color: AppColors.saffron,
-            onTap: onSuperLike,
-          ),
-          _ActionButton(
-            icon: isShortlisted
-                ? Icons.star_rounded
-                : Icons.star_border_rounded,
-            label: isShortlisted ? 'Saved' : 'Save',
+          const SizedBox(width: 10),
+          _CompactIconButton(
+            icon: isShortlisted ? Icons.star_rounded : Icons.star_border_rounded,
             color: isShortlisted ? accent : onSurface.withValues(alpha: 0.6),
             onTap: onShortlist,
+            tooltip: l.ctaShortlist,
           ),
-          _ActionButton(
-            icon: canMessageWithoutAd
-                ? Icons.chat_bubble_outline
-                : Icons.lock_outline,
-            label: 'Message',
-            color: canMessageWithoutAd ? accent : Colors.grey,
+          const SizedBox(width: 10),
+          _CompactIconButton(
+            icon: canMessageWithoutAd ? Icons.chat_bubble_outline_rounded : Icons.lock_outline,
+            color: canMessageWithoutAd ? accent : onSurface.withValues(alpha: 0.5),
             onTap: onMessage,
             showBadge: !canMessageWithoutAd,
+            tooltip: l.ctaSendMessage,
           ),
         ],
       ),
@@ -863,61 +651,54 @@ class _ActionBar extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
+class _PrimaryActionButton extends StatelessWidget {
+  const _PrimaryActionButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
-    this.showBadge = false,
+    this.enabled = true,
   });
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
-  final bool showBadge;
+  final VoidCallback? onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    final isAccent = color == AppColors.indiaGreen || color == AppColors.saffron;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: enabled
+                ? (isAccent ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.14))
+                : color.withValues(alpha: 0.08),
+            border: enabled && isAccent
+                ? Border.all(color: color.withValues(alpha: 0.35), width: 1.5)
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(icon, size: 24, color: color),
-                  if (showBadge)
-                    Positioned(
-                      top: -2,
-                      right: -4,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.saffron,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: color.withValues(alpha: 0.9),
+              Icon(icon, size: 22, color: color),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  label,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -926,3 +707,60 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
+
+class _CompactIconButton extends StatelessWidget {
+  const _CompactIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.showBadge = false,
+    this.tooltip,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool showBadge;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          width: 52,
+          height: 52,
+            child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, size: 26, color: color),
+              if (showBadge)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppColors.saffron,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (tooltip != null && tooltip!.isNotEmpty) {
+      return Tooltip(message: tooltip!, child: child);
+    }
+    return child;
+  }
+}
+

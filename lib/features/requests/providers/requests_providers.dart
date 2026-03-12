@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../domain/models/contact_request_status.dart';
 import '../../../domain/models/interaction_models.dart'
@@ -14,38 +16,44 @@ final unlockedReceivedProvider =
 final inboxUnlocksQuotaProvider =
     StateProvider.autoDispose<({int remaining, DateTime? resetsAt})?>((ref) => null);
 
-/// Received interest requests (inbox). Refetch to see new/updated items.
+/// Received interest requests (inbox). Refetch to see new/updated items. Scoped to current mode when backend supports it.
 final receivedInteractionsProvider =
     FutureProvider.autoDispose<List<InteractionInboxItem>>((ref) async {
+      final mode = ref.watch(appModeProvider) ?? AppMode.dating;
       final repo = ref.watch(interactionsRepositoryProvider);
       return repo.getReceivedInteractions(
         status: 'pending',
         type: 'all',
         limit: 50,
+        mode: mode,
       );
     });
 
-/// Sent interests. Refetch after sending or withdrawing.
+/// Sent interests per mode (dating vs matrimony are independent). Refetch after sending or withdrawing.
 final sentInteractionsProvider =
-    FutureProvider.autoDispose<List<InteractionInboxItem>>((ref) async {
+    FutureProvider.autoDispose.family<List<InteractionInboxItem>, AppMode>((ref, mode) async {
       final repo = ref.watch(interactionsRepositoryProvider);
-      return repo.getSentInteractions(status: 'pending', limit: 50);
+      return repo.getSentInteractions(status: 'pending', limit: 50, mode: mode);
     });
 
-/// Requests tab badge: sum of pending interests + pending contact + pending photo view requests.
+/// Requests tab badge: sum of pending interests + contact + photo view + inbound message requests.
 /// If one of the count APIs fails (e.g. 500 from backend), we use 0 for that part so the badge and UI still work.
 final receivedRequestsCountProvider = FutureProvider.autoDispose<int>((
   ref,
 ) async {
+  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
   final interactionsRepo = ref.watch(interactionsRepositoryProvider);
   final contactRequestRepo = ref.watch(contactRequestRepositoryProvider);
   final photoViewRepo = ref.watch(photoViewRequestRepositoryProvider);
+  final chatRepo = ref.watch(chatRepositoryProvider);
   int interactionsCount = 0;
   int contactRequestsCount = 0;
   int photoViewCount = 0;
+  int messageRequestsCount = 0;
   try {
     interactionsCount = await interactionsRepo.getReceivedInteractionsCount(
       status: 'pending',
+      mode: mode,
     );
   } catch (_) {}
   try {
@@ -55,15 +63,20 @@ final receivedRequestsCountProvider = FutureProvider.autoDispose<int>((
   try {
     photoViewCount = await photoViewRepo.getReceivedCount();
   } catch (_) {}
-  return interactionsCount + contactRequestsCount + photoViewCount;
+  try {
+    final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+    messageRequestsCount = await chatRepo.getMessageRequestsCount(mode: modeStr);
+  } catch (_) {}
+  return interactionsCount + contactRequestsCount + photoViewCount + messageRequestsCount;
 });
 
-/// Pending received interests count — for "Received" tab label.
+/// Pending received interests count — for "Received" tab label. Scoped to current mode.
 final receivedInteractionsCountProvider = FutureProvider.autoDispose<int>((
   ref,
 ) async {
+  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
   final repo = ref.watch(interactionsRepositoryProvider);
-  return repo.getReceivedInteractionsCount(status: 'pending');
+  return repo.getReceivedInteractionsCount(status: 'pending', mode: mode);
 });
 
 /// Pending received contact requests count — for "Contact requests" tab label.
@@ -79,38 +92,41 @@ final receivedContactRequestsCountProvider = FutureProvider.autoDispose<int>((
   }
 });
 
-/// Profile IDs the current user has sent normal interest to (for highlighting on match cards).
-final sentInterestProfileIdsProvider = FutureProvider.autoDispose<Set<String>>((
-  ref,
-) async {
-  final list = await ref.watch(sentInteractionsProvider.future);
+/// Profile IDs the current user has sent normal interest to for [mode] (for highlighting on match cards).
+final sentInterestProfileIdsProvider = FutureProvider.autoDispose
+    .family<Set<String>, AppMode>((ref, mode) async {
+  final list = await ref.watch(sentInteractionsProvider(mode).future);
   return list
       .where((e) => e.type == 'interest')
       .map((e) => e.otherUser.id)
       .toSet();
 });
 
-/// Profile IDs the current user has sent priority interest to (for highlighting on match cards).
+/// Profile IDs the current user has sent priority interest to for [mode].
 final sentPriorityInterestProfileIdsProvider =
-    FutureProvider.autoDispose<Set<String>>((ref) async {
-      final list = await ref.watch(sentInteractionsProvider.future);
+    FutureProvider.autoDispose.family<Set<String>, AppMode>((ref, mode) async {
+      final list = await ref.watch(sentInteractionsProvider(mode).future);
       return list
           .where((e) => e.type == 'priority_interest')
           .map((e) => e.otherUser.id)
           .toSet();
     });
 
-/// Profile IDs we've sent interest/priority interest to this session, before the sent list refetches.
-/// Add to this when user taps Express Interest (from full profile or feed) so Recommended hides them immediately.
+/// Per-mode optimistic set: profile IDs we've sent interest/priority to this session before the sent list refetches.
+/// Dating and matrimony are independent; add for current mode when user taps Like/Super like.
 final optimisticSentInterestProfileIdsProvider =
-    StateProvider<Set<String>>((ref) => {});
+    StateProvider<Map<AppMode, Set<String>>>((ref) => {});
 
-/// Union of API sent (interest + priority) + optimistic; use this to exclude profiles from Recommended.
+/// Profile IDs the user has passed on (dating). Used to hide Pass/Super like/Like bar on full profile when already interacted.
+final passedProfileIdsProvider = StateProvider<Set<String>>((ref) => {});
+
+/// Union of API sent (interest + priority) + optimistic for current mode; use to exclude profiles from Recommended.
 final effectiveExcludedFromRecommendedIdsProvider = Provider<Set<String>>((ref) {
-  final a = ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+  final a = ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
   final b =
-      ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
-  final c = ref.watch(optimisticSentInterestProfileIdsProvider);
+      ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
+  final c = ref.watch(optimisticSentInterestProfileIdsProvider)[mode] ?? <String>{};
   return {...a, ...b, ...c};
 });
 

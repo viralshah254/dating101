@@ -96,7 +96,7 @@
   }
   ```
 
-  Alternatively you can return an array of one under `interactions` instead of `interaction`; frontend supports both. You must still include **`unlocksRemainingThisWeek`** and **`resetsAt`** so the app can remove the “Watch ad” button when the user has used their 2 unlocks this week.
+  Alternatively you can return an array of one under `interactions` instead of `interaction`; frontend supports both. You must still include **`unlocksRemainingThisWeek`** and **`resetsAt`** so the app can remove the “Watch ad” button when the user has used their 2 unlocks this week. The **`fromUser`** object must include **`imageUrl`** and/or **`photoUrls`** so the app can show the requester’s photo on the card (see BACKEND_LIKES_SECTION.md / BACKEND_API_REFERENCE.md).
 
   Frontend parses the interaction and quota, shows that one request unblurred with Accept/Decline, and updates the remaining count (e.g. “Watch ad to unlock (1 left this week)” or “Unlocks reset next week” when 0).
 

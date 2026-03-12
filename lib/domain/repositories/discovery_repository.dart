@@ -51,6 +51,9 @@ abstract class DiscoveryRepository {
     String? cursor,
   });
 
+  /// Daily matches for matrimony (9 smart-selected profiles). Matrimony-only.
+  Future<List<ProfileSummary>> getDailyMatches({int limit = 9});
+
   /// One page of recommended profiles; use [nextCursor] for pagination.
   Future<DiscoveryPageResult> getRecommendedPage({
     required AppMode mode,
@@ -119,6 +122,7 @@ abstract class DiscoveryRepository {
   Future<CompatibilityDetail> getCompatibility(String candidateId);
 
   /// Record a user interaction (like, pass, superlike, block, report, view).
+  /// [mode] scopes the action to dating or matrimony so passes/likes are independent.
   /// For action 'block' or 'report', pass [reason] (required by backend for safety). For report, [details] is optional.
   Future<void> sendFeedback({
     required String candidateId,
@@ -127,6 +131,7 @@ abstract class DiscoveryRepository {
     String? source,
     String? reason,
     String? details,
+    AppMode? mode,
   });
 
   /// Current matching preferences + AI suggestions.

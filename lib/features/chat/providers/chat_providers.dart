@@ -32,3 +32,21 @@ final chatSuggestionsProvider = FutureProvider.autoDispose<List<String>>((ref) a
   return list.isNotEmpty ? list : ['Hi!', 'How are you?', 'What brings you here?', 'Tell me about yourself'];
 });
 
+/// Message requests (chat) for current mode. Sorted with inbound first, then outbound.
+final messageRequestsProvider = FutureProvider.autoDispose<List<MessageRequest>>((ref) async {
+  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+  final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+  final repo = ref.watch(chatRepositoryProvider);
+  final list = await repo.getMessageRequests(limit: 50, mode: modeStr);
+  list.sort((a, b) => (a.isInbound == b.isInbound) ? 0 : (a.isInbound ? -1 : 1));
+  return list;
+});
+
+/// Count of inbound message requests for current user (recipient badge).
+final messageRequestsCountProvider = FutureProvider.autoDispose<int>((ref) async {
+  final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+  final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+  final repo = ref.watch(chatRepositoryProvider);
+  return repo.getMessageRequestsCount(mode: modeStr);
+});
+

@@ -23,7 +23,24 @@ class EventsScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.calendar_month), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+                initialDate: DateTime.now(),
+              );
+              if (picked == null || !context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Showing events around ${DateFormat.yMMMd().format(picked)}'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
         ],
       ),
       body: DefaultTabController(

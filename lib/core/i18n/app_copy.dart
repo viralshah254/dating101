@@ -13,6 +13,7 @@ class AppCopy {
     final l = AppLocalizations.of(context)!;
     switch (mode) {
       case AppMode.dating:
+      case AppMode.both:
         return l.ctaSendIntro;
       case AppMode.matrimony:
         return l.ctaSendInterest;
@@ -24,6 +25,7 @@ class AppCopy {
     final l = AppLocalizations.of(context)!;
     switch (mode) {
       case AppMode.dating:
+      case AppMode.both:
         return l.discoverTitle;
       case AppMode.matrimony:
         return l.navDiscover;
@@ -35,6 +37,7 @@ class AppCopy {
     final l = AppLocalizations.of(context)!;
     switch (mode) {
       case AppMode.dating:
+      case AppMode.both:
         return l.paywallDatingSubtitle;
       case AppMode.matrimony:
         return l.paywallMatrimonySubtitle;

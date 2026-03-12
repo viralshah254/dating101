@@ -14,6 +14,8 @@ Backend specification for the **Explore** tab filters. Filters must respect the 
 6. [Frontend behaviour](#6-frontend-behaviour)
 7. [Search endpoint alignment](#7-search-endpoint-alignment)
 
+**Related:** [BACKEND_LOCATION_AND_GEOLOCATION.md](./BACKEND_LOCATION_AND_GEOLOCATION.md) — city picker with user counts, nearby cities, country→city.
+
 ---
 
 ## 1. Overview

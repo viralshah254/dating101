@@ -24,11 +24,12 @@ Use this list when handing off to backend: what’s already connected, what’s 
 | 6 | **Chat (messages, ad, match rules)** | [chat_endpoint.md](./chat_endpoint.md), [BACKEND_CHAT_INTEGRATION.md](./BACKEND_CHAT_INTEGRATION.md) |
 | 7 | **Subscription & IAP** | [BACKEND_SUBSCRIPTION_IAP.md](./BACKEND_SUBSCRIPTION_IAP.md) |
 | 8 | **Boost (IAP + discovery)** | API reference §8.4a, [BACKEND_PREMIUM_ADS_BOOST.md](./BACKEND_PREMIUM_ADS_BOOST.md) |
-| 9 | **In-app notifications** | API reference §6d.3, [BACKEND_PUSH_NOTIFICATIONS.md](./BACKEND_PUSH_NOTIFICATIONS.md) |
+| 9 | **In-app notifications** | API reference §6d.3, [BACKEND_PUSH_NOTIFICATIONS.md](./BACKEND_PUSH_NOTIFICATIONS.md), [BACKEND_FIREBASE_CREDENTIALS.md](./BACKEND_FIREBASE_CREDENTIALS.md) |
 | 10 | **Photo upload & add-by-key** | API reference §2.8–2.10 |
 | 11 | **Photo view requests** | [BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md](./BACKEND_PHOTO_VISIBILITY_AND_VIEW_REQUESTS.md) |
 | 12 | **Verification** | [BACKEND_VERIFICATION.md](./BACKEND_VERIFICATION.md) |
-| 13 | **Social login (optional)** | API reference §1.5 — return 501 for `/auth/google`, `/auth/apple` |
+| 13 | **Account lifecycle (export, deactivate, reactivate, delete)** | [BACKEND_ACCOUNT_LIFECYCLE.md](./BACKEND_ACCOUNT_LIFECYCLE.md) |
+| 14 | **Social login (optional)** | API reference §1.5 — return 501 for `/auth/google`, `/auth/apple` |
 
 ---
 

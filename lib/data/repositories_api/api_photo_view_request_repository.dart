@@ -10,20 +10,45 @@ class ApiPhotoViewRequestRepository implements PhotoViewRequestRepository {
 
   @override
   Future<void> sendRequest(String targetUserId) async {
-    await api.post(
-      '/photo-view-requests',
-      body: {'targetUserId': targetUserId},
-    );
+    try {
+      await api.post(
+        '/photo-view-requests',
+        body: {'targetUserId': targetUserId},
+      );
+    } on ApiException catch (e) {
+      // Backward compatibility for older backend contracts.
+      if (e.statusCode == 400 || e.statusCode == 422) {
+        await api.post(
+          '/photo-view-requests',
+          body: {'toUserId': targetUserId},
+        );
+        return;
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<PhotoViewStatus?> getStatus(String targetUserId) async {
     try {
-      final body = await api.get('/profile/$targetUserId/photo-view-status');
-      final statusStr = body['status'] as String? ?? 'none';
+      final body = await api.get('/photo-view-requests/status/$targetUserId');
+      final statusStr =
+          body['status'] as String? ?? body['state'] as String? ?? 'none';
       return _parseStatus(statusStr);
     } on ApiException catch (e) {
-      if (e.statusCode == 404) return null;
+      if (e.statusCode == 404) {
+        try {
+          final fallbackBody = await api.get('/profile/$targetUserId/photo-view-status');
+          final statusStr =
+              fallbackBody['status'] as String? ??
+              fallbackBody['state'] as String? ??
+              'none';
+          return _parseStatus(statusStr);
+        } on ApiException catch (fallbackError) {
+          if (fallbackError.statusCode == 404) return null;
+          rethrow;
+        }
+      }
       rethrow;
     }
   }

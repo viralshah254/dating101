@@ -142,6 +142,13 @@ class AppLocalizationsTa extends AppLocalizations {
       'Find a life partner. Extended profiles, partner preferences, and family-friendly matching.';
 
   @override
+  String get modeBoth => 'Both';
+
+  @override
+  String get modeBothSubtitle =>
+      'Use dating and matrimony. You\'ll see only profiles who are also on both. Switch between them anytime in Settings.';
+
+  @override
   String get navDiscover => 'Discover';
 
   @override
@@ -154,7 +161,64 @@ class AppLocalizationsTa extends AppLocalizations {
   String get navCommunities => 'Communities';
 
   @override
+  String get navLikes => 'விருப்பங்கள்';
+
+  @override
   String get navProfile => 'Profile';
+
+  @override
+  String get likesTabLikedYou => 'உங்களை விரும்பினர்';
+
+  @override
+  String get likesTabVisitors => 'பார்வையாளர்கள்';
+
+  @override
+  String get likesTabYouLiked => 'நீங்கள் விரும்பியவை';
+
+  @override
+  String get likesEmptyLikedYou => 'இன்னும் யாரும் உங்களை விரும்பவில்லை';
+
+  @override
+  String get likesEmptyLikedYouBody =>
+      'தேடிக்கொண்டே இருங்கள் — யாரேனும் உங்களை விரும்பினால் இங்கே தோன்றுவார்கள்.';
+
+  @override
+  String get likesEmptyVisitors => 'இன்னும் பார்வையாளர்கள் இல்லை';
+
+  @override
+  String get likesEmptyVisitorsBody =>
+      'யாரேனும் உங்கள் சுயவிவரத்தை பார்த்தால் இங்கே தோன்றுவார்கள்.';
+
+  @override
+  String get likesEmptyYouLiked => 'நீங்கள் இன்னும் யாரையும் விரும்பவில்லை';
+
+  @override
+  String get likesEmptyYouLikedBody =>
+      'டிஸ்கவரிலிருந்து நீங்கள் விரும்பும் சுயவிவரங்கள் இங்கே தோன்றும்.';
+
+  @override
+  String get sendReminder => 'Send reminder';
+
+  @override
+  String reminderSentToast(String name) {
+    return 'Reminder sent to $name';
+  }
+
+  @override
+  String get likedYouPremiumGateMessage =>
+      'உங்களை விரும்பிய அனைவரையும் பார்க்க மேம்படுத்துங்கள், அல்லது வாரத்திற்கு ஒரு சுயவிவரம் திறக்க விளம்பரம் பாருங்கள் (வாரத்திற்கு ௨).';
+
+  @override
+  String watchAdToUnlockOne(int remaining) {
+    return 'ஒன்றை திறக்க விளம்பரம் பாருங்கள் (இந்த வாரம் $remaining மீதி)';
+  }
+
+  @override
+  String get likedYouUnlockedProfiles => 'திறக்கப்பட்ட சுயவிவரங்கள்';
+
+  @override
+  String get likedYouNoRequestToUnlock =>
+      'இப்போது திறக்க அழைப்பு இல்லை. பிறகு மீண்டும் முயற்சிக்கவும்.';
 
   @override
   String get navMatches => 'Matches';
@@ -194,6 +258,22 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get discoverTitle => 'Discover';
+
+  @override
+  String get discoverNoMoreProfilesTitle => 'இப்போது மேலும் சுயவிவரங்கள் இல்லை';
+
+  @override
+  String get discoverNoMoreProfilesBody =>
+      'புதிய பொருத்தங்களுக்கு பிறகு மீண்டும் பாருங்கள், அல்லது உங்கள் நகரம் அல்லது வடிப்பான்களை மாற்றி முயற்சிக்கவும்.';
+
+  @override
+  String discoverNoProfilesInCityTitle(String city) {
+    return '$city இல் இன்னும் சுயவிவரங்கள் இல்லை';
+  }
+
+  @override
+  String get discoverNoProfilesInCityBody =>
+      'அருகிலுள்ள சுயவிவரங்களைப் பார்க்க \"உங்கள் பகுதி\" முயற்சிக்கவும், அல்லது வேறு நகரத்தைத் தேர்ந்தெடுக்கவும்.';
 
   @override
   String get dailyCuratedSet => 'Daily curated set';
@@ -274,6 +354,24 @@ class AppLocalizationsTa extends AppLocalizations {
   String get whyMatch => 'Why this match';
 
   @override
+  String get dailyMatchesTitle => 'Your daily matches';
+
+  @override
+  String get dailyMatchesSubtitle =>
+      'Send a free interest to profiles you like';
+
+  @override
+  String get dailyMatchesSendFreeInterest => 'Send free interest';
+
+  @override
+  String dailyMatchesSendFreeInterestToCount(int count) {
+    return 'Send free interest to $count';
+  }
+
+  @override
+  String get dailyMatchesMaybeLater => 'Maybe later';
+
+  @override
   String get requestsReceived => 'Received';
 
   @override
@@ -294,6 +392,18 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get requestsEmptyHint =>
       'When someone sends you an interest, it will appear here.';
+
+  @override
+  String get requestsSeeWhosInterested => 'யாருக்கு ஆர்வம் உள்ளது பாருங்கள்';
+
+  @override
+  String get requestsUpgradeToView =>
+      'உங்கள் அழைப்புகளை பார்க்கவும் பதிலளிக்கவும் பிரீமியத்திற்கு மேம்படுத்துங்கள்.';
+
+  @override
+  String requestsUpgradeOrUnlock(int count) {
+    return 'உங்களுக்கு $count அழைப்பு(கள்) உள்ளன. அனைத்தையும் பார்க்க மேம்படுத்துங்கள், அல்லது ஒன்றை திறக்க விளம்பரம் பாருங்கள்.';
+  }
 
   @override
   String get shortlistTitle => 'Shortlist';
@@ -362,6 +472,24 @@ class AppLocalizationsTa extends AppLocalizations {
       'செய்தி அனுப்ப விளம்பரம் பார்க்கவும், அல்லது பிரீமியம் மேம்படுத்தி விளம்பரம் இல்லாமல் செய்தி அனுப்பவும்.';
 
   @override
+  String get datingMessageGateTitle => 'செய்தி அனுப்புங்கள்';
+
+  @override
+  String get datingMessageGateBody =>
+      'செய்தி அனுப்ப விளம்பரம் பாருங்கள் (நாளுக்கு ௫ வரை). உங்கள் செய்தி அவர்களின் செய்தி அழைப்புகளுக்கு செல்லும். வரம்பற்ற மெசேஜிங்கிற்கு பிரீமியத்திற்கு மேம்படுத்துங்கள்.';
+
+  @override
+  String get watchAdToSendMessage => 'செய்தி அனுப்ப விளம்பரம் பாருங்கள்';
+
+  @override
+  String get datingMessageAdLimitReached =>
+      'இன்று உங்கள் ௫ இலவச செய்திகள் அனுப்பப்பட்டன. வரம்பற்ற மெசேஜிங்கிற்கு பிரீமியத்திற்கு மேம்படுத்துங்கள்.';
+
+  @override
+  String get likedOpenChatFromChats =>
+      'நீங்கள் அவர்களை விரும்பினீர்கள். அவர்கள் விரும்பினால் சாட் திறந்து உரையாடலைத் தொடங்குங்கள்.';
+
+  @override
   String sayHiToName(String name) {
     return '$nameக்கு வணக்கம் சொல்லுங்கள்';
   }
@@ -426,6 +554,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
+  String get editProfile => 'Edit profile';
+
+  @override
   String get account => 'Account';
 
   @override
@@ -488,6 +619,54 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String completeProfile(Object percent) {
     return 'Complete your profile — $percent%';
+  }
+
+  @override
+  String get aboutMeHint =>
+      'Share what matters to you — work, interests, and what you\'re looking for.';
+
+  @override
+  String get profileSetupPhotosHint =>
+      'Add at least 2 photos. Profiles with clear face photos get more matches.';
+
+  @override
+  String get profilePhotoTipsTitle => 'Tips for great photos';
+
+  @override
+  String get profilePhotoTipsBody =>
+      'Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.';
+
+  @override
+  String get primaryPhoto => 'Main';
+
+  @override
+  String get conversationStarterHint =>
+      'Answer a prompt so matches have something to talk about.';
+
+  @override
+  String get conversationStarterFieldHint =>
+      'e.g. Best way to spend a Sunday? Chai and a book.';
+
+  @override
+  String get voiceIntroDescription =>
+      'Record a short voice note (up to 30 seconds) so matches can hear your personality.';
+
+  @override
+  String get voiceIntroSaved => 'Voice intro saved. You can update it anytime.';
+
+  @override
+  String get saveAndClose => 'Save & close';
+
+  @override
+  String get saveAndContinue => 'Save & continue';
+
+  @override
+  String get bothModeSetupHint =>
+      'You selected both modes. We collect shared details first, then matrimony and dating specifics.';
+
+  @override
+  String stepOfTotal(int current, int total) {
+    return 'Step $current of $total';
   }
 
   @override
@@ -659,6 +838,14 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get safetyScore => 'Safety score';
+
+  @override
+  String get safetyScoreDescription =>
+      'உங்கள் பாதுகாப்பு மதிப்பெண் மற்றும் தெரிவை அதிகரிக்க சரிபார்ப்புகளை முடிக்கவும்.';
+
+  @override
+  String get verificationIntro =>
+      'சரிபார்க்கப்பட்ட சுயவிவரங்களுக்கு அதிக பொருத்தங்கள் கிடைக்கும். கீழே ஒன்று அல்லது அதற்கு மேற்பட்ட சரிபார்ப்புகளை சேர்க்கவும்.';
 
   @override
   String get uploadIdHint =>
@@ -1570,22 +1757,68 @@ class AppLocalizationsTa extends AppLocalizations {
   String get viewProfile => 'சுயவிவரம் பார்க்கவும்';
 
   @override
-  String get discoverPass => 'Pass';
+  String get discoverPass => 'தள்ளு';
 
   @override
-  String get discoverLike => 'Like';
+  String get discoverLike => 'விரும்பு';
 
   @override
-  String get discoverSuperLike => 'Super like';
+  String get discoverSuperLike => 'சூப்பர் லைக்';
 
   @override
-  String get discoverSwipePassHint => 'Swipe left to pass';
+  String get trustBadgeStrong => 'High trust';
 
   @override
-  String get discoverSwipeLikeHint => 'Swipe right to like';
+  String get trustBadgeGood => 'Verified trust';
 
   @override
-  String get discoverSwipeSuperLikeHint => 'Swipe up for super like';
+  String get trustBadgeBasic => 'Growing trust';
+
+  @override
+  String sharedInterestsReason(String interests) {
+    return 'Shared interests: $interests';
+  }
+
+  @override
+  String get suggestedOpenersTitle => 'Suggested openers';
+
+  @override
+  String get suggestedOpenersSubtitle =>
+      'Pick one to start the conversation faster.';
+
+  @override
+  String openerHiName(String name) {
+    return 'Hi $name, great to match with you!';
+  }
+
+  @override
+  String openerSharedInterest(String interest) {
+    return 'I noticed we both like $interest. What got you into it?';
+  }
+
+  @override
+  String get openerWeekendQuestion => 'What does your ideal weekend look like?';
+
+  @override
+  String openerCityQuestion(String city) {
+    return 'How do you like living in $city?';
+  }
+
+  @override
+  String get chatEmojiTooltip => 'Emoji';
+
+  @override
+  String get chatMessageHint => 'Message...';
+
+  @override
+  String get discoverSwipePassHint => 'தள்ள இடது சுவைப் செய்யுங்கள்';
+
+  @override
+  String get discoverSwipeLikeHint => 'விரும்ப வலது சுவைப் செய்யுங்கள்';
+
+  @override
+  String get discoverSwipeSuperLikeHint =>
+      'சூப்பர் லைக்கிற்கு மேலே சுவைப் செய்யுங்கள்';
 
   @override
   String get downloadMyData => 'எனது தரவைப் பதிவிறக்கவும்';
@@ -1656,6 +1889,20 @@ class AppLocalizationsTa extends AppLocalizations {
   String get switchButton => 'மாற்று';
 
   @override
+  String addOtherModeTitle(Object mode) {
+    return '$mode சேர்க்கவா?';
+  }
+
+  @override
+  String get addOtherModeBody =>
+      'நீங்கள் இப்போது டேட்டிங் மற்றும் திருமணம் இரண்டு பயன்முறையிலும் இருப்பீர்கள். உங்கள் சுயவிவர தகவல் பகிரப்படுகிறது — பெரும்பாலான விவரங்கள் ஏற்கனவே உங்கள் தற்போதைய பயன்முறையிலிருந்து நிரப்பப்பட்டுள்ளன. அமைப்புகளிலிருந்து எந்த நேரத்திலும் மாறலாம்.';
+
+  @override
+  String addOtherModeCta(Object mode) {
+    return '$mode சேர்க்கவும்';
+  }
+
+  @override
   String get requestFailedTryAgain =>
       'கோரிக்கை தோல்வி. பிறகு மீண்டும் முயற்சிக்கவும்.';
 
@@ -1670,6 +1917,17 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get deleteAccountConfirm => 'கணக்கை நிரந்தரமாக நீக்கவா?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'இதை மாற்ற முடியாது. உங்கள் அனைத்து தரவும் நிரந்தரமாக நீக்கப்படும்.';
+
+  @override
+  String get deleteAccountTypeToConfirm =>
+      'உறுதிப்படுத்த கீழே DELETE தட்டச்சு செய்யுங்கள்.';
+
+  @override
+  String get deleteAccountConfirmationPlaceholder => 'DELETE';
 
   @override
   String get deleteFailed => 'நீக்குதல் தோல்வி. மீண்டும் முயற்சிக்கவும்.';
@@ -1781,22 +2039,22 @@ class AppLocalizationsTa extends AppLocalizations {
   String get lookingForTitle => 'எதைத் தேடுகிறீர்கள்';
 
   @override
-  String get partnerPrefLocations => 'Locations';
+  String get partnerPrefLocations => 'இடங்கள்';
 
   @override
-  String get partnerPrefCountries => 'Countries';
+  String get partnerPrefCountries => 'நாடுகள்';
 
   @override
-  String get partnerPrefSettledAbroad => 'Settled abroad';
+  String get partnerPrefSettledAbroad => 'வெளிநாட்டில் வசிப்பவர்';
 
   @override
-  String get partnerPrefHoroscopeMatch => 'Horoscope match';
+  String get partnerPrefHoroscopeMatch => 'ஜோதிட பொருத்தம்';
 
   @override
-  String get partnerPrefPreferred => 'Preferred';
+  String get partnerPrefPreferred => 'விரும்பிய';
 
   @override
-  String get partnerPrefStrictSuffix => ' (Strict)';
+  String get partnerPrefStrictSuffix => ' (கடுமை)';
 
   @override
   String get requestAgain => 'மீண்டும் கோரிக்கை';
@@ -1842,6 +2100,18 @@ class AppLocalizationsTa extends AppLocalizations {
   String get priorityInterest => 'முன்னுரிமை விருப்பம்';
 
   @override
+  String get prioritySent => 'முன்னுரிமை அனுப்பப்பட்டது';
+
+  @override
+  String get addPriority => 'முன்னுரிமை சேர்க்கவும்';
+
+  @override
+  String get saveLabel => 'சேமிக்கவும்';
+
+  @override
+  String get messageLabel => 'செய்தி';
+
+  @override
   String get withdrawInterest => 'விருப்பத்தை திரும்பப் பெறு';
 
   @override
@@ -1883,6 +2153,17 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get showProfilesNearYou =>
       'உங்களுக்கு அருகிலுள்ள சுயவிவரங்களைக் காட்டு';
+
+  @override
+  String get nearbyCities => 'அருகிலுள்ள நகரங்கள்';
+
+  @override
+  String get browseByCountry => 'நாட்டின் படி உலாவு';
+
+  @override
+  String activeUsersCount(int count) {
+    return '$count செயலில்';
+  }
 
   @override
   String unblocked(Object name) {
@@ -2074,8 +2355,17 @@ class AppLocalizationsTa extends AppLocalizations {
       'உங்கள் சுயவிவரம் மறைக்கப்படும்; பொருத்தங்கள் அல்லது செய்திகள் கிடைக்காது. பிறகு மீண்டும் செயல்படுத்தலாம்.';
 
   @override
-  String get deleteAccountConfirmBody =>
-      'இதை மாற்ற முடியாது. உங்கள் அனைத்து தரவும் நிரந்தரமாக நீக்கப்படும்.';
+  String get reactivateAccountPromptTitle => 'கணக்கு முடக்கப்பட்டது';
+
+  @override
+  String get reactivateAccountPromptBody =>
+      'உங்கள் கணக்கு முடக்கப்பட்டுள்ளது. மீண்டும் செயல்படுத்த விரும்புகிறீர்களா?';
+
+  @override
+  String get reactivateAccountYes => 'ஆம், மீண்டும் செயல்படுத்துங்கள்';
+
+  @override
+  String get reactivateAccountNo => 'இல்லை, வெளியேறியே இருங்கள்';
 
   @override
   String get showInVisitorsSubtitle =>
@@ -2240,6 +2530,12 @@ class AppLocalizationsTa extends AppLocalizations {
       'ஒருவர் உங்களுக்கு விருப்பம் அனுப்பினால், சாட் தொடங்க இங்கே ஏற்கலாம்.';
 
   @override
+  String get inboundRequest => 'பெறப்பட்டது';
+
+  @override
+  String get outboundRequest => 'அனுப்பப்பட்டது';
+
+  @override
   String get noContactRequestsBody =>
       'ஒருவர் உங்கள் தொடர்பை கோரினால், இங்கே ஏற்க அல்லது நிராகரிக்கலாம்.';
 
@@ -2281,6 +2577,25 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get noVisitorsYetBody =>
       'உங்களைப் பார்த்த சுயவிவரங்கள் இங்கே தோன்றும். கவனம் ஈர்க்க சுயவிவரத்தை முடிக்கவும்.';
+
+  @override
+  String get visitorUnlockTitle => 'இந்த சுயவிவரத்தை திறக்கவும்';
+
+  @override
+  String visitorUnlockWatchAd(int remaining) {
+    return 'திறக்க விளம்பரம் பாருங்கள் (இந்த வாரம் $remaining மீதி)';
+  }
+
+  @override
+  String get visitorUnlockLimitReached =>
+      'இந்த வாரம் உங்கள் ௨ திறப்புகள் பயன்படுத்தப்பட்டன. பிறகு மீண்டும் முயற்சிக்கவும் அல்லது பிரீமியத்திற்கு மேம்படுத்துங்கள்.';
+
+  @override
+  String get visitorUnlockUpgrade => 'பிரீமியத்திற்கு மேம்படுத்துங்கள்';
+
+  @override
+  String get visitorUnlockPremiumRequired =>
+      'உங்களை யார் பார்த்தார்கள் பார்க்க பிரீமியத்திற்கு மேம்படுத்துங்கள், அல்லது வாரத்திற்கு ௨ சுயவிவரங்களை திறக்க விளம்பரம் பாருங்கள்.';
 
   @override
   String get noMatchesYetBody =>

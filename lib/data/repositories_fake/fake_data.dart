@@ -109,6 +109,8 @@ class FakeData {
     '3': 'Shared career ambitions',
     '4': 'Similar lifestyle: fitness, food',
     '5': 'Shared values: family, career',
+    '6': 'Lives in Mumbai',
+    '7': 'From Mysore',
   };
 
   /// Multiple match reasons per profile for "Why recommended" chips.
@@ -118,6 +120,8 @@ class FakeData {
     '3': ['Works in tech', 'Shared career ambitions', 'Verified profile'],
     '4': ['Same dietary preference', 'Similar lifestyle: fitness, food', 'Lives nearby'],
     '5': ['Similar family values', 'Shared values: family, career', 'From same city'],
+    '6': ['Lives in Mumbai', 'Same religion — Hindu', 'Shares interests with you'],
+    '7': ['Lives in Mysore', 'Similar background', 'Detailed profile'],
   };
 
   static Map<String, UserProfile> get allProfiles => {
@@ -126,6 +130,8 @@ class FakeData {
     '3': _meera,
     '4': _riya,
     '5': _kavya,
+    '6': _isha,
+    '7': _neha,
   };
 
   // ─────────────────────────────────────────────────────────────────────
@@ -646,6 +652,184 @@ class FakeData {
       maritalStatusPreference: ['Never Married'],
       dietPreference: 'Any',
       horoscopeMatchPreferred: true,
+    ),
+  );
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Mumbai profile (for city filter testing)
+  static UserProfile get _isha => UserProfile(
+    id: '6',
+    name: 'Isha Desai',
+    gender: 'Woman',
+    age: 29,
+    dateOfBirth: '1996-04-12',
+    currentCity: 'Mumbai',
+    currentCountry: 'India',
+    originCity: 'Mumbai',
+    originCountry: 'India',
+    languagesSpoken: ['English', 'Hindi', 'Marathi'],
+    motherTongue: 'Marathi',
+    photoUrls: [
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
+    ],
+    aboutMe:
+        'Chartered accountant in Mumbai. Love vada pav, Marine Drive sunsets, and weekend getaways to Lonavala. Seeking a grounded partner who values family.',
+    interests: ['Finance', 'Travel', 'Food', 'Yoga', 'Reading'],
+    verificationStatus: const VerificationStatus(
+      photoVerified: true,
+      phoneVerified: true,
+      score: 0.7,
+    ),
+    profileCompleteness: 0.9,
+    datingExtensions: DatingExtensions(
+      datingIntent: 'Serious relationship',
+      discoveryPreferences: DiscoveryPreferences(
+        ageMin: 28,
+        ageMax: 35,
+        maxDistanceKm: 50,
+      ),
+      prompts: [
+        PromptAnswer(
+          questionId: '1',
+          questionText: 'Best way to spend a Sunday?',
+          answer: 'Brunch at Bandra, then a walk at Juhu beach.',
+        ),
+      ],
+    ),
+    matrimonyExtensions: MatrimonyExtensions(
+      religion: 'Hindu',
+      casteOrCommunity: 'Marathi',
+      motherTongue: 'Marathi',
+      maritalStatus: 'Never Married',
+      heightCm: 162,
+      educationDegree: 'Chartered Accountant',
+      educationInstitution: 'Mumbai University',
+      occupation: 'Chartered Accountant',
+      employer: 'Big 4',
+      industry: 'Finance',
+      incomeRange: const IncomeRange(
+        minLabel: '15L',
+        maxLabel: '25L',
+        currency: 'INR',
+      ),
+      diet: 'Vegetarian',
+      drinking: 'No',
+      smoking: 'No',
+      familyDetails: const FamilyDetails(
+        familyType: 'Nuclear',
+        familyValues: 'Moderate',
+        fatherOccupation: 'Engineer',
+        motherOccupation: 'Teacher',
+        siblingsCount: 1,
+        siblingsMarried: 0,
+      ),
+      horoscope: const HoroscopeDetails(
+        dateOfBirth: '1996-04-12',
+        timeOfBirth: '08:00',
+        birthPlace: 'Mumbai',
+        manglik: 'No',
+        nakshatra: 'Rohini',
+      ),
+    ),
+    partnerPreferences: const PartnerPreferences(
+      ageMin: 28,
+      ageMax: 35,
+      heightMinCm: 170,
+      heightMaxCm: 185,
+      preferredLocations: ['Mumbai', 'Pune'],
+      preferredReligions: ['Hindu'],
+      educationPreference: 'Bachelor\'s',
+      dietPreference: 'Vegetarian',
+    ),
+  );
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Mysore profile (for city filter testing)
+  static UserProfile get _neha => UserProfile(
+    id: '7',
+    name: 'Neha Pillai',
+    gender: 'Woman',
+    age: 32,
+    dateOfBirth: '1993-08-20',
+    currentCity: 'Mysore',
+    currentCountry: 'India',
+    originCity: 'Mysore',
+    originCountry: 'India',
+    languagesSpoken: ['English', 'Kannada', 'Hindi'],
+    motherTongue: 'Kannada',
+    photoUrls: [
+      'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400',
+      'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400',
+    ],
+    aboutMe:
+        'I am Neha Pillai, 32, from Mysore. Seeking a like-minded partner for a lifelong connection. Lawyer by profession, love heritage walks and filter coffee.',
+    interests: ['Travel', 'Cooking', 'Fitness', 'Music'],
+    verificationStatus: const VerificationStatus(
+      photoVerified: true,
+      phoneVerified: true,
+      score: 0.6,
+    ),
+    profileCompleteness: 0.85,
+    datingExtensions: DatingExtensions(
+      datingIntent: 'Marriage',
+      discoveryPreferences: DiscoveryPreferences(
+        ageMin: 30,
+        ageMax: 38,
+        maxDistanceKm: 100,
+      ),
+      prompts: [
+        PromptAnswer(
+          questionId: '1',
+          questionText: 'Looking for',
+          answer: 'Someone who values tradition and family, with a modern outlook.',
+        ),
+      ],
+    ),
+    matrimonyExtensions: MatrimonyExtensions(
+      religion: 'Hindu',
+      casteOrCommunity: 'Pillai',
+      motherTongue: 'Kannada',
+      maritalStatus: 'Never Married',
+      heightCm: 165,
+      educationDegree: 'Bachelor\'s',
+      educationInstitution: 'University of Mysore',
+      occupation: 'Lawyer',
+      employer: 'Private Practice',
+      industry: 'Legal',
+      incomeRange: const IncomeRange(
+        minLabel: '10L',
+        maxLabel: '20L',
+        currency: 'INR',
+      ),
+      diet: 'Vegetarian',
+      drinking: 'No',
+      smoking: 'No',
+      familyDetails: const FamilyDetails(
+        familyType: 'Joint',
+        familyValues: 'Traditional',
+        fatherOccupation: 'Retired',
+        motherOccupation: 'Homemaker',
+        siblingsCount: 2,
+        siblingsMarried: 1,
+      ),
+      horoscope: const HoroscopeDetails(
+        dateOfBirth: '1993-08-20',
+        timeOfBirth: '10:30',
+        birthPlace: 'Mysore',
+        manglik: 'No',
+        nakshatra: 'Uttara Phalguni',
+      ),
+    ),
+    partnerPreferences: const PartnerPreferences(
+      ageMin: 30,
+      ageMax: 38,
+      heightMinCm: 172,
+      heightMaxCm: 185,
+      preferredLocations: ['Mysore', 'Bangalore'],
+      preferredReligions: ['Hindu'],
+      educationPreference: 'Bachelor\'s',
+      dietPreference: 'Vegetarian',
     ),
   );
 }

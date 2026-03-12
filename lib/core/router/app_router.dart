@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../location/app_location_service.dart';
+import '../location/location_service_provider.dart';
 import '../../features/splash/screens/splash_screen.dart';
 import '../../features/splash/screens/tagline_screen.dart';
 import '../../features/location/screens/location_required_screen.dart';
@@ -25,6 +26,7 @@ import '../../features/identity/screens/identity_onboarding_screen.dart';
 import '../../features/referral/screens/referral_screen.dart';
 import '../../features/chat/screens/chat_thread_screen.dart';
 import '../../features/requests/screens/requests_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
 import '../shell/root_shell.dart';
 import '../shell/shell_branch_content.dart';
 import '../providers/repository_providers.dart';
@@ -62,10 +64,11 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           loc == '/' ||
           loc.startsWith('/map') ||
           loc.startsWith('/chats') ||
-          loc.startsWith('/community') ||
-          loc.startsWith('/profile-settings');
+          loc.startsWith('/likes') ||
+          loc.startsWith('/profile-settings') ||
+          loc.startsWith('/notifications');
       if (isShellRoute) {
-        final access = await AppLocationService.instance.checkAccess();
+        final access = await ref.read(locationServiceProvider).checkAccess();
         if (access != LocationAccess.granted) {
           return '/location-required?then=${Uri.encodeComponent(loc)}';
         }
@@ -154,6 +157,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const RequestsScreen(),
       ),
       GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
+      ),
+      GoRoute(
         path: '/profile/:id',
         builder: (_, state) {
           final id = state.pathParameters['id'] ?? '';
@@ -166,10 +173,12 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           final id = state.pathParameters['threadId'] ?? '';
           final otherUserId = state.uri.queryParameters['otherUserId'];
           final initialAdToken = state.uri.queryParameters['initialAdToken'];
+          final initialText = state.uri.queryParameters['initialText'];
           return ChatThreadScreen(
             threadId: id,
             otherUserId: otherUserId,
             initialAdToken: initialAdToken,
+            initialText: initialText,
           );
         },
       ),
@@ -203,7 +212,7 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/community',
+                path: '/likes',
                 builder: (_, __) => const ShellBranchContent(branchIndex: 3),
               ),
             ],

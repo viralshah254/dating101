@@ -86,18 +86,19 @@ class _ShortlistedTab extends ConsumerStatefulWidget {
 
 class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   Future<void> _onLike(ProfileSummary p) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressInterest(p.id, source: 'shortlist');
+          .expressInterest(p.id, source: 'shortlist', mode: mode);
       if (!context.mounted) return;
       final ctx = context;
       final l = AppLocalizations.of(ctx)!;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, p.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(recommendedPaginatedProvider);
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
@@ -141,17 +142,18 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       }
       adToken = const Uuid().v4();
     }
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressPriorityInterest(p.id, source: 'shortlist', adCompletionToken: adToken);
+          .expressPriorityInterest(p.id, source: 'shortlist', adCompletionToken: adToken, mode: mode);
       if (!context.mounted) return;
       final ctx = context;
       final l = AppLocalizations.of(ctx)!;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, p.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
@@ -224,23 +226,25 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       );
       return;
     }
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     final adToken = const Uuid().v4();
     // Auto-send interest so backend allows creating the thread; then open message screen.
     try {
       await ref.read(interactionsRepositoryProvider).expressInterest(
         p.id,
         source: 'shortlist',
+        mode: mode,
       );
       if (!context.mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, p.id},
+            (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
     } on ApiException catch (e) {
       if (!context.mounted) return;
       if (e.code == 'ALREADY_SENT') {
-        ref.invalidate(sentInteractionsProvider);
+        ref.invalidate(sentInteractionsProvider(mode));
       }
     }
     await _openChat(p, initialAdToken: adToken);
@@ -453,11 +457,12 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final async = ref.watch(shortlistProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final sentPriorityIds =
-        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ?? <String>{};
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
 
     return async.when(
       data: (entries) {

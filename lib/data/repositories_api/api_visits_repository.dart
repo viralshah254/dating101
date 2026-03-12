@@ -1,4 +1,5 @@
 import '../../domain/models/visitor_entry.dart';
+import '../../domain/models/visitor_unlock_result.dart';
 import '../../domain/repositories/visits_repository.dart';
 import '../api/api_client.dart';
 import 'api_profile_repository.dart';
@@ -45,5 +46,30 @@ class ApiVisitsRepository implements VisitsRepository {
   @override
   Future<void> markVisitorsSeen() async {
     await api.post('/visits/mark-seen', body: <String, dynamic>{});
+  }
+
+  @override
+  Future<VisitorUnlockResult?> unlockOneVisitor({
+    required String visitId,
+    required String adCompletionToken,
+  }) async {
+    final body = await api.post(
+      '/visits/unlock-one',
+      body: <String, dynamic>{
+        'visitId': visitId,
+        'adCompletionToken': adCompletionToken,
+      },
+    );
+    if (body == null) return null;
+    final visitorMap = body['visitor'] as Map<String, dynamic>?;
+    if (visitorMap == null) return null;
+    final remaining = body['unlocksRemainingThisWeek'] as int? ?? 0;
+    final resetsAtStr = body['visitorUnlocksResetAt'] as String?;
+    return VisitorUnlockResult(
+      visitId: body['visitId'] as String? ?? visitId,
+      visitor: ApiProfileRepository.parseSummaryPublic(visitorMap),
+      unlocksRemainingThisWeek: remaining,
+      resetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
+    );
   }
 }

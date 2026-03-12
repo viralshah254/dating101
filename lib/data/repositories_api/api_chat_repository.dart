@@ -94,9 +94,11 @@ class ApiChatRepository implements ChatRepository {
   }
 
   @override
-  Future<List<MessageRequest>> getMessageRequests({int limit = 20}) async {
+  Future<List<MessageRequest>> getMessageRequests({int limit = 20, String? mode}) async {
     try {
-      final body = await api.get('/chat/message-requests', query: {'limit': '$limit'});
+      final query = <String, String>{'limit': '$limit'};
+      if (mode != null && mode.isNotEmpty) query['mode'] = mode;
+      final body = await api.get('/chat/message-requests', query: query);
       final list = body['requests'] ?? body['messageRequests'] ?? body;
       final items = list is List ? list : <dynamic>[];
       return items
@@ -105,6 +107,19 @@ class ApiChatRepository implements ChatRepository {
           .toList();
     } on ApiException catch (e) {
       if (e.statusCode == 404) return [];
+      rethrow;
+    }
+  }
+
+  @override
+  Future<int> getMessageRequestsCount({String? mode}) async {
+    try {
+      final query = mode != null && mode.isNotEmpty ? {'mode': mode} : null;
+      final body = await api.get('/chat/message-requests/count', query: query);
+      final n = body['count'] ?? body['total'];
+      return n is int ? n : (int.tryParse('$n') ?? 0);
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return 0;
       rethrow;
     }
   }
@@ -122,6 +137,7 @@ class ApiChatRepository implements ChatRepository {
   static MessageRequest _parseMessageRequest(Map<String, dynamic> j) {
     final other = j['otherUser'] ?? j['fromUser'] ?? j;
     final otherMap = other is Map<String, dynamic> ? other : <String, dynamic>{};
+    final isInbound = j['isInbound'] as bool? ?? (j['direction'] != 'outbound');
     return MessageRequest(
       requestId: j['requestId'] ?? j['id'] ?? '',
       otherUserId: otherMap['id'] ?? j['otherUserId'] ?? '',
@@ -129,6 +145,7 @@ class ApiChatRepository implements ChatRepository {
       text: j['text'] ?? j['message'] as String?,
       createdAt: j['createdAt'] != null ? DateTime.tryParse(j['createdAt'] as String) : null,
       threadId: j['threadId'] as String?,
+      isInbound: isInbound is bool ? isInbound : true,
     );
   }
 

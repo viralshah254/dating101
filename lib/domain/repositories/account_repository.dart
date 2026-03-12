@@ -12,7 +12,8 @@ abstract class AccountRepository {
   Future<void> reactivateAccount();
 
   /// Permanently delete account. POST /account/delete.
-  Future<void> deleteAccount({String? reason});
+  /// [confirmation] — when the app requires "Type DELETE", send "DELETE" so backend can verify.
+  Future<void> deleteAccount({String? reason, String? confirmation});
 }
 
 class ExportDataResult {

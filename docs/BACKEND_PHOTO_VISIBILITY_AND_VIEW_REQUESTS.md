@@ -207,7 +207,7 @@ Authorization: Bearer <accessToken>
 }
 ```
 
-`fromUser` should be at least a minimal profile (id, name, age, imageUrl, etc.) so the recipient can recognise and accept/decline.
+`fromUser` should be at least a minimal profile (id, name, age, etc.) so the recipient can recognise and accept/decline. **Include `imageUrl` (string) and/or `photoUrls` (array of strings)** so the app can show the requester’s photo on the request card; if both are omitted, the app shows an initial placeholder.
 
 ---
 

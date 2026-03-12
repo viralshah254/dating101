@@ -11,11 +11,11 @@ import '../../features/mode_select/screens/mode_select_screen.dart';
 import '../../features/profile/screens/profile_settings_screen.dart';
 import '../../features/requests/screens/requests_screen.dart';
 import '../../features/shortlist/screens/shortlist_screen.dart';
-import '../../features/community/screens/community_screen.dart';
+import '../../features/likes/screens/likes_screen.dart';
 
 /// Renders the correct screen for a shell branch index and current app mode.
 /// If mode is null (first run), branch 0 shows ModeSelectScreen.
-/// Branch indices: 0=Discover/Matches, 1=Map/Requests, 2=Chats/Shortlist, 3=Communities/Chats, 4=Profile.
+/// Branch indices: 0=Discover/Matches, 1=Map/Requests, 2=Chats/Shortlist, 3=Likes/Chats, 4=Profile.
 class ShellBranchContent extends ConsumerWidget {
   const ShellBranchContent({super.key, required this.branchIndex});
 
@@ -39,7 +39,7 @@ class ShellBranchContent extends ConsumerWidget {
         case 2:
           return const ChatListScreen();
         case 3:
-          return const CommunityScreen();
+          return const LikesScreen();
         case 4:
           return const ProfileSettingsScreen();
         default:

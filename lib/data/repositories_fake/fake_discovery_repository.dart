@@ -26,6 +26,11 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     for (var i = 0; i < ids.length && list.length < limit; i++) {
       final id = ids[i];
       final p = FakeData.allProfiles[id]!;
+      if (city != null && city.isNotEmpty) {
+        final profileCity = (p.currentCity ?? '').trim().toLowerCase();
+        final filterCity = city.trim().toLowerCase();
+        if (profileCity != filterCity) continue;
+      }
       final distanceKm = (i + 1) * 2.0;
       final reason = FakeData.matchReasons[id];
       final shared = _sharedInterests(
@@ -56,6 +61,11 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     final profiles = await getRecommended(mode: mode, city: city, limit: limit, cursor: cursor);
     final nextCursor = profiles.length >= limit ? 'cursor_${profiles.length}' : null;
     return DiscoveryPageResult(profiles: profiles, nextCursor: nextCursor);
+  }
+
+  @override
+  Future<List<ProfileSummary>> getDailyMatches({int limit = 9}) async {
+    return getRecommended(mode: AppMode.matrimony, limit: limit);
   }
 
   @override
@@ -155,9 +165,10 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       final p = entry.value;
       if (ageMin != null && (p.age == null || p.age! < ageMin)) continue;
       if (ageMax != null && (p.age == null || p.age! > ageMax)) continue;
-      if (city != null &&
-          !(p.currentCity ?? '').toLowerCase().contains(city.toLowerCase())) {
-        continue;
+      if (city != null && city.isNotEmpty) {
+        final profileCity = (p.currentCity ?? '').trim().toLowerCase();
+        final filterCity = city.trim().toLowerCase();
+        if (profileCity != filterCity) continue;
       }
       if (diet != null && diet.isNotEmpty) {
         final profileDiet = p.matrimonyExtensions?.diet;
@@ -227,6 +238,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? source,
     String? reason,
     String? details,
+    AppMode? mode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
   }

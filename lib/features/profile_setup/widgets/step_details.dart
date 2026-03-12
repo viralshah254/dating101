@@ -1844,18 +1844,6 @@ class _DatingDetails extends StatelessWidget {
           ),
           const SizedBox(height: 28),
 
-          _SectionLabel(label: l.aboutYou),
-          const SizedBox(height: 8),
-          _MultilineField(
-            value: formData.bio,
-            hint: l.aboutYouHint,
-            onChanged: (v) {
-              formData.bio = v;
-              onChanged();
-            },
-          ),
-          const SizedBox(height: 28),
-
           _LifestyleSection(formData: formData, onChanged: onChanged),
 
           const SizedBox(height: 40),

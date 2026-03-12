@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../mode/app_mode.dart';
 import '../mode/mode_provider.dart';
 import '../providers/repository_providers.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../../features/chat/providers/chat_providers.dart';
 import '../../features/requests/providers/requests_providers.dart';
@@ -13,7 +12,7 @@ import '../../features/shortlist/providers/shortlist_providers.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Mode-aware root shell: 5 tabs with labels/icons for Dating or Matrimony.
-/// Dating: Discover, Map, Chats, Communities, Profile.
+/// Dating: Discover, Map, Chats, Likes, Profile.
 /// Matrimony: Discover, Requests, Shortlist, Chats, Profile.
 class RootShell extends ConsumerWidget {
   const RootShell({super.key, required this.navigationShell});
@@ -29,21 +28,29 @@ class RootShell extends ConsumerWidget {
     });
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final l = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final items = _navItems(mode, l);
     final requestsCount = ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
     final shortlistCount = ref.watch(whoShortlistedMeCountProvider).valueOrNull ?? 0;
     final chatUnread = ref.watch(chatUnreadTotalProvider).valueOrNull ?? 0;
-    final badges = _badgesForMode(mode, requestsCount, shortlistCount, chatUnread);
+    final notificationsUnread =
+        ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
+    final badges = _badgesForMode(
+      mode,
+      requestsCount,
+      shortlistCount,
+      chatUnread,
+      notificationsUnread,
+    );
 
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          color: theme.colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: isDark ? AppColors.darkDivider : AppColors.splashPeach.withValues(alpha: 0.5),
+              color: theme.colorScheme.outline.withValues(alpha: 0.35),
               width: 1,
             ),
           ),
@@ -79,12 +86,24 @@ class RootShell extends ConsumerWidget {
     );
   }
 
-  /// Badge counts per tab index. [Requests, Shortlist, Chats] map to indices by mode.
-  List<int> _badgesForMode(AppMode mode, int requestsCount, int shortlistCount, int chatUnread) {
+  /// Badge counts per tab index. [Requests, Shortlist, Chats, Notifications] map to mode indices.
+  List<int> _badgesForMode(
+    AppMode mode,
+    int requestsCount,
+    int shortlistCount,
+    int chatUnread,
+    int notificationsUnread,
+  ) {
     if (mode == AppMode.dating) {
-      return [0, 0, chatUnread, 0, 0]; // Chats at index 2
+      return [0, 0, chatUnread, 0, notificationsUnread]; // Profile tab shows notification badge
     }
-    return [0, requestsCount, shortlistCount, chatUnread, 0]; // Requests=1, Shortlist=2, Chats=3
+    return [
+      0,
+      requestsCount,
+      shortlistCount,
+      chatUnread,
+      notificationsUnread,
+    ]; // Requests=1, Shortlist=2, Chats=3, Profile=notifications
   }
 
   void _onTap(int index) {
@@ -100,7 +119,7 @@ class RootShell extends ConsumerWidget {
         _NavItemData(Icons.explore_outlined, Icons.explore, l.navDiscover),
         _NavItemData(Icons.map_outlined, Icons.map, l.navMap),
         _NavItemData(Icons.chat_bubble_outline, Icons.chat_bubble, l.navChats),
-        _NavItemData(Icons.people_outline, Icons.people, l.navCommunities),
+        _NavItemData(Icons.favorite_border, Icons.favorite, l.navLikes),
         _NavItemData(Icons.person_outline, Icons.person, l.navProfile),
       ];
     }
@@ -143,37 +162,46 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = index == currentIndex;
+    final accent = Theme.of(context).colorScheme.primary;
     final color = isSelected
-        ? (Theme.of(context).brightness == Brightness.dark
-            ? AppColors.darkAccent
-            : AppColors.lightAccent)
-        : (Theme.of(context).brightness == Brightness.dark
-            ? AppColors.darkTextTertiary
-            : AppColors.lightTextTertiary);
+        ? accent
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
     final showBadge = badgeCount > 0;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? accent.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(isSelected ? activeIcon : icon, size: 24, color: color),
+                Icon(isSelected ? activeIcon : icon, size: 26, color: color),
                 if (showBadge)
                   Positioned(
-                    top: -4,
+                    top: -5,
                     right: -6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                       decoration: BoxDecoration(
-                        color: AppColors.lightError,
+                        color: Theme.of(context).colorScheme.error,
                         borderRadius: BorderRadius.circular(9),
-                        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1),
+                        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                       ),
                       child: Text(
                         badgeCount > 99 ? '99+' : '$badgeCount',
@@ -192,7 +220,8 @@ class _NavItem extends StatelessWidget {
               label,
               style: AppTypography.labelSmall.copyWith(
                 color: color,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 11,
               ),
             ),
           ],

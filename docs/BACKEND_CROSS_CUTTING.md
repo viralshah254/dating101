@@ -146,7 +146,9 @@ Mode is stored **client-side** and can be switched from Settings with confirmati
 
 ### 5.3 Account and data
 
-The app shows **“Download my data”**, **“Deactivate account”**, and **“Delete account”** in a dedicated Account or Safety section.
+The app shows **“Download my data”**, **“Deactivate account”**, and **“Delete account”** in Profile & Settings → Account & data. For delete, the app requires the user to type **DELETE** and sends `confirmation: "DELETE"` in the body.
+
+**Full contract:** [BACKEND_ACCOUNT_LIFECYCLE.md](BACKEND_ACCOUNT_LIFECYCLE.md).
 
 **Backend:**
 
@@ -154,11 +156,12 @@ The app shows **“Download my data”**, **“Deactivate account”**, and **�
 |--------|------|-------------|
 | POST | /account/export | Request a copy of the user’s data. Returns `{ "requestId": "...", "status": "pending", "message": "We'll email you when ready" }`. Backend generates a link (e.g. S3) and sends email when ready. |
 | POST | /account/deactivate | Deactivate account (reversible). Body optional: `{ "reason": "..." }`. Auth token invalidated or marked inactive; profile hidden from discovery. |
-| POST | /account/delete | Permanently delete account. Body optional: `{ "reason": "...", "password": "..." }` if required. Irreversible; purge PII and anonymise where needed. |
+| POST | /account/reactivate | Reactivate a deactivated account. |
+| POST | /account/delete | Permanently delete account. Body optional: `{ "reason": "...", "confirmation": "DELETE" }`. App sends confirmation when user types DELETE. Irreversible; purge PII and anonymise where needed. |
 
 **Response conventions:**
 
-- **Deactivate:** 200 + `{ "deactivatedAt": "..." }`. Optional: **POST /account/reactivate** to restore.
+- **Deactivate:** 200 + `{ "deactivatedAt": "..." }`. Use **POST /account/reactivate** to restore.
 - **Delete:** 200 + `{ "deleted": true }`. 403 if not allowed (e.g. active subscription).
 
 ---
@@ -176,12 +179,13 @@ The app shows **“Download my data”**, **“Deactivate account”**, and **�
 | Icebreakers | Optional GET /chat/suggestions or static app list |
 | Profile boost | POST /profile/me/boost; return boostedUntil on profile or GET /profile/me/boost |
 | Referral | GET /referral (code, link, status); optional POST /referral/invite |
-| Account | POST /account/export, POST /account/deactivate, POST /account/delete |
+| Account | POST /account/export, POST /account/deactivate, POST /account/reactivate, POST /account/delete — see BACKEND_ACCOUNT_LIFECYCLE.md |
 
 ---
 
 ## 7. Related docs
 
+- [BACKEND_ACCOUNT_LIFECYCLE.md](BACKEND_ACCOUNT_LIFECYCLE.md) — Export, deactivate, reactivate, delete (full request/response).
 - [BACKEND_PUSH_NOTIFICATIONS.md](BACKEND_PUSH_NOTIFICATIONS.md) — FCM, payload format, deep link data.
 - [BACKEND_SECURITY_BLOCK_REPORT.md](BACKEND_SECURITY_BLOCK_REPORT.md) — Block, report, blocked list.
 - [BACKEND_API_REFERENCE.md](BACKEND_API_REFERENCE.md) — Full API reference.

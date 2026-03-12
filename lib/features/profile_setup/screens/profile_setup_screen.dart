@@ -41,6 +41,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   );
   bool _isCompleting = false;
   bool _isLoading = true;
+  int? _pendingInitialStep;
 
   late List<_StepInfo> _steps;
   static final _locationService = AppLocationService.instance;
@@ -73,14 +74,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (mounted) {
       setState(() {
         _isLoading = false;
-        if (widget.initialStep != null) {
-          _currentStep = widget.initialStep!.clamp(0, 9);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_pageController.hasClients) {
-              _pageController.jumpToPage(_currentStep);
-            }
-          });
-        }
+        _pendingInitialStep = widget.initialStep;
       });
     }
   }
@@ -293,7 +287,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+    final effectiveMode = ref.watch(appModeProvider) ?? AppMode.dating;
+    final modePreference = ref.watch(modePreferenceProvider).valueOrNull;
+    final signupPreference = modePreference ?? effectiveMode;
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
@@ -319,7 +315,20 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
     }
 
-    _steps = _buildSteps(mode, l);
+    _steps = _buildSteps(signupPreference, l);
+    if (_steps.isNotEmpty && _currentStep >= _steps.length) {
+      _currentStep = _steps.length - 1;
+    }
+    if (_pendingInitialStep != null && _steps.isNotEmpty) {
+      final target = _pendingInitialStep!.clamp(0, _steps.length - 1);
+      _pendingInitialStep = null;
+      _currentStep = target;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(target);
+        }
+      });
+    }
     if (_currentStep >= _steps.length) _currentStep = _steps.length - 1;
     final progress = (_currentStep + 1) / _steps.length;
     final currentStep = _steps[_currentStep];
@@ -355,11 +364,47 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                 child: Column(
                   children: [
+                    if (signupPreference.isBoth && !widget.isEditing) ...[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.merge_type_rounded,
+                              color: accent,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l.bothModeSetupHint,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: onSurface.withValues(alpha: 0.78),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Step ${_currentStep + 1} of ${_steps.length}',
+                          l.stepOfTotal(_currentStep + 1, _steps.length),
                           style: AppTypography.labelMedium.copyWith(
                             color: onSurface.withValues(alpha: 0.6),
                           ),
@@ -407,11 +452,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                         onPressed: widget.isEditing
                             ? (_isSaving ? null : _saveAndContinue)
                             : (_canProceed ? _next : null),
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
                         child: widget.isEditing
                             ? (_isSaving
                                   ? const SizedBox(
@@ -428,8 +468,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                                       children: [
                                         Text(
                                           _currentStep >= _steps.length - 1
-                                              ? 'Save & close'
-                                              : 'Save & continue',
+                                              ? l.saveAndClose
+                                              : l.saveAndContinue,
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
@@ -483,10 +523,96 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l) {
     void onChanged() => setState(() {});
     final editing = widget.isEditing;
+    if (mode.isBoth) {
+      // Shared-first flow for users who selected "both", then mode-specific sections.
+      return [
+        _StepInfo(
+          label: editing ? l.editProfile : l.profileStepIdentity,
+          widget: StepIdentity(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+            isEditing: editing,
+          ),
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) =>
+              ProfileFormData.isNameValid(d.name) &&
+              d.gender != null &&
+              d.dateOfBirth != null &&
+              ProfileFormData.isAtLeast18(d.dateOfBirth) &&
+              (editing || d.confirmedAge18),
+        ),
+        _StepInfo(
+          label: l.interestsAndHobbies,
+          widget: StepInterests(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: l.profileStepPhotos,
+          widget: StepPhotos(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: '${l.modeMatrimony} · ${l.profileStepEducation}',
+          widget: StepEducation(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: '${l.modeMatrimony} · ${l.profileStepCareer}',
+          widget: StepCareer(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: '${l.modeMatrimony} · ${l.profileStepDetails}',
+          widget: StepDetails(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
+          widget: StepPreferences(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: '${l.modeDating} · ${l.profileStepDetails}',
+          widget: StepDetails(
+            mode: AppMode.dating,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          label: '${l.modeDating} · ${l.profileStepPreferences}',
+          widget: StepPreferences(
+            mode: AppMode.dating,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+      ];
+    }
     if (mode.isMatrimony) {
       return [
         _StepInfo(
-          label: editing ? 'Edit Profile' : l.profileStepIdentity,
+          label: editing ? l.editProfile : l.profileStepIdentity,
           widget: StepIdentity(
             mode: mode,
             formData: _formData,
@@ -550,7 +676,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
     return [
       _StepInfo(
-        label: editing ? 'Edit Profile' : l.profileStepIdentity,
+        label: editing ? l.editProfile : l.profileStepIdentity,
         widget: StepIdentity(
           mode: mode,
           formData: _formData,

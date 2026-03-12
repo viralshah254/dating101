@@ -25,6 +25,7 @@ import '../../data/repositories_api/api_contact_request_repository.dart';
 import '../../data/repositories_api/api_photo_view_request_repository.dart';
 import '../../data/repositories_api/api_visits_repository.dart';
 import '../../data/repositories_api/api_referral_repository.dart';
+import '../../data/repositories_api/api_location_repository.dart';
 import '../../data/repositories_api/api_notifications_repository.dart';
 import '../../data/repositories_api/api_translate_repository.dart';
 import '../../data/repositories_api/api_verification_repository.dart';
@@ -43,6 +44,7 @@ import '../../data/repositories_fake/fake_contact_request_repository.dart';
 import '../../data/repositories_fake/fake_photo_view_request_repository.dart';
 import '../../data/repositories_fake/fake_visits_repository.dart';
 import '../../data/repositories_fake/fake_referral_repository.dart';
+import '../../data/repositories_fake/fake_location_repository.dart';
 import '../../data/repositories_fake/fake_notifications_repository.dart';
 import '../../data/repositories_fake/fake_translate_repository.dart';
 import '../../data/repositories_fake/fake_verification_repository.dart';
@@ -63,6 +65,7 @@ import '../../domain/repositories/subscription_repository.dart';
 import '../../domain/repositories/translate_repository.dart';
 import '../../domain/repositories/visits_repository.dart';
 import '../../domain/repositories/referral_repository.dart';
+import '../../domain/repositories/location_repository.dart';
 import '../../domain/repositories/verification_repository.dart';
 
 // ── Configuration ────────────────────────────────────────────────────────
@@ -156,6 +159,11 @@ final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
   return ApiReferralRepository(api: ref.watch(apiClientProvider));
 });
 
+final locationRepositoryProvider = Provider<LocationRepository>((ref) {
+  if (_config.useFakeBackend) return FakeLocationRepository();
+  return ApiLocationRepository(api: ref.watch(apiClientProvider));
+});
+
 final translateRepositoryProvider = Provider<TranslateRepository>((ref) {
   if (_config.useFakeBackend) return FakeTranslateRepository();
   return ApiTranslateRepository(api: ref.watch(apiClientProvider));
@@ -169,6 +177,10 @@ final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
 final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {
   if (_config.useFakeBackend) return FakeNotificationsRepository();
   return ApiNotificationsRepository(api: ref.watch(apiClientProvider));
+});
+
+final navNotificationsUnreadCountProvider = FutureProvider<int>((ref) async {
+  return ref.watch(notificationsRepositoryProvider).getUnreadCount();
 });
 
 final contactRequestRepositoryProvider = Provider<ContactRequestRepository>((ref) {

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -14,7 +15,6 @@ import '../../../core/feature_flags/feature_flags.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/widgets/premium_badge.dart';
 import '../../../core/widgets/translatable_text.dart';
-import '../../../core/i18n/app_copy.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
@@ -28,6 +28,7 @@ import '../../../domain/models/user_profile.dart';
 import '../../../domain/repositories/discovery_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../ai/widgets/match_reason_chip.dart';
+import '../../chat/providers/chat_providers.dart';
 import '../../discovery/providers/discovery_providers.dart';
 import '../../matches/providers/matches_providers.dart';
 import '../../requests/providers/requests_providers.dart';
@@ -337,10 +338,11 @@ class _FloatingActionBar extends ConsumerWidget {
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final shortlistedIds =
         ref.watch(shortlistedIdsProvider).valueOrNull ?? <String>{};
+    final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final sentInterestIds =
-        ref.watch(sentInterestProfileIdsProvider).valueOrNull ?? <String>{};
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
     final sentPriorityIds =
-        ref.watch(sentPriorityInterestProfileIdsProvider).valueOrNull ??
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
         <String>{};
     final isMatched = matchedIds.contains(profileId);
     final isShortlisted = shortlistedIds.contains(profileId);
@@ -476,15 +478,16 @@ class _FloatingActionBar extends ConsumerWidget {
   }
 
   Future<void> _onExpressInterest(BuildContext context, WidgetRef ref) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressInterest(profileId, source: 'profile');
+          .expressInterest(profileId, source: 'profile', mode: mode);
       if (!context.mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, profileId},
+            (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch) {
         ref.invalidate(mutualMatchesProvider);
@@ -506,7 +509,7 @@ class _FloatingActionBar extends ConsumerWidget {
     } on ApiException catch (e) {
       if (!context.mounted) return;
       if (e.code == 'ALREADY_SENT') {
-        ref.invalidate(sentInteractionsProvider);
+        ref.invalidate(sentInteractionsProvider(mode));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.toastInterestSent),
@@ -554,6 +557,7 @@ class _FloatingActionBar extends ConsumerWidget {
       }
       adToken = const Uuid().v4();
     }
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
@@ -562,12 +566,13 @@ class _FloatingActionBar extends ConsumerWidget {
             message: message,
             source: 'profile',
             adCompletionToken: adToken,
+            mode: mode,
           );
       if (!context.mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, profileId},
+            (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch) {
         ref.invalidate(mutualMatchesProvider);
@@ -589,7 +594,7 @@ class _FloatingActionBar extends ConsumerWidget {
     } on ApiException catch (e) {
       if (!context.mounted) return;
       if (e.code == 'ALREADY_SENT') {
-        ref.invalidate(sentInteractionsProvider);
+        ref.invalidate(sentInteractionsProvider(mode));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.toastInterestSent),
@@ -1268,7 +1273,8 @@ class _DatingProfileContent extends ConsumerWidget {
     final l = AppLocalizations.of(context)!;
     final primary = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final ent = ref.watch(entitlementsProvider);
+    final imageUrls = _imageUrlsFromProfile(profile);
+    final asyncCompat = ref.watch(compatibilityProvider(profile.id as String));
 
     return Scaffold(
       body: CustomScrollView(
@@ -1276,78 +1282,16 @@ class _DatingProfileContent extends ConsumerWidget {
           parent: BouncingScrollPhysics(),
         ),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            pinned: true,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.pop(),
-            ),
-            actions: [
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                onSelected: (v) {
-                  if (v == 'block') {
-                    _showBlockConfirm(context, ref, profile.id, profile.name);
-                  }
-                  if (v == 'report') {
-                    _showReportConfirm(context, ref, profile.id, profile.name);
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'block',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.block,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(l.block),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'report',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.flag_outlined,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(l.report),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: primary.withValues(alpha: 0.15),
-                child: Center(
-                  child: CircleAvatar(
-                    radius: 56,
-                    backgroundColor: primary.withValues(alpha: 0.3),
-                    child: Text(
-                      profile.name.isNotEmpty
-                          ? profile.name[0].toUpperCase()
-                          : '?',
-                      style: AppTypography.displayMedium.copyWith(
-                        color: primary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          _DatingProfileHero(
+            profile: profile,
+            imageUrls: imageUrls,
+            onBlock: () =>
+                _showBlockConfirm(context, ref, profile.id, profile.name),
+            onReport: () =>
+                _showReportConfirm(context, ref, profile.id, profile.name),
+            onImageTap: imageUrls.isNotEmpty
+                ? () => _openPhotoGallery(context, imageUrls, 0)
+                : null,
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -1355,13 +1299,55 @@ class _DatingProfileContent extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (profile.compatibilityScore != null ||
+                      profile.compatibilityLabel != null ||
+                      asyncCompat.valueOrNull != null) ...[
+                    _DatingCompatibilityPill(
+                      profile: profile,
+                      compat: asyncCompat.valueOrNull,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (imageUrls.length > 1) ...[
+                    SizedBox(
+                      height: 80,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: imageUrls.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, i) => GestureDetector(
+                          onTap: () => _openPhotoGallery(context, imageUrls, i),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrls[i],
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
+                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                child: Icon(Icons.image_not_supported_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   Row(
                     children: [
-                      Text(
-                        '${profile.name}, ${profile.age ?? ''}',
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: onSurface,
-                          fontWeight: FontWeight.w700,
+                      Expanded(
+                        child: Text(
+                          '${profile.name}, ${profile.age ?? ''}',
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       if (profile.verified) ...[
@@ -1371,33 +1357,31 @@ class _DatingProfileContent extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${profile.city ?? ''}${profile.distanceKm != null ? ' · ${l.kmAway(profile.distanceKm!.toStringAsFixed(1))}' : ''}',
-                    style: AppTypography.bodyLarge.copyWith(
-                      color: onSurface.withValues(alpha: 0.8),
+                  if (profile.city != null && profile.city!.isNotEmpty)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 18,
+                          color: onSurface.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${profile.city ?? ''}${profile.distanceKm != null ? ' · ${l.kmAway(profile.distanceKm!.toStringAsFixed(1))}' : ''}',
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  if (profile.matchReasons.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: profile.matchReasons
-                          .map((r) => MatchReasonChip(reason: r))
-                          .toList(),
-                    ),
-                  ] else if (profile.matchReason != null &&
-                      profile.matchReason!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    MatchReasonChip(reason: profile.matchReason!),
-                  ],
                   const SizedBox(height: 24),
                   _SectionTitle(l.about, onSurface),
                   const SizedBox(height: 8),
-                  Text(
-                    profile.bio,
-                    style: AppTypography.bodyLarge.copyWith(
+                  TranslatableText(
+                    content: profile.bio,
+                    textStyle: AppTypography.bodyLarge.copyWith(
                       color: onSurface.withValues(alpha: 0.9),
+                      height: 1.4,
                     ),
                   ),
                   if (profile.interests.isNotEmpty) ...[
@@ -1407,11 +1391,15 @@ class _DatingProfileContent extends ConsumerWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: profile.interests
+                      children: (profile.interests as List<String>)
                           .map<Widget>(
-                            (i) => Chip(
-                              label: Text(i),
-                              backgroundColor: primary.withValues(alpha: 0.12),
+                            (i) => _DatingInterestChip(
+                              label: i,
+                              isShared: (profile.sharedInterests as List<String>?)
+                                      ?.contains(i) ??
+                                  false,
+                              primary: primary,
+                              onSurface: onSurface,
                             ),
                           )
                           .toList(),
@@ -1439,7 +1427,6 @@ class _DatingProfileContent extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  // Space for floating bottom bar
                   const SizedBox(height: 100),
                 ],
               ),
@@ -1447,31 +1434,506 @@ class _DatingProfileContent extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _DatingFloatingBar(
-        ent: ent,
-        primary: primary,
-        profileName: profile.name as String,
+      bottomNavigationBar: _DatingProfileBottomBar(
         profileId: profile.id as String,
+        profileName: profile.name as String,
+      ),
+    );
+  }
+
+  static List<String> _imageUrlsFromProfile(dynamic profile) {
+    if (profile.imageUrls != null && (profile.imageUrls as List<String>).isNotEmpty) {
+      return profile.imageUrls as List<String>;
+    }
+    if (profile.imageUrl != null && (profile.imageUrl as String).isNotEmpty) {
+      return [profile.imageUrl as String];
+    }
+    return [];
+  }
+}
+
+/// Hero for dating profile: real photos (carousel if multiple), gradient, back, menu.
+class _DatingProfileHero extends StatelessWidget {
+  const _DatingProfileHero({
+    required this.profile,
+    required this.imageUrls,
+    required this.onBlock,
+    required this.onReport,
+    this.onImageTap,
+  });
+  final dynamic profile;
+  final List<String> imageUrls;
+  final VoidCallback onBlock;
+  final VoidCallback onReport;
+  /// When set, tapping the hero image opens full-screen gallery at index 0.
+  final VoidCallback? onImageTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final l = AppLocalizations.of(context)!;
+    final hasImages = imageUrls.isNotEmpty;
+
+    return SliverAppBar(
+      expandedHeight: 320,
+      pinned: true,
+      leading: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.35),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+        ),
+        onPressed: () => context.pop(),
+      ),
+      actions: [
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert, color: Colors.white.withValues(alpha: 0.95)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          onSelected: (v) {
+            if (v == 'block') onBlock();
+            if (v == 'report') onReport();
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: 'block',
+              child: Row(
+                children: [
+                  Icon(Icons.block, size: 20, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 12),
+                  Text(l.block),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'report',
+              child: Row(
+                children: [
+                  Icon(Icons.flag_outlined, size: 20, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 12),
+                  Text(l.report),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasImages)
+              GestureDetector(
+                onTap: onImageTap,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrls.first,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => ColoredBox(
+                    color: primary.withValues(alpha: 0.15),
+                    child: Center(
+                      child: CircleAvatar(
+                        radius: 48,
+                        backgroundColor: primary.withValues(alpha: 0.3),
+                        child: Text(
+                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                          style: AppTypography.displayMedium.copyWith(color: primary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => _DatingHeroFallback(profile: profile, primary: primary),
+                ),
+              )
+            else
+              _DatingHeroFallback(profile: profile, primary: primary),
+            if (hasImages && onImageTap != null)
+              Positioned(
+                right: 12,
+                bottom: 16,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    onTap: onImageTap,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fullscreen_rounded, color: Colors.white, size: 18),
+                          if (imageUrls.length > 1) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              '${imageUrls.length}',
+                              style: AppTypography.labelMedium.copyWith(color: Colors.white),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+class _DatingHeroFallback extends StatelessWidget {
+  const _DatingHeroFallback({required this.profile, required this.primary});
+  final dynamic profile;
+  final Color primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: primary.withValues(alpha: 0.15),
+      child: Center(
+        child: CircleAvatar(
+          radius: 56,
+          backgroundColor: primary.withValues(alpha: 0.3),
+          child: Text(
+            profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+            style: AppTypography.displayMedium.copyWith(color: primary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Opens full-screen photo gallery at the given index. Used by profile photo sections.
+void _openPhotoGallery(BuildContext context, List<String> imageUrls, int initialIndex) {
+  if (imageUrls.isEmpty) return;
+  Navigator.of(context).push(
+    PageRouteBuilder(
+      opaque: true,
+      barrierColor: Colors.black,
+      pageBuilder: (_, __, ___) => _FullScreenPhotoGallery(
+        imageUrls: imageUrls,
+        initialIndex: initialIndex.clamp(0, imageUrls.length - 1),
+      ),
+    ),
+  );
+}
+
+/// Full-screen scrollable photo gallery for dating profile. Swipe between images, tap X to close.
+class _FullScreenPhotoGallery extends StatefulWidget {
+  const _FullScreenPhotoGallery({
+    required this.imageUrls,
+    required this.initialIndex,
+  });
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  @override
+  State<_FullScreenPhotoGallery> createState() => _FullScreenPhotoGalleryState();
+}
+
+class _FullScreenPhotoGalleryState extends State<_FullScreenPhotoGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.initialIndex);
+    _currentIndex = widget.initialIndex;
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (i) => setState(() => _currentIndex = i),
+            itemBuilder: (_, i) => InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4,
+              child: SizedBox.expand(
+                child: CachedNetworkImage(
+                  imageUrl: widget.imageUrls[i],
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => const Center(
+                    child: CircularProgressIndicator(color: Colors.white70),
+                  ),
+                  errorWidget: (_, __, ___) => const Center(
+                    child: Icon(Icons.image_not_supported, color: Colors.white54, size: 48),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 24),
+                    ),
+                  ),
+                  if (widget.imageUrls.length > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                        style: AppTypography.labelLarge.copyWith(color: Colors.white),
+                      ),
+                    )
+                  else
+                    const SizedBox.shrink(),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Posh compatibility pill for dating profile: refined typography and premium look.
+class _DatingCompatibilityPill extends StatelessWidget {
+  const _DatingCompatibilityPill({
+    required this.profile,
+    this.compat,
+  });
+  final dynamic profile;
+  final dynamic compat; // CompatibilityDetail?
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    int score;
+    String label;
+    if (compat != null) {
+      score = (compat.compatibilityScore * 100).round();
+      label = compat.compatibilityLabel ?? 'Match';
+    } else if (profile.compatibilityScore != null) {
+      score = (profile.compatibilityScore * 100).round();
+      label = profile.compatibilityLabel ?? 'Good match';
+    } else {
+      return const SizedBox.shrink();
+    }
+    final isHigh = score >= 70;
+    final isMedium = score >= 50 && score < 70;
+    final accentColor = isHigh
+        ? const Color(0xFF2E7D32)
+        : isMedium
+            ? const Color(0xFFF9A825)
+            : const Color(0xFFE65100);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withValues(alpha: 0.12),
+            accentColor.withValues(alpha: 0.06),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.35),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              size: 22,
+              color: accentColor,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$score%',
+                style: AppTypography.headlineSmall.copyWith(
+                  color: onSurface,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  color: onSurface.withValues(alpha: 0.75),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Interest chip for dating profile: shared interests get accent fill, others outline.
+class _DatingInterestChip extends StatelessWidget {
+  const _DatingInterestChip({
+    required this.label,
+    required this.isShared,
+    required this.primary,
+    required this.onSurface,
+  });
+  final String label;
+  final bool isShared;
+  final Color primary;
+  final Color onSurface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isShared ? FontWeight.w600 : FontWeight.w500,
+          color: isShared ? primary : onSurface.withValues(alpha: 0.85),
+        ),
+      ),
+      backgroundColor: isShared ? primary.withValues(alpha: 0.18) : primary.withValues(alpha: 0.08),
+      side: BorderSide(
+        color: isShared ? primary.withValues(alpha: 0.5) : primary.withValues(alpha: 0.2),
+      ),
+    );
+  }
+}
+
+/// Wrapper: show Pass/Super like/Like bar only when user has not yet interacted (no pass, like, or super like).
+class _DatingProfileBottomBar extends ConsumerWidget {
+  const _DatingProfileBottomBar({
+    required this.profileId,
+    required this.profileName,
+  });
+  final String profileId;
+  final String profileName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+    final passedIds = ref.watch(passedProfileIdsProvider);
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
+            <String>{};
+    final optimisticSent =
+        ref.watch(optimisticSentInterestProfileIdsProvider)[mode];
+    final isPassed = passedIds.contains(profileId);
+    final isLiked = sentInterestIds.contains(profileId) ||
+        (optimisticSent?.contains(profileId) ?? false);
+    final isSuperLiked = sentPriorityIds.contains(profileId);
+    final hasInteracted = isPassed || isLiked || isSuperLiked;
+
+    if (hasInteracted) {
+      return const SizedBox.shrink();
+    }
+    return _DatingFloatingBar(
+      profileId: profileId,
+      profileName: profileName,
+    );
+  }
+}
+
+/// Dating-only action bar: Pass | Super like | Like | Message. No shortlist on dating.
 class _DatingFloatingBar extends ConsumerWidget {
   const _DatingFloatingBar({
-    required this.ent,
-    required this.primary,
-    required this.profileName,
     required this.profileId,
+    required this.profileName,
   });
-  final Entitlements ent;
-  final Color primary;
-  final String profileName;
   final String profileId;
+  final String profileName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+    final ent = ref.watch(entitlementsProvider);
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
+    final sentPriorityIds =
+        ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
+            <String>{};
+    final optimisticSent =
+        ref.watch(optimisticSentInterestProfileIdsProvider)[mode];
+    final isLiked = sentInterestIds.contains(profileId) ||
+        (optimisticSent?.contains(profileId) ?? false);
+    final isSuperLiked = sentPriorityIds.contains(profileId);
+    final canMessageDirect = ent.canSendMessage;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -1486,43 +1948,37 @@ class _DatingFloatingBar extends ConsumerWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
           child: Row(
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {
-                    if (ent.canSendMessage) {
-                      _onSendIntro(context, ref);
-                    } else {
-                      context.push('/paywall');
-                    }
-                  },
-                  icon: Icon(
-                    ent.canSendMessage ? Icons.send : Icons.lock_outline,
-                    size: 20,
-                  ),
-                  label: Text(
-                    ent.canSendMessage
-                        ? AppCopy.ctaSendPrimary(context, AppMode.dating)
-                        : l.ctaUpgradeToPremium,
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ent.canSendMessage
-                        ? primary
-                        : AppColors.saffron,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+              _ProfileActionBtn(
+                icon: Icons.close_rounded,
+                label: l.discoverPass,
+                color: const Color(0xFFE57373),
+                onTap: () => _onPass(context, ref),
               ),
-              const SizedBox(width: 10),
-              _FloatingIconBtn(
-                icon: Icons.star_border_rounded,
-                accent: primary,
-                onTap: () => _onShortlist(context, ref),
+              const SizedBox(width: 20),
+              _ProfileActionBtn(
+                icon: Icons.auto_awesome,
+                label: l.discoverSuperLike,
+                color: const Color(0xFFB39DDB),
+                onTap: isSuperLiked
+                    ? null
+                    : () => _onSuperLike(context, ref),
+              ),
+              const SizedBox(width: 20),
+              _ProfileActionBtn(
+                icon: Icons.favorite_rounded,
+                label: l.discoverLike,
+                color: const Color(0xFF81C784),
+                onTap: isLiked || isSuperLiked
+                    ? null
+                    : () => _onLike(context, ref),
+              ),
+              const SizedBox(width: 16),
+              _DatingMessageButton(
+                canMessageDirect: canMessageDirect,
+                onTap: () => _onMessage(context, ref),
               ),
             ],
           ),
@@ -1531,16 +1987,34 @@ class _DatingFloatingBar extends ConsumerWidget {
     );
   }
 
-  Future<void> _onSendIntro(BuildContext context, WidgetRef ref) async {
+  Future<void> _onPass(BuildContext context, WidgetRef ref) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
-      final result = await ref
-          .read(interactionsRepositoryProvider)
-          .expressInterest(profileId, source: 'profile');
+      await ref.read(discoveryRepositoryProvider).sendFeedback(
+            candidateId: profileId,
+            action: 'pass',
+            source: 'profile_view',
+            mode: mode,
+          );
+    } catch (_) {}
+    if (!context.mounted) return;
+    ref.read(passedProfileIdsProvider.notifier).update((s) => {...s, profileId});
+    context.pop();
+  }
+
+  Future<void> _onLike(BuildContext context, WidgetRef ref) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    try {
+      final result = await ref.read(interactionsRepositoryProvider).expressInterest(
+            profileId,
+            source: 'profile',
+            mode: mode,
+          );
       if (!context.mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-            (s) => {...s, profileId},
+            (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
-      ref.invalidate(sentInteractionsProvider);
+      ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.invalidate(mutualMatchesProvider);
@@ -1550,9 +2024,7 @@ class _DatingFloatingBar extends ConsumerWidget {
             );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastMatchWith(profileName),
-            ),
+            content: Text(AppLocalizations.of(context)!.toastMatchWith(profileName)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1562,9 +2034,7 @@ class _DatingFloatingBar extends ConsumerWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastInterestSentTo(profileName),
-            ),
+            content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profileName)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1577,22 +2047,340 @@ class _DatingFloatingBar extends ConsumerWidget {
     }
   }
 
-  Future<void> _onShortlist(BuildContext context, WidgetRef ref) async {
+  Future<void> _onSuperLike(BuildContext context, WidgetRef ref) async {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
-      await ref.read(shortlistRepositoryProvider).addToShortlist(profileId);
+      final result = await ref.read(interactionsRepositoryProvider).expressPriorityInterest(
+            profileId,
+            message: null,
+            source: 'profile',
+            adCompletionToken: null,
+            mode: mode,
+          );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.toastAddedToShortlist),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+            (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
+          );
+      ref.invalidate(sentInteractionsProvider(mode));
+      ref.invalidate(recommendedPaginatedProvider);
+      if (result.mutualMatch && result.chatThreadId != null) {
+        ref.invalidate(mutualMatchesProvider);
+        ref.invalidate(matchedUserIdsProvider);
+        ref.read(shortlistUnlockedEntriesProvider.notifier).update(
+              (list) => list.where((e) => e.profileId != profileId).toList(),
+            );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.toastMatchWith(profileName)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        context.push(
+          '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(profileId)}',
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profileName)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
     }
+  }
+
+  Future<void> _onMessage(BuildContext context, WidgetRef ref) async {
+    final ent = ref.read(entitlementsProvider);
+    final l = AppLocalizations.of(context)!;
+    if (ent.canSendMessage) {
+      await _openDatingChat(context, ref, null);
+      return;
+    }
+    // Free user: watch ad (5/day) or upgrade. Message goes to message request (dating).
+    final choice = await showModalBottomSheet<String?>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.datingMessageGateTitle,
+                style: AppTypography.titleMedium.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l.datingMessageGateBody,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(ctx).pop('watch_ad'),
+                icon: const Icon(Icons.play_circle_outline, size: 22),
+                label: Text(l.watchAdToSendMessage),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => Navigator.of(ctx).pop('upgrade'),
+                icon: const Icon(Icons.workspace_premium_outlined, size: 22),
+                label: Text(l.ctaUpgradeToPremium),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(null),
+                child: Text(l.cancel),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted || choice == null) return;
+    if (choice == 'upgrade') {
+      context.push('/paywall');
+      return;
+    }
+    if (choice == 'watch_ad') {
+      final shown = await loadAndShowInterstitialWithLoading(
+        context,
+        ref,
+        AdRewardReason.sendMessage,
+      );
+      if (!context.mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.failedToSendTryAgain),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      final adToken = const Uuid().v4();
+      final mode = ref.read(appModeProvider) ?? AppMode.dating;
+      final sentIds = ref.read(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
+      final optimisticSent = ref.read(optimisticSentInterestProfileIdsProvider)[mode];
+      final alreadySent = sentIds.contains(profileId) || (optimisticSent?.contains(profileId) ?? false);
+      if (!alreadySent) {
+        try {
+          await ref.read(interactionsRepositoryProvider).expressInterest(
+                profileId,
+                source: 'profile',
+                mode: mode,
+              );
+          if (!context.mounted) return;
+          ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+                (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
+              );
+          ref.invalidate(sentInteractionsProvider(mode));
+        } on ApiException catch (e) {
+          if (!context.mounted) return;
+          if (e.code != 'ALREADY_SENT') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+            );
+            return;
+          }
+          ref.invalidate(sentInteractionsProvider(mode));
+        }
+      }
+      await _openDatingChat(context, ref, adToken);
+    }
+  }
+
+  Future<void> _openDatingChat(BuildContext context, WidgetRef ref, String? initialAdToken) async {
+    final l = AppLocalizations.of(context)!;
+    final navigator = Navigator.of(context);
+    try {
+      final threadId = await ref.read(chatRepositoryProvider).createThread(
+            profileId,
+            mode: 'dating',
+          );
+      if (!context.mounted) return;
+      ref.invalidate(messageRequestsProvider);
+      ref.invalidate(messageRequestsCountProvider);
+      ref.invalidate(receivedRequestsCountProvider);
+      ref.invalidate(chatThreadsProvider);
+      ref.invalidate(discoveryFeedProvider);
+      ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
+      navigator.pop();
+      if (!context.mounted) return;
+      final query = 'otherUserId=${Uri.encodeComponent(profileId)}';
+      final tokenParam = initialAdToken != null
+          ? '&initialAdToken=${Uri.encodeComponent(initialAdToken)}'
+          : '';
+      context.push('/chat/$threadId?$query$tokenParam');
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ref.invalidate(discoveryFeedProvider);
+      ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
+      navigator.pop();
+      if (!context.mounted) return;
+      context.push('/chats');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'CONNECTION_REQUIRED'
+                ? l.likedOpenChatFromChats
+                : e.code == 'DAILY_MESSAGE_AD_LIMIT_REACHED'
+                    ? l.datingMessageAdLimitReached
+                    : e.message,
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
+      navigator.pop();
+      if (!context.mounted) return;
+      context.push('/chats');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.errorGeneric), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+}
+
+/// Message button for dating profile: prominent CTA with icon + label; shows premium dot when gated.
+class _DatingMessageButton extends StatelessWidget {
+  const _DatingMessageButton({
+    required this.canMessageDirect,
+    required this.onTap,
+  });
+  final bool canMessageDirect;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final primary = Theme.of(context).colorScheme.primary;
+    const messageColor = Color(0xFF0288D1); // Distinct teal/blue for Message
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Material(
+              color: messageColor.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.chat_bubble_rounded,
+                    size: 26,
+                    color: messageColor,
+                  ),
+                ),
+              ),
+            ),
+            if (!canMessageDirect)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.saffron,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          l.messageTooltip,
+          style: AppTypography.labelSmall.copyWith(
+            color: primary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Circular action button for Pass / Super like / Like on dating profile.
+class _ProfileActionBtn extends StatelessWidget {
+  const _ProfileActionBtn({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: onTap != null
+                      ? color.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: onTap != null ? color : Colors.grey.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 26,
+                  color: onTap != null ? color : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -2504,7 +3292,7 @@ class _PhotosSection extends StatelessWidget {
                 url: photos[i],
                 name: name,
                 index: i,
-                onTap: () => _showAllPhotos(context),
+                onTap: () => _openPhotoGallery(context, photos, i),
               );
             },
           ),
@@ -2537,14 +3325,20 @@ class _PhotosSection extends StatelessWidget {
                   childAspectRatio: 0.75,
                 ),
                 itemCount: photos.length,
-                itemBuilder: (_, i) => ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    photos[i],
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: accent.withValues(alpha: 0.1),
-                      child: Icon(Icons.photo, color: accent, size: 40),
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _openPhotoGallery(ctx, photos, i);
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      photos[i],
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: accent.withValues(alpha: 0.1),
+                        child: Icon(Icons.photo, color: accent, size: 40),
+                      ),
                     ),
                   ),
                 ),

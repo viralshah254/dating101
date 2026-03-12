@@ -1,18 +1,27 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/location/app_location_service.dart';
+import '../../../core/location/location_service_provider.dart';
+import '../../../core/design/design.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 
-class MapScreen extends StatefulWidget {
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen> {
   final _mapController = MapController();
   double _radiusKm = 10;
   double _currentZoom =
@@ -21,7 +30,10 @@ class _MapScreenState extends State<MapScreen> {
   bool _activeNowOnly = false;
   bool _locationPermissionGranted = false;
   bool _hasSeenPermissionEducation = false;
-  static final _center = LatLng(51.5074, -0.1278); // London
+  bool _loadingPins = false;
+  String? _mapError;
+  LatLng? _center;
+  List<_MapPin> _pins = const [];
 
   @override
   void initState() {
@@ -30,13 +42,111 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _checkLocationPermission() async {
-    // Placeholder: in production use permission_handler
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (mounted) {
+    final l = AppLocalizations.of(context)!;
+    final access = await ref.read(locationServiceProvider).checkAccess();
+    if (!mounted) return;
+    setState(() {
+      _locationPermissionGranted = access == LocationAccess.granted;
+      _hasSeenPermissionEducation = access == LocationAccess.granted;
+      _mapError = access == LocationAccess.serviceDisabled
+          ? l.locationServiceDisabled
+          : null;
+    });
+    if (_locationPermissionGranted) {
+      await _loadNearbyPins();
+    }
+  }
+
+  Future<void> _requestAndLoadPins() async {
+    final access = await ref.read(locationServiceProvider).requestPermission();
+    if (!mounted) return;
+    if (access == LocationAccess.granted) {
       setState(() {
-        _locationPermissionGranted = false; // show education for demo
+        _locationPermissionGranted = true;
+        _hasSeenPermissionEducation = true;
+      });
+      await _loadNearbyPins();
+      return;
+    }
+    if (access == LocationAccess.deniedForever) {
+      await ref.read(locationServiceProvider).openAppSettings();
+    }
+    setState(() {
+      _locationPermissionGranted = false;
+      _hasSeenPermissionEducation = false;
+    });
+  }
+
+  Future<void> _loadNearbyPins() async {
+    final l = AppLocalizations.of(context)!;
+    setState(() {
+      _loadingPins = true;
+      _mapError = null;
+    });
+    try {
+      final loc = await ref.read(locationServiceProvider).getCurrentCreationLocation();
+      if (!mounted) return;
+      if (loc == null) {
+        setState(() {
+          _loadingPins = false;
+          _mapError = l.errorGeneric;
+        });
+        return;
+      }
+      final center = LatLng(loc.latitude, loc.longitude);
+      final profiles = await ref.read(discoveryRepositoryProvider).getNearby(
+            lat: loc.latitude,
+            lng: loc.longitude,
+            radiusKm: _radiusKm,
+            limit: 50,
+          );
+      if (!mounted) return;
+      setState(() {
+        _center = center;
+        _pins = _profilesToPins(center, profiles);
+        _loadingPins = false;
+      });
+      _mapController.move(center, _currentZoom);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingPins = false;
+        _mapError = l.errorGeneric;
       });
     }
+  }
+
+  List<_MapPin> _profilesToPins(LatLng center, List<ProfileSummary> profiles) {
+    final filtered = _activeNowOnly
+        ? profiles.where((p) => p.id.hashCode.isEven).toList()
+        : profiles;
+    return filtered.map((p) {
+      final distance = p.distanceKm;
+      final point = _positionForProfile(center, p.id, distanceKm: distance);
+      return _MapPin(
+        profileId: p.id,
+        position: point,
+        name: p.name,
+        age: p.age,
+        distanceKm: distance,
+        bio: p.bio,
+      );
+    }).toList();
+  }
+
+  LatLng _positionForProfile(
+    LatLng center,
+    String id, {
+    double? distanceKm,
+  }) {
+    final seed = id.codeUnits.fold<int>(0, (a, b) => a + b);
+    final rng = math.Random(seed);
+    final km = (distanceKm ?? (1 + rng.nextDouble() * _radiusKm)).clamp(0.3, _radiusKm);
+    final bearing = rng.nextDouble() * 2 * math.pi;
+    final dLat = (km / 111.0) * math.cos(bearing);
+    final dLng = (km / (111.0 * math.cos(center.latitude * math.pi / 180.0))) *
+        math.sin(bearing);
+    return LatLng(center.latitude + dLat, center.longitude + dLng);
   }
 
   @override
@@ -67,11 +177,14 @@ class _MapScreenState extends State<MapScreen> {
       ),
       body: Stack(
         children: [
-          FlutterMap(
+          if (_center != null)
+            FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _center,
+              initialCenter: _center!,
               initialZoom: 11,
+              minZoom: 9,
+              maxZoom: 14,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
@@ -92,7 +205,7 @@ class _MapScreenState extends State<MapScreen> {
               CircleLayer(
                 circles: [
                   CircleMarker(
-                    point: _center,
+                    point: _center!,
                     radius: _radiusKm * 120,
                     color: accent.withValues(alpha: 0.15),
                     borderColor: accent.withValues(alpha: 0.5),
@@ -103,19 +216,32 @@ class _MapScreenState extends State<MapScreen> {
               // Week 16 — Clustered pins (simplified: show cluster when zoom < 12)
               MarkerLayer(markers: _buildMarkers(accent)),
             ],
-          ),
+            ),
+          if (_center == null)
+            Center(
+              child: _loadingPins
+                  ? loadingSpinner(context)
+                  : (_mapError != null
+                        ? ErrorState(
+                            message: _mapError!,
+                            onRetry: _requestAndLoadPins,
+                            retryLabel: l.retry,
+                          )
+                        : EmptyState(
+                            icon: Icons.location_searching_rounded,
+                            title: l.locationRequiredTitle,
+                            body: l.locationRequiredMessage,
+                            ctaLabel: l.enable,
+                            onCta: _requestAndLoadPins,
+                          )),
+            ),
           // Week 16 — Location permission education
           if (!_locationPermissionGranted && !_hasSeenPermissionEducation)
             _LocationPermissionBanner(
               accent: accent,
               onDismiss: () =>
                   setState(() => _hasSeenPermissionEducation = true),
-              onEnable: () async {
-                setState(() {
-                  _hasSeenPermissionEducation = true;
-                  _locationPermissionGranted = true;
-                });
-              },
+              onEnable: _requestAndLoadPins,
             ),
           Positioned(
             left: 20,
@@ -133,7 +259,7 @@ class _MapScreenState extends State<MapScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Radius: ${_radiusKm.toStringAsFixed(0)} km',
+                      '${l.distance}: ${_radiusKm.toStringAsFixed(0)} km',
                       style: AppTypography.labelLarge.copyWith(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
@@ -146,17 +272,21 @@ class _MapScreenState extends State<MapScreen> {
                       divisions: 24,
                       activeColor: accent,
                       onChanged: (v) => setState(() => _radiusKm = v),
+                      onChangeEnd: (_) => _loadNearbyPins(),
                     ),
                     Row(
                       children: [
                         FilterChip(
                           label: Text(l.activeNow),
                           selected: _activeNowOnly,
-                          onSelected: (v) => setState(() => _activeNowOnly = v),
+                          onSelected: (v) {
+                            setState(() => _activeNowOnly = v);
+                            _loadNearbyPins();
+                          },
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Privacy: ${_locationBlur ? "Blurred" : "Precise"}',
+                          l.locationBlur,
                           style: AppTypography.caption.copyWith(
                             color: Theme.of(
                               context,
@@ -176,20 +306,21 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   List<Marker> _buildMarkers(Color accent) {
+    if (_pins.isEmpty) return const [];
     final zoom = _currentZoom;
-    final showClusters = zoom < 12 && _mockPins.length > 2;
+    final showClusters = zoom < 12 && _pins.length > 2;
     if (showClusters) {
       // Week 16 — Simple cluster: one marker with count
       return [
         Marker(
-          point: _center,
+          point: _center!,
           width: 56,
           height: 56,
-          child: _ClusterPin(accent: accent, count: _mockPins.length),
+          child: _ClusterPin(accent: accent, count: _pins.length),
         ),
       ];
     }
-    return _mockPins.map((p) {
+    return _pins.map((p) {
       return Marker(
         point: p.position,
         width: 42,
@@ -215,7 +346,7 @@ class _MapScreenState extends State<MapScreen> {
           Navigator.pop(ctx);
           context.push('/profile/${pin.profileId}');
         },
-        onSendIntro: () {
+        onPrimaryCta: () {
           Navigator.pop(ctx);
           context.push('/paywall');
         },
@@ -263,12 +394,12 @@ class _MapProfilePreviewSheet extends StatelessWidget {
   const _MapProfilePreviewSheet({
     required this.pin,
     required this.onViewFullProfile,
-    required this.onSendIntro,
+    required this.onPrimaryCta,
     required this.onClose,
   });
   final _MapPin pin;
   final VoidCallback onViewFullProfile;
-  final VoidCallback onSendIntro;
+  final VoidCallback onPrimaryCta;
   final VoidCallback onClose;
 
   @override
@@ -278,7 +409,9 @@ class _MapProfilePreviewSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTokens.radius20),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -322,7 +455,7 @@ class _MapProfilePreviewSheet extends StatelessWidget {
                         ),
                         if (pin.distanceKm != null)
                           Text(
-                            '${pin.distanceKm!.toStringAsFixed(1)} km away',
+                          '${pin.distanceKm!.toStringAsFixed(1)} km',
                             style: AppTypography.bodySmall,
                           ),
                       ],
@@ -348,9 +481,17 @@ class _MapProfilePreviewSheet extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: onSendIntro,
-                icon: const Icon(Icons.send, size: 18),
-                label: Text(AppLocalizations.of(context)!.ctaSendIntro),
+                onPressed: onPrimaryCta,
+                icon: const Icon(Icons.workspace_premium, size: 18),
+                label: Text(AppLocalizations.of(context)!.upgrade),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                AppLocalizations.of(context)!.upgradeToPremiumSubtitle,
+                textAlign: TextAlign.center,
+                style: AppTypography.caption.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ],
           ),
@@ -379,7 +520,7 @@ class _LocationPermissionBanner extends StatelessWidget {
       top: 16,
       child: Material(
         elevation: 4,
-        borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppTokens.radius12),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -397,7 +538,7 @@ class _LocationPermissionBanner extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Enable location to see people near you',
+                      AppLocalizations.of(context)!.locationRequiredTitle,
                       style: AppTypography.labelLarge,
                     ),
                   ),
@@ -409,7 +550,7 @@ class _LocationPermissionBanner extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'We only use your location to show relevant matches. You can blur your exact position.',
+                AppLocalizations.of(context)!.locationRequiredMessage,
                 style: AppTypography.bodySmall,
               ),
               const SizedBox(height: 12),
@@ -521,46 +662,3 @@ class _MapPin {
   final double? distanceKm;
   final String bio;
 }
-
-final List<_MapPin> _mockPins = [
-  _MapPin(
-    profileId: '1',
-    position: LatLng(51.5074, -0.1278),
-    name: 'Priya',
-    age: 28,
-    distanceKm: 2.1,
-    bio: 'Product designer. Chai over chaos.',
-  ),
-  _MapPin(
-    profileId: '2',
-    position: LatLng(51.52, -0.14),
-    name: 'Ananya',
-    age: 26,
-    distanceKm: 4.2,
-    bio: 'Software engineer. Bharatanatyam dancer. Chai and deep talks.',
-  ),
-  _MapPin(
-    profileId: '3',
-    position: LatLng(51.50, -0.11),
-    name: 'Meera',
-    age: 30,
-    distanceKm: 5.0,
-    bio: 'Finance. Yoga, hiking, new cuisines.',
-  ),
-  _MapPin(
-    profileId: '4',
-    position: LatLng(51.51, -0.13),
-    name: 'Riya',
-    age: 25,
-    distanceKm: 3.2,
-    bio: 'Content creator. Brunch, long walks, sunsets.',
-  ),
-  _MapPin(
-    profileId: '5',
-    position: LatLng(51.49, -0.12),
-    name: 'Kavya',
-    age: 27,
-    distanceKm: 6.1,
-    bio: 'Doctor. Family, friends, good food.',
-  ),
-];

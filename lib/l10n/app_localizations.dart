@@ -368,6 +368,18 @@ abstract class AppLocalizations {
   /// **'Find a life partner. Extended profiles, partner preferences, and family-friendly matching.'**
   String get modeMatrimonySubtitle;
 
+  /// No description provided for @modeBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get modeBoth;
+
+  /// No description provided for @modeBothSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use dating and matrimony. You\'ll see only profiles who are also on both. Switch between them anytime in Settings.'**
+  String get modeBothSubtitle;
+
   /// No description provided for @navDiscover.
   ///
   /// In en, this message translates to:
@@ -392,11 +404,107 @@ abstract class AppLocalizations {
   /// **'Communities'**
   String get navCommunities;
 
+  /// No description provided for @navLikes.
+  ///
+  /// In en, this message translates to:
+  /// **'Likes'**
+  String get navLikes;
+
   /// No description provided for @navProfile.
   ///
   /// In en, this message translates to:
   /// **'Profile'**
   String get navProfile;
+
+  /// No description provided for @likesTabLikedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Liked you'**
+  String get likesTabLikedYou;
+
+  /// No description provided for @likesTabVisitors.
+  ///
+  /// In en, this message translates to:
+  /// **'Visitors'**
+  String get likesTabVisitors;
+
+  /// No description provided for @likesTabYouLiked.
+  ///
+  /// In en, this message translates to:
+  /// **'You liked'**
+  String get likesTabYouLiked;
+
+  /// No description provided for @likesEmptyLikedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'No one has liked you yet'**
+  String get likesEmptyLikedYou;
+
+  /// No description provided for @likesEmptyLikedYouBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep exploring — when someone likes you, they\'ll show up here.'**
+  String get likesEmptyLikedYouBody;
+
+  /// No description provided for @likesEmptyVisitors.
+  ///
+  /// In en, this message translates to:
+  /// **'No visitors yet'**
+  String get likesEmptyVisitors;
+
+  /// No description provided for @likesEmptyVisitorsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When someone views your profile, they\'ll appear here.'**
+  String get likesEmptyVisitorsBody;
+
+  /// No description provided for @likesEmptyYouLiked.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t liked anyone yet'**
+  String get likesEmptyYouLiked;
+
+  /// No description provided for @likesEmptyYouLikedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles you like from Discover will show up here.'**
+  String get likesEmptyYouLikedBody;
+
+  /// No description provided for @sendReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reminder'**
+  String get sendReminder;
+
+  /// No description provided for @reminderSentToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder sent to {name}'**
+  String reminderSentToast(String name);
+
+  /// No description provided for @likedYouPremiumGateMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to see everyone who liked you, or watch an ad to unlock one profile (2 per week).'**
+  String get likedYouPremiumGateMessage;
+
+  /// No description provided for @watchAdToUnlockOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad to unlock one ({remaining} left this week)'**
+  String watchAdToUnlockOne(int remaining);
+
+  /// No description provided for @likedYouUnlockedProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked profiles'**
+  String get likedYouUnlockedProfiles;
+
+  /// No description provided for @likedYouNoRequestToUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'No request to unlock right now. Try again later.'**
+  String get likedYouNoRequestToUnlock;
 
   /// No description provided for @navMatches.
   ///
@@ -469,6 +577,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discover'**
   String get discoverTitle;
+
+  /// No description provided for @discoverNoMoreProfilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No more profiles right now'**
+  String get discoverNoMoreProfilesTitle;
+
+  /// No description provided for @discoverNoMoreProfilesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check back later for new matches, or try changing your city or filters.'**
+  String get discoverNoMoreProfilesBody;
+
+  /// No description provided for @discoverNoProfilesInCityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No profiles in {city} yet'**
+  String discoverNoProfilesInCityTitle(String city);
+
+  /// No description provided for @discoverNoProfilesInCityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try \"Your area\" to see profiles near you, or pick a different city.'**
+  String get discoverNoProfilesInCityBody;
 
   /// No description provided for @dailyCuratedSet.
   ///
@@ -614,6 +746,36 @@ abstract class AppLocalizations {
   /// **'Why this match'**
   String get whyMatch;
 
+  /// No description provided for @dailyMatchesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your daily matches'**
+  String get dailyMatchesTitle;
+
+  /// No description provided for @dailyMatchesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a free interest to profiles you like'**
+  String get dailyMatchesSubtitle;
+
+  /// No description provided for @dailyMatchesSendFreeInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send free interest'**
+  String get dailyMatchesSendFreeInterest;
+
+  /// No description provided for @dailyMatchesSendFreeInterestToCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Send free interest to {count}'**
+  String dailyMatchesSendFreeInterestToCount(int count);
+
+  /// No description provided for @dailyMatchesMaybeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe later'**
+  String get dailyMatchesMaybeLater;
+
   /// No description provided for @requestsReceived.
   ///
   /// In en, this message translates to:
@@ -655,6 +817,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When someone sends you an interest, it will appear here.'**
   String get requestsEmptyHint;
+
+  /// No description provided for @requestsSeeWhosInterested.
+  ///
+  /// In en, this message translates to:
+  /// **'See who\'s interested'**
+  String get requestsSeeWhosInterested;
+
+  /// No description provided for @requestsUpgradeToView.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Premium to view and respond to your requests.'**
+  String get requestsUpgradeToView;
+
+  /// No description provided for @requestsUpgradeOrUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {count} request(s). Upgrade to view all, or watch an ad to unlock one.'**
+  String requestsUpgradeOrUnlock(int count);
 
   /// No description provided for @shortlistTitle.
   ///
@@ -776,6 +956,36 @@ abstract class AppLocalizations {
   /// **'Watch an ad to send a message, or upgrade to Premium to message without ads.'**
   String get watchAdToMessageMessage;
 
+  /// No description provided for @datingMessageGateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message'**
+  String get datingMessageGateTitle;
+
+  /// No description provided for @datingMessageGateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to send a message (up to 5 per day). Your message will go to their message requests. Upgrade to Premium for unlimited messaging.'**
+  String get datingMessageGateBody;
+
+  /// No description provided for @watchAdToSendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad to send message'**
+  String get watchAdToSendMessage;
+
+  /// No description provided for @datingMessageAdLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used your 5 free message sends today. Upgrade to Premium for unlimited messaging.'**
+  String get datingMessageAdLimitReached;
+
+  /// No description provided for @likedOpenChatFromChats.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve liked them. Open Chats to start the conversation when they like you back.'**
+  String get likedOpenChatFromChats;
+
   /// No description provided for @sayHiToName.
   ///
   /// In en, this message translates to:
@@ -896,6 +1106,12 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get signOut;
 
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profile'**
+  String get editProfile;
+
   /// No description provided for @account.
   ///
   /// In en, this message translates to:
@@ -1009,6 +1225,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Complete your profile — {percent}%'**
   String completeProfile(Object percent);
+
+  /// No description provided for @aboutMeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share what matters to you — work, interests, and what you\'re looking for.'**
+  String get aboutMeHint;
+
+  /// No description provided for @profileSetupPhotosHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least 2 photos. Profiles with clear face photos get more matches.'**
+  String get profileSetupPhotosHint;
+
+  /// No description provided for @profilePhotoTipsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips for great photos'**
+  String get profilePhotoTipsTitle;
+
+  /// No description provided for @profilePhotoTipsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.'**
+  String get profilePhotoTipsBody;
+
+  /// No description provided for @primaryPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Main'**
+  String get primaryPhoto;
+
+  /// No description provided for @conversationStarterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer a prompt so matches have something to talk about.'**
+  String get conversationStarterHint;
+
+  /// No description provided for @conversationStarterFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Best way to spend a Sunday? Chai and a book.'**
+  String get conversationStarterFieldHint;
+
+  /// No description provided for @voiceIntroDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a short voice note (up to 30 seconds) so matches can hear your personality.'**
+  String get voiceIntroDescription;
+
+  /// No description provided for @voiceIntroSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice intro saved. You can update it anytime.'**
+  String get voiceIntroSaved;
+
+  /// No description provided for @saveAndClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & close'**
+  String get saveAndClose;
+
+  /// No description provided for @saveAndContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & continue'**
+  String get saveAndContinue;
+
+  /// No description provided for @bothModeSetupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You selected both modes. We collect shared details first, then matrimony and dating specifics.'**
+  String get bothModeSetupHint;
+
+  /// No description provided for @stepOfTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String stepOfTotal(int current, int total);
 
   /// No description provided for @onboardingStepBasic.
   ///
@@ -1327,6 +1621,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Safety score'**
   String get safetyScore;
+
+  /// No description provided for @safetyScoreDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete verifications to increase your safety score and visibility.'**
+  String get safetyScoreDescription;
+
+  /// No description provided for @verificationIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified profiles get more matches. Add one or more verifications below.'**
+  String get verificationIntro;
 
   /// No description provided for @uploadIdHint.
   ///
@@ -3038,6 +3344,78 @@ abstract class AppLocalizations {
   /// **'Super like'**
   String get discoverSuperLike;
 
+  /// No description provided for @trustBadgeStrong.
+  ///
+  /// In en, this message translates to:
+  /// **'High trust'**
+  String get trustBadgeStrong;
+
+  /// No description provided for @trustBadgeGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified trust'**
+  String get trustBadgeGood;
+
+  /// No description provided for @trustBadgeBasic.
+  ///
+  /// In en, this message translates to:
+  /// **'Growing trust'**
+  String get trustBadgeBasic;
+
+  /// No description provided for @sharedInterestsReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared interests: {interests}'**
+  String sharedInterestsReason(String interests);
+
+  /// No description provided for @suggestedOpenersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested openers'**
+  String get suggestedOpenersTitle;
+
+  /// No description provided for @suggestedOpenersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one to start the conversation faster.'**
+  String get suggestedOpenersSubtitle;
+
+  /// No description provided for @openerHiName.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi {name}, great to match with you!'**
+  String openerHiName(String name);
+
+  /// No description provided for @openerSharedInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'I noticed we both like {interest}. What got you into it?'**
+  String openerSharedInterest(String interest);
+
+  /// No description provided for @openerWeekendQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What does your ideal weekend look like?'**
+  String get openerWeekendQuestion;
+
+  /// No description provided for @openerCityQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'How do you like living in {city}?'**
+  String openerCityQuestion(String city);
+
+  /// No description provided for @chatEmojiTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Emoji'**
+  String get chatEmojiTooltip;
+
+  /// No description provided for @chatMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message...'**
+  String get chatMessageHint;
+
   /// No description provided for @discoverSwipePassHint.
   ///
   /// In en, this message translates to:
@@ -3182,6 +3560,24 @@ abstract class AppLocalizations {
   /// **'Switch'**
   String get switchButton;
 
+  /// No description provided for @addOtherModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {mode}?'**
+  String addOtherModeTitle(Object mode);
+
+  /// No description provided for @addOtherModeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll now be on both Dating and Matrimony. Your profile info is shared—most details are already filled from your current mode. You can switch between them anytime in Settings.'**
+  String get addOtherModeBody;
+
+  /// No description provided for @addOtherModeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {mode}'**
+  String addOtherModeCta(Object mode);
+
   /// No description provided for @requestFailedTryAgain.
   ///
   /// In en, this message translates to:
@@ -3211,6 +3607,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete account permanently?'**
   String get deleteAccountConfirm;
+
+  /// No description provided for @deleteAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone. All your data will be permanently deleted.'**
+  String get deleteAccountConfirmBody;
+
+  /// No description provided for @deleteAccountTypeToConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'To confirm, type DELETE below.'**
+  String get deleteAccountTypeToConfirm;
+
+  /// No description provided for @deleteAccountConfirmationPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'DELETE'**
+  String get deleteAccountConfirmationPlaceholder;
 
   /// No description provided for @deleteFailed.
   ///
@@ -3530,6 +3944,30 @@ abstract class AppLocalizations {
   /// **'Priority interest'**
   String get priorityInterest;
 
+  /// No description provided for @prioritySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority sent'**
+  String get prioritySent;
+
+  /// No description provided for @addPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Add priority'**
+  String get addPriority;
+
+  /// No description provided for @saveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveLabel;
+
+  /// No description provided for @messageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get messageLabel;
+
   /// No description provided for @withdrawInterest.
   ///
   /// In en, this message translates to:
@@ -3607,6 +4045,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show profiles near you'**
   String get showProfilesNearYou;
+
+  /// No description provided for @nearbyCities.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby cities'**
+  String get nearbyCities;
+
+  /// No description provided for @browseByCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse by country'**
+  String get browseByCountry;
+
+  /// No description provided for @activeUsersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active'**
+  String activeUsersCount(int count);
 
   /// No description provided for @unblocked.
   ///
@@ -3938,11 +4394,29 @@ abstract class AppLocalizations {
   /// **'Your profile will be hidden and you won\'t receive matches or messages. You can reactivate later.'**
   String get deactivateAccountConfirmBody;
 
-  /// No description provided for @deleteAccountConfirmBody.
+  /// No description provided for @reactivateAccountPromptTitle.
   ///
   /// In en, this message translates to:
-  /// **'This cannot be undone. All your data will be permanently deleted.'**
-  String get deleteAccountConfirmBody;
+  /// **'Account deactivated'**
+  String get reactivateAccountPromptTitle;
+
+  /// No description provided for @reactivateAccountPromptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is deactivated. Do you want to reactivate it?'**
+  String get reactivateAccountPromptBody;
+
+  /// No description provided for @reactivateAccountYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, reactivate'**
+  String get reactivateAccountYes;
+
+  /// No description provided for @reactivateAccountNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No, stay signed out'**
+  String get reactivateAccountNo;
 
   /// No description provided for @showInVisitorsSubtitle.
   ///
@@ -4220,6 +4694,18 @@ abstract class AppLocalizations {
   /// **'When someone sends you an interest, you can accept here to start chatting.'**
   String get noChatRequestsBody;
 
+  /// No description provided for @inboundRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Received'**
+  String get inboundRequest;
+
+  /// No description provided for @outboundRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get outboundRequest;
+
   /// No description provided for @noContactRequestsBody.
   ///
   /// In en, this message translates to:
@@ -4297,6 +4783,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profiles who viewed you will appear here. Complete your profile to get noticed.'**
   String get noVisitorsYetBody;
+
+  /// No description provided for @visitorUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock this profile'**
+  String get visitorUnlockTitle;
+
+  /// No description provided for @visitorUnlockWatchAd.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to unlock ({remaining} left this week)'**
+  String visitorUnlockWatchAd(int remaining);
+
+  /// No description provided for @visitorUnlockLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used all 2 unlocks this week. Try again later or upgrade to Premium.'**
+  String get visitorUnlockLimitReached;
+
+  /// No description provided for @visitorUnlockUpgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Premium'**
+  String get visitorUnlockUpgrade;
+
+  /// No description provided for @visitorUnlockPremiumRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Premium to see who visited you, or unlock 2 profiles per week by watching an ad.'**
+  String get visitorUnlockPremiumRequired;
 
   /// No description provided for @noMatchesYetBody.
   ///

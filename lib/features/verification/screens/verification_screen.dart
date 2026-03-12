@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/constants/app_ctas.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
@@ -38,6 +38,7 @@ class VerificationScreen extends ConsumerWidget {
       ),
       body: profileAsync.when(
         data: (profile) {
+          final l = AppLocalizations.of(context)!;
           final vs = profile?.verificationStatus ?? const VerificationStatus();
           final score = vs.score.clamp(0.0, 1.0);
           return RefreshIndicator(
@@ -50,12 +51,12 @@ class VerificationScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    AppCTAs.verifyPriority,
+                    l.verifyPriority,
                     style: AppTypography.headlineMedium,
                   ).animate().fadeIn().slideY(begin: -0.05, end: 0),
                   const SizedBox(height: 8),
                   Text(
-                    'Verified profiles get more matches. Add one or more verifications below.',
+                    l.verificationIntro,
                     style: AppTypography.bodyMedium.copyWith(
                       color: Theme.of(
                         context,
@@ -94,8 +95,9 @@ class VerificationScreen extends ConsumerWidget {
                     status: vs.linkedInVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
-                    onTap: () => _showComingSoon(context, 'LinkedIn'),
+                    onTap: () => _startLinkedInVerification(context, ref),
                     accent: accent,
+                    isComingSoon: !vs.linkedInVerified,
                   ).animate().fadeIn(delay: 200.ms),
                   const SizedBox(height: 12),
                   _VerificationTile(
@@ -105,12 +107,13 @@ class VerificationScreen extends ConsumerWidget {
                     status: vs.educationVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
-                    onTap: () => _showComingSoon(context, 'Education'),
+                    onTap: () => _showEducationVerification(context, ref),
                     accent: accent,
+                    isComingSoon: !vs.educationVerified,
                   ).animate().fadeIn(delay: 240.ms),
                   const SizedBox(height: 32),
                   Text(
-                    'Safety score',
+                    l.safetyScore,
                     style: AppTypography.labelLarge.copyWith(
                       color: Theme.of(
                         context,
@@ -127,7 +130,7 @@ class VerificationScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Complete verifications to increase your safety score and visibility.',
+                    l.safetyScoreDescription,
                     style: AppTypography.caption.copyWith(
                       color: Theme.of(
                         context,
@@ -166,15 +169,114 @@ class VerificationScreen extends ConsumerWidget {
     );
   }
 
-  static void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context)!.verificationComingSoon(feature),
+  static Future<void> _startLinkedInVerification(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l = AppLocalizations.of(context)!;
+    try {
+      final repo = ref.read(verificationRepositoryProvider);
+      final url = await repo.getLinkedInAuthUrl();
+      if (url.isEmpty) {
+        throw Exception('auth-url-unavailable');
+      }
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('LinkedIn verification opened in browser.'),
+          behavior: SnackBarBehavior.floating,
         ),
-        behavior: SnackBarBehavior.floating,
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.failedToSendTryAgain),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  static Future<void> _showEducationVerification(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l = AppLocalizations.of(context)!;
+    final institutionController = TextEditingController();
+    final degreeController = TextEditingController();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          16 + MediaQuery.viewInsetsOf(ctx).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.education, style: AppTypography.titleLarge),
+            const SizedBox(height: 12),
+            TextField(
+              controller: institutionController,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: 'School or college',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: degreeController,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: l.education,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  await ref.read(verificationRepositoryProvider).submitEducationVerification(
+                        institutionName: institutionController.text.trim().isEmpty
+                            ? null
+                            : institutionController.text.trim(),
+                        degree: degreeController.text.trim().isEmpty
+                            ? null
+                            : degreeController.text.trim(),
+                      );
+                  if (!ctx.mounted) return;
+                  Navigator.of(ctx).pop();
+                  ref.invalidate(_myProfileForVerificationProvider);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l.idSubmittedNotify),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } catch (_) {
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(l.failedToSendTryAgain),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: Text(l.submit),
+            ),
+          ],
+        ),
       ),
     );
+    institutionController.dispose();
+    degreeController.dispose();
   }
 
   static void _showIdUpload(BuildContext context, WidgetRef ref) {
@@ -303,6 +405,7 @@ class _VerificationTile extends StatelessWidget {
     required this.status,
     required this.onTap,
     required this.accent,
+    this.isComingSoon = false,
   });
   final IconData icon;
   final String title;
@@ -310,6 +413,7 @@ class _VerificationTile extends StatelessWidget {
   final VerificationTileStatus status;
   final VoidCallback onTap;
   final Color accent;
+  final bool isComingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -334,7 +438,21 @@ class _VerificationTile extends StatelessWidget {
         ),
         trailing: status == VerificationTileStatus.verified
             ? Icon(Icons.check_circle, color: accent)
-            : const Icon(Icons.chevron_right),
+            : isComingSoon
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Soon',
+                      style: AppTypography.labelSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );

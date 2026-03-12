@@ -115,9 +115,15 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<List<MessageRequest>> getMessageRequests({int limit = 20}) async {
+  Future<List<MessageRequest>> getMessageRequests({int limit = 20, String? mode}) async {
     await Future.delayed(const Duration(milliseconds: 80));
     return [];
+  }
+
+  @override
+  Future<int> getMessageRequestsCount({String? mode}) async {
+    await Future.delayed(const Duration(milliseconds: 30));
+    return 0;
   }
 
   @override

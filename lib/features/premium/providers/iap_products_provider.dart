@@ -13,13 +13,25 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 class IapProductIds {
   IapProductIds._();
 
-  /// Premium subscription (recurring). Create as auto-renewable subscription.
+  /// Premium subscription — monthly. Create as auto-renewable subscription.
   static const String premiumMonthly = 'premium_monthly';
+
+  /// Premium subscription — quarterly (3 months). Create as auto-renewable subscription.
+  static const String premiumQuarterly = 'premium_quarterly';
+
+  /// Premium subscription — annual (12 months). Create as auto-renewable subscription.
+  static const String premiumAnnual = 'premium_annual';
 
   /// One-time profile boost. Create as one-time product / consumable.
   static const String boostOneTime = 'boost_one_time';
 
-  static const Set<String> all = {premiumMonthly, boostOneTime};
+  static const Set<String> subscriptionIds = {
+    premiumMonthly,
+    premiumQuarterly,
+    premiumAnnual,
+  };
+
+  static const Set<String> all = {...subscriptionIds, boostOneTime};
 }
 
 /// Fetches product details (price, title) from the store.

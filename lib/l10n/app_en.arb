@@ -45,12 +45,44 @@
   "modeDatingSubtitle": "Meet people. Depth-first profiles, discovery, and meaningful connections.",
   "modeMatrimony": "Matrimony",
   "modeMatrimonySubtitle": "Find a life partner. Extended profiles, partner preferences, and family-friendly matching.",
+  "modeBoth": "Both",
+  "modeBothSubtitle": "Use dating and matrimony. You'll see only profiles who are also on both. Switch between them anytime in Settings.",
 
   "navDiscover": "Discover",
   "navMap": "Map",
   "navChats": "Chats",
   "navCommunities": "Communities",
+  "navLikes": "Likes",
   "navProfile": "Profile",
+  "likesTabLikedYou": "Liked you",
+  "likesTabVisitors": "Visitors",
+  "likesTabYouLiked": "You liked",
+  "likesEmptyLikedYou": "No one has liked you yet",
+  "likesEmptyLikedYouBody": "Keep exploring — when someone likes you, they'll show up here.",
+  "likesEmptyVisitors": "No visitors yet",
+  "likesEmptyVisitorsBody": "When someone views your profile, they'll appear here.",
+  "likesEmptyYouLiked": "You haven't liked anyone yet",
+  "likesEmptyYouLikedBody": "Profiles you like from Discover will show up here.",
+  "sendReminder": "Send reminder",
+  "reminderSentToast": "Reminder sent to {name}",
+  "@reminderSentToast": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "likedYouPremiumGateMessage": "Upgrade to see everyone who liked you, or watch an ad to unlock one profile (2 per week).",
+  "watchAdToUnlockOne": "Watch ad to unlock one ({remaining} left this week)",
+  "@watchAdToUnlockOne": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "likedYouUnlockedProfiles": "Unlocked profiles",
+  "likedYouNoRequestToUnlock": "No request to unlock right now. Try again later.",
   "navMatches": "Matches",
   "navRequests": "Requests",
   "navShortlist": "Shortlist",
@@ -65,6 +97,17 @@
   "searchWidenedBody": "No results matched your current filters. We're showing more profiles by reducing some filters.",
 
   "discoverTitle": "Discover",
+  "discoverNoMoreProfilesTitle": "No more profiles right now",
+  "discoverNoMoreProfilesBody": "Check back later for new matches, or try changing your city or filters.",
+  "discoverNoProfilesInCityTitle": "No profiles in {city} yet",
+  "discoverNoProfilesInCityBody": "Try \"Your area\" to see profiles near you, or pick a different city.",
+  "@discoverNoProfilesInCityTitle": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
   "dailyCuratedSet": "Daily curated set",
   "exploreCity": "Explore {city}",
   "travelModeHint": "Travel mode: seeing profiles in your saved cities",
@@ -91,6 +134,19 @@
   "recommendedCopy": "Recommended based on your preferences",
   "whyMatch": "Why this match",
 
+  "dailyMatchesTitle": "Your daily matches",
+  "dailyMatchesSubtitle": "Send a free interest to profiles you like",
+  "dailyMatchesSendFreeInterest": "Send free interest",
+  "dailyMatchesSendFreeInterestToCount": "Send free interest to {count}",
+  "@dailyMatchesSendFreeInterestToCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyMatchesMaybeLater": "Maybe later",
+
   "requestsReceived": "Received",
   "requestsSent": "Sent",
   "accept": "Accept",
@@ -98,6 +154,16 @@
   "withdraw": "Withdraw",
   "requestsEmpty": "No requests yet",
   "requestsEmptyHint": "When someone sends you an interest, it will appear here.",
+  "requestsSeeWhosInterested": "See who's interested",
+  "requestsUpgradeToView": "Upgrade to Premium to view and respond to your requests.",
+  "requestsUpgradeOrUnlock": "You have {count} request(s). Upgrade to view all, or watch an ad to unlock one.",
+  "@requestsUpgradeOrUnlock": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
 
   "shortlistTitle": "Shortlist",
   "shortlistEmpty": "No profiles in shortlist",
@@ -119,6 +185,11 @@
   "priorityInterestAdMessage": "Watch an ad to send your priority interest, or upgrade to Premium to send without ads.",
   "sendOrAcceptInterestFirst": "Send or accept an interest first",
   "watchAdToMessageMessage": "Watch an ad to send a message, or upgrade to Premium to message without ads.",
+  "datingMessageGateTitle": "Send a message",
+  "datingMessageGateBody": "Watch an ad to send a message (up to 5 per day). Your message will go to their message requests. Upgrade to Premium for unlimited messaging.",
+  "watchAdToSendMessage": "Watch ad to send message",
+  "datingMessageAdLimitReached": "You've used your 5 free message sends today. Upgrade to Premium for unlimited messaging.",
+  "likedOpenChatFromChats": "You've liked them. Open Chats to start the conversation when they like you back.",
   "sayHiToName": "Say hi to {name}",
   "@sayHiToName": {
     "placeholders": {
@@ -145,6 +216,7 @@
   "helpCentre": "Help centre",
   "termsAndPrivacy": "Terms & Privacy",
   "signOut": "Sign out",
+  "editProfile": "Edit profile",
   "account": "Account",
   "support": "Support",
   "language": "Language",
@@ -175,6 +247,25 @@
   "profileBuilderFamily": "Family",
   "profileBuilderPartnerPrefs": "Partner preferences",
   "completeProfile": "Complete your profile — {percent}%",
+  "aboutMeHint": "Share what matters to you — work, interests, and what you're looking for.",
+  "profileSetupPhotosHint": "Add at least 2 photos. Profiles with clear face photos get more matches.",
+  "profilePhotoTipsTitle": "Tips for great photos",
+  "profilePhotoTipsBody": "Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.",
+  "primaryPhoto": "Main",
+  "conversationStarterHint": "Answer a prompt so matches have something to talk about.",
+  "conversationStarterFieldHint": "e.g. Best way to spend a Sunday? Chai and a book.",
+  "voiceIntroDescription": "Record a short voice note (up to 30 seconds) so matches can hear your personality.",
+  "voiceIntroSaved": "Voice intro saved. You can update it anytime.",
+  "saveAndClose": "Save & close",
+  "saveAndContinue": "Save & continue",
+  "bothModeSetupHint": "You selected both modes. We collect shared details first, then matrimony and dating specifics.",
+  "stepOfTotal": "Step {current} of {total}",
+  "@stepOfTotal": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
 
   "onboardingStepBasic": "Basic info",
   "onboardingStepPreferences": "Preferences",
@@ -233,6 +324,8 @@
   "linkedIn": "LinkedIn",
   "education": "Education",
   "safetyScore": "Safety score",
+  "safetyScoreDescription": "Complete verifications to increase your safety score and visibility.",
+  "verificationIntro": "Verified profiles get more matches. Add one or more verifications below.",
   "uploadIdHint": "Upload a clear photo of your passport or driving licence.",
 
   "inviteFriends": "Invite friends",
@@ -547,6 +640,38 @@
   "discoverPass": "Pass",
   "discoverLike": "Like",
   "discoverSuperLike": "Super like",
+  "trustBadgeStrong": "High trust",
+  "trustBadgeGood": "Verified trust",
+  "trustBadgeBasic": "Growing trust",
+  "sharedInterestsReason": "Shared interests: {interests}",
+  "@sharedInterestsReason": {
+    "placeholders": {
+      "interests": {"type": "String"}
+    }
+  },
+  "suggestedOpenersTitle": "Suggested openers",
+  "suggestedOpenersSubtitle": "Pick one to start the conversation faster.",
+  "openerHiName": "Hi {name}, great to match with you!",
+  "@openerHiName": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "openerSharedInterest": "I noticed we both like {interest}. What got you into it?",
+  "@openerSharedInterest": {
+    "placeholders": {
+      "interest": {"type": "String"}
+    }
+  },
+  "openerWeekendQuestion": "What does your ideal weekend look like?",
+  "openerCityQuestion": "How do you like living in {city}?",
+  "@openerCityQuestion": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "chatEmojiTooltip": "Emoji",
+  "chatMessageHint": "Message...",
   "discoverSwipePassHint": "Swipe left to pass",
   "discoverSwipeLikeHint": "Swipe right to like",
   "discoverSwipeSuperLikeHint": "Swipe up for super like",
@@ -571,11 +696,17 @@
   "switchToMode": "Switch to {mode}?",
   "switchToModeLabel": "Switch to {mode}",
   "switchButton": "Switch",
+  "addOtherModeTitle": "Add {mode}?",
+  "addOtherModeBody": "You'll now be on both Dating and Matrimony. Your profile info is shared—most details are already filled from your current mode. You can switch between them anytime in Settings.",
+  "addOtherModeCta": "Add {mode}",
   "requestFailedTryAgain": "Request failed. Try again later.",
   "deactivateAccountConfirm": "Deactivate account?",
   "deactivationFailed": "Deactivation failed. Try again.",
   "deactivate": "Deactivate",
   "deleteAccountConfirm": "Delete account permanently?",
+  "deleteAccountConfirmBody": "This cannot be undone. All your data will be permanently deleted.",
+  "deleteAccountTypeToConfirm": "To confirm, type DELETE below.",
+  "deleteAccountConfirmationPlaceholder": "DELETE",
   "deleteFailed": "Delete failed. Try again.",
   "deletePermanently": "Delete permanently",
   "notificationPreferencesSaved": "Notification preferences saved",
@@ -630,6 +761,10 @@
   "couldNotDecline": "Could not decline: {error}",
   "interested": "Interested",
   "priorityInterest": "Priority interest",
+  "prioritySent": "Priority sent",
+  "addPriority": "Add priority",
+  "saveLabel": "Save",
+  "messageLabel": "Message",
   "withdrawInterest": "Withdraw interest",
   "declineRequest": "Decline request",
   "noContactRequests": "No contact requests",
@@ -643,6 +778,16 @@
   "changeCity": "Change city",
   "yourArea": "Your area",
   "showProfilesNearYou": "Show profiles near you",
+  "nearbyCities": "Nearby cities",
+  "browseByCountry": "Browse by country",
+  "activeUsersCount": "{count} active",
+  "@activeUsersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "unblocked": "{name} unblocked",
   "somethingWentWrong": "Something went wrong",
   "whyBlocking": "Why are you blocking?",
@@ -700,7 +845,10 @@
   "switchToModeBody": "Your profile info is shared. You can complete or update {mode}-specific details anytime.",
   "exportRequested": "Export requested. We'll email you when ready.",
   "deactivateAccountConfirmBody": "Your profile will be hidden and you won't receive matches or messages. You can reactivate later.",
-  "deleteAccountConfirmBody": "This cannot be undone. All your data will be permanently deleted.",
+  "reactivateAccountPromptTitle": "Account deactivated",
+  "reactivateAccountPromptBody": "Your account is deactivated. Do you want to reactivate it?",
+  "reactivateAccountYes": "Yes, reactivate",
+  "reactivateAccountNo": "No, stay signed out",
   "showInVisitorsSubtitle": "When off, your visits are still recorded but you won't appear in others' visitor lists",
   "hideFromDiscoverySubtitle": "Temporarily hide your profile from discovery and recommendations",
   "hideMyPhotos": "Hide my photos",
@@ -749,6 +897,8 @@
   "matchToContinueOrUpgrade": "Match to continue or upgrade",
   "noConversationsYetBody": "When you match with someone, your chats will appear here.",
   "noChatRequestsBody": "When someone sends you an interest, you can accept here to start chatting.",
+  "inboundRequest": "Received",
+  "outboundRequest": "Sent",
   "noContactRequestsBody": "When someone requests your contact, you can accept or decline here.",
   "requestedYourContact": "Requested your contact",
   "withdrawPriority": "Withdraw priority",
@@ -764,6 +914,18 @@
 
   "noVisitorsYet": "No visitors yet",
   "noVisitorsYetBody": "Profiles who viewed you will appear here. Complete your profile to get noticed.",
+  "visitorUnlockTitle": "Unlock this profile",
+  "visitorUnlockWatchAd": "Watch an ad to unlock ({remaining} left this week)",
+  "@visitorUnlockWatchAd": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "visitorUnlockLimitReached": "You've used all 2 unlocks this week. Try again later or upgrade to Premium.",
+  "visitorUnlockUpgrade": "Upgrade to Premium",
+  "visitorUnlockPremiumRequired": "Upgrade to Premium to see who visited you, or unlock 2 profiles per week by watching an ad.",
   "noMatchesYetBody": "When you and someone else both express interest, you'll match and appear here.",
   "noMatchesFound": "No matches found",
   "tryAdjustingFilters": "Try adjusting your filters for more results.",

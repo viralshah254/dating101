@@ -213,23 +213,6 @@ class StepIdentity extends StatelessWidget {
           ],
           const SizedBox(height: 24),
 
-          // ── About me (first page, after name) ────────────────────
-          _SectionLabel(
-            label: forSelf ? l.profileBuilderAbout : l.dynAboutTitle(subject),
-          ),
-          const SizedBox(height: 8),
-          _StyledMultilineField(
-            value: formData.bio,
-            hint: forSelf
-                ? 'Write a few lines about yourself...'
-                : l.dynAboutHint(subject),
-            onChanged: (v) {
-              formData.bio = v;
-              onChanged();
-            },
-          ),
-          const SizedBox(height: 24),
-
           // ── Gender (locked in edit mode) ────────────────────────
           _SectionLabel(label: genderLabel, mandatory: !isEditing),
           const SizedBox(height: 10),
