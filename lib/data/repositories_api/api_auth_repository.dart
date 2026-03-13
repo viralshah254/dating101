@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -41,10 +42,10 @@ class ApiAuthRepository implements AuthRepository {
       );
     } on ApiException catch (e) {
       debugPrint('[Auth] sendOtp ✗ ${e.code}: ${e.message}');
-      return SendOtpFailure(e.message, code: e.code);
+      return SendOtpFailure(_userFriendlyMessage(e), code: e.code);
     } catch (e) {
       debugPrint('[Auth] sendOtp ✗ Connection error: $e');
-      return SendOtpFailure('Connection error: $e');
+      return SendOtpFailure(_connectionErrorMessage(e));
     }
   }
 
@@ -78,10 +79,10 @@ class ApiAuthRepository implements AuthRepository {
       return AuthSuccess(userId: userId, isNewUser: isNewUser, referralApplied: referralApplied);
     } on ApiException catch (e) {
       debugPrint('[Auth] verifyOtp ✗ ${e.code}: ${e.message}');
-      return AuthFailure(e.message, code: e.code);
+      return AuthFailure(_userFriendlyMessage(e), code: e.code);
     } catch (e) {
       debugPrint('[Auth] verifyOtp ✗ Connection error: $e');
-      return AuthFailure('Connection error: $e');
+      return AuthFailure(_connectionErrorMessage(e));
     }
   }
 
@@ -99,10 +100,47 @@ class ApiAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     debugPrint('[Auth] signOut');
     try {
-      await api.post('/auth/sign-out');
+      await api.post('/auth/sign-out', body: {
+        if (tokenStorage.refreshToken != null)
+          'refreshToken': tokenStorage.refreshToken,
+      });
     } catch (_) {}
     await tokenStorage.clear();
     _authStateController.add(null);
     debugPrint('[Auth] signOut ✓ cleared tokens');
+  }
+
+  static String _userFriendlyMessage(ApiException e) {
+    switch (e.code) {
+      case 'RATE_LIMITED':
+        return 'Too many attempts. Please wait a few minutes and try again.';
+      case 'INVALID_CODE':
+        return 'Incorrect code. Please check and try again.';
+      case 'EXPIRED_OTP':
+      case 'NOT_FOUND':
+        return 'Code expired. Please request a new one.';
+      case 'SEND_FAILED':
+        return 'Could not send SMS. Please try again shortly.';
+      case 'INVALID_PHONE':
+        return 'Invalid phone number. Please check and try again.';
+      case 'SERVER_ERROR':
+      case 'INTERNAL_ERROR':
+        return 'Something went wrong on our end. Please try again.';
+      default:
+        if (e.statusCode >= 500) {
+          return 'Something went wrong on our end. Please try again.';
+        }
+        return e.message;
+    }
+  }
+
+  static String _connectionErrorMessage(Object e) {
+    if (e is SocketException) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+    if (e is TimeoutException || e.toString().contains('timeout')) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
+    return 'Could not reach the server. Please check your internet and try again.';
   }
 }

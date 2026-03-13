@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/feature_flags/feature_flags.dart';
 import '../../../core/locale/language_picker_sheet.dart';
 import '../../../l10n/app_localizations.dart';
@@ -17,7 +18,6 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
-import '../../../domain/repositories/subscription_repository.dart';
 
 final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
   debugPrint('[ProfileSettings] Fetching my profile...');
@@ -32,10 +32,6 @@ final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
     debugPrint('[ProfileSettings] Error fetching profile: $e');
     rethrow;
   }
-});
-
-final _subscriptionStateProvider = FutureProvider<SubscriptionState>((ref) async {
-  return ref.watch(subscriptionRepositoryProvider).getSubscriptionState();
 });
 
 /// Profile & Settings — user's own profile and app settings.
@@ -1056,7 +1052,7 @@ class _SubscriptionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final subscriptionAsync = ref.watch(_subscriptionStateProvider);
+    final subscriptionAsync = ref.watch(subscriptionStateProvider);
 
     return subscriptionAsync.when(
       loading: () => _buildCard(
@@ -1072,6 +1068,7 @@ class _SubscriptionCard extends ConsumerWidget {
         title: l.subscription,
         subtitle: null,
         trailing: const Icon(Icons.chevron_right),
+        isActiveSubscription: false,
       ),
       error: (_, __) => _buildCard(
         context,
@@ -1082,6 +1079,7 @@ class _SubscriptionCard extends ConsumerWidget {
         title: l.subscription,
         subtitle: l.upgradeToPremiumSubtitle,
         trailing: const Icon(Icons.chevron_right),
+        isActiveSubscription: false,
       ),
       data: (state) {
         final isActive = state.isActive && state.expiresAt != null;
@@ -1107,6 +1105,7 @@ class _SubscriptionCard extends ConsumerWidget {
                   )
                 : null,
             trailing: const Icon(Icons.chevron_right),
+            isActiveSubscription: true,
           );
         }
         return _buildCard(
@@ -1118,6 +1117,7 @@ class _SubscriptionCard extends ConsumerWidget {
           title: l.upgrade,
           subtitle: l.upgradeToPremiumSubtitle,
           trailing: const Icon(Icons.chevron_right),
+          isActiveSubscription: false,
         );
       },
     );
@@ -1133,6 +1133,7 @@ class _SubscriptionCard extends ConsumerWidget {
     String? subtitle,
     TextStyle? subtitleStyle,
     required Widget trailing,
+    required bool isActiveSubscription,
   }) {
     final defaultSubtitleStyle = AppTypography.bodySmall.copyWith(
       color: onSurface.withValues(alpha: 0.7),
@@ -1141,8 +1142,14 @@ class _SubscriptionCard extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
+          if (isActiveSubscription) {
+            final opened = await _openManageSubscription(context);
+            if (opened) return;
+          }
           await context.push('/paywall');
-          if (context.mounted) ref.invalidate(_subscriptionStateProvider);
+          if (context.mounted) {
+            ref.read(subscriptionAccessRefreshProvider)();
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -1183,6 +1190,27 @@ class _SubscriptionCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static Future<bool> _openManageSubscription(BuildContext context) async {
+    if (!Platform.isAndroid) return false;
+    final uri = Uri.parse(
+      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.saathi',
+    );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.purchaseFailed(
+              'Could not open Google Play subscriptions.',
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return opened;
   }
 }
 

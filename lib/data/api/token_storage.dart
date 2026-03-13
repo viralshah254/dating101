@@ -26,6 +26,7 @@ class TokenStorage extends ChangeNotifier {
     _accessToken = prefs.getString(_keyAccess);
     _refreshToken = prefs.getString(_keyRefresh);
     _userId = prefs.getString(_keyUserId);
+    notifyListeners();
   }
 
   Future<void> save({
@@ -42,12 +43,14 @@ class TokenStorage extends ChangeNotifier {
     await prefs.setString(_keyRefresh, refreshToken);
     await prefs.setString(_keyUserId, userId);
     await prefs.setBool(_keyIsNew, isNewUser);
+    notifyListeners();
   }
 
   Future<void> updateAccessToken(String token) async {
     _accessToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyAccess, token);
+    notifyListeners();
   }
 
   Future<void> clear() async {

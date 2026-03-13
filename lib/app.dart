@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/entitlements/entitlements.dart';
 import 'core/locale/app_locale_provider.dart';
 import 'core/providers/repository_providers.dart';
 import 'core/theme/app_theme.dart';
@@ -16,11 +17,33 @@ class ShubhmilanApp extends ConsumerStatefulWidget {
   ConsumerState<ShubhmilanApp> createState() => _ShubhmilanAppState();
 }
 
-class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp> {
+class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshSubscriptionAccess());
     WidgetsBinding.instance.addPostFrameCallback((_) => _initNotifications());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshSubscriptionAccess();
+    }
+  }
+
+  void _refreshSubscriptionAccess() {
+    final authRepo = ref.read(authRepositoryProvider);
+    if (authRepo.currentUserId == null) return;
+    ref.read(subscriptionAccessRefreshProvider)();
   }
 
   void _initNotifications() {

@@ -30,6 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _ageConfirmed = false;
   bool _isSending = false;
   String? _errorMessage;
+  String? _errorCode;
   late _CountryCode _country;
 
   static const _countryCodes = [
@@ -108,6 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _isSending = true;
       _errorMessage = null;
+      _errorCode = null;
     });
 
     final phone = _normalizedPhone;
@@ -123,14 +125,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     switch (result) {
       case SendOtpSuccess(:final verificationId):
         final displayPhone = '${_country.code} $phone';
-        var otpPath = '/otp?phone=${Uri.encodeComponent(displayPhone)}&vid=${Uri.encodeComponent(verificationId)}';
+        var otpPath =
+            '/otp?phone=${Uri.encodeComponent(displayPhone)}&vid=${Uri.encodeComponent(verificationId)}'
+            '&cc=${Uri.encodeComponent(_country.code)}&pn=${Uri.encodeComponent(phone)}';
         final refCode = _referralCodeController.text.trim();
         if (refCode.isNotEmpty) {
           otpPath += '&ref=${Uri.encodeComponent(refCode)}';
         }
         context.push(otpPath);
-      case SendOtpFailure(:final message):
-        setState(() => _errorMessage = message);
+      case SendOtpFailure(:final message, :final code):
+        setState(() {
+          _errorMessage = message;
+          _errorCode = code;
+        });
     }
   }
 
@@ -249,7 +256,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                               onChanged: (_) =>
-                                  setState(() => _errorMessage = null),
+                                  setState(() { _errorMessage = null; _errorCode = null; }),
                             ),
                           ),
                         ],
@@ -257,12 +264,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                       if (_errorMessage != null) ...[
                         const SizedBox(height: 12),
-                        Text(
-                          _errorMessage!,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
+                        _buildErrorWidget(context),
                       ],
 
                       const SizedBox(height: 20),
@@ -373,6 +375,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  bool get _isServerOrNetworkError {
+    return _errorCode == 'SERVER_ERROR' ||
+        _errorCode == 'INTERNAL_ERROR' ||
+        _errorCode == 'SEND_FAILED' ||
+        _errorCode == null;
+  }
+
+  Widget _buildErrorWidget(BuildContext context) {
+    final isServerError = _isServerOrNetworkError;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textColor = colorScheme.error;
+
+    if (!isServerError) {
+      return Text(
+        _errorMessage!,
+        style: AppTypography.bodySmall.copyWith(color: textColor),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.wifi_off_rounded, size: 18, color: textColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: AppTypography.bodySmall.copyWith(color: textColor),
+            ),
+          ),
+        ],
       ),
     );
   }

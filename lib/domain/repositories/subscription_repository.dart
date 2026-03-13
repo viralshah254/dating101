@@ -16,6 +16,11 @@ class SubscriptionState {
 /// Feature flags from GET /subscription/entitlements (tier + gender).
 class SubscriptionEntitlements {
   const SubscriptionEntitlements({
+    this.tier = SubscriptionTier.none,
+    this.gender = 'unknown',
+    this.canExpressInterest = true,
+    this.canShortlist = true,
+    this.canViewFullProfile = true,
     this.canSendMessage = false,
     this.canSeeWhoLikedYou = false,
     this.canSeeWhoShortlistedYou = false,
@@ -28,8 +33,18 @@ class SubscriptionEntitlements {
     this.canSeeRequestsInbox = false,
     this.requiresAdPerRequestToView = false,
     this.canBoostProfile = false,
+    this.canRequestContact = false,
+    this.canViewAllPhotos = false,
+    this.canSeeCompatBreakdown = false,
+    this.canUseTravelMode = false,
+    this.hasReadReceipts = false,
     this.raw = const {},
   });
+  final SubscriptionTier tier;
+  final String gender;
+  final bool canExpressInterest;
+  final bool canShortlist;
+  final bool canViewFullProfile;
   final bool canSendMessage;
   final bool canSeeWhoLikedYou;
   final bool canSeeWhoShortlistedYou;
@@ -47,6 +62,11 @@ class SubscriptionEntitlements {
   final bool requiresAdPerRequestToView;
   /// Can purchase profile boost (1hr/day peak, show on top).
   final bool canBoostProfile;
+  final bool canRequestContact;
+  final bool canViewAllPhotos;
+  final bool canSeeCompatBreakdown;
+  final bool canUseTravelMode;
+  final bool hasReadReceipts;
   final Map<String, dynamic> raw;
 }
 

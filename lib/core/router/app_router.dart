@@ -96,10 +96,14 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           final phone = state.uri.queryParameters['phone'];
           final vid = state.uri.queryParameters['vid'];
           final refCode = state.uri.queryParameters['ref'];
+          final countryCode = state.uri.queryParameters['cc'];
+          final phoneNumber = state.uri.queryParameters['pn'];
           return OtpScreen(
             phone: phone,
             verificationId: vid,
             referralCode: refCode,
+            countryCode: countryCode,
+            phoneNumber: phoneNumber,
           );
         },
       ),

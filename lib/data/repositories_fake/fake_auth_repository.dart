@@ -2,7 +2,7 @@ import 'dart:async';
 
 import '../../domain/repositories/auth_repository.dart';
 
-/// Fake auth for development. Any 6-digit code succeeds.
+/// Fake auth for development. Any 4-digit code succeeds.
 /// Simulates new vs returning user based on phone number.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository() {

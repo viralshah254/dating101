@@ -3,99 +3,91 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repositories/subscription_repository.dart';
 import '../providers/repository_providers.dart';
 
-/// Gender-aware entitlements: women get more free features than men.
-/// Premium unlocks everything for both genders.
 enum UserGender { male, female, other, unknown }
 
 class Entitlements {
   const Entitlements({
     required this.tier,
     required this.gender,
+    required this.canExpressInterest,
+    required this.canShortlist,
+    required this.canViewFullProfile,
+    required this.canSendMessage,
+    required this.canSendMessageDirect,
+    required this.canSeeWhoLikedYou,
+    required this.canSeeWhoShortlistedYou,
+    required this.canSeeRequestsInbox,
+    required this.requiresAdPerRequestToView,
+    required this.canRequestContact,
+    required this.canViewAllPhotos,
+    required this.canSeeCompatBreakdown,
+    required this.canUseTravelMode,
+    required this.canBoostProfile,
+    required this.hasPriorityDiscovery,
+    required this.hasReadReceipts,
+    required this.dailyInterestLimit,
+    required this.dailyMessageLimit,
+    required this.dailyPriorityInterestLimit,
   });
 
   final SubscriptionTier tier;
   final UserGender gender;
+  final bool canExpressInterest;
+  final bool canShortlist;
+  final bool canViewFullProfile;
+  final bool canSendMessage;
+  final bool canSendMessageDirect;
+  final bool canSeeWhoLikedYou;
+  final bool canSeeWhoShortlistedYou;
+  final bool canSeeRequestsInbox;
+  final bool requiresAdPerRequestToView;
+  final bool canRequestContact;
+  final bool canViewAllPhotos;
+  final bool canSeeCompatBreakdown;
+  final bool canUseTravelMode;
+  final bool canBoostProfile;
+  final bool hasPriorityDiscovery;
+  final bool hasReadReceipts;
+  final int dailyInterestLimit;
+  final int dailyMessageLimit;
+  final int dailyPriorityInterestLimit;
 
   bool get isPremium => tier == SubscriptionTier.premium;
   bool get isFemale => gender == UserGender.female;
 
-  // ── Core actions ──────────────────────────────────────────────────
-
-  /// Express interest: free for everyone
-  bool get canExpressInterest => true;
-
-  /// Shortlist (add to shortlist): free for everyone
-  bool get canShortlist => true;
-
-  /// View full profiles: free for everyone
-  bool get canViewFullProfile => true;
-
-  /// Can send a message at all (women free, men need premium or ad → message request)
-  bool get canSendMessage => isPremium || isFemale;
-
-  /// If true, messages go to normal chat; if false, sent as message request (after ad for free).
-  bool get canSendMessageDirect => isPremium || isFemale;
-
-  /// See who liked you: free for women, premium for men
-  bool get canSeeWhoLikedYou => isPremium || isFemale;
-
-  /// See who shortlisted you (premium only)
-  bool get canSeeWhoShortlistedYou => isPremium;
-
-  /// See requests inbox (received interests, contact requests, etc.). Premium only.
-  bool get canSeeRequestsInbox => isPremium;
-
-  /// Request contact details: free for women, premium for men
-  bool get canRequestContact => isPremium || isFemale;
-
-  // ── Limits ────────────────────────────────────────────────────────
-
-  /// Daily express-interest limit
-  int get dailyInterestLimit => isPremium ? 999 : (isFemale ? 30 : 10);
-
-  /// Daily message limit (direct messages; free women get 20, men 0 unless ad → request)
-  int get dailyMessageLimit {
-    if (isPremium) return 999;
-    if (isFemale) return 20;
-    return 0;
-  }
-
-  /// Priority interests per day: premium 10, free 0 (free can send one per ad).
-  int get dailyPriorityInterestLimit => isPremium ? 10 : 0;
-
-  /// Free user can send one priority interest after watching an ad.
   bool get canSendPriorityInterestWithAd => !isPremium;
-
-  // ── Discovery & visibility ────────────────────────────────────────
-
-  /// Travel mode: premium only
-  bool get canUseTravelMode => isPremium;
-
-  /// Profile boost: purchasable (premium or separate product)
-  bool get canBoostProfile => isPremium;
-
-  /// Priority in discovery: premium only
-  bool get hasPriorityDiscovery => isPremium;
-
-  /// Read receipts: premium only
-  bool get hasReadReceipts => isPremium;
-
-  /// For premium: must watch ad per request before viewing/accepting (backend can require token).
-  bool get requiresAdPerRequestToView => isPremium;
-
-  // ── Photos & profile ──────────────────────────────────────────────
-
-  /// View all photos: free for women, premium for men
-  bool get canViewAllPhotos => isPremium || isFemale;
-
-  /// See compatibility breakdown: free for women, premium for men
-  bool get canSeeCompatBreakdown => isPremium || isFemale;
-
-  // ── Labels for paywall prompts ────────────────────────────────────
 
   String get upgradeReason {
     if (isFemale) return 'Upgrade for unlimited messaging and travel mode.';
     return 'Upgrade to send messages, see who likes you, and more.';
+  }
+
+  factory Entitlements.fromSubscriptionEntitlements(
+    SubscriptionEntitlements entitlements,
+  ) {
+    return Entitlements(
+      tier: entitlements.tier,
+      gender: parseGender(entitlements.gender),
+      canExpressInterest: entitlements.canExpressInterest,
+      canShortlist: entitlements.canShortlist,
+      canViewFullProfile: entitlements.canViewFullProfile,
+      canSendMessage: entitlements.canSendMessage,
+      canSendMessageDirect: entitlements.canSendMessageDirect,
+      canSeeWhoLikedYou: entitlements.canSeeWhoLikedYou,
+      canSeeWhoShortlistedYou: entitlements.canSeeWhoShortlistedYou,
+      canSeeRequestsInbox: entitlements.canSeeRequestsInbox,
+      requiresAdPerRequestToView: entitlements.requiresAdPerRequestToView,
+      canRequestContact: entitlements.canRequestContact,
+      canViewAllPhotos: entitlements.canViewAllPhotos,
+      canSeeCompatBreakdown: entitlements.canSeeCompatBreakdown,
+      canUseTravelMode: entitlements.canUseTravelMode,
+      canBoostProfile: entitlements.canBoostProfile,
+      hasPriorityDiscovery: entitlements.hasPriorityDiscovery,
+      hasReadReceipts: entitlements.hasReadReceipts,
+      dailyInterestLimit: entitlements.dailyInterestLimit,
+      dailyMessageLimit: entitlements.dailyMessageLimit,
+      dailyPriorityInterestLimit: entitlements.dailyPriorityInterestLimit,
+    );
   }
 }
 
@@ -116,21 +108,52 @@ UserGender parseGender(String? gender) {
   }
 }
 
-/// Synchronous entitlements with defaults (use entitlementsAsyncProvider for loaded state).
+final subscriptionStateProvider = FutureProvider<SubscriptionState>((ref) async {
+  return ref.watch(subscriptionRepositoryProvider).getSubscriptionState();
+});
+
+final subscriptionStateStreamProvider = StreamProvider<SubscriptionState>((ref) {
+  return ref.watch(subscriptionRepositoryProvider).watchSubscriptionState();
+});
+
+final subscriptionAccessRefreshProvider = Provider<void Function()>((ref) {
+  return () {
+    ref.invalidate(subscriptionStateProvider);
+    ref.invalidate(subscriptionStateStreamProvider);
+    ref.invalidate(entitlementsAsyncProvider);
+  };
+});
+
 final entitlementsProvider = Provider<Entitlements>((ref) {
   final async = ref.watch(entitlementsAsyncProvider);
   return async.valueOrNull ??
-      const Entitlements(tier: SubscriptionTier.none, gender: UserGender.unknown);
+      const Entitlements(
+        tier: SubscriptionTier.none,
+        gender: UserGender.unknown,
+        canExpressInterest: true,
+        canShortlist: true,
+        canViewFullProfile: true,
+        canSendMessage: false,
+        canSendMessageDirect: false,
+        canSeeWhoLikedYou: false,
+        canSeeWhoShortlistedYou: false,
+        canSeeRequestsInbox: false,
+        requiresAdPerRequestToView: false,
+        canRequestContact: false,
+        canViewAllPhotos: false,
+        canSeeCompatBreakdown: false,
+        canUseTravelMode: false,
+        canBoostProfile: false,
+        hasPriorityDiscovery: false,
+        hasReadReceipts: false,
+        dailyInterestLimit: 10,
+        dailyMessageLimit: 0,
+        dailyPriorityInterestLimit: 0,
+      );
 });
 
-/// Async version that loads actual state.
 final entitlementsAsyncProvider = FutureProvider<Entitlements>((ref) async {
   final subRepo = ref.watch(subscriptionRepositoryProvider);
-  final profileRepo = ref.watch(profileRepositoryProvider);
-
-  final sub = await subRepo.getSubscriptionState();
-  final profile = await profileRepo.getMyProfile();
-  final gender = parseGender(profile?.gender);
-
-  return Entitlements(tier: sub.tier, gender: gender);
+  final entitlements = await subRepo.getEntitlements();
+  return Entitlements.fromSubscriptionEntitlements(entitlements);
 });

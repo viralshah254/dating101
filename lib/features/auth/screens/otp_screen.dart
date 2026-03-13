@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
@@ -17,11 +18,15 @@ class OtpScreen extends ConsumerStatefulWidget {
     this.phone,
     this.verificationId,
     this.referralCode,
+    this.countryCode,
+    this.phoneNumber,
   });
   final String? phone;
   final String? verificationId;
   /// Optional referral code from login; sent to backend on verify for 30 days Premium.
   final String? referralCode;
+  final String? countryCode;
+  final String? phoneNumber;
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -43,8 +48,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
   Timer? _resendTimer;
   int _resendSeconds = 30;
   bool _isVerifying = false;
+  bool _isResending = false;
   String? _errorMessage;
+  String? _errorCode;
   late AnimationController _shakeController;
+  late String _verificationId;
 
   String get _displayPhone {
     final phone = widget.phone?.trim();
@@ -63,6 +71,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
   @override
   void initState() {
     super.initState();
+    _verificationId = widget.verificationId ?? '';
     _shakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -165,11 +174,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
     setState(() {
       _isVerifying = true;
       _errorMessage = null;
+      _errorCode = null;
     });
 
     final authRepo = ref.read(authRepositoryProvider);
     final result = await authRepo.verifyOtp(
-      verificationId: widget.verificationId ?? '',
+      verificationId: _verificationId,
       code: _fullCode,
       referralCode: widget.referralCode,
     );
@@ -179,6 +189,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
 
     switch (result) {
       case AuthSuccess(:final isNewUser, :final referralApplied):
+        ref.read(subscriptionAccessRefreshProvider)();
         if (isNewUser) {
           debugPrint('[OTP] New user → mode-select (referralApplied=$referralApplied)');
           if (referralApplied) {
@@ -235,13 +246,115 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
             }
           }
         }
-      case AuthFailure(:final message):
-        setState(() => _errorMessage = message);
-        _shakeController.forward(from: 0);
+      case AuthFailure(:final message, :final code):
+        setState(() {
+          _errorMessage = message;
+          _errorCode = code;
+        });
+        final isWrongCode = code == 'INVALID_CODE' || code == 'EXPIRED_OTP' || code == 'NOT_FOUND';
+        if (isWrongCode) {
+          _shakeController.forward(from: 0);
+          for (final c in _controllers) {
+            c.clear();
+          }
+          _focusNodes[0].requestFocus();
+        }
+    }
+  }
+
+  bool get _isServerOrNetworkError {
+    return _errorCode == 'SERVER_ERROR' ||
+        _errorCode == 'INTERNAL_ERROR' ||
+        _errorCode == 'SEND_FAILED' ||
+        _errorCode == null;
+  }
+
+  Widget _buildErrorBanner(BuildContext context) {
+    final isServerError = _isServerOrNetworkError;
+    final colorScheme = Theme.of(context).colorScheme;
+    final bgColor = isServerError
+        ? colorScheme.errorContainer.withValues(alpha: 0.3)
+        : Colors.transparent;
+    final icon = isServerError ? Icons.wifi_off_rounded : null;
+    final textColor = colorScheme.error;
+
+    if (!isServerError) {
+      return Center(
+        child: Text(
+          _errorMessage!,
+          style: AppTypography.bodySmall.copyWith(color: textColor),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: textColor),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: AppTypography.bodySmall.copyWith(color: textColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendCode() async {
+    final countryCode = widget.countryCode?.trim();
+    final phoneNumber = widget.phoneNumber?.trim();
+    if (countryCode == null ||
+        countryCode.isEmpty ||
+        phoneNumber == null ||
+        phoneNumber.isEmpty ||
+        _isResending) {
+      return;
+    }
+
+    setState(() {
+      _isResending = true;
+      _errorMessage = null;
+      _errorCode = null;
+    });
+
+    final result = await ref.read(authRepositoryProvider).sendOtp(
+      countryCode: countryCode,
+      phone: phoneNumber,
+    );
+
+    if (!mounted) return;
+
+    setState(() => _isResending = false);
+    switch (result) {
+      case SendOtpSuccess(:final verificationId):
         for (final c in _controllers) {
           c.clear();
         }
+        _verificationId = verificationId;
         _focusNodes[0].requestFocus();
+        _startResendTimer();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Verification code resent.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      case SendOtpFailure(:final message, :final code):
+        setState(() {
+          _errorMessage = message;
+          _errorCode = code;
+        });
     }
   }
 
@@ -379,14 +492,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
 
                     if (_errorMessage != null) ...[
                       const SizedBox(height: 16),
-                      Center(
-                        child: Text(
-                          _errorMessage!,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
+                      _buildErrorBanner(context),
                     ],
 
                     const SizedBox(height: 28),
@@ -401,16 +507,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                               ),
                             )
                           : TextButton(
-                              onPressed: () {
-                                _startResendTimer();
-                                for (final c in _controllers) {
-                                  c.clear();
-                                }
-                                _focusNodes[0].requestFocus();
-                                setState(() {});
-                              },
+                              onPressed: _isResending ? null : _resendCode,
                               child: Text(
-                                l.resendCode,
+                                _isResending ? '${l.resendCode}...' : l.resendCode,
                                 style: TextStyle(
                                   color: accent,
                                   fontWeight: FontWeight.w600,

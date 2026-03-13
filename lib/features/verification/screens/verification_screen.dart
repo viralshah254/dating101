@@ -109,7 +109,6 @@ class VerificationScreen extends ConsumerWidget {
                         : VerificationTileStatus.pending,
                     onTap: () => _showEducationVerification(context, ref),
                     accent: accent,
-                    isComingSoon: !vs.educationVerified,
                   ).animate().fadeIn(delay: 240.ms),
                   const SizedBox(height: 32),
                   Text(

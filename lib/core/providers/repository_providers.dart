@@ -70,8 +70,31 @@ import '../../domain/repositories/verification_repository.dart';
 
 // ── Configuration ────────────────────────────────────────────────────────
 
-/// Change this to ApiConfig.localDev or ApiConfig.production to use real API.
-const _config = ApiConfig.localDev;
+const _apiEnvironment = String.fromEnvironment(
+  'API_ENV',
+  defaultValue: 'localDev',
+);
+const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
+
+ApiConfig _resolveApiConfig() {
+  if (_apiBaseUrlOverride.isNotEmpty) {
+    return ApiConfig(
+      baseUrl: _apiBaseUrlOverride,
+      useFakeBackend: false,
+    );
+  }
+  switch (_apiEnvironment) {
+    case 'production':
+      return ApiConfig.production;
+    case 'fake':
+      return ApiConfig.fake;
+    case 'localDev':
+    default:
+      return ApiConfig.localDev;
+  }
+}
+
+final _config = _resolveApiConfig();
 
 // ── Providers ────────────────────────────────────────────────────────────
 

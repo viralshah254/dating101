@@ -1,6 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../core/providers/repository_providers.dart';
+import '../../../data/api/api_client.dart';
+
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -15,16 +23,20 @@ enum PhotoVerificationState {
   retry,
 }
 
-class PhotoVerificationScreen extends StatefulWidget {
+class PhotoVerificationScreen extends ConsumerStatefulWidget {
   const PhotoVerificationScreen({super.key});
 
   @override
-  State<PhotoVerificationScreen> createState() =>
+  ConsumerState<PhotoVerificationScreen> createState() =>
       _PhotoVerificationScreenState();
 }
 
-class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
+class _PhotoVerificationScreenState
+    extends ConsumerState<PhotoVerificationScreen> {
   PhotoVerificationState _state = PhotoVerificationState.intro;
+  final ImagePicker _picker = ImagePicker();
+  XFile? _capturedImage;
+  String? _errorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -54,31 +66,81 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
       case PhotoVerificationState.capture:
         return _CaptureStep(
           accent: accent,
-          onCapture: () =>
-              setState(() => _state = PhotoVerificationState.challenge),
+          capturedImage: _capturedImage,
+          errorMessage: _errorMessage,
+          onCapture: _captureSelfie,
         );
       case PhotoVerificationState.challenge:
         return _ChallengeStep(
           accent: accent,
-          onPass: () =>
-              setState(() => _state = PhotoVerificationState.processing),
+          onPass: _submitPhotoVerification,
           onFail: () => setState(() => _state = PhotoVerificationState.retry),
         );
       case PhotoVerificationState.processing:
-        return _ProcessingStep(
-          accent: accent,
-          onDone: () => setState(() => _state = PhotoVerificationState.success),
-        );
+        return _ProcessingStep(accent: accent);
       case PhotoVerificationState.success:
         return _SuccessStep(accent: accent, onClose: () => context.pop());
       case PhotoVerificationState.failed:
       case PhotoVerificationState.retry:
         return _RetryStep(
           accent: accent,
+          errorMessage: _errorMessage,
           onRetry: () =>
               setState(() => _state = PhotoVerificationState.capture),
           onCancel: () => context.pop(),
         );
+    }
+  }
+
+  Future<void> _captureSelfie() async {
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 85,
+      );
+      if (file == null || !mounted) return;
+      setState(() {
+        _capturedImage = file;
+        _errorMessage = null;
+        _state = PhotoVerificationState.challenge;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Could not open the camera. Please try again.');
+    }
+  }
+
+  Future<void> _submitPhotoVerification() async {
+    if (_capturedImage == null) {
+      setState(() {
+        _errorMessage = 'Take a selfie first to continue.';
+        _state = PhotoVerificationState.capture;
+      });
+      return;
+    }
+
+    setState(() {
+      _state = PhotoVerificationState.processing;
+      _errorMessage = null;
+    });
+
+    try {
+      await ref.read(verificationRepositoryProvider).submitPhotoVerification();
+      if (!mounted) return;
+      setState(() => _state = PhotoVerificationState.success);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _state = PhotoVerificationState.retry;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Photo verification failed. Please try again.';
+        _state = PhotoVerificationState.retry;
+      });
     }
   }
 }
@@ -124,9 +186,16 @@ class _IntroStep extends StatelessWidget {
 }
 
 class _CaptureStep extends StatelessWidget {
-  const _CaptureStep({required this.accent, required this.onCapture});
+  const _CaptureStep({
+    required this.accent,
+    required this.onCapture,
+    required this.capturedImage,
+    required this.errorMessage,
+  });
   final Color accent;
-  final VoidCallback onCapture;
+  final Future<void> Function() onCapture;
+  final XFile? capturedImage;
+  final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -140,29 +209,41 @@ class _CaptureStep extends StatelessWidget {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.camera_alt, size: 64, color: accent),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Camera preview placeholder',
-                      style: AppTypography.bodySmall,
+              clipBehavior: Clip.antiAlias,
+              child: capturedImage == null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.camera_alt, size: 64, color: accent),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Use your front camera to take a clear selfie.',
+                            style: AppTypography.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : Image.file(
+                      File(capturedImage!.path),
+                      fit: BoxFit.cover,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Use camera plugin for live capture',
-                      style: AppTypography.caption,
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
+          if (errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              errorMessage!,
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: onCapture,
+            onPressed: () => onCapture(),
             icon: const Icon(Icons.camera),
             label: Text(AppLocalizations.of(context)!.takePhoto),
           ),
@@ -227,9 +308,8 @@ class _ChallengeStep extends StatelessWidget {
 }
 
 class _ProcessingStep extends StatelessWidget {
-  const _ProcessingStep({required this.accent, required this.onDone});
+  const _ProcessingStep({required this.accent});
   final Color accent;
-  final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -250,11 +330,6 @@ class _ProcessingStep extends StatelessWidget {
               .shimmer(duration: 1500.ms, color: accent.withValues(alpha: 0.3)),
           const SizedBox(height: 24),
           Text('Verifying your photo…', style: AppTypography.titleMedium),
-          const SizedBox(height: 48),
-          TextButton(
-            onPressed: onDone,
-            child: Text(AppLocalizations.of(context)!.simulateSuccess),
-          ),
         ],
       ),
     );
@@ -299,10 +374,12 @@ class _SuccessStep extends StatelessWidget {
 class _RetryStep extends StatelessWidget {
   const _RetryStep({
     required this.accent,
+    required this.errorMessage,
     required this.onRetry,
     required this.onCancel,
   });
   final Color accent;
+  final String? errorMessage;
   final VoidCallback onRetry;
   final VoidCallback onCancel;
 
@@ -326,6 +403,16 @@ class _RetryStep extends StatelessWidget {
             style: AppTypography.bodyMedium,
             textAlign: TextAlign.center,
           ),
+          if (errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              errorMessage!,
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 32),
           FilledButton(
             onPressed: onRetry,

@@ -9,22 +9,31 @@ import '../api/api_client.dart';
 class ApiSubscriptionRepository implements SubscriptionRepository {
   ApiSubscriptionRepository({required this.api});
   final ApiClient api;
+  final StreamController<SubscriptionState> _stateController =
+      StreamController<SubscriptionState>.broadcast();
+
+  void _emitState(SubscriptionState state) {
+    if (!_stateController.isClosed) {
+      _stateController.add(state);
+    }
+  }
 
   @override
   Future<SubscriptionState> getSubscriptionState() async {
     final body = await api.get('/subscription/me');
-    return _parse(body);
+    final state = _parse(body);
+    _emitState(state);
+    return state;
   }
 
   @override
-  Stream<SubscriptionState> watchSubscriptionState() {
-    final controller = StreamController<SubscriptionState>();
-    getSubscriptionState().then((state) {
-      if (!controller.isClosed) controller.add(state);
-    }).catchError((e) {
-      if (!controller.isClosed) controller.addError(e);
-    });
-    return controller.stream;
+  Stream<SubscriptionState> watchSubscriptionState() async* {
+    try {
+      yield await getSubscriptionState();
+    } catch (e) {
+      yield* Stream<SubscriptionState>.error(e);
+    }
+    yield* _stateController.stream;
   }
 
   @override
@@ -39,7 +48,9 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
       'receiptOrToken': receiptOrToken,
       'planId': planId,
     });
-    return _parse(body);
+    final state = _parse(body);
+    _emitState(state);
+    return state;
   }
 
   @override
@@ -53,6 +64,7 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
         'receiptOrToken': receiptOrToken ?? '',
       });
       final state = _parse(body);
+      _emitState(state);
       return state.isActive;
     } catch (_) {
       return false;
@@ -63,9 +75,16 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
   Future<SubscriptionEntitlements> getEntitlements() async {
     debugPrint('[Subscription] Fetching entitlements');
     final body = await api.get('/subscription/entitlements');
-    final tier = body['tier'] as String?;
-    final isPremium = tier == 'premium';
+    final tierRaw = body['tier'] as String?;
+    final tier =
+        tierRaw == 'premium' ? SubscriptionTier.premium : SubscriptionTier.none;
+    final isPremium = tier == SubscriptionTier.premium;
     return SubscriptionEntitlements(
+      tier: tier,
+      gender: body['gender'] as String? ?? 'unknown',
+      canExpressInterest: body['canExpressInterest'] as bool? ?? true,
+      canShortlist: body['canShortlist'] as bool? ?? true,
+      canViewFullProfile: body['canViewFullProfile'] as bool? ?? true,
       canSendMessage: body['canSendMessage'] as bool? ?? false,
       canSeeWhoLikedYou: body['canSeeWhoLikedYou'] as bool? ?? body['canSeeWhoLiked'] as bool? ?? false,
       canSeeWhoShortlistedYou: body['canSeeWhoShortlistedYou'] as bool? ?? false,
@@ -76,8 +95,13 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
       canSuperlike: body['canSuperlike'] as bool? ?? false,
       canSendMessageDirect: body['canSendMessageDirect'] as bool? ?? isPremium,
       canSeeRequestsInbox: body['canSeeRequestsInbox'] as bool? ?? isPremium,
-      requiresAdPerRequestToView: body['requiresAdPerRequestToView'] as bool? ?? isPremium,
+      requiresAdPerRequestToView: body['requiresAdPerRequestToView'] as bool? ?? !isPremium,
       canBoostProfile: body['canBoostProfile'] as bool? ?? isPremium,
+      canRequestContact: body['canRequestContact'] as bool? ?? isPremium,
+      canViewAllPhotos: body['canViewAllPhotos'] as bool? ?? isPremium,
+      canSeeCompatBreakdown: body['canSeeCompatBreakdown'] as bool? ?? isPremium,
+      canUseTravelMode: body['canUseTravelMode'] as bool? ?? isPremium,
+      hasReadReceipts: body['hasReadReceipts'] as bool? ?? isPremium,
       raw: body,
     );
   }

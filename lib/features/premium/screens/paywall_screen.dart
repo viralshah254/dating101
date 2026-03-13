@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/iap_products_provider.dart';
 import '../services/iap_purchase_service.dart';
@@ -74,7 +76,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         receiptOrToken: result.verificationData!,
         planId: productId,
       );
-      ref.invalidate(entitlementsProvider);
+      ref.read(subscriptionAccessRefreshProvider)();
       if (context.mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -85,6 +87,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         );
         context.pop();
       }
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      final l = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.purchaseFailed(e.message)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
       if (!context.mounted) return;
       final l = AppLocalizations.of(context)!;
@@ -106,7 +117,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         platform: restoreResult.platform,
         receiptOrToken: restoreResult.receiptOrToken,
       );
-      ref.invalidate(entitlementsProvider);
+      ref.read(subscriptionAccessRefreshProvider)();
       if (!context.mounted) return;
       final l = AppLocalizations.of(context)!;
       if (restored) {
@@ -171,6 +182,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     ];
 
     final features = ent.isFemale ? femaleFeatures : maleFeatures;
+    final hasActiveSubscription = ref.watch(subscriptionStateProvider).valueOrNull?.isActive ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -322,6 +334,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               onPressed: () => _onRestore(context, ref),
               child: Text(l.restorePurchases),
             ),
+            if (hasActiveSubscription && Platform.isAndroid) ...[
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => _openManageSubscription(),
+                child: const Text('Manage subscription'),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               'Profile boost available separately',
@@ -335,6 +354,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openManageSubscription() async {
+    final uri = Uri.parse(
+      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.saathi',
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 
