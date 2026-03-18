@@ -83,6 +83,7 @@ dependencies:
 
   # Utils
   http: ^1.2.2
+  web_socket_channel: ^3.0.1
   intl: ^0.20.2
   uuid: ^4.5.1
   equatable: ^2.0.5

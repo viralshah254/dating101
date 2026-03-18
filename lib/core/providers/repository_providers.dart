@@ -7,6 +7,7 @@ import '../../core/location/app_location_service.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/api_config.dart';
+import '../../data/api/chat_websocket_client.dart';
 import '../../data/api/token_storage.dart';
 import '../../data/services/photo_upload_service.dart';
 import '../../data/services/security_service.dart';
@@ -162,9 +163,20 @@ final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
   return ApiSafetyRepository(api: ref.watch(apiClientProvider));
 });
 
+final chatWebSocketClientProvider = Provider<ChatWebSocketClient?>((ref) {
+  if (_config.useFakeBackend) return null;
+  return ChatWebSocketClient(
+    wsBaseUrl: _config.baseUrl,
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
+});
+
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   if (_config.useFakeBackend) return FakeChatRepository();
-  return ApiChatRepository(api: ref.watch(apiClientProvider));
+  return ApiChatRepository(
+    api: ref.watch(apiClientProvider),
+    wsClient: ref.watch(chatWebSocketClientProvider),
+  );
 });
 
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {

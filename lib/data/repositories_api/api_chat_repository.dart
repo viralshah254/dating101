@@ -2,10 +2,12 @@ import 'dart:async';
 
 import '../../domain/repositories/chat_repository.dart';
 import '../api/api_client.dart';
+import '../api/chat_websocket_client.dart';
 
 class ApiChatRepository implements ChatRepository {
-  ApiChatRepository({required this.api});
+  ApiChatRepository({required this.api, this.wsClient});
   final ApiClient api;
+  final ChatWebSocketClient? wsClient;
 
   @override
   Future<List<String>> getSuggestions({String? mode}) async {
@@ -40,22 +42,51 @@ class ApiChatRepository implements ChatRepository {
   @override
   Stream<List<ChatMessage>> watchMessages(String threadId) {
     final controller = StreamController<List<ChatMessage>>();
+    List<ChatMessage> latest = [];
+    StreamSubscription? wsSub;
+    Timer? pollTimer;
 
-    _fetchMessages(threadId).then((msgs) {
+    void emit(List<ChatMessage> msgs) {
+      latest = msgs;
       if (!controller.isClosed) controller.add(msgs);
-    }).catchError((e) {
+    }
+
+    _fetchMessages(threadId).then(emit).catchError((e) {
       if (!controller.isClosed) controller.addError(e);
     });
 
-    // Poll every 5 seconds for new messages (replace with WebSocket later)
-    final timer = Timer.periodic(const Duration(seconds: 5), (_) async {
-      try {
-        final msgs = await _fetchMessages(threadId);
-        if (!controller.isClosed) controller.add(msgs);
-      } catch (_) {}
-    });
+    if (wsClient != null) {
+      if (!wsClient!.isConnected) wsClient!.connect();
+      wsSub = wsClient!.incoming.listen((event) {
+        if (event.type == IncomingEventType.message &&
+            event.threadId == threadId &&
+            event.message != null) {
+          final m = event.message!;
+          final msg = ChatMessage(
+            id: m.id,
+            senderId: m.senderId,
+            text: m.text,
+            sentAt: m.sentAt,
+            isVoiceNote: m.isVoiceNote,
+          );
+          if (!latest.any((e) => e.id == msg.id || (e.text == msg.text && e.senderId == msg.senderId && (e.sentAt.difference(msg.sentAt).inSeconds.abs() < 2)))) {
+            emit([...latest, msg]);
+          }
+        }
+      });
+    } else {
+      pollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+        try {
+          final msgs = await _fetchMessages(threadId);
+          if (!controller.isClosed) emit(msgs);
+        } catch (_) {}
+      });
+    }
 
-    controller.onCancel = () => timer.cancel();
+    controller.onCancel = () {
+      wsSub?.cancel();
+      pollTimer?.cancel();
+    };
     return controller.stream;
   }
 
@@ -81,6 +112,15 @@ class ApiChatRepository implements ChatRepository {
     String text, {
     String? adCompletionToken,
   }) async {
+    if (wsClient != null && wsClient!.isConnected) {
+      final sent = await wsClient!.send(threadId, text, adCompletionToken: adCompletionToken);
+      if (sent) return;
+    }
+    if (wsClient != null && !wsClient!.isConnected) {
+      await wsClient!.connect();
+      final sent = await wsClient!.send(threadId, text, adCompletionToken: adCompletionToken);
+      if (sent) return;
+    }
     final body = <String, dynamic>{'text': text};
     if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
       body['adCompletionToken'] = adCompletionToken;
@@ -145,7 +185,7 @@ class ApiChatRepository implements ChatRepository {
       text: j['text'] ?? j['message'] as String?,
       createdAt: j['createdAt'] != null ? DateTime.tryParse(j['createdAt'] as String) : null,
       threadId: j['threadId'] as String?,
-      isInbound: isInbound is bool ? isInbound : true,
+      isInbound: isInbound,
     );
   }
 
