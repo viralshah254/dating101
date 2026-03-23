@@ -1,9 +1,14 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' show ClientException;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
@@ -54,9 +59,21 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   /// True after first send when we used [ChatThreadScreen.initialAdToken].
   bool _consumedInitialAdToken = false;
 
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Timer? _connectivityRetryDebounce;
+
   @override
   void initState() {
     super.initState();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      if (!results.any((r) => r != ConnectivityResult.none)) return;
+      _connectivityRetryDebounce?.cancel();
+      _connectivityRetryDebounce = Timer(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        unawaited(_retryFailedOutgoingAfterConnectivity());
+      });
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final repo = ref.read(chatRepositoryProvider);
       final ws = ref.read(chatWebSocketClientProvider);
@@ -72,6 +89,71 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         }
       } catch (_) {}
     });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    _connectivityRetryDebounce?.cancel();
+    super.dispose();
+  }
+
+  bool _isLikelyNetworkFailure(Object e) {
+    if (e is SocketException || e is TimeoutException || e is ClientException) {
+      return true;
+    }
+    if (e is ApiException) {
+      return e.code == 'NETWORK_ERROR' ||
+          e.code == 'CONNECTION_REFUSED' ||
+          e.message.toLowerCase().contains('network') ||
+          e.message.toLowerCase().contains('connection') ||
+          e.message.toLowerCase().contains('internet');
+    }
+    final s = e.toString().toLowerCase();
+    return s.contains('socketexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('network is unreachable') ||
+        s.contains('connection refused') ||
+        s.contains('connection reset') ||
+        s.contains('timed out');
+  }
+
+  void _markOutgoingAsFailed(String text) {
+    ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+          (list) => list
+              .map(
+                (m) => m.text == text && m.id.startsWith('pending-')
+                    ? ChatMessage(
+                        id: 'failed-${m.id}',
+                        senderId: m.senderId,
+                        text: m.text,
+                        sentAt: m.sentAt,
+                      )
+                    : m,
+              )
+              .toList(),
+        );
+  }
+
+  /// Best-effort resend when the device regains connectivity (no new ad prompt).
+  Future<void> _retryFailedOutgoingAfterConnectivity() async {
+    final queue = ref.read(pendingSentMessagesProvider(widget.threadId));
+    final failed = queue.where((m) => m.id.startsWith('failed-')).toList();
+    if (failed.isEmpty) return;
+    final chatRepo = ref.read(chatRepositoryProvider);
+    for (final m in failed) {
+      try {
+        await chatRepo.sendMessage(widget.threadId, m.text);
+        if (!mounted) return;
+        ref.invalidate(chatThreadsProvider);
+      } on ApiException catch (e) {
+        if (e.code == 'AD_REQUIRED' ||
+            e.code == 'PREMIUM_OR_AD_REQUIRED' ||
+            e.code == 'PREMIUM_REQUIRED') {
+          continue;
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _sendMessageText(
@@ -134,52 +216,102 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
           (list) => [...list, pendingMsg],
         );
+    // Paint the optimistic bubble (clock icon) before first WS connect / HTTP — avoids a frozen UI.
+    await Future<void>.delayed(Duration.zero);
+    if (!context.mounted) return;
+    unawaited(
+      _completeOutgoingSend(
+        context: context,
+        ref: ref,
+        chatRepo: chatRepo,
+        text: text,
+        adCompletionToken: adToken,
+      ),
+    );
+  }
+
+  Future<void> _completeOutgoingSend({
+    required BuildContext context,
+    required WidgetRef ref,
+    required ChatRepository chatRepo,
+    required String text,
+    String? adCompletionToken,
+  }) async {
     try {
-      await chatRepo.sendMessage(widget.threadId, text, adCompletionToken: adToken);
+      await chatRepo.sendMessage(
+        widget.threadId,
+        text,
+        adCompletionToken: adCompletionToken,
+      );
     } on ApiException catch (e) {
-      if (context.mounted) {
-        ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
-              (list) => list.where((m) => m.text != text).toList(),
-            );
-        final showUpgrade = e.code == 'PREMIUM_REQUIRED' ||
-            e.code == 'INTRO_LIMIT' ||
-            e.code == 'AD_REQUIRED' ||
-            e.code == 'PREMIUM_OR_AD_REQUIRED';
-        final l = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.code == 'INTRO_LIMIT' ? l.matchToContinueOrUpgrade : e.message,
-            ),
-            behavior: SnackBarBehavior.floating,
-            action: showUpgrade
-                ? SnackBarAction(
-                    label: l.upgrade,
-                    onPressed: () => context.push('/paywall'),
-                  )
-                : null,
-          ),
-        );
-      }
-      return;
-    } catch (_) {
-      if (context.mounted) {
-        ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
-              (list) => list.where((m) => m.text != text).toList(),
-            );
+      if (!context.mounted) return;
+      if (_isLikelyNetworkFailure(e)) {
+        _markOutgoingAsFailed(text);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
             behavior: SnackBarBehavior.floating,
           ),
         );
+        return;
       }
+      ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+            (list) => list.where((m) => m.text != text).toList(),
+          );
+      final showUpgrade = e.code == 'PREMIUM_REQUIRED' ||
+          e.code == 'INTRO_LIMIT' ||
+          e.code == 'AD_REQUIRED' ||
+          e.code == 'PREMIUM_OR_AD_REQUIRED';
+      final l = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'INTRO_LIMIT' ? l.matchToContinueOrUpgrade : e.message,
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: showUpgrade
+              ? SnackBarAction(
+                  label: l.upgrade,
+                  onPressed: () => context.push('/paywall'),
+                )
+              : null,
+        ),
+      );
+      return;
+    } catch (e) {
+      if (!context.mounted) return;
+      if (_isLikelyNetworkFailure(e)) {
+        _markOutgoingAsFailed(text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+            (list) => list.where((m) => m.text != text).toList(),
+          );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     if (!context.mounted) return;
-    // Don't invalidate thread messages here: it would put the provider in loading and hide the optimistic message.
-    // The stream polls every 5s and will pick up the new message when the backend returns it.
     ref.invalidate(chatThreadsProvider);
+  }
+
+  Future<void> _retryFailedOutgoingTap(String text) async {
+    ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+          (list) => list
+              .where((m) => !(m.id.startsWith('failed-') && m.text == text))
+              .toList(),
+        );
+    await _sendMessageText(context, ref, text);
   }
 
   void _showMoreOptions(
@@ -366,8 +498,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         : null;
 
     ref.listen(_threadMessagesProvider(widget.threadId), (prev, next) {
-      if (!next.hasValue || pendingSent.isEmpty) return;
-      if (!context.mounted) return;
+      if (!next.hasValue || !context.mounted) return;
+      final outboundQueue =
+          ref.read(pendingSentMessagesProvider(widget.threadId));
+      if (outboundQueue.isEmpty) return;
       final serverList = next.value!;
       ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
             (currentPending) => currentPending
@@ -627,6 +761,12 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                                 peerReadAt: peerReadAt,
                                 otherUserOnline: online,
                                 otherLastActiveAt: lastActive,
+                                onRetryOutgoingFailed: isMe &&
+                                        m.id.startsWith('failed-')
+                                    ? () => unawaited(
+                                          _retryFailedOutgoingTap(m.text),
+                                        )
+                                    : null,
                               )
                               .animate()
                               .fadeIn(delay: (20 * i).ms)
@@ -736,6 +876,7 @@ class _MessageBubble extends StatelessWidget {
     this.peerReadAt,
     this.otherUserOnline = false,
     this.otherLastActiveAt,
+    this.onRetryOutgoingFailed,
   });
   final String messageId;
   final String text;
@@ -747,6 +888,8 @@ class _MessageBubble extends StatelessWidget {
   /// From thread summary / presence — for double-grey "reachable" ticks.
   final bool otherUserOnline;
   final DateTime? otherLastActiveAt;
+  /// Tap to resend after a network failure (cloud icon).
+  final VoidCallback? onRetryOutgoingFailed;
 
   static const Duration _recentlyActiveWindow = Duration(minutes: 10);
 
@@ -757,8 +900,11 @@ class _MessageBubble extends StatelessWidget {
     return false;
   }
 
+  static bool _isFailedOutbound(String id) => id.startsWith('failed-');
+
   /// Persisted on server (including pending message-request rows).
-  static bool _isDeliveredToServer(String id) => !_isClientOptimisticPending(id);
+  static bool _isDeliveredToServer(String id) =>
+      !_isClientOptimisticPending(id) && !_isFailedOutbound(id);
 
   static bool _readByPeer(DateTime sentAt, DateTime? peerReadAt) {
     if (peerReadAt == null) return false;
@@ -771,16 +917,19 @@ class _MessageBubble extends StatelessWidget {
     return DateTime.now().difference(lastActive) <= _recentlyActiveWindow;
   }
 
-  /// WhatsApp-style: single = sent (they're offline / not recently active), double grey = online or active ~10m, double green = read.
+  /// WhatsApp-style: clock while sending, single tick once on server, double grey/green for delivery/read.
   Widget? _outgoingReceiptRow(Color outgoingFg) {
     if (!isMe) return null;
+    if (_isFailedOutbound(messageId)) {
+      return Icon(
+        Icons.cloud_off_rounded,
+        size: 15,
+        color: outgoingFg.withValues(alpha: 0.78),
+      );
+    }
     final optimistic = _isClientOptimisticPending(messageId);
     if (optimistic) {
-      return Icon(
-        Icons.done_rounded,
-        size: 15,
-        color: outgoingFg.withValues(alpha: 0.42),
-      );
+      return _SendingClockPulse(color: outgoingFg.withValues(alpha: 0.9));
     }
     if (!_isDeliveredToServer(messageId)) return null;
 
@@ -824,37 +973,36 @@ class _MessageBubble extends StatelessWidget {
         ? outgoingFg.withValues(alpha: 0.88)
         : onSurface.withValues(alpha: 0.55);
     final receipt = _outgoingReceiptRow(outgoingFg);
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(18),
+      topRight: const Radius.circular(18),
+      bottomLeft: Radius.circular(isMe ? 18 : 6),
+      bottomRight: Radius.circular(isMe ? 6 : 18),
+    );
 
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-        ),
-        decoration: BoxDecoration(
-          color: bubbleBg,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isMe ? 18 : 6),
-            bottomRight: Radius.circular(isMe ? 6 : 18),
+    Widget bubble = Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+      ),
+      decoration: BoxDecoration(
+        color: bubbleBg,
+        borderRadius: borderRadius,
+        border: isMe
+            ? Border.all(
+                color: outgoingFg.withValues(alpha: 0.2),
+              )
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 1),
           ),
-          border: isMe
-              ? Border.all(
-                  color: outgoingFg.withValues(alpha: 0.2),
-                )
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
+        ],
+      ),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -899,10 +1047,68 @@ class _MessageBubble extends StatelessWidget {
             ),
           ],
         ),
-      ),
+    );
+
+    if (onRetryOutgoingFailed != null) {
+      bubble = Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onRetryOutgoingFailed,
+          borderRadius: borderRadius,
+          child: bubble,
+        ),
+      );
+    }
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: bubble,
     );
   }
 
+}
+
+/// Subtle pulse like WhatsApp “sending” (clock).
+class _SendingClockPulse extends StatefulWidget {
+  const _SendingClockPulse({required this.color});
+  final Color color;
+
+  @override
+  State<_SendingClockPulse> createState() => _SendingClockPulseState();
+}
+
+class _SendingClockPulseState extends State<_SendingClockPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.45, end: 1).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      ),
+      child: Icon(
+        Icons.schedule_rounded,
+        size: 15,
+        color: widget.color,
+      ),
+    );
+  }
 }
 
 class _TypingBar extends StatefulWidget {
