@@ -7,7 +7,169 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/premium_badge.dart';
 import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
+import '../../../features/moments/widgets/moment_viewer.dart';
+import '../../../features/profile/widgets/voice_intro_player.dart';
 import '../../../l10n/app_localizations.dart';
+
+/// Deep Look overlay — slides up over the bottom half of the swipe card when
+/// the user hovers in the curiosity zone (>90 px right drag, >800 ms).
+class DeepLookLayer extends StatelessWidget {
+  const DeepLookLayer({super.key, required this.profile});
+  final ProfileSummary profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hasPrompt =
+        profile.promptAnswer != null && profile.promptAnswer!.trim().isNotEmpty;
+    final hasCompat = profile.compatibilityScore != null;
+    final hasIntent = profile.datingIntent != null && profile.datingIntent!.isNotEmpty;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.72),
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle hint
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              // Label
+              Row(
+                children: [
+                  Icon(Icons.remove_red_eye_rounded,
+                      size: 14, color: cs.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'DEEP LOOK',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (hasPrompt) ...[
+                _DeepLookRow(
+                  icon: Icons.format_quote_rounded,
+                  iconColor: cs.secondary,
+                  text: '"${profile.promptAnswer!}"',
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (hasCompat) ...[
+                _DeepLookRow(
+                  icon: Icons.auto_awesome_rounded,
+                  iconColor: const Color(0xFFFFB300),
+                  text:
+                      '${(profile.compatibilityScore! * 100).round()}% compatible — ${profile.compatibilityLabel ?? profile.matchReasons.take(2).join(', ')}',
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (hasIntent) ...[
+                _DeepLookRow(
+                  icon: Icons.favorite_border_rounded,
+                  iconColor: const Color(0xFFFF6B6B),
+                  text: _intentLabel(profile.datingIntent!),
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (!hasPrompt && !hasCompat && !hasIntent)
+                Text(
+                  profile.bio.trim().isNotEmpty
+                      ? profile.bio
+                      : '${profile.name} hasn\'t added details yet.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 14,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              const SizedBox(height: 4),
+              Text(
+                'Keep dragging right to like · Release to spring back',
+                style: AppTypography.labelSmall.copyWith(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _intentLabel(String intent) {
+    return switch (intent) {
+      'serious' => 'Looking for something serious',
+      'casual' => 'Open to casual connections',
+      'marriage' => 'Here for marriage',
+      'friends_first' || 'friends first' => 'Friends first',
+      _ => intent,
+    };
+  }
+}
+
+class _DeepLookRow extends StatelessWidget {
+  const _DeepLookRow({
+    required this.icon,
+    required this.iconColor,
+    required this.text,
+    this.maxLines = 2,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String text;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: iconColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTypography.bodySmall.copyWith(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 13,
+              height: 1.4,
+            ),
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 bool _hasDescriptionOrInterests(ProfileSummary p) {
   final hasBio = (p.bio).trim().isNotEmpty;
@@ -89,6 +251,35 @@ class DiscoverySwipeCard extends StatelessWidget {
               bottom: 140,
               child: _OverlayInfo(profile: profile, accent: accent),
             ),
+            // Moment story ring indicator (top-left)
+            if (profile.hasActiveMoment)
+              Positioned(
+                left: 16,
+                top: 16,
+                child: MomentStoryRing(
+                  hasActiveMoment: true,
+                  ringWidth: 2.5,
+                  child: ClipOval(
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      color: Colors.white24,
+                      child: profile.momentImageUrl != null
+                          ? Image.network(profile.momentImageUrl!, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const Icon(Icons.photo, color: Colors.white, size: 20))
+                          : const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                ),
+              ),
+            // Voice intro badge (bottom-left above info)
+            if (profile.voiceIntroUrl != null && profile.voiceIntroUrl!.isNotEmpty)
+              Positioned(
+                left: 20,
+                bottom: 120,
+                child: VoiceIntroBadge(url: profile.voiceIntroUrl!),
+              ),
             // Info button — opens full profile (bottom-right, above action bar)
             Positioned(
               right: 20,
@@ -157,7 +348,7 @@ class DiscoverySwipeCard extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.2),
                     child: PopupMenuButton<String>(
                       padding: EdgeInsets.zero,
-                      icon: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 24),
+                      icon: const Icon(Icons.more_horiz_rounded, color: Color(0xFFFFFFFF), size: 24),
                       color: theme.colorScheme.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       onSelected: (v) {
@@ -502,11 +693,7 @@ class _OverlayInfo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (hasCompat) ...[
-          _CompatibilityPill(
-            score: profile.compatibilityScore,
-            label: profile.compatibilityLabel,
-            onDark: false,
-          ),
+          _CompatibilityStoryTile(profile: profile),
           const SizedBox(height: 12),
         ],
         Row(
@@ -578,6 +765,11 @@ class _OverlayInfo extends StatelessWidget {
                 ),
             ],
           ),
+        ],
+        // Intent badge
+        if (profile.datingIntent != null && profile.datingIntent!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _IntentChip(intent: profile.datingIntent!),
         ],
         if (_hasDescriptionOrInterests(profile)) ...[
           const SizedBox(height: 10),
@@ -693,68 +885,210 @@ class _ReasonChip extends StatelessWidget {
   }
 }
 
-class _CompatibilityPill extends StatelessWidget {
-  const _CompatibilityPill({this.score, this.label, this.onDark = false});
+/// Replaces the flat compatibility pill with an expandable "Your Story" card.
+/// Collapsed: score + label pill. Expanded: per-dimension breakdown + a narrative
+/// composed from [matchReasons].
+class _CompatibilityStoryTile extends StatefulWidget {
+  const _CompatibilityStoryTile({required this.profile});
+  final ProfileSummary profile;
 
-  final double? score;
-  final String? label;
-  final bool onDark;
+  @override
+  State<_CompatibilityStoryTile> createState() => _CompatibilityStoryTileState();
+}
+
+class _CompatibilityStoryTileState extends State<_CompatibilityStoryTile>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late AnimationController _ctrl;
+  late Animation<double> _expandAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _expandAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded) { _ctrl.forward(); } else { _ctrl.reverse(); }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasScore = score != null;
-    final hasLabel = label != null && label!.isNotEmpty;
+    final p = widget.profile;
+    final hasScore = p.compatibilityScore != null;
+    final hasLabel =
+        p.compatibilityLabel != null && p.compatibilityLabel!.isNotEmpty;
     if (!hasScore && !hasLabel) return const SizedBox.shrink();
-    final scoreText = hasScore ? '${(score! * 100).round()}%' : null;
 
-    final bgColor = onDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.2);
-    final borderColor = onDark
-        ? Colors.white.withValues(alpha: 0.2)
-        : Colors.white.withValues(alpha: 0.35);
+    final scoreInt =
+        hasScore ? (p.compatibilityScore! * 100).round() : 0;
+    final narrative = _buildNarrative(p);
+    final dimensions = _buildDimensions(p);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.auto_awesome_rounded,
-            size: 16,
-            color: onDark ? const Color(0xFFE8E6E3) : Colors.white.withValues(alpha: 0.95),
-          ),
-          const SizedBox(width: 6),
-          if (scoreText != null)
-            Text(
-              scoreText,
-              style: AppTypography.labelLarge.copyWith(
-                color: onDark ? const Color(0xFFE8E6E3) : Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
+    const gold = Color(0xFFFFB300);
+
+    return GestureDetector(
+      onTap: dimensions.isNotEmpty || narrative != null ? _toggle : null,
+      child: AnimatedBuilder(
+        animation: _expandAnim,
+        builder: (ctx, _) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
             ),
-          if (scoreText != null && hasLabel) const SizedBox(width: 4),
-          if (hasLabel)
-            Flexible(
-              child: Text(
-                label!,
-                style: AppTypography.bodySmall.copyWith(
-                  color: onDark ? const Color(0xFFB8B5B0) : Colors.white.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header row (always visible)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 16, color: gold),
+                    const SizedBox(width: 6),
+                    if (hasScore)
+                      Text(
+                        '$scoreInt%',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    if (hasScore && hasLabel) const SizedBox(width: 4),
+                    if (hasLabel)
+                      Text(
+                        p.compatibilityLabel!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    if (dimensions.isNotEmpty || narrative != null) ...[
+                      const SizedBox(width: 6),
+                      Icon(
+                        _expanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ],
+                  ],
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
+                // Expanded section
+                SizeTransition(
+                  sizeFactor: _expandAnim,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (narrative != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          narrative,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                      if (dimensions.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        ...dimensions.map(
+                          (d) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    size: 13, color: gold),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    d,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-        ],
+          );
+        },
       ),
     );
+  }
+
+  static String? _buildNarrative(ProfileSummary p) {
+    if (p.sharedInterests.isNotEmpty) {
+      final shared = p.sharedInterests.take(2).join(' and ');
+      return 'You both love $shared';
+    }
+    if (p.matchReasons.isNotEmpty) return p.matchReasons.first;
+    return null;
+  }
+
+  static List<String> _buildDimensions(ProfileSummary p) {
+    final out = <String>[];
+    final breakdown = p.breakdown;
+    if (breakdown != null && breakdown.isNotEmpty) {
+      final sorted = breakdown.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      for (final e in sorted.take(4)) {
+        final label = _dimensionLabel(e.key);
+        final pct = (e.value * 100).round();
+        out.add('$label ($pct%)');
+      }
+      return out;
+    }
+    // Fall back to matchReasons
+    for (final r in p.matchReasons.take(3)) {
+      if (r.trim().isNotEmpty) out.add(r.trim());
+    }
+    return out;
+  }
+
+  static String _dimensionLabel(String key) {
+    return switch (key) {
+      'values' => 'Life Values',
+      'lifestyle' => 'Lifestyle',
+      'family' => 'Family Goals',
+      'communication' => 'Communication',
+      'interests' => 'Shared Interests',
+      'religion' => 'Religion & Faith',
+      'location' => 'Location',
+      'age' => 'Age Match',
+      _ => key.replaceAll('_', ' ').split(' ').map((w) {
+          if (w.isEmpty) return w;
+          return '${w[0].toUpperCase()}${w.substring(1)}';
+        }).join(' '),
+    };
   }
 }
 
@@ -839,6 +1173,50 @@ class _DescriptionAndInterests extends StatelessWidget {
     if (prompt.isNotEmpty) return prompt.length > 80 ? '${prompt.substring(0, 80)}…' : prompt;
     if (bio.isNotEmpty) return bio.length > 80 ? '${bio.substring(0, 80)}…' : bio;
     return null;
+  }
+}
+
+/// Intent badge shown on discovery cards.
+class _IntentChip extends StatelessWidget {
+  const _IntentChip({required this.intent});
+  final String intent;
+
+  static final _intentMap = <String, (IconData, String, Color)>{
+    'marriage': (Icons.diamond_rounded, 'Open to Marriage', const Color(0xFFFFB300)),
+    'serious': (Icons.favorite_rounded, 'Serious Relationship', const Color(0xFFE91E63)),
+    'casual': (Icons.coffee_rounded, 'Casual Connection', const Color(0xFF7E57C2)),
+    'friends_first': (Icons.waving_hand_rounded, 'Friends First', const Color(0xFF26A69A)),
+    'friends first': (Icons.waving_hand_rounded, 'Friends First', const Color(0xFF26A69A)),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = _intentMap[intent.toLowerCase()];
+    if (entry == null) return const SizedBox.shrink();
+    final (icon, label, color) = entry;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

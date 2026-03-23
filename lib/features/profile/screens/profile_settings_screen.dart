@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +16,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
 
@@ -92,14 +93,16 @@ class ProfileSettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
+          ).fadeSlideIn(delay: 100.ms),
           const SizedBox(height: 24),
           _SubscriptionCard(
             onSurface: onSurface,
             primary: primary,
-          ),
+          ).fadeSlideIn(delay: 200.ms),
           const SizedBox(height: 32),
-          _SectionHeader(title: l.saathiMode, onSurface: onSurface),
+          _SectionHeader(title: l.saathiMode, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(0, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           _ModeSwitchTile(
             currentMode: mode,
             preference: ref.watch(modePreferenceProvider).valueOrNull,
@@ -113,7 +116,9 @@ class ProfileSettingsScreen extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: l.account, onSurface: onSurface),
+          _SectionHeader(title: l.account, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(1, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           ListTile(
             leading: const Icon(Icons.people_outline),
             title: Text(
@@ -213,7 +218,32 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onTap: () => showLanguagePickerSheet(context, ref),
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: l.accountAndData, onSurface: onSurface),
+          // ── Family Circle ──────────────────────────────────────────
+          _SectionHeader(title: 'Family Circle', onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(2, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
+          ListTile(
+            leading: const Icon(Icons.family_restroom_rounded),
+            title: Text(
+              'Invite a family member',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Let a parent or sibling view your shortlist and leave notes',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/family-circle'),
+          ),
+          const SizedBox(height: 24),
+          _SectionHeader(title: l.accountAndData, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(3, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: Text(
@@ -272,7 +302,9 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onTap: () => _showDeleteAccountConfirm(context, ref),
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: l.support, onSurface: onSurface),
+          _SectionHeader(title: l.support, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(3, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: Text(
@@ -406,7 +438,7 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
+                      color: Theme.of(ctx).colorScheme.outline.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -455,7 +487,7 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                     'Test push (debug)',
                     style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey,
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -542,7 +574,7 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
+                      color: Theme.of(ctx).colorScheme.outline.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -814,10 +846,13 @@ class _DeactivateConfirmDialogState extends State<_DeactivateConfirmDialog> {
                   try {
                     await widget.ref.read(accountRepositoryProvider).deactivateAccount();
                     if (!mounted) return;
+                    // ignore: use_build_context_synchronously
                     Navigator.pop(context);
                     await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
                     await widget.ref.read(authRepositoryProvider).signOut();
-                    if (mounted) context.go('/login');
+                    if (!mounted) return;
+                    // ignore: use_build_context_synchronously
+                    context.go('/login');
                   } catch (_) {
                     if (!mounted) return;
                     setState(() => _loading = false);
@@ -926,10 +961,13 @@ class _DeleteAccountConfirmDialogState extends State<_DeleteAccountConfirmDialog
                           confirmation: _confirmationWord,
                         );
                         if (!mounted) return;
+                        // ignore: use_build_context_synchronously
                         Navigator.pop(context);
                         await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
                         await widget.ref.read(authRepositoryProvider).signOut();
-                        if (mounted) context.go('/login');
+                        if (!mounted) return;
+                        // ignore: use_build_context_synchronously
+                        context.go('/login');
                       } catch (_) {
                         if (!mounted) return;
                         setState(() => _loading = false);
@@ -994,14 +1032,18 @@ class _ModeSwitchTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isDating ? AppColors.saffron : AppColors.indiaGreen)
+                  color: (isDating
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.secondary)
                       .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   isDating ? Icons.favorite_rounded : Icons.diversity_3_rounded,
                   size: 24,
-                  color: isDating ? AppColors.saffron : AppColors.indiaGreen,
+                  color: isDating
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.secondary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -1144,6 +1186,7 @@ class _SubscriptionCard extends ConsumerWidget {
         onTap: () async {
           if (isActiveSubscription) {
             final opened = await _openManageSubscription(context);
+            if (!context.mounted) return;
             if (opened) return;
           }
           await context.push('/paywall');

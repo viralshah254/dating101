@@ -58,6 +58,18 @@ mixin _$ProfileSummary {
   /// Who manages this profile (matrimony). Only shown when not self.
   ProfileRole? get roleManagingProfile => throw _privateConstructorUsedError;
 
+  /// Dating intent from DatingExtensions: serious / casual / marriage / friends_first.
+  String? get datingIntent => throw _privateConstructorUsedError;
+
+  /// Whether this user has posted an active Moment (within 24h).
+  bool get hasActiveMoment => throw _privateConstructorUsedError;
+
+  /// URL of the active moment image (used for story-ring preview).
+  String? get momentImageUrl => throw _privateConstructorUsedError;
+
+  /// Voice intro URL (if recorded).
+  String? get voiceIntroUrl => throw _privateConstructorUsedError;
+
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -104,6 +116,10 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     List<String> matchReasons,
     Map<String, double>? breakdown,
     ProfileRole? roleManagingProfile,
+    String? datingIntent,
+    bool hasActiveMoment,
+    String? momentImageUrl,
+    String? voiceIntroUrl,
   });
 }
 
@@ -153,6 +169,10 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? matchReasons = null,
     Object? breakdown = freezed,
     Object? roleManagingProfile = freezed,
+    Object? datingIntent = freezed,
+    Object? hasActiveMoment = null,
+    Object? momentImageUrl = freezed,
+    Object? voiceIntroUrl = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -280,6 +300,22 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.roleManagingProfile
                 : roleManagingProfile // ignore: cast_nullable_to_non_nullable
                       as ProfileRole?,
+            datingIntent: freezed == datingIntent
+                ? _value.datingIntent
+                : datingIntent // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            hasActiveMoment: null == hasActiveMoment
+                ? _value.hasActiveMoment
+                : hasActiveMoment // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            momentImageUrl: freezed == momentImageUrl
+                ? _value.momentImageUrl
+                : momentImageUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            voiceIntroUrl: freezed == voiceIntroUrl
+                ? _value.voiceIntroUrl
+                : voiceIntroUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -327,6 +363,10 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     List<String> matchReasons,
     Map<String, double>? breakdown,
     ProfileRole? roleManagingProfile,
+    String? datingIntent,
+    bool hasActiveMoment,
+    String? momentImageUrl,
+    String? voiceIntroUrl,
   });
 }
 
@@ -375,6 +415,10 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? matchReasons = null,
     Object? breakdown = freezed,
     Object? roleManagingProfile = freezed,
+    Object? datingIntent = freezed,
+    Object? hasActiveMoment = null,
+    Object? momentImageUrl = freezed,
+    Object? voiceIntroUrl = freezed,
   }) {
     return _then(
       _$ProfileSummaryImpl(
@@ -502,6 +546,22 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value.roleManagingProfile
             : roleManagingProfile // ignore: cast_nullable_to_non_nullable
                   as ProfileRole?,
+        datingIntent: freezed == datingIntent
+            ? _value.datingIntent
+            : datingIntent // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        hasActiveMoment: null == hasActiveMoment
+            ? _value.hasActiveMoment
+            : hasActiveMoment // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        momentImageUrl: freezed == momentImageUrl
+            ? _value.momentImageUrl
+            : momentImageUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        voiceIntroUrl: freezed == voiceIntroUrl
+            ? _value.voiceIntroUrl
+            : voiceIntroUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -542,6 +602,10 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     final List<String> matchReasons = const [],
     final Map<String, double>? breakdown,
     this.roleManagingProfile,
+    this.datingIntent,
+    this.hasActiveMoment = false,
+    this.momentImageUrl,
+    this.voiceIntroUrl,
   }) : _imageUrls = imageUrls,
        _interests = interests,
        _sharedInterests = sharedInterests,
@@ -663,9 +727,26 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
   @override
   final ProfileRole? roleManagingProfile;
 
+  /// Dating intent from DatingExtensions: serious / casual / marriage / friends_first.
+  @override
+  final String? datingIntent;
+
+  /// Whether this user has posted an active Moment (within 24h).
+  @override
+  @JsonKey()
+  final bool hasActiveMoment;
+
+  /// URL of the active moment image (used for story-ring preview).
+  @override
+  final String? momentImageUrl;
+
+  /// Voice intro URL (if recorded).
+  @override
+  final String? voiceIntroUrl;
+
   @override
   String toString() {
-    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile)';
+    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile, datingIntent: $datingIntent, hasActiveMoment: $hasActiveMoment, momentImageUrl: $momentImageUrl, voiceIntroUrl: $voiceIntroUrl)';
   }
 
   @override
@@ -738,7 +819,15 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
               _breakdown,
             ) &&
             (identical(other.roleManagingProfile, roleManagingProfile) ||
-                other.roleManagingProfile == roleManagingProfile));
+                other.roleManagingProfile == roleManagingProfile) &&
+            (identical(other.datingIntent, datingIntent) ||
+                other.datingIntent == datingIntent) &&
+            (identical(other.hasActiveMoment, hasActiveMoment) ||
+                other.hasActiveMoment == hasActiveMoment) &&
+            (identical(other.momentImageUrl, momentImageUrl) ||
+                other.momentImageUrl == momentImageUrl) &&
+            (identical(other.voiceIntroUrl, voiceIntroUrl) ||
+                other.voiceIntroUrl == voiceIntroUrl));
   }
 
   @override
@@ -775,6 +864,10 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     const DeepCollectionEquality().hash(_matchReasons),
     const DeepCollectionEquality().hash(_breakdown),
     roleManagingProfile,
+    datingIntent,
+    hasActiveMoment,
+    momentImageUrl,
+    voiceIntroUrl,
   ]);
 
   /// Create a copy of ProfileSummary
@@ -822,6 +915,10 @@ abstract class _ProfileSummary implements ProfileSummary {
     final List<String> matchReasons,
     final Map<String, double>? breakdown,
     final ProfileRole? roleManagingProfile,
+    final String? datingIntent,
+    final bool hasActiveMoment,
+    final String? momentImageUrl,
+    final String? voiceIntroUrl,
   }) = _$ProfileSummaryImpl;
 
   @override
@@ -894,6 +991,22 @@ abstract class _ProfileSummary implements ProfileSummary {
   /// Who manages this profile (matrimony). Only shown when not self.
   @override
   ProfileRole? get roleManagingProfile;
+
+  /// Dating intent from DatingExtensions: serious / casual / marriage / friends_first.
+  @override
+  String? get datingIntent;
+
+  /// Whether this user has posted an active Moment (within 24h).
+  @override
+  bool get hasActiveMoment;
+
+  /// URL of the active moment image (used for story-ring preview).
+  @override
+  String? get momentImageUrl;
+
+  /// Voice intro URL (if recorded).
+  @override
+  String? get voiceIntroUrl;
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.

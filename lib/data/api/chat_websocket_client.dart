@@ -76,18 +76,20 @@ class ChatWebSocketClient {
       if (json == null) return;
 
       final type = json['type'] as String?;
-      if (type == 'message' || type == 'sent') {
+
+      if (type == 'message') {
+        // Pushed to recipient from server
         final threadId = json['threadId'] as String?;
         final senderId = json['senderId'] as String?;
         final textMsg = json['text'] as String?;
         final sentAt = json['sentAt'] != null ? DateTime.tryParse(json['sentAt'] as String) : null;
-        final tempId = json['tempId'] as String?;
+        final id = json['id'] as String?;
         if (threadId != null && senderId != null && textMsg != null) {
           _incomingController.add(IncomingChatEvent(
             type: IncomingEventType.message,
             threadId: threadId,
             message: IncomingMessage(
-              id: tempId ?? 'temp_${DateTime.now().millisecondsSinceEpoch}',
+              id: id ?? 'temp_${DateTime.now().millisecondsSinceEpoch}',
               senderId: senderId,
               text: textMsg,
               sentAt: sentAt ?? DateTime.now(),
@@ -95,6 +97,39 @@ class ChatWebSocketClient {
             ),
           ));
         }
+      } else if (type == 'sent') {
+        // Echo back to sender: carries real DB id and tempId for dedup
+        final threadId = json['threadId'] as String?;
+        final senderId = json['senderId'] as String?;
+        final textMsg = json['text'] as String?;
+        final sentAt = json['sentAt'] != null ? DateTime.tryParse(json['sentAt'] as String) : null;
+        final id = json['id'] as String?;
+        final tempId = json['tempId'] as String?;
+        if (threadId != null && senderId != null && textMsg != null) {
+          _incomingController.add(IncomingChatEvent(
+            type: IncomingEventType.sent,
+            threadId: threadId,
+            tempId: tempId,
+            message: IncomingMessage(
+              id: id ?? tempId ?? 'temp_${DateTime.now().millisecondsSinceEpoch}',
+              senderId: senderId,
+              text: textMsg,
+              sentAt: sentAt ?? DateTime.now(),
+              isVoiceNote: false,
+            ),
+          ));
+        }
+      } else if (type == 'message_request_created') {
+        // Free-tier ad-gated: message became a message request
+        final threadId = json['threadId'] as String?;
+        final messageRequestId = json['messageRequestId'] as String?;
+        final tempId = json['tempId'] as String?;
+        _incomingController.add(IncomingChatEvent(
+          type: IncomingEventType.messageRequestCreated,
+          threadId: threadId,
+          tempId: tempId,
+          messageRequestId: messageRequestId,
+        ));
       } else if (type == 'error') {
         _incomingController.add(IncomingChatEvent(
           type: IncomingEventType.error,
@@ -107,24 +142,25 @@ class ChatWebSocketClient {
     }
   }
 
-  /// Send message via WebSocket. Returns true if sent, false if fallback to HTTP needed.
-  Future<bool> send(String threadId, String text, {String? adCompletionToken}) async {
-    if (_channel == null) return false;
+  /// Send message via WebSocket. Returns tempId if sent, null if fallback to HTTP needed.
+  Future<String?> send(String threadId, String text, {String? adCompletionToken}) async {
+    if (_channel == null) return null;
     try {
+      final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
       final payload = <String, dynamic>{
         'type': 'send',
         'threadId': threadId,
         'text': text,
-        'tempId': 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        'tempId': tempId,
       };
       if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
         payload['adCompletionToken'] = adCompletionToken;
       }
       _channel!.sink.add(jsonEncode(payload));
-      return true;
+      return tempId;
     } catch (e) {
       debugPrint('[ChatWS] send error: $e');
-      return false;
+      return null;
     }
   }
 
@@ -134,11 +170,17 @@ class ChatWebSocketClient {
     _channel?.sink.close();
     _channel = null;
     _subscription = null;
-    _incomingController.close();
+    if (!_incomingController.isClosed) _incomingController.close();
   }
 }
 
-enum IncomingEventType { connected, message, error }
+enum IncomingEventType {
+  connected,
+  message,
+  sent,
+  messageRequestCreated,
+  error,
+}
 
 class IncomingChatEvent {
   IncomingChatEvent({
@@ -147,12 +189,18 @@ class IncomingChatEvent {
     this.message,
     this.error,
     this.code,
+    this.tempId,
+    this.messageRequestId,
   });
   final IncomingEventType type;
   final String? threadId;
   final IncomingMessage? message;
   final String? error;
   final String? code;
+  /// Client-side tempId for optimistic bubble resolution.
+  final String? tempId;
+  /// Present when type == messageRequestCreated.
+  final String? messageRequestId;
 }
 
 class IncomingMessage {

@@ -8,9 +8,9 @@ import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
 import '../../../core/mode/app_mode.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../data/api/api_client.dart';
@@ -238,14 +238,14 @@ class _ChatsTab extends ConsumerWidget {
                   );
                   if (context.mounted) ref.invalidate(chatThreadsProvider);
                 },
-              );
+              ).staggeredItem(i);
             },
           ),
         );
       },
       loading: () => loadingSpinner(context),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(chatThreadsProvider),
         retryLabel: l.retry,
       ),
@@ -329,8 +329,8 @@ class _ChatRequestsTab extends ConsumerWidget {
         );
       },
       loading: () => loadingSpinner(context),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () {
           ref.invalidate(receivedInteractionsProvider);
           ref.invalidate(messageRequestsProvider);
@@ -515,7 +515,7 @@ class _RequestsInboxPremiumGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.saffron;
+    final accent = Theme.of(context).colorScheme.primary;
     final unlocked = ref.watch(unlockedReceivedProvider);
     final quota = ref.watch(inboxUnlocksQuotaProvider);
     final remaining = quota?.remaining ?? initialRemaining;
@@ -687,7 +687,7 @@ class _BlurredRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.saffron;
+    final accent = Theme.of(context).colorScheme.primary;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -879,7 +879,7 @@ class _ChatThreadTile extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: AppColors.saffron.withValues(alpha: 0.2),
+                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                 backgroundImage: imageUrl != null && imageUrl.isNotEmpty
                     ? NetworkImage(imageUrl)
                     : null,
@@ -887,7 +887,7 @@ class _ChatThreadTile extends ConsumerWidget {
                     ? Text(
                         initial,
                         style: AppTypography.titleLarge.copyWith(
-                          color: AppColors.saffron,
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       )
@@ -939,7 +939,7 @@ class _ChatThreadTile extends ConsumerWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.saffron,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -990,7 +990,7 @@ class _MessageRequestTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.saffron;
+    final accent = Theme.of(context).colorScheme.primary;
     final initial = (request.otherName ?? request.otherUserId).isNotEmpty
         ? (request.otherName ?? request.otherUserId)[0].toUpperCase()
         : '?';
@@ -1144,7 +1144,7 @@ class _ChatRequestCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: AppColors.indiaGreen.withValues(alpha: 0.12),
+                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
                     backgroundImage: p.imageUrl != null && p.imageUrl!.isNotEmpty
                         ? NetworkImage(p.imageUrl!)
                         : null,
@@ -1152,7 +1152,7 @@ class _ChatRequestCard extends StatelessWidget {
                         ? Text(
                             initial,
                             style: AppTypography.titleMedium.copyWith(
-                              color: AppColors.indiaGreen,
+                              color: Theme.of(context).colorScheme.secondary,
                               fontWeight: FontWeight.w600,
                             ),
                           )
@@ -1183,7 +1183,7 @@ class _ChatRequestCard extends StatelessWidget {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.saffron.withValues(alpha: 0.2),
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -1192,13 +1192,13 @@ class _ChatRequestCard extends StatelessWidget {
                                     Icon(
                                       Icons.star_rounded,
                                       size: 12,
-                                      color: AppColors.saffron,
+                                      color: Theme.of(context).colorScheme.primary,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       l.priority,
                                       style: AppTypography.labelSmall.copyWith(
-                                        color: AppColors.saffron,
+                                        color: Theme.of(context).colorScheme.primary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -1223,7 +1223,7 @@ class _ChatRequestCard extends StatelessWidget {
                             Text(
                               'View profile',
                               style: AppTypography.labelMedium.copyWith(
-                                color: AppColors.indiaGreen,
+                                color: Theme.of(context).colorScheme.secondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1231,7 +1231,7 @@ class _ChatRequestCard extends StatelessWidget {
                             Icon(
                               Icons.chevron_right_rounded,
                               size: 18,
-                              color: AppColors.indiaGreen,
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                           ],
                         ),
@@ -1247,7 +1247,7 @@ class _ChatRequestCard extends StatelessWidget {
                     onPressed: onAccept,
                     icon: const Icon(Icons.check_rounded, size: 18),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.indiaGreen,
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,

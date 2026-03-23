@@ -8,12 +8,12 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
@@ -63,9 +63,9 @@ class ShortlistScreen extends ConsumerWidget {
             ),
           ],
           bottom: TabBar(
-            labelColor: AppColors.indiaGreen,
+            labelColor: Theme.of(context).colorScheme.secondary,
             unselectedLabelColor: onSurface.withValues(alpha: 0.6),
-            indicatorColor: AppColors.indiaGreen,
+            indicatorColor: Theme.of(context).colorScheme.secondary,
             tabs: [
               Tab(text: AppLocalizations.of(context)!.shortlistedTab),
               Tab(text: AppLocalizations.of(context)!.shortlistedYouTab),
@@ -123,6 +123,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     if (ent.dailyPriorityInterestLimit == 0) {
       bool? watchAd = await _showWatchAdOrPremiumChoice(context);
       while (watchAd == false) {
+        if (!context.mounted) return;
         await context.push('/paywall');
         if (!context.mounted) return;
         watchAd = await _showWatchAdOrPremiumChoice(context);
@@ -148,8 +149,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
           .read(interactionsRepositoryProvider)
           .expressPriorityInterest(p.id, source: 'shortlist', adCompletionToken: adToken, mode: mode);
       if (!context.mounted) return;
-      final ctx = context;
-      final l = AppLocalizations.of(ctx)!;
+      final l = AppLocalizations.of(context)!;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
@@ -159,17 +159,16 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
             );
-        showSuccessToast(ctx, l.toastMatchWith(p.name));
-        ctx.push(
+        showSuccessToast(context, l.toastMatchWith(p.name));
+        context.push(
           '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
         );
       } else {
-        showSuccessToast(ctx, l.toastInterestSentTo(p.name));
+        showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      final ctx = context;
-      showErrorToast(ctx, e.message);
+      showErrorToast(context, e.message);
     }
   }
 
@@ -209,14 +208,14 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   Future<void> _onMessageAsFreeUser(ProfileSummary p) async {
     final l = AppLocalizations.of(context)!;
     final watchAd = await _showWatchAdOrPremiumChoiceForMessage(context);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (watchAd == null) return;
     if (watchAd == false) {
       context.push('/paywall');
       return;
     }
     final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.sendMessage);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (!shown) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -564,14 +563,14 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
                     ),
                   ],
                 ),
-              );
+              ).staggeredItem(index);
             },
           ),
         );
       },
       loading: () => loadingSpinner(context),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(shortlistProvider),
         retryLabel: l.retry,
       ),
@@ -696,7 +695,7 @@ class _WhoShortlistedMeContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     final surface = Theme.of(context).colorScheme.surface;
 
     return Container(
@@ -813,7 +812,7 @@ class _ShortlistedYouPremiumGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     final unlocked = ref.watch(shortlistUnlockedEntriesProvider);
     final quota = ref.watch(shortlistUnlocksQuotaProvider);
     final remaining = quota?.remaining ?? initialRemaining ?? 5;
@@ -950,7 +949,7 @@ class _ShortlistBlurredCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),

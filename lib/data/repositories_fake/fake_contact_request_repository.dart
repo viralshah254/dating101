@@ -19,8 +19,9 @@ class FakeContactRequestRepository implements ContactRequestRepository {
         break;
       }
     }
-    if (r == null)
+    if (r == null) {
       return const ContactRequestStatus(state: ContactRequestState.none);
+    }
     if (r.state == ContactRequestState.accepted) {
       return ContactRequestStatus(
         state: ContactRequestState.accepted,
@@ -142,8 +143,9 @@ class FakeContactRequestRepository implements ContactRequestRepository {
     for (final id in FakeData.allProfiles.keys) {
       if (id == _me) continue;
       if (i >= 2) break;
-      if (_requests.any((r) => r.fromUserId == id && r.toUserId == _me))
+      if (_requests.any((r) => r.fromUserId == id && r.toUserId == _me)) {
         continue;
+      }
       _requests.add(
         _FakeRequest(
           requestId: 'cr_rec_${++_idCounter}',

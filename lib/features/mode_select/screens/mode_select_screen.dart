@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -65,7 +64,10 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
                       mode: AppMode.dating,
                       title: l.modeDating,
                       subtitle: l.modeDatingSubtitle,
-                      gradientColors: [AppColors.saffron, AppColors.saffronLight],
+                      gradientColors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.primary,
+                      ],
                       icon: Icons.favorite_rounded,
                       isSelected: _selected == AppMode.dating,
                       onTap: () => setState(() => _selected = AppMode.dating),
@@ -77,7 +79,10 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
                       mode: AppMode.matrimony,
                       title: l.modeMatrimony,
                       subtitle: l.modeMatrimonySubtitle,
-                      gradientColors: [AppColors.indiaGreen, AppColors.indiaGreenLight],
+                      gradientColors: [
+                        Theme.of(context).colorScheme.secondary,
+                        Theme.of(context).colorScheme.secondary,
+                      ],
                       icon: Icons.diversity_3_rounded,
                       isSelected: _selected == AppMode.matrimony,
                       onTap: () => setState(() => _selected = AppMode.matrimony),
@@ -89,7 +94,10 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
                       mode: AppMode.both,
                       title: l.modeBoth,
                       subtitle: l.modeBothSubtitle,
-                      gradientColors: [AppColors.saffron, AppColors.indiaGreen],
+                      gradientColors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.secondary,
+                      ],
                       icon: Icons.people_alt_rounded,
                       isSelected: _selected == AppMode.both,
                       onTap: () => setState(() => _selected = AppMode.both),
@@ -130,9 +138,9 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
                     style: FilledButton.styleFrom(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       backgroundColor: _selected == AppMode.matrimony
-                          ? AppColors.indiaGreen
+                          ? Theme.of(context).colorScheme.secondary
                           : _selected == AppMode.both
-                              ? AppColors.saffron
+                              ? Theme.of(context).colorScheme.primary
                               : null,
                     ),
                     child: Text(

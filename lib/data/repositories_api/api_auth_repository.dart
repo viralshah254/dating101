@@ -24,64 +24,69 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Stream<String?> get authStateChanges => _authStateController.stream;
 
-  @override
-  Future<SendOtpResult> sendOtp({
-    required String countryCode,
-    required String phone,
-  }) async {
-    debugPrint('[Auth] sendOtp → $countryCode $phone');
-    try {
-      final body = await api.postNoAuth('/auth/send-otp', body: {
-        'countryCode': countryCode,
-        'phone': phone,
-      });
-      debugPrint('[Auth] sendOtp ✓ verificationId=${body['verificationId']}');
-      return SendOtpSuccess(
-        verificationId: body['verificationId'] as String,
-        expiresInSeconds: body['expiresInSeconds'] as int? ?? 300,
-      );
-    } on ApiException catch (e) {
-      debugPrint('[Auth] sendOtp ✗ ${e.code}: ${e.message}');
-      return SendOtpFailure(_userFriendlyMessage(e), code: e.code);
-    } catch (e) {
-      debugPrint('[Auth] sendOtp ✗ Connection error: $e');
-      return SendOtpFailure(_connectionErrorMessage(e));
-    }
+  Future<AuthResult> _saveTokensFromBody(Map<String, dynamic> body) async {
+    final userId = body['userId'] as String;
+    final isNewUser = body['isNewUser'] as bool? ?? false;
+    final referralApplied = body['referralApplied'] as bool? ?? false;
+    await tokenStorage.save(
+      accessToken: body['accessToken'] as String,
+      refreshToken: body['refreshToken'] as String,
+      userId: userId,
+      isNewUser: isNewUser,
+    );
+    _authStateController.add(userId);
+    return AuthSuccess(userId: userId, isNewUser: isNewUser, referralApplied: referralApplied);
   }
 
   @override
-  Future<AuthResult> verifyOtp({
-    required String verificationId,
-    required String code,
+  Future<AuthResult> signUpWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
     String? referralCode,
   }) async {
-    debugPrint('[Auth] verifyOtp → vid=$verificationId, code=$code, referralCode=${referralCode != null ? "***" : null}');
+    debugPrint('[Auth] signUpWithPassword → $countryCode $phone');
     try {
       final requestBody = <String, dynamic>{
-        'verificationId': verificationId,
-        'code': code,
+        'countryCode': countryCode,
+        'phone': phone,
+        'password': password,
       };
       if (referralCode != null && referralCode.trim().isNotEmpty) {
         requestBody['referralCode'] = referralCode.trim();
       }
-      final body = await api.postNoAuth('/auth/verify-otp', body: requestBody);
-      final userId = body['userId'] as String;
-      final isNewUser = body['isNewUser'] as bool? ?? false;
-      final referralApplied = body['referralApplied'] as bool? ?? false;
-      debugPrint('[Auth] verifyOtp ✓ userId=$userId, isNewUser=$isNewUser, referralApplied=$referralApplied');
-      await tokenStorage.save(
-        accessToken: body['accessToken'] as String,
-        refreshToken: body['refreshToken'] as String,
-        userId: userId,
-        isNewUser: isNewUser,
-      );
-      _authStateController.add(userId);
-      return AuthSuccess(userId: userId, isNewUser: isNewUser, referralApplied: referralApplied);
+      final body = await api.postNoAuth('/auth/register', body: requestBody);
+      debugPrint('[Auth] signUpWithPassword ✓ userId=${body['userId']}');
+      return _saveTokensFromBody(body);
     } on ApiException catch (e) {
-      debugPrint('[Auth] verifyOtp ✗ ${e.code}: ${e.message}');
+      debugPrint('[Auth] signUpWithPassword ✗ ${e.code}: ${e.message}');
       return AuthFailure(_userFriendlyMessage(e), code: e.code);
     } catch (e) {
-      debugPrint('[Auth] verifyOtp ✗ Connection error: $e');
+      debugPrint('[Auth] signUpWithPassword ✗ Connection error: $e');
+      return AuthFailure(_connectionErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<AuthResult> signInWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
+  }) async {
+    debugPrint('[Auth] signInWithPassword → $countryCode $phone');
+    try {
+      final body = await api.postNoAuth('/auth/login', body: {
+        'countryCode': countryCode,
+        'phone': phone,
+        'password': password,
+      });
+      debugPrint('[Auth] signInWithPassword ✓ userId=${body['userId']}');
+      return _saveTokensFromBody(body);
+    } on ApiException catch (e) {
+      debugPrint('[Auth] signInWithPassword ✗ ${e.code}: ${e.message}');
+      return AuthFailure(_userFriendlyMessage(e), code: e.code);
+    } catch (e) {
+      debugPrint('[Auth] signInWithPassword ✗ Connection error: $e');
       return AuthFailure(_connectionErrorMessage(e));
     }
   }
@@ -101,8 +106,7 @@ class ApiAuthRepository implements AuthRepository {
     debugPrint('[Auth] signOut');
     try {
       await api.post('/auth/sign-out', body: {
-        if (tokenStorage.refreshToken != null)
-          'refreshToken': tokenStorage.refreshToken,
+        if (tokenStorage.refreshToken != null) 'refreshToken': tokenStorage.refreshToken,
       });
     } catch (_) {}
     await tokenStorage.clear();
@@ -122,7 +126,15 @@ class ApiAuthRepository implements AuthRepository {
       case 'SEND_FAILED':
         return 'Could not send SMS. Please try again shortly.';
       case 'INVALID_PHONE':
-        return 'Invalid phone number. Please check and try again.';
+      case 'INVALID_REQUEST':
+      case 'VALIDATION_ERROR':
+        return 'Invalid phone number or password. Please check and try again.';
+      case 'ALREADY_EXISTS':
+        return 'An account with this phone number already exists. Sign in instead.';
+      case 'INVALID_CREDENTIALS':
+        return 'Invalid phone number or password.';
+      case 'PASSWORD_NOT_SET':
+        return 'Password sign-in is not set up for this number. Create an account or contact support.';
       case 'SERVER_ERROR':
       case 'INTERNAL_ERROR':
         return 'Something went wrong on our end. Please try again.';

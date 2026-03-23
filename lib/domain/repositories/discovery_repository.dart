@@ -75,6 +75,7 @@ abstract class DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
     int limit = 20,
     String? cursor,
   });
@@ -92,6 +93,7 @@ abstract class DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
     int limit = 30,
     String? cursor,
   });

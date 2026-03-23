@@ -1778,6 +1778,54 @@ abstract class AppLocalizations {
   /// **'Meaningful connections for the Indian diaspora, worldwide.'**
   String get loginHeroSubtitle;
 
+  /// No description provided for @authPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPasswordLabel;
+
+  /// No description provided for @authConfirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get authConfirmPasswordLabel;
+
+  /// No description provided for @authSignInLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Sign in'**
+  String get authSignInLink;
+
+  /// No description provided for @authSignUpLink.
+  ///
+  /// In en, this message translates to:
+  /// **'New here? Create an account'**
+  String get authSignUpLink;
+
+  /// No description provided for @authSignInButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get authSignInButton;
+
+  /// No description provided for @authCreateAccountButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get authCreateAccountButton;
+
+  /// No description provided for @authPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters.'**
+  String get authPasswordTooShort;
+
+  /// No description provided for @authPasswordsMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match.'**
+  String get authPasswordsMismatch;
+
   /// No description provided for @orDivider.
   ///
   /// In en, this message translates to:
@@ -4843,6 +4891,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use the filter icon above to search by age, city, religion, education and more.'**
   String get exploreProfilesBody;
+
+  /// No description provided for @bothTrackDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which track first?'**
+  String get bothTrackDialogTitle;
+
+  /// No description provided for @bothTrackDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete one track first. You can finish the other anytime from your profile.'**
+  String get bothTrackDialogBody;
+
+  /// No description provided for @qualityGateDating.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least 2 photos, 3 interests, and a short bio to continue.'**
+  String get qualityGateDating;
+
+  /// No description provided for @qualityGateMatrimony.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least 2 photos and a short bio to continue.'**
+  String get qualityGateMatrimony;
+
+  /// No description provided for @profileSavePhotoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved. Photo upload is temporarily unavailable — please try adding photos later from profile settings.'**
+  String get profileSavePhotoUnavailable;
+
+  /// No description provided for @profileSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save: {error}'**
+  String profileSaveFailed(String error);
+
+  /// No description provided for @searchCountryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search country...'**
+  String get searchCountryHint;
+
+  /// No description provided for @noCountriesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No countries found'**
+  String get noCountriesFound;
+
+  /// No description provided for @otpResent.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code resent.'**
+  String get otpResent;
+
+  /// No description provided for @identityStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your details'**
+  String get identityStepTitle;
+
+  /// No description provided for @identityStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and date of birth cannot be changed after setup.'**
+  String get identityStepSubtitle;
+
+  /// No description provided for @identityEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit your profile'**
+  String get identityEditTitle;
+
+  /// No description provided for @identityEditSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your details. Some fields cannot be changed.'**
+  String get identityEditSubtitle;
+
+  /// No description provided for @nameLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name cannot be changed after setup'**
+  String get nameLockedHint;
+
+  /// No description provided for @dobLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of birth cannot be changed'**
+  String get dobLockedHint;
+
+  /// No description provided for @heightTapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to select height'**
+  String get heightTapHint;
+
+  /// No description provided for @physicalAttributesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your physical attributes.'**
+  String get physicalAttributesSubtitle;
+
+  /// No description provided for @photosReorderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold & drag to reorder. First photo is your profile picture.'**
+  String get photosReorderHint;
+
+  /// No description provided for @photoTipClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear, well-lit face photo as main'**
+  String get photoTipClear;
+
+  /// No description provided for @photoTipFullLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Full-length photo shows personality'**
+  String get photoTipFullLength;
+
+  /// No description provided for @photoTipNoFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Avoid heavy filters or group shots'**
+  String get photoTipNoFilters;
+
+  /// No description provided for @photoTipSmile.
+  ///
+  /// In en, this message translates to:
+  /// **'Smile — it genuinely helps'**
+  String get photoTipSmile;
+
+  /// No description provided for @photoTipsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo tips'**
+  String get photoTipsLabel;
+
+  /// No description provided for @prefsStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your\npreferences'**
+  String get prefsStepTitle;
+
+  /// No description provided for @prefsStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll use these to show you relevant people. You can always refine later.'**
+  String get prefsStepSubtitle;
+
+  /// No description provided for @promptFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer a prompt so matches have something to talk about.'**
+  String get promptFieldHint;
+
+  /// No description provided for @promptFieldPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Best way to spend a Sunday? Chai and a book...'**
+  String get promptFieldPlaceholder;
+
+  /// No description provided for @partnerPrefsStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Partner\npreferences'**
+  String get partnerPrefsStepTitle;
+
+  /// No description provided for @partnerPrefsStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help us find the right match. You can refine these anytime.'**
+  String get partnerPrefsStepSubtitle;
+
+  /// No description provided for @strictLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Strict'**
+  String get strictLabel;
+
+  /// No description provided for @sameAsMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as me'**
+  String get sameAsMe;
+
+  /// No description provided for @preferredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred'**
+  String get preferredLabel;
+
+  /// No description provided for @aboutYouSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About you'**
+  String get aboutYouSectionTitle;
+
+  /// No description provided for @aboutYouSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help others know what you\'re about. All fields are optional — fill what you like.'**
+  String get aboutYouSectionSubtitle;
+
+  /// No description provided for @backgroundAndDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background\n& details'**
+  String get backgroundAndDetailsTitle;
+
+  /// No description provided for @backgroundAndDetailsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'These help us find compatible matches. Fill what you can — skip the rest.'**
+  String get backgroundAndDetailsSubtitle;
+
+  /// No description provided for @careerStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your work and where you\'re based.'**
+  String get careerStepSubtitle;
+
+  /// No description provided for @searchOccupationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search or type occupation'**
+  String get searchOccupationHint;
+
+  /// No description provided for @selectMotherTongueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select mother tongue'**
+  String get selectMotherTongueHint;
+
+  /// No description provided for @lifestyleAndHabitsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifestyle & habits'**
+  String get lifestyleAndHabitsLabel;
+
+  /// No description provided for @religionCommunityEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your religion and community.'**
+  String get religionCommunityEditHint;
+
+  /// No description provided for @lifestyleEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Diet, drinking, smoking and more.'**
+  String get lifestyleEditHint;
+
+  /// No description provided for @familyEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your family details.'**
+  String get familyEditHint;
+
+  /// No description provided for @horoscopeEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your horoscope details.'**
+  String get horoscopeEditHint;
+
+  /// No description provided for @fatherAgeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 50 or select Deceased'**
+  String get fatherAgeHint;
+
+  /// No description provided for @motherAgeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 45 or select Deceased'**
+  String get motherAgeHint;
+
+  /// No description provided for @profileSaveFailedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save. Please try again.'**
+  String get profileSaveFailedGeneric;
 }
 
 class _AppLocalizationsDelegate

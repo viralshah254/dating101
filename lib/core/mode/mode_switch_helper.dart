@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'app_mode.dart';
 import 'mode_provider.dart';
@@ -38,7 +37,9 @@ Future<bool> _showCompletionDialog(BuildContext context, AppMode newMode) async 
   final l = AppLocalizations.of(context)!;
   final onSurface = Theme.of(context).colorScheme.onSurface;
   final isMatrimony = newMode == AppMode.matrimony;
-  final accent = isMatrimony ? AppColors.indiaGreen : AppColors.saffron;
+  final accent = isMatrimony
+      ? Theme.of(context).colorScheme.secondary
+      : Theme.of(context).colorScheme.primary;
   final icon = isMatrimony ? Icons.diversity_3_rounded : Icons.favorite_rounded;
   final subtitle = isMatrimony
       ? l.modeSwitchCompleteSubtitle

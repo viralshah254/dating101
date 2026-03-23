@@ -60,7 +60,6 @@ class ApiVisitsRepository implements VisitsRepository {
         'adCompletionToken': adCompletionToken,
       },
     );
-    if (body == null) return null;
     final visitorMap = body['visitor'] as Map<String, dynamic>?;
     if (visitorMap == null) return null;
     final remaining = body['unlocksRemainingThisWeek'] as int? ?? 0;

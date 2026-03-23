@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/entitlements/entitlements.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/premium_badge.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/matrimony_extensions.dart';
@@ -58,7 +57,7 @@ class MatchProfileCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     final ent = ref.watch(entitlementsProvider);
 
     return GestureDetector(
@@ -142,14 +141,17 @@ class _PhotoHeader extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: profile.imageUrl != null
-                ? Image.network(
-                    profile.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _AvatarPlaceholder(profile: profile, accent: accent),
-                  )
-                : _AvatarPlaceholder(profile: profile, accent: accent),
+            child: Hero(
+              tag: 'profile_photo_${profile.id}',
+              child: profile.imageUrl != null
+                  ? Image.network(
+                      profile.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _AvatarPlaceholder(profile: profile, accent: accent),
+                    )
+                  : _AvatarPlaceholder(profile: profile, accent: accent),
+            ),
           ),
           // Gradient overlay at bottom for readability
           Positioned(
@@ -438,7 +440,9 @@ class _MatchBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = score >= 70
         ? accent
-        : (score >= 45 ? AppColors.saffron : AppColors.lightTextTertiary);
+        : (score >= 45
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -526,7 +530,7 @@ class _ManagedByChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = _label(context, role);
     if (label.isEmpty) return const SizedBox.shrink();
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -609,7 +613,7 @@ class _ActionBar extends StatelessWidget {
       primaryLabel = l.addPriority;
       primaryIcon = Icons.auto_awesome;
       primaryOnTap = onSuperLike;
-      primaryColor = AppColors.saffron;
+      primaryColor = Theme.of(context).colorScheme.primary;
     } else {
       primaryLabel = l.ctaSendInterest;
       primaryIcon = Icons.favorite_border_rounded;
@@ -667,7 +671,9 @@ class _PrimaryActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAccent = color == AppColors.indiaGreen || color == AppColors.saffron;
+    final primary = Theme.of(context).colorScheme.primary;
+    final secondary = Theme.of(context).colorScheme.secondary;
+    final isAccent = color == primary || color == secondary;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
@@ -746,7 +752,7 @@ class _CompactIconButton extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: AppColors.saffron,
+                      color: Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1),
                     ),

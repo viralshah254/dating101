@@ -6,10 +6,12 @@ import '../models/interaction_models.dart' show ExpressInterestResult, Interacti
 abstract class InteractionsRepository {
   /// Express interest in a user. If they already liked you, creates mutual match.
   /// [mode] scopes the action to dating or matrimony so they work independently.
+  /// [message] optional note shown to recipient ("Like With a Note" feature).
   Future<ExpressInterestResult> expressInterest(
     String toUserId, {
     String? source,
     AppMode? mode,
+    String? message,
   });
 
   /// Express priority (boosted) interest. Rate-limited per day (premium: 10/day). Free: pass [adCompletionToken] after user watches ad to allow one send.

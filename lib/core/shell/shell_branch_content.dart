@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../mode/app_mode.dart';
 import '../mode/mode_provider.dart';
+import '../feature_flags/feature_flags.dart';
 import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/map/screens/map_screen.dart';
@@ -24,6 +25,7 @@ class ShellBranchContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(appModeProvider);
+    final flags = ref.watch(featureFlagsProvider);
 
     if (mode == null && branchIndex == 0) {
       return const ModeSelectScreen();
@@ -51,7 +53,7 @@ class ShellBranchContent extends ConsumerWidget {
         case 0:
           return const MatchesScreen();
         case 1:
-          return const RequestsScreen();
+          return flags.mapInMatrimony ? const MapScreen() : const RequestsScreen();
         case 2:
           return const ShortlistScreen();
         case 3:

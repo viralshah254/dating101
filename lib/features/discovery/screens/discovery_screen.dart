@@ -18,9 +18,12 @@ import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/discovery_providers.dart';
+import '../../chat/providers/chat_providers.dart';
+import '../../chat/widgets/focus_mode_banner.dart';
 import '../widgets/city_picker_sheet.dart';
 import '../widgets/discovery_card_stack.dart';
-import '../widgets/discovery_filters_sheet.dart';
+import '../widgets/like_note_sheet.dart';
+import '../widgets/unified_filter_sheet.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -80,6 +83,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         ],
       ),
       body: asyncProfiles.when(
+        skipLoadingOnReload: true,
         data: (profiles) {
           // When returning from profile after liking (e.g. watch-ad message flow), advance past this card.
           final advanceId = ref.watch(discoveryAdvancePastProfileIdProvider);
@@ -107,8 +111,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           );
         },
         loading: () => loadingSpinner(context),
-        error: (_, __) => ErrorState(
-          message: l.errorGeneric,
+        error: (e, _) => ErrorState(
+          error: e,
           onRetry: () => ref.invalidate(discoveryFeedProvider),
           retryLabel: l.retry,
         ),
@@ -141,6 +145,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Focus Mode banner — shown when user has an active deep conversation
+        if (!_focusModeBannerDismissed)
+          _FocusModeBannerContainer(
+            onDismiss: () => setState(() => _focusModeBannerDismissed = true),
+          ),
         // Minimal header
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
@@ -225,17 +234,22 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   void _showFilters(BuildContext context) {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => DiscoveryFiltersSheet(
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => UnifiedFilterSheet(
+        mode: mode,
         initialParams: ref.read(discoveryFilterParamsProvider) ??
             (ref.read(discoveryTravelCityProvider) != null
-                ? DiscoveryFilterParams(
-                    city: ref.read(discoveryTravelCityProvider))
+                ? DiscoveryFilterParams(city: ref.read(discoveryTravelCityProvider))
                 : null),
-        onApply: (params) {
+        initialSort: ref.read(sortByProvider),
+        onApply: (params, sort) {
           ref.read(discoveryFilterParamsProvider.notifier).state = params;
+          ref.read(sortByProvider.notifier).state = sort;
           ref.invalidate(discoveryFeedProvider);
         },
       ),
@@ -298,6 +312,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   int _profileCount = 0;
+  bool _focusModeBannerDismissed = false;
 
   void _advanceToNext() {
     if (_currentPage < _profileCount - 1) {
@@ -331,10 +346,14 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Future<void> _onLike(ProfileSummary profile) async {
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    // Show "Like With a Note" sheet before sending — card has already animated out.
+    final noteResult = await showLikeNoteSheet(context, profile);
+    // If user dismissed the sheet entirely (back button), still send silently.
+    final message = noteResult?.message;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressInterest(profile.id, source: 'discovery', mode: mode);
+          .expressInterest(profile.id, source: 'discovery', mode: mode, message: message);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
@@ -450,7 +469,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
               child: Text(l.block),
             ),
           ],
@@ -492,7 +511,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             child: Text(AppLocalizations.of(context)!.report),
           ),
         ],
@@ -667,3 +686,49 @@ class _CityChip extends StatelessWidget {
   }
 }
 
+
+/// Watches [focusModeProvider] and renders [FocusModeBanner] for the first active
+/// Focus Mode entry. Silently hides itself if there are no active focus modes
+/// or the fetch fails.
+class _FocusModeBannerContainer extends ConsumerWidget {
+  const _FocusModeBannerContainer({required this.onDismiss});
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncModes = ref.watch(focusModeProvider);
+
+    return asyncModes.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (modes) {
+        if (modes.isEmpty) return const SizedBox.shrink();
+        final mode = modes.first;
+        return FocusModeBanner(
+          otherPersonName: mode.otherPersonName,
+          daysConnected: mode.daysConnected,
+          messageCount: mode.messageCount,
+          threadId: mode.threadId,
+          showMeetNudge: mode.showMeetNudge,
+          onDismiss: onDismiss,
+          onFocusModeAccept: () {
+            // Navigate to the chat thread so user can keep the conversation going
+            context.push('/chat/${mode.threadId}');
+            onDismiss();
+          },
+          onOpenChat: () => context.push('/chat/${mode.threadId}'),
+          onMarkMet: () async {
+            try {
+              final api = ref.read(apiClientProvider);
+              await api.post('/focus-mode/threads/${mode.threadId}/met');
+            } catch (_) {
+              // Ignore — optimistic dismiss
+            }
+            ref.invalidate(focusModeProvider);
+            onDismiss();
+          },
+        );
+      },
+    );
+  }
+}

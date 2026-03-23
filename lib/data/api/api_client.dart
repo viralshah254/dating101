@@ -3,8 +3,11 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import 'token_storage.dart';
+
+const _uuid = Uuid();
 
 /// HTTP error with status code and parsed body.
 class ApiException implements Exception {
@@ -35,9 +38,10 @@ class ApiClient {
   final String? Function()? _localeGetter;
   bool _isRefreshing = false;
 
-  Map<String, String> get _headers {
+  Map<String, String> _buildHeaders({String? requestId}) {
     final headers = <String, String>{
       HttpHeaders.contentTypeHeader: 'application/json',
+      'x-request-id': requestId ?? _uuid.v4(),
       if (tokenStorage.accessToken != null)
         HttpHeaders.authorizationHeader: 'Bearer ${tokenStorage.accessToken}',
     };
@@ -48,6 +52,9 @@ class ApiClient {
     return headers;
   }
 
+  /// Backward-compatible getter used by no-auth calls.
+  Map<String, String> get _headers => _buildHeaders();
+
   // ── Public HTTP methods ──────────────────────────────────────────────
 
   Future<Map<String, dynamic>> get(
@@ -55,43 +62,50 @@ class ApiClient {
     Map<String, String>? query,
   }) async {
     final uri = _buildUri(path, query);
+    final reqId = _uuid.v4();
     _log('GET', uri);
-    return _sendWithRetry(() => _http.get(uri, headers: _headers));
+    return _sendWithRetry(() => _http.get(uri, headers: _buildHeaders(requestId: reqId)), requestId: reqId);
   }
 
   Future<Map<String, dynamic>> post(String path, {Object? body}) async {
     final uri = _buildUri(path);
+    final reqId = _uuid.v4();
     _log('POST', uri, body);
     return _sendWithRetry(
       () => _http.post(
         uri,
-        headers: _headers,
+        headers: _buildHeaders(requestId: reqId),
         body: body != null ? jsonEncode(body) : null,
       ),
+      requestId: reqId,
     );
   }
 
   Future<Map<String, dynamic>> patch(String path, {Object? body}) async {
     final uri = _buildUri(path);
+    final reqId = _uuid.v4();
     _log('PATCH', uri, body);
     return _sendWithRetry(
       () => _http.patch(
         uri,
-        headers: _headers,
+        headers: _buildHeaders(requestId: reqId),
         body: body != null ? jsonEncode(body) : null,
       ),
+      requestId: reqId,
     );
   }
 
   Future<Map<String, dynamic>> put(String path, {Object? body}) async {
     final uri = _buildUri(path);
+    final reqId = _uuid.v4();
     _log('PUT', uri, body);
     return _sendWithRetry(
       () => _http.put(
         uri,
-        headers: _headers,
+        headers: _buildHeaders(requestId: reqId),
         body: body != null ? jsonEncode(body) : null,
       ),
+      requestId: reqId,
     );
   }
 
@@ -139,13 +153,14 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> _sendWithRetry(
-    Future<http.Response> Function() request,
-  ) async {
+    Future<http.Response> Function() request, {
+    String? requestId,
+  }) async {
     try {
       var resp = await request();
       _logResponse(resp.request?.method ?? '?', resp.request?.url, resp);
       if (resp.statusCode == 401 && !_isRefreshing) {
-        debugPrint('[API] 401 → attempting token refresh...');
+        debugPrint('[API] 401 → attempting token refresh... (req-id: $requestId)');
         final refreshed = await _tryRefresh();
         if (refreshed) {
           debugPrint('[API] Token refreshed, retrying request...');
@@ -159,7 +174,7 @@ class ApiClient {
       }
       return _parseResponse(resp);
     } catch (e) {
-      debugPrint('[API] ERROR: $e');
+      debugPrint('[API] ERROR (req-id: $requestId): $e');
       rethrow;
     }
   }

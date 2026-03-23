@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/api/api_client.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
@@ -42,6 +43,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   bool _isCompleting = false;
   bool _isLoading = true;
   int? _pendingInitialStep;
+  bool _selectedBothPrimaryTrack = false;
+  AppMode _bothPrimaryTrack = AppMode.dating;
+  int _lastLoggedStep = -1;
 
   late List<_StepInfo> _steps;
   static final _locationService = AppLocationService.instance;
@@ -58,14 +62,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   /// If user has an existing profile, prefills the form for seamless edit / mode switch.
   Future<void> _ensureLocationAndProceed() async {
     if (!mounted) return;
-    final access = await _locationService.checkAccess();
-    if (access != LocationAccess.granted) {
-      if (!mounted) return;
-      context.go(
-        '/location-required?then=${Uri.encodeComponent('/profile-setup')}',
-      );
-      return;
-    }
     final repo = ref.read(profileRepositoryProvider);
     final existing = await repo.getMyProfile();
     if (existing != null && mounted) {
@@ -76,7 +72,42 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         _isLoading = false;
         _pendingInitialStep = widget.initialStep;
       });
+      _maybeSelectBothPrimaryTrack();
     }
+  }
+
+  Future<void> _maybeSelectBothPrimaryTrack() async {
+    final effectiveMode = ref.read(appModeProvider) ?? AppMode.dating;
+    final modePreference = ref.read(modePreferenceProvider).valueOrNull;
+    final signupPreference = modePreference ?? effectiveMode;
+    if (widget.isEditing || !signupPreference.isBoth || _selectedBothPrimaryTrack) {
+      return;
+    }
+    final l = AppLocalizations.of(context)!;
+    final chosen = await showDialog<AppMode>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.bothTrackDialogTitle),
+        content: Text(l.bothTrackDialogBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(AppMode.dating),
+            child: Text(l.modeDating),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(AppMode.matrimony),
+            child: Text(l.modeMatrimony),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    final primaryTrack = chosen ?? AppMode.dating;
+    await ref.read(appModeProvider.notifier).setCurrentView(primaryTrack);
+    setState(() {
+      _bothPrimaryTrack = primaryTrack;
+      _selectedBothPrimaryTrack = true;
+    });
   }
 
   @override
@@ -95,12 +126,41 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   Future<void> _next() async {
     FocusScope.of(context).unfocus();
     if (_currentStep < _steps.length - 1) {
+      final step = _steps[_currentStep];
+      AnalyticsService.instance.logOnboardingStepCompleted(
+        mode: (ref.read(modePreferenceProvider).valueOrNull ?? ref.read(appModeProvider) ?? AppMode.dating).name,
+        stepId: step.analyticsKey,
+        stepIndex: _currentStep + 1,
+        totalSteps: _steps.length,
+      );
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
       );
       setState(() => _currentStep++);
     } else {
+      if (!widget.isEditing && !_passesMinimumProfileQuality()) {
+        AnalyticsService.instance.logOnboardingQualityBlocked(
+          mode: (ref.read(modePreferenceProvider).valueOrNull ?? ref.read(appModeProvider) ?? AppMode.dating).name,
+          photoCount: _formData.photos.length,
+          interestsCount: _formData.selectedInterests.length,
+          bioLength: _formData.bio.trim().length,
+        );
+        final effectiveMode = ref.read(modePreferenceProvider).valueOrNull ??
+            ref.read(appModeProvider) ??
+            AppMode.dating;
+        final l10n = AppLocalizations.of(context)!;
+        final gateMsg = effectiveMode.isMatrimony
+            ? l10n.qualityGateMatrimony
+            : l10n.qualityGateDating;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(gateMsg),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       setState(() => _isCompleting = true);
 
       if (widget.isEditing) {
@@ -158,18 +218,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
 
       try {
-        await _uploadPhotosIfNeeded();
         final repo = ref.read(profileRepositoryProvider);
-        final json = _formData.toFullJson();
-        debugPrint('[ProfileSetup] First-time setup payload: $json');
         final existing = await repo.getMyProfile();
-        await repo.saveProfileJson(json, create: existing == null);
-        debugPrint(
-          '[ProfileSetup] Profile saved ✓ (${existing == null ? 'create' : 'update'})',
-        );
+        if (existing == null) {
+          final json = _formData.toFullJson();
+          final jsonForCreate = Map<String, dynamic>.from(json)
+            ..['photoUrls'] = [];
+          debugPrint('[ProfileSetup] First-time setup: creating profile...');
+          await repo.saveProfileJson(jsonForCreate, create: true);
+          debugPrint('[ProfileSetup] Profile created ✓');
+        }
+        await _uploadPhotosIfNeeded();
+        final json = _formData.toFullJson();
+        await repo.saveProfileJson(json, create: false);
+        debugPrint('[ProfileSetup] Profile saved ✓');
       } catch (e) {
         debugPrint('[ProfileSetup] Error saving profile: $e');
         if (mounted) {
+          setState(() => _isCompleting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_profileSaveErrorMessage(e)),
@@ -177,11 +243,47 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             ),
           );
         }
+        return;
       }
 
       if (!mounted) return;
+      final activeMode =
+          ref.read(modePreferenceProvider).valueOrNull ??
+          ref.read(appModeProvider) ??
+          AppMode.dating;
+      AnalyticsService.instance.logOnboardingCompleted(
+        mode: activeMode.name,
+        totalSteps: _steps.length,
+        profileCompletionPercent: _profileCompletionPercent(),
+      );
       context.go('/');
     }
+  }
+
+  bool _passesMinimumProfileQuality() {
+    final mode = ref.read(modePreferenceProvider).valueOrNull ??
+        ref.read(appModeProvider) ??
+        AppMode.dating;
+
+    final hasPhotos = _formData.photos.length >= 2;
+    final hasInterests = _formData.selectedInterests.length >= 3;
+    final hasBio = _formData.bio.trim().length >= 20;
+
+    if (mode.isMatrimony) {
+      return hasPhotos && hasBio;
+    }
+    return hasPhotos && hasInterests && hasBio;
+  }
+
+  int _profileCompletionPercent() {
+    var score = 0;
+    if (ProfileFormData.isNameValid(_formData.name)) score += 20;
+    if (_formData.dateOfBirth != null) score += 10;
+    if (_formData.photos.length >= 2) score += 25;
+    if (_formData.selectedInterests.length >= 3) score += 20;
+    if (_formData.bio.trim().length >= 20) score += 15;
+    if (_formData.prefAgeMin != null && _formData.prefAgeMax != null) score += 10;
+    return score.clamp(0, 100);
   }
 
   void _skip() {
@@ -203,14 +305,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await _uploadPhotosIfNeeded();
       final repo = ref.read(profileRepositoryProvider);
-      final json = _formData.toFullJson();
-      debugPrint(
-        '[ProfileSetup] Save & continue (step ${_currentStep + 1})...',
-      );
       final existing = await repo.getMyProfile();
-      await repo.saveProfileJson(json, create: existing == null);
+      if (existing == null) {
+        final json = _formData.toFullJson();
+        final jsonForCreate = Map<String, dynamic>.from(json)
+          ..['photoUrls'] = [];
+        await repo.saveProfileJson(jsonForCreate, create: true);
+      }
+      await _uploadPhotosIfNeeded();
+      final json = _formData.toFullJson();
+      await repo.saveProfileJson(json, create: false);
       debugPrint('[ProfileSetup] Saved ✓');
     } catch (e) {
       debugPrint('[ProfileSetup] Save error: $e');
@@ -247,15 +352,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   /// User-friendly message for save/upload errors (e.g. photo upload credentials).
-  static String _profileSaveErrorMessage(Object e) {
+  String _profileSaveErrorMessage(Object e) {
+    final l = AppLocalizations.of(context);
     if (e is ApiException) {
       if (e.code == 'INTERNAL_ERROR' &&
           e.message.toLowerCase().contains('credentials')) {
-        return 'Profile saved. Photo upload is temporarily unavailable—please try adding photos later from profile settings.';
+        return l?.profileSavePhotoUnavailable ??
+            'Profile saved. Photo upload is temporarily unavailable.';
       }
-      return 'Failed to save: ${e.message}';
+      return l?.profileSaveFailed(e.message) ?? 'Failed to save: ${e.message}';
     }
-    return 'Failed to save: $e';
+    return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
   }
 
   /// Upload any local-file photos to S3, replacing paths with CDN URLs.
@@ -332,6 +439,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (_currentStep >= _steps.length) _currentStep = _steps.length - 1;
     final progress = (_currentStep + 1) / _steps.length;
     final currentStep = _steps[_currentStep];
+    if (_lastLoggedStep != _currentStep) {
+      _lastLoggedStep = _currentStep;
+      AnalyticsService.instance.logOnboardingStepViewed(
+        mode: signupPreference.name,
+        stepId: currentStep.analyticsKey,
+        stepIndex: _currentStep + 1,
+        totalSteps: _steps.length,
+      );
+    }
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -454,12 +570,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                             : (_canProceed ? _next : null),
                         child: widget.isEditing
                             ? (_isSaving
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 22,
                                       height: 22,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: Theme.of(context).colorScheme.onPrimary,
                                       ),
                                     )
                                   : Row(
@@ -524,12 +640,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     void onChanged() => setState(() {});
     final editing = widget.isEditing;
     if (mode.isBoth) {
-      // Shared-first flow for users who selected "both", then mode-specific sections.
-      return [
+      final runDatingFirst = _bothPrimaryTrack.isDating;
+      final shared = [
         _StepInfo(
+          analyticsKey: 'identity',
           label: editing ? l.editProfile : l.profileStepIdentity,
           widget: StepIdentity(
-            mode: AppMode.matrimony,
+            mode: _bothPrimaryTrack,
             formData: _formData,
             onChanged: onChanged,
             isEditing: editing,
@@ -544,50 +661,23 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               (editing || d.confirmedAge18),
         ),
         _StepInfo(
+          analyticsKey: 'interests',
           label: l.interestsAndHobbies,
           widget: StepInterests(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'photos',
           label: l.profileStepPhotos,
           widget: StepPhotos(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
+      ];
+      final datingSteps = [
         _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepEducation}',
-          widget: StepEducation(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepCareer}',
-          widget: StepCareer(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepDetails}',
-          widget: StepDetails(
-            mode: AppMode.matrimony,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
-          widget: StepPreferences(
-            mode: AppMode.matrimony,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
+          analyticsKey: 'dating_details',
           label: '${l.modeDating} · ${l.profileStepDetails}',
           widget: StepDetails(
             mode: AppMode.dating,
@@ -598,6 +688,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'dating_preferences',
           label: '${l.modeDating} · ${l.profileStepPreferences}',
           widget: StepPreferences(
             mode: AppMode.dating,
@@ -608,10 +699,53 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           skippable: true,
         ),
       ];
+      final matrimonySteps = [
+        _StepInfo(
+          analyticsKey: 'matrimony_education',
+          label: '${l.modeMatrimony} · ${l.profileStepEducation}',
+          widget: StepEducation(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_career',
+          label: '${l.modeMatrimony} · ${l.profileStepCareer}',
+          widget: StepCareer(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_details',
+          label: '${l.modeMatrimony} · ${l.profileStepDetails}',
+          widget: StepDetails(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_preferences',
+          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
+          widget: StepPreferences(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+      ];
+      return [
+        ...shared,
+        ...(runDatingFirst ? datingSteps : matrimonySteps),
+      ];
     }
     if (mode.isMatrimony) {
       return [
         _StepInfo(
+          analyticsKey: 'identity',
           label: editing ? l.editProfile : l.profileStepIdentity,
           widget: StepIdentity(
             mode: mode,
@@ -629,30 +763,35 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               (editing || d.confirmedAge18),
         ),
         _StepInfo(
+          analyticsKey: 'interests',
           label: l.interestsAndHobbies,
           widget: StepInterests(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'photos',
           label: l.profileStepPhotos,
           widget: StepPhotos(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'matrimony_education',
           label: l.profileStepEducation,
           widget: StepEducation(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'matrimony_career',
           label: l.profileStepCareer,
           widget: StepCareer(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'matrimony_details',
           label: l.profileStepDetails,
           widget: StepDetails(
             mode: mode,
@@ -663,6 +802,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'matrimony_preferences',
           label: l.profileStepPreferences,
           widget: StepPreferences(
             mode: mode,
@@ -676,6 +816,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
     return [
       _StepInfo(
+        analyticsKey: 'identity',
         label: editing ? l.editProfile : l.profileStepIdentity,
         widget: StepIdentity(
           mode: mode,
@@ -693,18 +834,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             (editing || d.confirmedAge18),
       ),
       _StepInfo(
+        analyticsKey: 'interests',
         label: l.interestsAndHobbies,
         widget: StepInterests(formData: _formData, onChanged: onChanged),
         hasMandatory: false,
         skippable: true,
       ),
       _StepInfo(
+        analyticsKey: 'photos',
         label: l.profileStepPhotos,
         widget: StepPhotos(formData: _formData, onChanged: onChanged),
         hasMandatory: false,
         skippable: true,
       ),
       _StepInfo(
+        analyticsKey: 'dating_details',
         label: l.profileStepDetails,
         widget: StepDetails(
           mode: mode,
@@ -715,6 +859,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         skippable: true,
       ),
       _StepInfo(
+        analyticsKey: 'dating_preferences',
         label: l.profileStepPreferences,
         widget: StepPreferences(
           mode: mode,
@@ -730,6 +875,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
 class _StepInfo {
   const _StepInfo({
+    required this.analyticsKey,
     required this.label,
     required this.widget,
     this.hasMandatory = false,
@@ -737,6 +883,7 @@ class _StepInfo {
     bool Function(ProfileFormData)? isMandatorySatisfied,
   }) : _isMandatorySatisfied = isMandatorySatisfied;
 
+  final String analyticsKey;
   final String label;
   final Widget widget;
   final bool hasMandatory;
@@ -881,6 +1028,7 @@ class ProfileFormData {
   int? prefAgeMax;
   int? prefHeightMinCm;
   int? prefHeightMaxCm;
+  int? prefDistanceMaxKm;
   List<String> preferredBodyTypes = [];
   bool prefBodyTypeStrict = false;
   String? prefReligion;
@@ -967,6 +1115,12 @@ class ProfileFormData {
       drinking = mat.drinking;
       smoking = mat.smoking;
       exercise = mat.exercise;
+      pets = mat.pets;
+      disability = mat.disability;
+      workLocation = mat.workLocation;
+      settledAbroad = mat.settledAbroad;
+      willingToRelocate = mat.willingToRelocate;
+      aboutCareer = mat.aboutCareer;
       aboutEducation = mat.aboutEducation;
       final fam = mat.familyDetails;
       if (fam != null) {
@@ -1034,6 +1188,7 @@ class ProfileFormData {
       prefAgeMax = prefs.ageMax;
       prefHeightMinCm = prefs.heightMinCm;
       prefHeightMaxCm = prefs.heightMaxCm;
+      prefDistanceMaxKm = prefs.distanceMaxKm?.round();
       if (prefs.preferredBodyTypes != null &&
           prefs.preferredBodyTypes!.isNotEmpty) {
         preferredBodyTypes = List<String>.from(prefs.preferredBodyTypes!);
@@ -1335,6 +1490,7 @@ class ProfileFormData {
     if (prefAgeMax != null) pref['ageMax'] = prefAgeMax;
     if (prefHeightMinCm != null) pref['heightMinCm'] = prefHeightMinCm;
     if (prefHeightMaxCm != null) pref['heightMaxCm'] = prefHeightMaxCm;
+    if (prefDistanceMaxKm != null) pref['distanceMaxKm'] = prefDistanceMaxKm;
     if (preferredBodyTypes.isNotEmpty) {
       pref['preferredBodyTypes'] = preferredBodyTypes;
     }

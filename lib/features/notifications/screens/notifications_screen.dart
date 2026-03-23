@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/design/design.dart';
 import '../../../core/notifications/notification_service.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/repositories/notifications_repository.dart';
 import '../../../l10n/app_localizations.dart';
@@ -53,13 +54,13 @@ class NotificationsScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, i) => _NotificationTile(item: items[i]),
+              itemBuilder: (context, i) => _NotificationTile(item: items[i]).staggeredItem(i),
             ),
           );
         },
         loading: () => loadingSpinner(context),
-        error: (_, __) => ErrorState(
-          message: l.errorGeneric,
+        error: (e, _) => ErrorState(
+          error: e,
           onRetry: () {
             ref.invalidate(notificationsFeedProvider);
             ref.invalidate(notificationsUnreadCountProvider);

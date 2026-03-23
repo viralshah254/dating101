@@ -925,6 +925,30 @@ class AppLocalizationsPa extends AppLocalizations {
       'Meaningful connections for the Indian diaspora, worldwide.';
 
   @override
+  String get authPasswordLabel => 'Password';
+
+  @override
+  String get authConfirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get authSignInLink => 'Already have an account? Sign in';
+
+  @override
+  String get authSignUpLink => 'New here? Create an account';
+
+  @override
+  String get authSignInButton => 'Sign in';
+
+  @override
+  String get authCreateAccountButton => 'Create account';
+
+  @override
+  String get authPasswordTooShort => 'Password must be at least 8 characters.';
+
+  @override
+  String get authPasswordsMismatch => 'Passwords do not match.';
+
+  @override
   String get orDivider => 'or';
 
   @override
@@ -2587,4 +2611,160 @@ class AppLocalizationsPa extends AppLocalizations {
   @override
   String get exploreProfilesBody =>
       'ਉਮਰ, ਸ਼ਹਿਰ, ਧਰਮ, ਸਿੱਖਿਆ ਆਦਿ ਨਾਲ ਖੋਜਣ ਲਈ ਉੱਪਰ ਫਿਲਟਰ ਆਈਕਨ ਵਰਤੋ।';
+
+  @override
+  String get bothTrackDialogTitle => 'Which track first?';
+
+  @override
+  String get bothTrackDialogBody =>
+      'Complete one track first. You can finish the other anytime from your profile.';
+
+  @override
+  String get qualityGateDating =>
+      'Add at least 2 photos, 3 interests, and a short bio to continue.';
+
+  @override
+  String get qualityGateMatrimony =>
+      'Add at least 2 photos and a short bio to continue.';
+
+  @override
+  String get profileSavePhotoUnavailable =>
+      'Profile saved. Photo upload is temporarily unavailable — please try adding photos later from profile settings.';
+
+  @override
+  String profileSaveFailed(String error) {
+    return 'Failed to save: $error';
+  }
+
+  @override
+  String get searchCountryHint => 'Search country...';
+
+  @override
+  String get noCountriesFound => 'No countries found';
+
+  @override
+  String get otpResent => 'Verification code resent.';
+
+  @override
+  String get identityStepTitle => 'Your details';
+
+  @override
+  String get identityStepSubtitle =>
+      'Name and date of birth cannot be changed after setup.';
+
+  @override
+  String get identityEditTitle => 'Edit your profile';
+
+  @override
+  String get identityEditSubtitle =>
+      'Update your details. Some fields cannot be changed.';
+
+  @override
+  String get nameLockedHint => 'Name cannot be changed after setup';
+
+  @override
+  String get dobLockedHint => 'Date of birth cannot be changed';
+
+  @override
+  String get heightTapHint => 'Tap to select height';
+
+  @override
+  String get physicalAttributesSubtitle => 'Update your physical attributes.';
+
+  @override
+  String get photosReorderHint =>
+      'Hold & drag to reorder. First photo is your profile picture.';
+
+  @override
+  String get photoTipClear => 'Clear, well-lit face photo as main';
+
+  @override
+  String get photoTipFullLength => 'Full-length photo shows personality';
+
+  @override
+  String get photoTipNoFilters => 'Avoid heavy filters or group shots';
+
+  @override
+  String get photoTipSmile => 'Smile — it genuinely helps';
+
+  @override
+  String get photoTipsLabel => 'Photo tips';
+
+  @override
+  String get prefsStepTitle => 'Your\npreferences';
+
+  @override
+  String get prefsStepSubtitle =>
+      'We\'ll use these to show you relevant people. You can always refine later.';
+
+  @override
+  String get promptFieldHint =>
+      'Answer a prompt so matches have something to talk about.';
+
+  @override
+  String get promptFieldPlaceholder =>
+      'e.g. Best way to spend a Sunday? Chai and a book...';
+
+  @override
+  String get partnerPrefsStepTitle => 'Partner\npreferences';
+
+  @override
+  String get partnerPrefsStepSubtitle =>
+      'Help us find the right match. You can refine these anytime.';
+
+  @override
+  String get strictLabel => 'Strict';
+
+  @override
+  String get sameAsMe => 'Same as me';
+
+  @override
+  String get preferredLabel => 'Preferred';
+
+  @override
+  String get aboutYouSectionTitle => 'About you';
+
+  @override
+  String get aboutYouSectionSubtitle =>
+      'Help others know what you\'re about. All fields are optional — fill what you like.';
+
+  @override
+  String get backgroundAndDetailsTitle => 'Background\n& details';
+
+  @override
+  String get backgroundAndDetailsSubtitle =>
+      'These help us find compatible matches. Fill what you can — skip the rest.';
+
+  @override
+  String get careerStepSubtitle => 'Your work and where you\'re based.';
+
+  @override
+  String get searchOccupationHint => 'Search or type occupation';
+
+  @override
+  String get selectMotherTongueHint => 'Select mother tongue';
+
+  @override
+  String get lifestyleAndHabitsLabel => 'Lifestyle & habits';
+
+  @override
+  String get religionCommunityEditHint => 'Update your religion and community.';
+
+  @override
+  String get lifestyleEditHint => 'Diet, drinking, smoking and more.';
+
+  @override
+  String get familyEditHint => 'Update your family details.';
+
+  @override
+  String get horoscopeEditHint => 'Update your horoscope details.';
+
+  @override
+  String get fatherAgeHint => 'e.g. 50 or select Deceased';
+
+  @override
+  String get motherAgeHint => 'e.g. 45 or select Deceased';
+
+  @override
+  String get profileSaveFailedGeneric => 'Failed to save. Please try again.';
 }

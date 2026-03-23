@@ -24,8 +24,9 @@ class ApiChatRepository implements ChatRepository {
 
   @override
   Future<List<ChatThreadSummary>> getThreads({int limit = 50, String? mode}) async {
-    final query = <String, String>{'limit': '$limit'};
-    if (mode != null && mode.isNotEmpty) query['mode'] = mode;
+    assert(mode != null && mode.isNotEmpty, 'mode is required for getThreads (must be "dating" or "matrimony")');
+    final safeMode = (mode != null && mode.isNotEmpty) ? mode : 'dating';
+    final query = <String, String>{'limit': '$limit', 'mode': safeMode};
     final body = await api.get('/chat/threads', query: query);
     final list = body['threads'] as List? ?? [];
     return list.map((e) => _parseThread(e as Map<String, dynamic>)).toList();
@@ -33,9 +34,9 @@ class ApiChatRepository implements ChatRepository {
 
   @override
   Future<String> createThread(String otherUserId, {String? mode}) async {
-    final body = <String, dynamic>{'otherUserId': otherUserId};
-    if (mode != null && mode.isNotEmpty) body['mode'] = mode;
-    final res = await api.post('/chat/threads', body: body);
+    assert(mode != null && mode.isNotEmpty, 'mode is required for createThread (must be "dating" or "matrimony")');
+    final safeMode = (mode != null && mode.isNotEmpty) ? mode : 'dating';
+    final res = await api.post('/chat/threads', body: {'otherUserId': otherUserId, 'mode': safeMode});
     return (res['id'] ?? res['threadId']) as String;
   }
 
@@ -58,7 +59,8 @@ class ApiChatRepository implements ChatRepository {
     if (wsClient != null) {
       if (!wsClient!.isConnected) wsClient!.connect();
       wsSub = wsClient!.incoming.listen((event) {
-        if (event.type == IncomingEventType.message &&
+        // Incoming message pushed from server to recipient
+        if ((event.type == IncomingEventType.message || event.type == IncomingEventType.sent) &&
             event.threadId == threadId &&
             event.message != null) {
           final m = event.message!;
@@ -69,9 +71,23 @@ class ApiChatRepository implements ChatRepository {
             sentAt: m.sentAt,
             isVoiceNote: m.isVoiceNote,
           );
-          if (!latest.any((e) => e.id == msg.id || (e.text == msg.text && e.senderId == msg.senderId && (e.sentAt.difference(msg.sentAt).inSeconds.abs() < 2)))) {
+          // Dedup: replace matching temp_ bubble with real-id version, or append if new
+          final tempId = event.tempId;
+          final existingTempIdx = tempId != null ? latest.indexWhere((e) => e.id == tempId) : -1;
+          if (existingTempIdx >= 0) {
+            final updated = [...latest];
+            updated[existingTempIdx] = msg;
+            emit(updated);
+          } else if (!latest.any((e) => e.id == msg.id)) {
             emit([...latest, msg]);
           }
+        }
+        // messageRequestCreated: ad-gated send became a request — remove the pending temp bubble
+        if (event.type == IncomingEventType.messageRequestCreated &&
+            event.threadId == threadId &&
+            event.tempId != null) {
+          final updated = latest.where((e) => e.id != event.tempId).toList();
+          if (updated.length != latest.length) emit(updated);
         }
       });
     } else {
@@ -112,15 +128,13 @@ class ApiChatRepository implements ChatRepository {
     String text, {
     String? adCompletionToken,
   }) async {
-    if (wsClient != null && wsClient!.isConnected) {
-      final sent = await wsClient!.send(threadId, text, adCompletionToken: adCompletionToken);
-      if (sent) return;
+    // Try WS first — returns tempId string if successfully queued, null if not connected
+    if (wsClient != null) {
+      if (!wsClient!.isConnected) await wsClient!.connect();
+      final tempId = await wsClient!.send(threadId, text, adCompletionToken: adCompletionToken);
+      if (tempId != null) return; // WS path: server will echo 'sent' frame with real id
     }
-    if (wsClient != null && !wsClient!.isConnected) {
-      await wsClient!.connect();
-      final sent = await wsClient!.send(threadId, text, adCompletionToken: adCompletionToken);
-      if (sent) return;
-    }
+    // HTTP fallback — backend will broadcastToUser for the recipient's WS
     final body = <String, dynamic>{'text': text};
     if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
       body['adCompletionToken'] = adCompletionToken;

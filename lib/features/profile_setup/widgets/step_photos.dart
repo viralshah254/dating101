@@ -75,7 +75,7 @@ class _StepPhotosState extends State<StepPhotos> {
     final subject = widget.formData.subjectName;
 
     final subtitle = forSelf
-        ? 'Add at least 2 photos. Clear face photos get 3x more responses.'
+        ? l.profileSetupPhotosHint
         : l.dynPhotosSubtitle(subject);
 
     return SingleChildScrollView(
@@ -101,7 +101,7 @@ class _StepPhotosState extends State<StepPhotos> {
           if (_photos.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              'Hold & drag to reorder. First photo is your profile picture.',
+              l.photosReorderHint,
               style: AppTypography.bodySmall.copyWith(
                 color: accent.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
@@ -129,7 +129,7 @@ class _StepPhotosState extends State<StepPhotos> {
                     Icon(Icons.auto_awesome, size: 18, color: accent),
                     const SizedBox(width: 8),
                     Text(
-                      'Photo tips',
+                      l.photoTipsLabel,
                       style: AppTypography.labelLarge.copyWith(
                         color: onSurface,
                         fontWeight: FontWeight.w600,
@@ -140,22 +140,22 @@ class _StepPhotosState extends State<StepPhotos> {
                 const SizedBox(height: 10),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Clear, well-lit face photo as main',
+                  text: l.photoTipClear,
                 ),
                 const SizedBox(height: 6),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Full-length photo shows personality',
+                  text: l.photoTipFullLength,
                 ),
                 const SizedBox(height: 6),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Avoid heavy filters or group shots',
+                  text: l.photoTipNoFilters,
                 ),
                 const SizedBox(height: 6),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Smile — it genuinely helps',
+                  text: l.photoTipSmile,
                 ),
               ],
             ),

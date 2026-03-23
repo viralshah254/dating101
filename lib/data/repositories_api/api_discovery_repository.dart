@@ -81,6 +81,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
     int limit = 20,
     String? cursor,
   }) async {
@@ -92,15 +93,13 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (ageMax != null) query['ageMax'] = '$ageMax';
     if (city != null && city.isNotEmpty) query['city'] = city;
     if (religion != null && religion.isNotEmpty) query['religion'] = religion;
-    if (education != null && education.isNotEmpty) {
-      query['education'] = education;
-    }
+    if (education != null && education.isNotEmpty) query['education'] = education;
     if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
     if (heightMaxCm != null) query['heightMaxCm'] = '$heightMaxCm';
     if (diet != null && diet.isNotEmpty) query['diet'] = diet;
     if (bodyType != null && bodyType.isNotEmpty) query['bodyType'] = bodyType;
-    if (maritalStatus != null && maritalStatus.isNotEmpty)
-      query['maritalStatus'] = maritalStatus;
+    if (maritalStatus != null && maritalStatus.isNotEmpty) query['maritalStatus'] = maritalStatus;
+    if (motherTongue != null && motherTongue.isNotEmpty) query['motherTongue'] = motherTongue;
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
 
     final body = await api.get('/discovery/explore', query: query);
@@ -120,6 +119,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
     int limit = 30,
     String? cursor,
   }) async {
@@ -131,15 +131,13 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (ageMax != null) query['ageMax'] = '$ageMax';
     if (city != null && city.isNotEmpty) query['city'] = city;
     if (religion != null && religion.isNotEmpty) query['religion'] = religion;
-    if (education != null && education.isNotEmpty) {
-      query['education'] = education;
-    }
+    if (education != null && education.isNotEmpty) query['education'] = education;
     if (heightMinCm != null) query['heightMinCm'] = '$heightMinCm';
     if (heightMaxCm != null) query['heightMaxCm'] = '$heightMaxCm';
     if (diet != null && diet.isNotEmpty) query['diet'] = diet;
     if (bodyType != null && bodyType.isNotEmpty) query['bodyType'] = bodyType;
-    if (maritalStatus != null && maritalStatus.isNotEmpty)
-      query['maritalStatus'] = maritalStatus;
+    if (maritalStatus != null && maritalStatus.isNotEmpty) query['maritalStatus'] = maritalStatus;
+    if (motherTongue != null && motherTongue.isNotEmpty) query['motherTongue'] = motherTongue;
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
     final body = await api.get('/discovery/explore', query: query);
     return _parsePage(body);
@@ -289,8 +287,9 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name;
-    if (notifyOnNewMatch != null)
+    if (notifyOnNewMatch != null) {
       payload['notifyOnNewMatch'] = notifyOnNewMatch;
+    }
     if (payload.isEmpty) {
       final body = await api.get('/discovery/saved-searches');
       final list = (body['savedSearches'] as List? ?? [])
@@ -332,7 +331,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
   }
 
   static FilterOptions _parseFilterOptions(Map<String, dynamic> j) {
-    // Support both shapes: (1) defaults + options (§4.4 API ref), (2) age/cities/religions/education (strict-preferences)
+    // Support both shapes: (1) defaults + options (legacy), (2) age/cities/religions/education (strict-preferences with counts)
     final defaults = j['defaults'] as Map<String, dynamic>?;
     final options = j['options'] as Map<String, dynamic>?;
     if (defaults != null && options != null) {
@@ -350,30 +349,29 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
           strict: false,
         ),
         cities: FilterDimension(
-          options: (options['cities'] as List?)?.cast<String>() ?? [],
+          options: _parseStringListAsOptions(options['cities'] as List?),
           strict: false,
           defaultSelected: defaultCity,
         ),
         religions: FilterDimension(
-          options: (options['religions'] as List?)?.cast<String>() ?? [],
+          options: _parseStringListAsOptions(options['religions'] as List?),
           strict: false,
           defaultSelected: defaultReligion,
         ),
         education: FilterDimension(
-          options: (options['educationLevels'] as List?)?.cast<String>() ?? [],
+          options: _parseStringListAsOptions(options['educationLevels'] as List?),
           strict: false,
           defaultSelected: defaultEducation,
         ),
         height: null,
         diet: null,
-        maritalStatus:
-            (options['maritalStatuses'] as List?)?.cast<String>().isNotEmpty ==
-                true
+        maritalStatus: (options['maritalStatuses'] as List?)?.isNotEmpty == true
             ? FilterDimension(
-                options: (options['maritalStatuses'] as List?)!.cast<String>(),
+                options: _parseStringListAsOptions(options['maritalStatuses'] as List?),
                 strict: false,
               )
             : null,
+        motherTongue: null,
       );
     }
     final ageMap = j['age'] as Map<String, dynamic>? ?? {};
@@ -393,15 +391,37 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
       education: _parseDimension(educationMap),
       height: _parseHeight(j['height'] as Map<String, dynamic>?),
       diet: _parseDimensionOpt(j['diet'] as Map<String, dynamic>?),
-      maritalStatus: _parseDimensionOpt(
-        j['maritalStatus'] as Map<String, dynamic>?,
-      ),
+      maritalStatus: _parseDimensionOpt(j['maritalStatus'] as Map<String, dynamic>?),
+      motherTongue: _parseDimensionOpt(j['motherTongue'] as Map<String, dynamic>?),
     );
+  }
+
+  /// Parse options list that may be either plain strings or {value, count} objects.
+  static List<FilterOption> _parseOptionsList(List? raw) {
+    if (raw == null) return [];
+    return raw.map((item) {
+      if (item is Map<String, dynamic>) {
+        return FilterOption(
+          value: item['value'] as String? ?? '',
+          count: item['count'] as int? ?? 0,
+        );
+      }
+      return FilterOption(value: item.toString(), count: 0);
+    }).where((o) => o.value.isNotEmpty).toList();
+  }
+
+  /// Parse a plain string list as FilterOptions with count=0 (legacy).
+  static List<FilterOption> _parseStringListAsOptions(List? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => FilterOption(value: item.toString(), count: 0))
+        .where((o) => o.value.isNotEmpty)
+        .toList();
   }
 
   static FilterDimension _parseDimension(Map<String, dynamic> m) {
     return FilterDimension(
-      options: (m['options'] as List?)?.cast<String>() ?? [],
+      options: _parseOptionsList(m['options'] as List?),
       strict: m['strict'] as bool? ?? false,
       defaultSelected: m['defaultSelected'] as String?,
     );

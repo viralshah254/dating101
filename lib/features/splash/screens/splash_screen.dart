@@ -8,7 +8,6 @@ import '../../../core/locale/app_locale_provider.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/location/location_service_provider.dart';
 import '../../../core/providers/repository_providers.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
@@ -79,6 +78,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       } catch (e) {
         if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {
           debugPrint('[Splash] Account deactivated, showing reactivate prompt');
+          if (!mounted) return;
           final reactivate = await _showReactivatePrompt(context);
           if (!mounted) return;
           if (reactivate == true) {
@@ -103,9 +103,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           destination = '/login';
         } else {
           debugPrint(
-            '[Splash] Error checking profile: $e — defaulting to home',
+            '[Splash] Error checking profile: $e — routing to setup',
           );
-          destination = '/';
+          destination = '/mode-select';
         }
       }
     }
@@ -123,60 +123,105 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = Theme.of(context).colorScheme.primary;
-    final bg = isDark ? AppColors.darkBackground : Colors.white;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(flex: 2),
-            Center(
-              child: SizedBox(
-                width: 392, // 280 * 1.4
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: LogoWithTransparentWhite(
-                      assetPath: 'assets/images/shubhmilan_logo.png',
-                      width: 588, // 420 * 1.4
-                      fit: BoxFit.contain,
-                      whiteThreshold: 200,
-                    ),
-                  ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Radial glow behind the logo
+          Positioned(
+            top: size.height * 0.25,
+            left: size.width * 0.1,
+            right: size.width * 0.1,
+            height: size.height * 0.45,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [
+                    accent.withValues(alpha: 0.18),
+                    accent.withValues(alpha: 0.0),
+                  ],
+                  radius: 0.8,
                 ),
               ),
             )
                 .animate()
-                .scale(
-                  begin: const Offset(0.7, 0.7),
-                  end: const Offset(1, 1),
-                  duration: 900.ms,
-                  curve: Curves.easeOutBack,
+                .fadeIn(delay: 300.ms, duration: 900.ms),
+          ),
+
+          SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 2),
+
+                // Logo — cinematic scale + blur clear
+                Center(
+                  child: SizedBox(
+                    width: 392,
+                    child: ClipRect(
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: LogoWithTransparentWhite(
+                          assetPath: 'assets/images/shubhmilan_logo.png',
+                          width: 588,
+                          fit: BoxFit.contain,
+                          whiteThreshold: 200,
+                        ),
+                      ),
+                    ),
+                  ),
                 )
-                .fadeIn(duration: 500.ms),
-            const Spacer(flex: 2),
-            SizedBox(
-              width: 32,
-              height: 32,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(accent),
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat())
-                .fadeIn(delay: 700.ms)
-                .then()
-                .shimmer(
-                  duration: 1200.ms,
-                  color: accent.withValues(alpha: 0.3),
-                ),
-            const SizedBox(height: 48),
-          ],
-        ),
+                    .animate()
+                    .scale(
+                      begin: const Offset(0.72, 0.72),
+                      end: const Offset(1, 1),
+                      duration: 1000.ms,
+                      curve: Curves.easeOutBack,
+                    )
+                    .fadeIn(duration: 600.ms),
+
+                const SizedBox(height: 16),
+
+                // Brand wordmark tagline
+                Text(
+                  'Find your forever',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 2.5,
+                    color: accent.withValues(alpha: 0.7),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 600.ms, duration: 500.ms)
+                    .slideY(begin: 0.1, end: 0),
+
+                const Spacer(flex: 2),
+
+                // Loading indicator
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat())
+                    .fadeIn(delay: 900.ms)
+                    .then()
+                    .shimmer(
+                      duration: 1200.ms,
+                      color: accent.withValues(alpha: 0.3),
+                    ),
+                const SizedBox(height: 48),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

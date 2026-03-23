@@ -27,17 +27,21 @@ class _TestAuthRepository implements AuthRepository {
   Stream<String?> get authStateChanges => Stream.value(_userId);
 
   @override
-  Future<SendOtpResult> sendOtp({
+  Future<AuthResult> signUpWithPassword({
     required String countryCode,
     required String phone,
-  }) async => const SendOtpSuccess(verificationId: 'test');
+    required String password,
+    String? referralCode,
+  }) async =>
+      AuthSuccess(userId: _userId, isNewUser: false);
 
   @override
-  Future<AuthResult> verifyOtp({
-    required String verificationId,
-    required String code,
-    String? referralCode,
-  }) async => AuthSuccess(userId: _userId, isNewUser: false);
+  Future<AuthResult> signInWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
+  }) async =>
+      AuthSuccess(userId: _userId, isNewUser: false);
 
   @override
   Future<AuthResult> signInWithGoogle() async =>

@@ -437,13 +437,15 @@ String? _countryToGradingSystem(String? country) {
       c == 'england' ||
       c == 'scotland' ||
       c == 'wales' ||
-      c == 'northern ireland')
+      c == 'northern ireland') {
     return 'UK';
+  }
   if (c == 'united states' ||
       c == 'united states of america' ||
       c == 'usa' ||
-      c == 'us')
+      c == 'us') {
     return 'US';
+  }
   if (c == 'india') return 'India';
   return 'Other';
 }
@@ -469,8 +471,9 @@ class StepDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (mode.isDating)
+    if (mode.isDating) {
       return _DatingDetails(formData: formData, onChanged: onChanged);
+    }
     return _MatrimonyDetails(
       formData: formData,
       onChanged: onChanged,
@@ -1660,7 +1663,7 @@ class StepCareer extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 4),
           Text(
-            'Your work and where you\'re based.',
+            l.careerStepSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
@@ -1673,7 +1676,7 @@ class StepCareer extends StatelessWidget {
               _SearchableSelectField(
                 label: l.matrimonyOccupationQuestion,
                 value: formData.occupation,
-                hint: 'Search or type occupation',
+                hint: l.searchOccupationHint,
                 options: _occupationOptions,
                 onChanged: (v) {
                   formData.occupation = v;
@@ -1810,7 +1813,7 @@ class _DatingDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'About you',
+            l.aboutYouSectionTitle,
             style: AppTypography.displayLarge.copyWith(
               color: onSurface,
               fontSize: 32,
@@ -1819,10 +1822,22 @@ class _DatingDetails extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 4),
           Text(
-            'Help others know what you\'re about. All fields are optional — fill what you like.',
+            l.aboutYouSectionSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
+          ),
+          const SizedBox(height: 28),
+
+          _SectionLabel(label: l.aboutMeSection),
+          const SizedBox(height: 8),
+          _MultilineField(
+            value: formData.bio,
+            hint: l.aboutMeHint,
+            onChanged: (v) {
+              formData.bio = v;
+              onChanged();
+            },
           ),
           const SizedBox(height: 28),
 
@@ -1874,10 +1889,10 @@ class _MatrimonyDetails extends StatelessWidget {
     final subject = formData.subjectName;
 
     final pageTitle = forSelf
-        ? 'Background\n& details'
+        ? l.backgroundAndDetailsTitle
         : l.dynDetailsTitle(subject);
     final pageSubtitle = forSelf
-        ? 'These help us find compatible matches. Fill what you can — skip the rest.'
+        ? l.backgroundAndDetailsSubtitle
         : l.dynDetailsSubtitle(subject);
 
     final showReligion =
@@ -1905,12 +1920,26 @@ class _MatrimonyDetails extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 4),
           Text(
-            onlySection != null ? _sectionSubtitle(onlySection!) : pageSubtitle,
+            onlySection != null ? _sectionSubtitle(onlySection!, l) : pageSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 28),
+
+          if (onlySection == null) ...[
+            _SectionLabel(label: l.aboutMeSection),
+            const SizedBox(height: 8),
+            _MultilineField(
+              value: formData.bio,
+              hint: l.aboutMeHint,
+              onChanged: (v) {
+                formData.bio = v;
+                onChanged();
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
 
           // Religion & Community (Indians-only: dropdowns + multi-select languages)
           if (showReligion)
@@ -1952,7 +1981,7 @@ class _MatrimonyDetails extends StatelessWidget {
                       _SearchableSelectField(
                         label: l.matrimonyMotherTongueQuestion,
                         value: formData.motherTongue,
-                        hint: 'Select mother tongue',
+                        hint: l.selectMotherTongueHint,
                         options: _motherTongueAndLanguageOptions,
                         onChanged: (v) {
                           formData.motherTongue = v;
@@ -2025,7 +2054,7 @@ class _MatrimonyDetails extends StatelessWidget {
                       _SearchableSelectField(
                         label: l.matrimonyMotherTongueQuestion,
                         value: formData.motherTongue,
-                        hint: 'Select mother tongue',
+                        hint: l.selectMotherTongueHint,
                         options: _motherTongueAndLanguageOptions,
                         onChanged: (v) {
                           formData.motherTongue = v;
@@ -2127,7 +2156,7 @@ class _MatrimonyDetails extends StatelessWidget {
                 _SearchableSelectField(
                   label: l.motherAgeQuestion,
                   value: formData.motherAge,
-                  hint: 'e.g. 45 or select Deceased',
+                  hint: l.motherAgeHint,
                   options: _parentAgeOptions,
                   onChanged: (v) {
                     formData.motherAge = v;
@@ -2138,7 +2167,7 @@ class _MatrimonyDetails extends StatelessWidget {
                 _SearchableSelectField(
                   label: l.fatherAgeQuestion,
                   value: formData.fatherAge,
-                  hint: 'e.g. 50 or select Deceased',
+                  hint: l.fatherAgeHint,
                   options: _parentAgeOptions,
                   onChanged: (v) {
                     formData.fatherAge = v;
@@ -2333,7 +2362,7 @@ String _sectionTitle(StepDetailsOnlySection section, AppLocalizations l) {
     case StepDetailsOnlySection.religion:
       return l.backgroundTitle;
     case StepDetailsOnlySection.lifestyle:
-      return 'Lifestyle & habits';
+      return l.lifestyleAndHabitsLabel;
     case StepDetailsOnlySection.family:
       return l.profileBuilderFamily;
     case StepDetailsOnlySection.horoscope:
@@ -2341,16 +2370,16 @@ String _sectionTitle(StepDetailsOnlySection section, AppLocalizations l) {
   }
 }
 
-String _sectionSubtitle(StepDetailsOnlySection section) {
+String _sectionSubtitle(StepDetailsOnlySection section, AppLocalizations l) {
   switch (section) {
     case StepDetailsOnlySection.religion:
-      return 'Update your religion and community.';
+      return l.religionCommunityEditHint;
     case StepDetailsOnlySection.lifestyle:
-      return 'Diet, drinking, smoking and more.';
+      return l.lifestyleEditHint;
     case StepDetailsOnlySection.family:
-      return 'Update your family details.';
+      return l.familyEditHint;
     case StepDetailsOnlySection.horoscope:
-      return 'Update your horoscope details.';
+      return l.horoscopeEditHint;
   }
 }
 
@@ -2447,8 +2476,9 @@ class _TimeOfBirthField extends StatelessWidget {
       final pm = (m.group(3) ?? '').toUpperCase() == 'PM';
       if (pm && h < 12) h += 12;
       if (!pm && h == 12) h = 0;
-      if (h >= 0 && h <= 23 && min >= 0 && min <= 59)
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
         return TimeOfDay(hour: h, minute: min);
+      }
     }
     // Try "11:30" (24h or 12h)
     final simple = RegExp(r'^(\d{1,2}):(\d{2})$');
@@ -2456,8 +2486,9 @@ class _TimeOfBirthField extends StatelessWidget {
     if (m2 != null) {
       var h = int.tryParse(m2.group(1) ?? '') ?? 0;
       final min = int.tryParse(m2.group(2) ?? '') ?? 0;
-      if (h >= 0 && h <= 23 && min >= 0 && min <= 59)
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
         return TimeOfDay(hour: h, minute: min);
+      }
     }
     return null;
   }

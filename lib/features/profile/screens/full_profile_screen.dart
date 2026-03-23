@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
+import '../widgets/voice_intro_player.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/feature_flags/feature_flags.dart';
@@ -18,7 +20,8 @@ import '../../../core/widgets/translatable_text.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
-import '../../../core/theme/app_colors.dart';
+
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/contact_request_status.dart';
@@ -95,15 +98,43 @@ class FullProfileScreen extends ConsumerWidget {
 //  MATRIMONY FULL PROFILE
 // ═════════════════════════════════════════════════════════════════════════
 
-class _MatrimonyProfileContent extends ConsumerWidget {
+class _MatrimonyProfileContent extends ConsumerStatefulWidget {
   const _MatrimonyProfileContent({required this.profile});
   final UserProfile profile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MatrimonyProfileContent> createState() =>
+      _MatrimonyProfileContentState();
+}
+
+class _MatrimonyProfileContentState
+    extends ConsumerState<_MatrimonyProfileContent> {
+  final _aboutKey = GlobalKey();
+  final _photosKey = GlobalKey();
+  final _basicsKey = GlobalKey();
+  final _eduCareerKey = GlobalKey();
+  final _familyKey = GlobalKey();
+  final _lifestyleKey = GlobalKey();
+  final _horoscopeKey = GlobalKey();
+  final _lookingForKey = GlobalKey();
+
+  void _scrollTo(GlobalKey key) {
+    final ctx = key.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      alignment: 0.05,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profile;
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     final mat = profile.matrimonyExtensions;
     final prefs = profile.partnerPreferences;
     final ent = ref.watch(entitlementsProvider);
@@ -122,6 +153,34 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                 _showBlockConfirm(context, ref, profile.id, profile.name),
             onReport: () =>
                 _showReportConfirm(context, ref, profile.id, profile.name),
+          ),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _SectionNavDelegate(
+              height: 48,
+              child: _SectionNavBar(
+                accent: accent,
+                onTap: _scrollTo,
+                items: [
+                  if (profile.aboutMe.isNotEmpty ||
+                      (mat?.aboutEducation?.isNotEmpty == true))
+                    (label: 'About', key: _aboutKey),
+                  if (profile.photosHidden || profile.photoUrls.isNotEmpty)
+                    (label: 'Photos', key: _photosKey),
+                  (label: 'Basics', key: _basicsKey),
+                  if (mat != null)
+                    (label: 'Edu & Career', key: _eduCareerKey),
+                  if (mat?.familyDetails != null)
+                    (label: 'Family', key: _familyKey),
+                  if (mat != null)
+                    (label: 'Lifestyle', key: _lifestyleKey),
+                  if (flags.horoscope && mat?.horoscope != null)
+                    (label: 'Horoscope', key: _horoscopeKey),
+                  if (prefs != null)
+                    (label: 'Looking For', key: _lookingForKey),
+                ],
+              ),
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -177,6 +236,7 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                   if (profile.aboutMe.isNotEmpty ||
                       (mat?.aboutEducation != null &&
                           mat!.aboutEducation!.isNotEmpty)) ...[
+                    SizedBox(key: _aboutKey, height: 0),
                     _SectionTitle(l.about, onSurface),
                     const SizedBox(height: 6),
                     if (profile.aboutMe.isNotEmpty)
@@ -218,6 +278,7 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                     const SizedBox(height: 20),
                   ],
 
+                  SizedBox(key: _photosKey, height: 0),
                   if (profile.photosHidden &&
                       profile.canViewPhotos != true) ...[
                     _PhotosLockedSection(profileId: profile.id, accent: accent),
@@ -233,56 +294,62 @@ class _MatrimonyProfileContent extends ConsumerWidget {
                     const SizedBox(height: 20),
                   ],
 
+                  SizedBox(key: _basicsKey, height: 0),
                   _BasicDetailsCard(
                     profile: profile,
                     mat: mat,
                     onSurface: onSurface,
                     accent: accent,
-                  ),
+                  ).animate(delay: AppMotion.stagger(0, stepMs: 80)).fadeIn(duration: AppMotion.medium).slideY(begin: 0.06, curve: AppMotion.spring),
                   const SizedBox(height: 14),
 
                   if (mat != null) ...[
+                    SizedBox(key: _eduCareerKey, height: 0),
                     _EducationCareerCard(
                       mat: mat,
                       onSurface: onSurface,
                       accent: accent,
-                    ),
+                    ).animate(delay: AppMotion.stagger(1, stepMs: 80)).fadeIn(duration: AppMotion.medium).slideY(begin: 0.06, curve: AppMotion.spring),
                     const SizedBox(height: 14),
                   ],
 
                   if (mat?.familyDetails != null) ...[
+                    SizedBox(key: _familyKey, height: 0),
                     _FamilyCard(
                       mat: mat!,
                       onSurface: onSurface,
                       accent: accent,
-                    ),
+                    ).animate(delay: AppMotion.stagger(2, stepMs: 80)).fadeIn(duration: AppMotion.medium).slideY(begin: 0.06, curve: AppMotion.spring),
                     const SizedBox(height: 14),
                   ],
 
                   if (mat != null) ...[
+                    SizedBox(key: _lifestyleKey, height: 0),
                     _LifestyleCard(
                       mat: mat,
                       onSurface: onSurface,
                       accent: accent,
-                    ),
+                    ).animate(delay: AppMotion.stagger(3, stepMs: 80)).fadeIn(duration: AppMotion.medium).slideY(begin: 0.06, curve: AppMotion.spring),
                     const SizedBox(height: 14),
                   ],
 
                   if (flags.horoscope && mat?.horoscope != null) ...[
+                    SizedBox(key: _horoscopeKey, height: 0),
                     _HoroscopeCard(
                       mat: mat!,
                       onSurface: onSurface,
                       accent: accent,
-                    ),
+                    ).animate(delay: AppMotion.stagger(4, stepMs: 80)).fadeIn(duration: AppMotion.medium).slideY(begin: 0.06, curve: AppMotion.spring),
                     const SizedBox(height: 14),
                   ],
 
                   if (prefs != null) ...[
+                    SizedBox(key: _lookingForKey, height: 0),
                     _PartnerPrefsCard(
                       prefs: prefs,
                       onSurface: onSurface,
                       accent: accent,
-                    ),
+                    ).animate(delay: AppMotion.stagger(5, stepMs: 80)).fadeIn(duration: AppMotion.medium).slideY(begin: 0.06, curve: AppMotion.spring),
                     const SizedBox(height: 14),
                   ],
 
@@ -354,16 +421,17 @@ class _FloatingActionBar extends ConsumerWidget {
     // Once matched, messaging is unlocked for this profile (no premium required).
     final canMessageThisProfile = ent.canSendMessage || isMatched;
 
-    return Container(
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        color: cs.surface.withValues(alpha: isDark ? 0.82 : 0.90),
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -383,7 +451,7 @@ class _FloatingActionBar extends ConsumerWidget {
                       isMatched: isMatched,
                       isSentInterest: isSentInterest,
                       isPrioritySent: isPrioritySent,
-                    ),
+                    ).animate().slideY(begin: 0.4, end: 0, duration: AppMotion.slow, curve: AppMotion.reveal).fadeIn(duration: AppMotion.medium),
                   ),
                   const SizedBox(width: 10),
                   _FloatingIconBtn(
@@ -398,7 +466,7 @@ class _FloatingActionBar extends ConsumerWidget {
                     icon: canMessageThisProfile
                         ? Icons.chat_bubble_outline
                         : Icons.lock_outline,
-                    accent: canMessageThisProfile ? accent : Colors.grey,
+                    accent: canMessageThisProfile ? accent : Theme.of(context).colorScheme.onSurfaceVariant,
                     showPremiumDot: !canMessageThisProfile,
                     onTap: () {
                       if (canMessageThisProfile) {
@@ -422,6 +490,8 @@ class _FloatingActionBar extends ConsumerWidget {
               ],
             ],
           ),
+        ),
+      ),
         ),
       ),
     );
@@ -614,7 +684,7 @@ class _FloatingActionBar extends ConsumerWidget {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
     final surface = theme.colorScheme.surface;
-    final accent = AppColors.saffron;
+    final accent = theme.colorScheme.primary;
     final width = MediaQuery.sizeOf(context).width;
     final dialogWidth = (width * 0.9).clamp(320.0, 420.0);
     final warmBg = Color.lerp(surface, accent, 0.03) ?? surface;
@@ -1076,8 +1146,9 @@ class _ViewContactsRow extends StatelessWidget {
   Future<void> _launchWhatsApp() async {
     final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
     final uri = Uri.parse('https://wa.me/$digits');
-    if (await canLaunchUrl(uri))
+    if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -1154,13 +1225,13 @@ void _showPremiumPrompt(BuildContext context, Entitlements ent) {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.saffron.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.workspace_premium,
                 size: 40,
-                color: AppColors.saffron,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -1190,7 +1261,7 @@ void _showPremiumPrompt(BuildContext context, Entitlements ent) {
                   context.push('/paywall');
                 },
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.saffron,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -1246,7 +1317,7 @@ class _FloatingIconBtn extends StatelessWidget {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: AppColors.saffron,
+                      color: Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
@@ -1273,13 +1344,30 @@ class _DatingProfileContent extends ConsumerWidget {
     final l = AppLocalizations.of(context)!;
     final primary = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final surfaceVariant = Theme.of(context).colorScheme.surfaceContainerHighest;
     final imageUrls = _imageUrlsFromProfile(profile);
     final asyncCompat = ref.watch(compatibilityProvider(profile.id as String));
 
+    final quickFacts = <_QuickFact>[
+      if (profile.occupation != null)
+        _QuickFact(Icons.work_outline_rounded, profile.occupation!),
+      if (profile.educationDegree != null)
+        _QuickFact(Icons.school_outlined, profile.educationDegree!),
+      if (profile.heightCm != null)
+        _QuickFact(Icons.straighten_rounded, _formatHeight(profile.heightCm!)),
+      if (profile.motherTongue != null)
+        _QuickFact(Icons.translate_rounded, profile.motherTongue!),
+      if (profile.religion != null)
+        _QuickFact(Icons.auto_awesome_outlined, profile.religion!),
+      if (profile.diet != null)
+        _QuickFact(Icons.restaurant_outlined, profile.diet!),
+    ];
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       body: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
           _DatingProfileHero(
@@ -1293,142 +1381,222 @@ class _DatingProfileContent extends ConsumerWidget {
                 ? () => _openPhotoGallery(context, imageUrls, 0)
                 : null,
           ),
+
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (profile.compatibilityScore != null ||
-                      profile.compatibilityLabel != null ||
-                      asyncCompat.valueOrNull != null) ...[
-                    _DatingCompatibilityPill(
-                      profile: profile,
-                      compat: asyncCompat.valueOrNull,
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (imageUrls.length > 1) ...[
-                    SizedBox(
-                      height: 80,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: imageUrls.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) => GestureDetector(
-                          onTap: () => _openPhotoGallery(context, imageUrls, i),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: CachedNetworkImage(
-                              imageUrl: imageUrls[i],
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                              ),
-                              errorWidget: (_, __, ___) => Container(
-                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                child: Icon(Icons.image_not_supported_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+            child: Transform.translate(
+              offset: const Offset(0, -28),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name + age + verified
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${profile.name}, ${profile.age ?? ''}',
+                              style: AppTypography.headlineSmall.copyWith(
+                                color: onSurface,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 26,
+                                letterSpacing: -0.3,
                               ),
                             ),
                           ),
-                        ),
+                          if (profile.verified) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: primary.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.verified_rounded, size: 22, color: primary),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${profile.name}, ${profile.age ?? ''}',
-                          style: AppTypography.headlineSmall.copyWith(
-                            color: onSurface,
+                      const SizedBox(height: 6),
+
+                      // Location + distance
+                      if (profile.city != null && profile.city!.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(Icons.location_on_rounded, size: 16, color: onSurface.withValues(alpha: 0.5)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${profile.city ?? ''}${profile.distanceKm != null ? ' · ${l.kmAway(profile.distanceKm!.toStringAsFixed(1))}' : ''}',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: onSurface.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                      // Voice Intro player
+                      if ((profile.voiceIntroUrl as String?) != null &&
+                          (profile.voiceIntroUrl as String).isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        VoiceIntroPlayerCard(
+                          url: profile.voiceIntroUrl as String,
+                          name: profile.name as String,
+                        ),
+                      ],
+
+                      // Compatibility Story card
+                      if (profile.compatibilityScore != null ||
+                          profile.compatibilityLabel != null ||
+                          asyncCompat.valueOrNull != null) ...[
+                        const SizedBox(height: 16),
+                        _CompatibilityStoryCard(
+                          profile: profile,
+                          compat: asyncCompat.valueOrNull,
+                        ),
+                      ],
+
+                      // Quick facts row
+                      if (quickFacts.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: quickFacts
+                              .map((f) => _QuickFactChip(
+                                    icon: f.icon,
+                                    label: f.label,
+                                    onSurface: onSurface,
+                                    surfaceVariant: surfaceVariant,
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+
+                      // Bio / About
+                      if ((profile.bio as String).isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          l.about,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: onSurface.withValues(alpha: 0.5),
                             fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            letterSpacing: 0.8,
                           ),
                         ),
-                      ),
-                      if (profile.verified) ...[
-                        const SizedBox(width: 8),
-                        Icon(Icons.verified, size: 24, color: primary),
+                        const SizedBox(height: 8),
+                        TranslatableText(
+                          content: profile.bio,
+                          textStyle: AppTypography.bodyLarge.copyWith(
+                            color: onSurface.withValues(alpha: 0.88),
+                            height: 1.5,
+                            fontSize: 16,
+                          ),
+                        ),
                       ],
+
+                      // Prompt card
+                      if ((profile.promptAnswer ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                primary.withValues(alpha: 0.07),
+                                primary.withValues(alpha: 0.03),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: primary.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.format_quote_rounded, size: 20, color: primary.withValues(alpha: 0.6)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    l.prompt,
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color: primary.withValues(alpha: 0.7),
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                profile.promptAnswer!,
+                                style: AppTypography.bodyLarge.copyWith(
+                                  color: onSurface.withValues(alpha: 0.88),
+                                  height: 1.5,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Photo gallery (inline, staggered)
+                      if (imageUrls.length > 1) ...[
+                        const SizedBox(height: 24),
+                        _DatingPhotoGrid(
+                          imageUrls: imageUrls,
+                          onTap: (i) => _openPhotoGallery(context, imageUrls, i),
+                        ),
+                      ],
+
+                      // Interests
+                      if (profile.interests.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          l.interests,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: onSurface.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: (profile.interests as List<String>)
+                              .map<Widget>(
+                                (i) => _DatingInterestChip(
+                                  label: i,
+                                  isShared: (profile.sharedInterests as List<String>?)
+                                          ?.contains(i) ??
+                                      false,
+                                  primary: primary,
+                                  onSurface: onSurface,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+
+                      const SizedBox(height: 100),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  if (profile.city != null && profile.city!.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 18,
-                          color: onSurface.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${profile.city ?? ''}${profile.distanceKm != null ? ' · ${l.kmAway(profile.distanceKm!.toStringAsFixed(1))}' : ''}',
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: onSurface.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 24),
-                  _SectionTitle(l.about, onSurface),
-                  const SizedBox(height: 8),
-                  TranslatableText(
-                    content: profile.bio,
-                    textStyle: AppTypography.bodyLarge.copyWith(
-                      color: onSurface.withValues(alpha: 0.9),
-                      height: 1.4,
-                    ),
-                  ),
-                  if (profile.interests.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    _SectionTitle(l.interests, onSurface),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: (profile.interests as List<String>)
-                          .map<Widget>(
-                            (i) => _DatingInterestChip(
-                              label: i,
-                              isShared: (profile.sharedInterests as List<String>?)
-                                      ?.contains(i) ??
-                                  false,
-                              primary: primary,
-                              onSurface: onSurface,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                  if ((profile.promptAnswer ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    _SectionTitle(l.prompt, onSurface),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: primary.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Text(
-                        profile.promptAnswer!,
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: onSurface.withValues(alpha: 0.9),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 100),
-                ],
+                ),
               ),
             ),
           ),
@@ -1439,6 +1607,12 @@ class _DatingProfileContent extends ConsumerWidget {
         profileName: profile.name as String,
       ),
     );
+  }
+
+  static String _formatHeight(int cm) {
+    final feet = cm ~/ 30.48;
+    final inches = ((cm % 30.48) / 2.54).round();
+    return '$feet\'$inches" ($cm cm)';
   }
 
   static List<String> _imageUrlsFromProfile(dynamic profile) {
@@ -1452,7 +1626,127 @@ class _DatingProfileContent extends ConsumerWidget {
   }
 }
 
-/// Hero for dating profile: real photos (carousel if multiple), gradient, back, menu.
+class _QuickFact {
+  const _QuickFact(this.icon, this.label);
+  final IconData icon;
+  final String label;
+}
+
+class _QuickFactChip extends StatelessWidget {
+  const _QuickFactChip({
+    required this.icon,
+    required this.label,
+    required this.onSurface,
+    required this.surfaceVariant,
+  });
+  final IconData icon;
+  final String label;
+  final Color onSurface;
+  final Color surfaceVariant;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: surfaceVariant.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: onSurface.withValues(alpha: 0.55)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: onSurface.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Staggered photo grid for dating profile: first photo large, remaining smaller.
+class _DatingPhotoGrid extends StatelessWidget {
+  const _DatingPhotoGrid({required this.imageUrls, required this.onTap});
+  final List<String> imageUrls;
+  final void Function(int index) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final urls = imageUrls.skip(1).take(4).toList();
+    if (urls.isEmpty) return const SizedBox.shrink();
+
+    if (urls.length <= 2) {
+      return Row(
+        children: [
+          for (int i = 0; i < urls.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(child: _gridTile(context, urls[i], i + 1, 180)),
+          ],
+        ],
+      );
+    }
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _gridTile(context, urls[0], 1, 180)),
+            const SizedBox(width: 8),
+            Expanded(child: _gridTile(context, urls[1], 2, 180)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 2; i < urls.length; i++) ...[
+              if (i > 2) const SizedBox(width: 8),
+              Expanded(child: _gridTile(context, urls[i], i + 1, 140)),
+            ],
+            if (urls.length == 3) ...[
+              const SizedBox(width: 8),
+              const Expanded(child: SizedBox()),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _gridTile(BuildContext context, String url, int index, double height) {
+    return GestureDetector(
+      onTap: () => onTap(index),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          height: height,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            height: height,
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          errorWidget: (_, __, ___) => Container(
+            height: height,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hero for dating profile: tall photo with bottom sheet overlap.
 class _DatingProfileHero extends StatelessWidget {
   const _DatingProfileHero({
     required this.profile,
@@ -1465,7 +1759,6 @@ class _DatingProfileHero extends StatelessWidget {
   final List<String> imageUrls;
   final VoidCallback onBlock;
   final VoidCallback onReport;
-  /// When set, tapping the hero image opens full-screen gallery at index 0.
   final VoidCallback? onImageTap;
 
   @override
@@ -1473,10 +1766,12 @@ class _DatingProfileHero extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
     final l = AppLocalizations.of(context)!;
     final hasImages = imageUrls.isNotEmpty;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return SliverAppBar(
-      expandedHeight: 320,
+      expandedHeight: screenHeight * 0.52,
       pinned: true,
+      stretch: true,
       leading: IconButton(
         icon: Container(
           padding: const EdgeInsets.all(6),
@@ -1490,7 +1785,14 @@ class _DatingProfileHero extends StatelessWidget {
       ),
       actions: [
         PopupMenuButton<String>(
-          icon: Icon(Icons.more_vert, color: Colors.white.withValues(alpha: 0.95)),
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.more_vert, color: Colors.white.withValues(alpha: 0.95), size: 22),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -1523,75 +1825,83 @@ class _DatingProfileHero extends StatelessWidget {
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground],
         background: Stack(
           fit: StackFit.expand,
           children: [
             if (hasImages)
               GestureDetector(
                 onTap: onImageTap,
-                child: CachedNetworkImage(
-                  imageUrl: imageUrls.first,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => ColoredBox(
-                    color: primary.withValues(alpha: 0.15),
-                    child: Center(
-                      child: CircleAvatar(
-                        radius: 48,
-                        backgroundColor: primary.withValues(alpha: 0.3),
-                        child: Text(
-                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-                          style: AppTypography.displayMedium.copyWith(color: primary),
+                child: Hero(
+                  tag: 'profile_photo_${profile.id}',
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrls.first,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => ColoredBox(
+                      color: primary.withValues(alpha: 0.15),
+                      child: Center(
+                        child: CircleAvatar(
+                          radius: 48,
+                          backgroundColor: primary.withValues(alpha: 0.3),
+                          child: Text(
+                            profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                            style: AppTypography.displayMedium.copyWith(color: primary),
+                          ),
                         ),
                       ),
                     ),
+                    errorWidget: (_, __, ___) => _DatingHeroFallback(profile: profile, primary: primary),
                   ),
-                  errorWidget: (_, __, ___) => _DatingHeroFallback(profile: profile, primary: primary),
                 ),
               )
             else
               _DatingHeroFallback(profile: profile, primary: primary),
-            if (hasImages && onImageTap != null)
+
+            // Photo count badge
+            if (hasImages && imageUrls.length > 1)
               Positioned(
-                right: 12,
-                bottom: 16,
-                child: Material(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    onTap: onImageTap,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.fullscreen_rounded, color: Colors.white, size: 18),
-                          if (imageUrls.length > 1) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              '${imageUrls.length}',
-                              style: AppTypography.labelMedium.copyWith(color: Colors.white),
-                            ),
-                          ],
-                        ],
-                      ),
+                right: 16,
+                bottom: 44,
+                child: GestureDetector(
+                  onTap: onImageTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.photo_library_rounded, color: Colors.white, size: 15),
+                        const SizedBox(width: 5),
+                        Text(
+                          '1/${imageUrls.length}',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
+
+            // Bottom gradient for smooth sheet overlap
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                height: 120,
+                height: 60,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.6),
+                      Colors.black.withValues(alpha: 0.25),
                     ],
                   ),
                 ),
@@ -1742,28 +2052,62 @@ class _FullScreenPhotoGalleryState extends State<_FullScreenPhotoGallery> {
 }
 
 /// Posh compatibility pill for dating profile: refined typography and premium look.
-class _DatingCompatibilityPill extends StatelessWidget {
-  const _DatingCompatibilityPill({
-    required this.profile,
-    this.compat,
-  });
+/// Expandable compatibility story card for the full profile screen.
+class _CompatibilityStoryCard extends StatefulWidget {
+  const _CompatibilityStoryCard({required this.profile, this.compat});
   final dynamic profile;
-  final dynamic compat; // CompatibilityDetail?
+  final dynamic compat;
+
+  @override
+  State<_CompatibilityStoryCard> createState() => _CompatibilityStoryCardState();
+}
+
+class _CompatibilityStoryCardState extends State<_CompatibilityStoryCard>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late AnimationController _ctrl;
+  late Animation<double> _expandAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _expandAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded) { _ctrl.forward(); } else { _ctrl.reverse(); }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
+    final p = widget.profile;
+    final c = widget.compat;
+
     int score;
     String label;
-    if (compat != null) {
-      score = (compat.compatibilityScore * 100).round();
-      label = compat.compatibilityLabel ?? 'Match';
-    } else if (profile.compatibilityScore != null) {
-      score = (profile.compatibilityScore * 100).round();
-      label = profile.compatibilityLabel ?? 'Good match';
+    if (c != null) {
+      score = (c.compatibilityScore * 100).round();
+      label = c.compatibilityLabel ?? 'Match';
+    } else if (p.compatibilityScore != null) {
+      score = (p.compatibilityScore * 100).round();
+      label = p.compatibilityLabel ?? 'Good match';
     } else {
       return const SizedBox.shrink();
     }
+
     final isHigh = score >= 70;
     final isMedium = score >= 50 && score < 70;
     final accentColor = isHigh
@@ -1772,76 +2116,136 @@ class _DatingCompatibilityPill extends StatelessWidget {
             ? const Color(0xFFF9A825)
             : const Color(0xFFE65100);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            accentColor.withValues(alpha: 0.12),
-            accentColor.withValues(alpha: 0.06),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
+    // Build narrative + dimensions
+    final matchReasons = <String>[];
+    if (c != null && c.matchReasons != null) {
+      for (final r in (c.matchReasons as List)) {
+        if (r.toString().trim().isNotEmpty) matchReasons.add(r.toString().trim());
+        if (matchReasons.length >= 4) break;
+      }
+    } else if (p.matchReasons != null) {
+      for (final r in (p.matchReasons as List)) {
+        if (r.toString().trim().isNotEmpty) matchReasons.add(r.toString().trim());
+        if (matchReasons.length >= 4) break;
+      }
+    }
+
+    final sharedInterests = <String>[];
+    if (p.sharedInterests != null) {
+      for (final i in (p.sharedInterests as List)) {
+        sharedInterests.add(i.toString());
+        if (sharedInterests.length >= 3) break;
+      }
+    }
+
+    String? narrative;
+    if (sharedInterests.isNotEmpty) {
+      narrative = 'You both love ${sharedInterests.take(2).join(' and ')}';
+    } else if (matchReasons.isNotEmpty) {
+      narrative = matchReasons.first;
+    }
+
+    return GestureDetector(
+      onTap: matchReasons.isNotEmpty || narrative != null ? _toggle : null,
+      child: AnimatedBuilder(
+        animation: _expandAnim,
+        builder: (ctx, _) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              color: accentColor.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accentColor.withValues(alpha: 0.18)),
             ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              size: 22,
-              color: accentColor,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome_rounded, size: 20, color: accentColor),
+                    const SizedBox(width: 10),
+                    Text(
+                      '$score%',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: onSurface,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: onSurface.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (matchReasons.isNotEmpty || narrative != null)
+                      Icon(
+                        _expanded
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        size: 20,
+                        color: onSurface.withValues(alpha: 0.4),
+                      ),
+                  ],
+                ),
+                SizeTransition(
+                  sizeFactor: _expandAnim,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (narrative != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          '"$narrative"',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: onSurface.withValues(alpha: 0.7),
+                            fontStyle: FontStyle.italic,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                      if (matchReasons.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        ...matchReasons.map(
+                          (r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    size: 14, color: accentColor),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    r,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: onSurface.withValues(alpha: 0.8),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$score%',
-                style: AppTypography.headlineSmall.copyWith(
-                  color: onSurface,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: AppTypography.bodySmall.copyWith(
-                  color: onSurface.withValues(alpha: 0.75),
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.2,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
-/// Interest chip for dating profile: shared interests get accent fill, others outline.
 class _DatingInterestChip extends StatelessWidget {
   const _DatingInterestChip({
     required this.label,
@@ -1856,17 +2260,31 @@ class _DatingInterestChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontWeight: isShared ? FontWeight.w600 : FontWeight.w500,
-          color: isShared ? primary : onSurface.withValues(alpha: 0.85),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isShared ? primary.withValues(alpha: 0.14) : onSurface.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isShared ? primary.withValues(alpha: 0.4) : onSurface.withValues(alpha: 0.12),
         ),
       ),
-      backgroundColor: isShared ? primary.withValues(alpha: 0.18) : primary.withValues(alpha: 0.08),
-      side: BorderSide(
-        color: isShared ? primary.withValues(alpha: 0.5) : primary.withValues(alpha: 0.2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isShared) ...[
+            Icon(Icons.favorite_rounded, size: 13, color: primary),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: isShared ? FontWeight.w700 : FontWeight.w500,
+              color: isShared ? primary : onSurface.withValues(alpha: 0.8),
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1919,7 +2337,6 @@ class _DatingFloatingBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final ent = ref.watch(entitlementsProvider);
     final sentInterestIds =
@@ -1934,50 +2351,72 @@ class _DatingFloatingBar extends ConsumerWidget {
     final isSuperLiked = sentPriorityIds.contains(profileId);
     final canMessageDirect = ent.canSendMessage;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.grey.shade900.withValues(alpha: 0.92)
+                : Colors.white.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 24,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _ProfileActionBtn(
+              _ActionCircle(
                 icon: Icons.close_rounded,
-                label: l.discoverPass,
-                color: const Color(0xFFE57373),
+                size: 46,
+                iconSize: 22,
+                gradient: const [Color(0xFFFF6B6B), Color(0xFFEE5A24)],
+                enabled: true,
                 onTap: () => _onPass(context, ref),
               ),
-              const SizedBox(width: 20),
-              _ProfileActionBtn(
-                icon: Icons.auto_awesome,
-                label: l.discoverSuperLike,
-                color: const Color(0xFFB39DDB),
+              _ActionCircle(
+                icon: Icons.auto_awesome_rounded,
+                size: 46,
+                iconSize: 20,
+                gradient: const [Color(0xFFD4A5FF), Color(0xFF9B59B6)],
+                enabled: !isSuperLiked,
                 onTap: isSuperLiked
                     ? null
                     : () => _onSuperLike(context, ref),
               ),
-              const SizedBox(width: 20),
-              _ProfileActionBtn(
+              _ActionCircle(
                 icon: Icons.favorite_rounded,
-                label: l.discoverLike,
-                color: const Color(0xFF81C784),
+                size: 60,
+                iconSize: 28,
+                gradient: const [Color(0xFF6DD5A0), Color(0xFF2ECC71)],
+                enabled: !(isLiked || isSuperLiked),
+                isHero: true,
                 onTap: isLiked || isSuperLiked
                     ? null
                     : () => _onLike(context, ref),
               ),
-              const SizedBox(width: 16),
-              _DatingMessageButton(
-                canMessageDirect: canMessageDirect,
+              _ActionCircle(
+                icon: Icons.chat_bubble_rounded,
+                size: 46,
+                iconSize: 20,
+                gradient: const [Color(0xFF74B9FF), Color(0xFF0984E3)],
+                enabled: true,
+                showBadge: !canMessageDirect,
                 onTap: () => _onMessage(context, ref),
               ),
             ],
@@ -2255,130 +2694,133 @@ class _DatingFloatingBar extends ConsumerWidget {
 }
 
 /// Message button for dating profile: prominent CTA with icon + label; shows premium dot when gated.
-class _DatingMessageButton extends StatelessWidget {
-  const _DatingMessageButton({
-    required this.canMessageDirect,
-    required this.onTap,
+/// Gradient-filled circular action button with optional hero scaling and badge.
+class _ActionCircle extends StatefulWidget {
+  const _ActionCircle({
+    required this.icon,
+    required this.size,
+    required this.iconSize,
+    required this.gradient,
+    required this.enabled,
+    this.isHero = false,
+    this.showBadge = false,
+    this.onTap,
   });
-  final bool canMessageDirect;
-  final VoidCallback onTap;
+  final IconData icon;
+  final double size;
+  final double iconSize;
+  final List<Color> gradient;
+  final bool enabled;
+  final bool isHero;
+  final bool showBadge;
+  final VoidCallback? onTap;
+
+  @override
+  State<_ActionCircle> createState() => _ActionCircleState();
+}
+
+class _ActionCircleState extends State<_ActionCircle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.88).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(_) {
+    if (widget.enabled) _ctrl.forward();
+  }
+
+  void _handleTapUp(_) {
+    if (widget.enabled) _ctrl.reverse();
+  }
+
+  void _handleTapCancel() {
+    if (widget.enabled) _ctrl.reverse();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final primary = Theme.of(context).colorScheme.primary;
-    const messageColor = Color(0xFF0288D1); // Distinct teal/blue for Message
+    final disabledGrey = Colors.grey.shade400;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Stack(
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      onTap: widget.enabled ? widget.onTap : null,
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (context, child) => Transform.scale(
+          scale: _scale.value,
+          child: child,
+        ),
+        child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Material(
-              color: messageColor.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.chat_bubble_rounded,
-                    size: 26,
-                    color: messageColor,
-                  ),
-                ),
+            Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: widget.enabled
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: widget.gradient,
+                      )
+                    : null,
+                color: widget.enabled ? null : disabledGrey.withValues(alpha: 0.25),
+                boxShadow: widget.enabled
+                    ? [
+                        BoxShadow(
+                          color: widget.gradient.first.withValues(alpha: widget.isHero ? 0.4 : 0.3),
+                          blurRadius: widget.isHero ? 16 : 10,
+                          spreadRadius: widget.isHero ? 2 : 0,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                widget.icon,
+                size: widget.iconSize,
+                color: widget.enabled ? Colors.white : disabledGrey,
               ),
             ),
-            if (!canMessageDirect)
+            if (widget.showBadge)
               Positioned(
                 top: -2,
                 right: -2,
                 child: Container(
-                  width: 12,
-                  height: 12,
+                  width: 14,
+                  height: 14,
                   decoration: BoxDecoration(
-                    color: AppColors.saffron,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFB347), Color(0xFFFF6B6B)],
+                    ),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          l.messageTooltip,
-          style: AppTypography.labelSmall.copyWith(
-            color: primary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Circular action button for Pass / Super like / Like on dating profile.
-class _ProfileActionBtn extends StatelessWidget {
-  const _ProfileActionBtn({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: onTap != null
-                      ? color.withValues(alpha: 0.2)
-                      : Colors.grey.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: onTap != null ? color : Colors.grey.withValues(alpha: 0.4),
-                    width: 2,
-                  ),
-                ),
-                child: Icon(
-                  icon,
-                  size: 26,
-                  color: onTap != null ? color : Colors.grey,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
       ),
     );
   }
@@ -3097,7 +3539,7 @@ class _BreakdownRow extends StatelessWidget {
     final progress = (score / 100).clamp(0.0, 1.0);
     final barColor = score >= 75
         ? accent
-        : (score >= 50 ? AppColors.saffron : onSurface.withValues(alpha: 0.4));
+        : (score >= 50 ? Theme.of(context).colorScheme.primary : onSurface.withValues(alpha: 0.4));
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -3376,12 +3818,12 @@ class _PhotoCard extends StatelessWidget {
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
               width: 120,
-              color: AppColors.indiaGreen.withValues(alpha: 0.08),
+              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.08),
               child: Center(
                 child: Text(
                   name.isNotEmpty ? name[0] : '?',
                   style: AppTypography.headlineMedium.copyWith(
-                    color: AppColors.indiaGreen.withValues(alpha: 0.4),
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -3493,8 +3935,9 @@ class _BasicDetailsCard extends StatelessWidget {
         profile.originCity,
         profile.originCountry,
       ].whereType<String>().where((s) => s.isNotEmpty);
-      if (parts.isNotEmpty)
+      if (parts.isNotEmpty) {
         rows.add(_DetailRow(l.originLabel, parts.join(', ')));
+      }
     }
 
     if (rows.isEmpty) return const SizedBox.shrink();
@@ -3582,6 +4025,18 @@ class _EducationCareerCard extends StatelessWidget {
       if (label.isNotEmpty) {
         rows.add(_DetailRow(l.income, '${inc.currency ?? ''} $label'.trim()));
       }
+    }
+    if (mat.workLocation != null) {
+      rows.add(_DetailRow(l.workLocationQuestion, mat.workLocation));
+    }
+    if (mat.settledAbroad != null) {
+      rows.add(_DetailRow(l.settledAbroadQuestion, mat.settledAbroad));
+    }
+    if (mat.willingToRelocate != null) {
+      rows.add(_DetailRow(l.willingToRelocate, mat.willingToRelocate));
+    }
+    if (mat.aboutCareer != null) {
+      rows.add(_DetailRow(l.aboutCareer, mat.aboutCareer));
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
@@ -3730,22 +4185,29 @@ class _LifestyleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final rows = <_DetailRow>[];
     if (mat.diet != null) {
-      rows.add(_DetailRow('Diet', mat.diet));
+      rows.add(_DetailRow(l.diet, mat.diet));
     }
     if (mat.drinking != null) {
-      rows.add(_DetailRow('Drinking', mat.drinking));
+      rows.add(_DetailRow(l.drinkQuestion, mat.drinking));
     }
     if (mat.smoking != null) {
-      rows.add(_DetailRow('Smoking', mat.smoking));
+      rows.add(_DetailRow(l.smokeQuestion, mat.smoking));
     }
     if (mat.exercise != null) {
-      rows.add(_DetailRow('Exercise', mat.exercise));
+      rows.add(_DetailRow(l.exerciseQuestion, mat.exercise));
+    }
+    if (mat.pets != null) {
+      rows.add(_DetailRow(l.petsQuestion, mat.pets));
+    }
+    if (mat.disability != null) {
+      rows.add(_DetailRow(l.disabilityQuestion, mat.disability));
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
-      title: AppLocalizations.of(context)!.lifestyleTitleSection,
+      title: l.lifestyleTitleSection,
       icon: Icons.spa_outlined,
       rows: rows,
       accent: accent,
@@ -3766,31 +4228,32 @@ class _HoroscopeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final hor = mat.horoscope;
     final rows = <_DetailRow>[];
     if (hor.dateOfBirth != null) {
-      rows.add(_DetailRow('Date of birth', hor.dateOfBirth));
+      rows.add(_DetailRow(l.dateOfBirth, hor.dateOfBirth));
     }
     if (hor.timeOfBirth != null) {
-      rows.add(_DetailRow('Birth time', hor.timeOfBirth));
+      rows.add(_DetailRow(l.birthTimeQuestion, hor.timeOfBirth));
     }
     if (hor.birthPlace != null) {
-      rows.add(_DetailRow('Birth place', hor.birthPlace));
+      rows.add(_DetailRow(l.birthPlaceQuestion, hor.birthPlace));
     }
     if (hor.manglik != null) {
-      rows.add(_DetailRow('Manglik', hor.manglik));
+      rows.add(_DetailRow(l.manglikQuestion, hor.manglik));
     }
     if (hor.rashi != null) {
-      rows.add(_DetailRow('Rashi (Moon sign)', hor.rashi));
+      rows.add(_DetailRow(l.rashiQuestion, hor.rashi));
     }
     if (hor.nakshatra != null) {
-      rows.add(_DetailRow('Nakshatra', hor.nakshatra));
+      rows.add(_DetailRow(l.nakshatraQuestion, hor.nakshatra));
     }
     if (hor.gotra != null) {
-      rows.add(_DetailRow('Gotra', hor.gotra));
+      rows.add(_DetailRow(l.gotraQuestion, hor.gotra));
     }
     if (hor.horoscopeDocUrl != null) {
-      rows.add(const _DetailRow('Kundli document', 'Available'));
+      rows.add(_DetailRow(l.horoscopeQuestion, '✓'));
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(
@@ -4070,6 +4533,114 @@ class _DetailRow {
 }
 
 // ── Shared helpers ───────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SECTION NAV BAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionNavDelegate extends SliverPersistentHeaderDelegate {
+  const _SectionNavDelegate({required this.child, required this.height});
+  final Widget child;
+  final double height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SectionNavDelegate old) => old.child != child;
+}
+
+class _SectionNavBar extends StatelessWidget {
+  const _SectionNavBar({
+    required this.items,
+    required this.onTap,
+    required this.accent,
+  });
+
+  final List<({String label, GlobalKey key})> items;
+  final void Function(GlobalKey) onTap;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+        child: Row(
+          children: items
+              .map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _NavChip(
+                    label: item.label,
+                    accent: accent,
+                    onTap: () => onTap(item.key),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavChip extends StatelessWidget {
+  const _NavChip({
+    required this.label,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.22),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: accent,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title, this.onSurface);

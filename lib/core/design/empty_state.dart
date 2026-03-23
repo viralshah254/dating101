@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
+import '../theme/app_tokens.dart';
 
 /// Reusable empty state: icon, title, body, and optional CTA.
-/// Use across matches, requests, shortlist, chat for consistent look and copy.
+/// All colors from theme — no hardcoded AppColors references.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -13,7 +12,7 @@ class EmptyState extends StatelessWidget {
     required this.body,
     this.ctaLabel,
     this.onCta,
-    this.iconSize = 52,
+    this.iconSize = AppTokens.iconHero,
     this.padding,
   });
 
@@ -27,10 +26,8 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkAccent : accent;
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
 
     return Center(
       child: Padding(
@@ -39,56 +36,41 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppTokens.space24),
               decoration: BoxDecoration(
-                color: bgColor.withValues(alpha: isDark ? 0.2 : 0.12),
+                color: accent.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: bgColor.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                boxShadow: AppTokens.shadowGlow(accent, intensity: 0.08),
               ),
               child: Icon(
                 icon,
                 size: iconSize,
-                color: bgColor.withValues(alpha: isDark ? 0.9 : 0.75),
+                color: accent.withValues(alpha: 0.75),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: AppTokens.space28),
             Text(
               title,
-              style: AppTypography.titleLarge.copyWith(
-                color: onSurface,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppTokens.space10),
             Text(
               body,
-              style: AppTypography.bodyMedium.copyWith(
-                color: onSurface.withValues(alpha: 0.65),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
             if (ctaLabel != null && onCta != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: AppTokens.space24),
               FilledButton(
                 onPressed: onCta,
-                style: FilledButton.styleFrom(
-                  backgroundColor: accent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                  minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: Text(ctaLabel!, style: AppTypography.labelLarge),
+                child: Text(ctaLabel!),
               ),
             ],
           ],

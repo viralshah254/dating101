@@ -1,21 +1,4 @@
-/// Result of an OTP send attempt.
-sealed class SendOtpResult {
-  const SendOtpResult();
-}
-
-class SendOtpSuccess extends SendOtpResult {
-  const SendOtpSuccess({required this.verificationId, this.expiresInSeconds = 300});
-  final String verificationId;
-  final int expiresInSeconds;
-}
-
-class SendOtpFailure extends SendOtpResult {
-  const SendOtpFailure(this.message, {this.code});
-  final String message;
-  final String? code;
-}
-
-/// Result of OTP verification / sign-in.
+/// Result of phone + password sign-in / sign-up.
 sealed class AuthResult {
   const AuthResult();
 }
@@ -42,17 +25,21 @@ class AuthFailure extends AuthResult {
   final String? code;
 }
 
-/// Auth: phone OTP sign-in, social sign-in, sign-out.
+/// Auth: phone + password, social sign-in, sign-out.
 abstract class AuthRepository {
-  /// Send OTP to phone. Returns verificationId on success.
-  Future<SendOtpResult> sendOtp({required String countryCode, required String phone});
-
-  /// Verify OTP code. Returns auth tokens + whether user is new or returning.
-  /// [referralCode] optional — when provided at sign-up, backend may grant 30 days Premium to the new user.
-  Future<AuthResult> verifyOtp({
-    required String verificationId,
-    required String code,
+  /// Create account with phone + password. Fails if the number is already registered.
+  Future<AuthResult> signUpWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
     String? referralCode,
+  });
+
+  /// Sign in with phone + password.
+  Future<AuthResult> signInWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
   });
 
   /// Sign in with Google.

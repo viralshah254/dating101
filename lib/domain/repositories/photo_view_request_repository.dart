@@ -1,5 +1,4 @@
 import '../models/photo_view_request.dart';
-import '../models/profile_summary.dart';
 
 /// Photo view requests: user A requests to view user B's hidden photos;
 /// B sees the request in Requests and can accept/decline.

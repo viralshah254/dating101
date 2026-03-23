@@ -81,6 +81,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
     int limit = 20,
     String? cursor,
   }) async {
@@ -94,7 +95,8 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
         heightMaxCm != null ||
         (diet != null && diet.isNotEmpty) ||
         (bodyType != null && bodyType.isNotEmpty) ||
-        (maritalStatus != null && maritalStatus.isNotEmpty);
+        (maritalStatus != null && maritalStatus.isNotEmpty) ||
+        (motherTongue != null && motherTongue.isNotEmpty);
     if (hasFilters) {
       return search(
         ageMin: ageMin,
@@ -124,6 +126,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
     int limit = 30,
     String? cursor,
   }) async {
@@ -139,6 +142,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       diet: diet,
       bodyType: bodyType,
       maritalStatus: maritalStatus,
+      motherTongue: motherTongue,
       limit: limit,
       cursor: cursor,
     );
@@ -323,8 +327,9 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   @override
   Future<FilterOptions> getFilterOptions() async {
     await Future.delayed(const Duration(milliseconds: 80));
-    return const FilterOptions(
-      age: FilterAgeRange(
+    FilterOption fo(String v, [int c = 0]) => FilterOption(value: v, count: c);
+    return FilterOptions(
+      age: const FilterAgeRange(
         min: 18,
         max: 60,
         defaultMin: 24,
@@ -333,38 +338,45 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       ),
       cities: FilterDimension(
         options: [
-          'Mumbai',
-          'Delhi',
-          'Bangalore',
-          'Chennai',
-          'Hyderabad',
-          'Pune',
-          'London',
-          'Dubai',
-          'New York',
-          'Singapore',
+          fo('Mumbai', 120), fo('Delhi', 95), fo('Bangalore', 88),
+          fo('Chennai', 62), fo('Hyderabad', 55), fo('Pune', 48),
+          fo('London', 34), fo('Dubai', 29), fo('New York', 22), fo('Singapore', 17),
         ],
         strict: false,
       ),
       religions: FilterDimension(
         options: [
-          'Hindu',
-          'Muslim',
-          'Christian',
-          'Sikh',
-          'Jain',
-          'Buddhist',
-          'Other',
+          fo('Hindu', 310), fo('Muslim', 85), fo('Christian', 60),
+          fo('Sikh', 40), fo('Jain', 30), fo('Buddhist', 20), fo('Other', 15),
         ],
         strict: false,
       ),
       education: FilterDimension(
         options: [
-          "High School",
-          "Diploma",
-          "Bachelor's",
-          "Master's",
-          "Doctorate",
+          fo("Bachelor's", 180), fo("Master's", 140), fo('Diploma', 55),
+          fo('High School', 40), fo('Doctorate', 30),
+        ],
+        strict: false,
+      ),
+      diet: FilterDimension(
+        options: [
+          fo('Vegetarian', 200), fo('Non-vegetarian', 150),
+          fo('Eggetarian', 60), fo('Vegan', 25),
+        ],
+        strict: false,
+      ),
+      maritalStatus: FilterDimension(
+        options: [
+          fo('Never married', 280), fo('Divorced', 55),
+          fo('Widowed', 20), fo('Separated', 15),
+        ],
+        strict: false,
+      ),
+      motherTongue: FilterDimension(
+        options: [
+          fo('Hindi', 180), fo('Tamil', 90), fo('Telugu', 75),
+          fo('Marathi', 65), fo('Bengali', 55), fo('Gujarati', 50),
+          fo('Kannada', 40), fo('Malayalam', 35), fo('Punjabi', 30),
         ],
         strict: false,
       ),

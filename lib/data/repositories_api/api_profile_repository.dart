@@ -347,6 +347,12 @@ class ApiProfileRepository implements ProfileRepository {
       drinking: j['drinking'] as String?,
       smoking: j['smoking'] as String?,
       exercise: j['exercise'] as String?,
+      pets: j['pets'] as String?,
+      disability: j['disability'] as String?,
+      workLocation: j['workLocation'] as String?,
+      settledAbroad: j['settledAbroad'] as String?,
+      willingToRelocate: j['willingToRelocate'] as String?,
+      aboutCareer: j['aboutCareer'] as String?,
       aboutEducation: j['aboutEducation'] as String?,
       educationEntries: _parseEducationEntries(j['educationEntries']),
       horoscope: j['horoscope'] is Map
@@ -626,6 +632,12 @@ class ApiProfileRepository implements ProfileRepository {
     if (m.drinking != null) 'drinking': m.drinking,
     if (m.smoking != null) 'smoking': m.smoking,
     if (m.exercise != null) 'exercise': m.exercise,
+    if (m.pets != null) 'pets': m.pets,
+    if (m.disability != null) 'disability': m.disability,
+    if (m.workLocation != null) 'workLocation': m.workLocation,
+    if (m.settledAbroad != null) 'settledAbroad': m.settledAbroad,
+    if (m.willingToRelocate != null) 'willingToRelocate': m.willingToRelocate,
+    if (m.aboutCareer != null) 'aboutCareer': m.aboutCareer,
     if (m.aboutEducation != null) 'aboutEducation': m.aboutEducation,
     if (m.educationEntries != null && m.educationEntries!.isNotEmpty)
       'educationEntries': m.educationEntries!

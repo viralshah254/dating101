@@ -5,14 +5,25 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/iap_products_provider.dart';
 import '../services/iap_purchase_service.dart';
+
+// ── Hard-coded copy extracted as constants ─────────────────────────────────
+const _kPaywallTitle = 'Unlock more with Shubhmilan';
+const _kPaywallFemaleAccess =
+    'You already have free access to messaging, seeing likes, and contact requests.';
+const _kPaywallBoostNote = 'Profile boost available separately';
+const _kManageSubscriptionLabel = 'Manage subscription';
+const _kAllPlansInclude = 'All plans include:';
 
 /// Selected subscription plan for purchase.
 enum PremiumPlan { monthly, quarterly, annual }
@@ -39,12 +50,16 @@ class PaywallScreen extends ConsumerStatefulWidget {
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   PremiumPlan _selectedPlan = PremiumPlan.annual;
+  bool _hasLoggedPaywallView = false;
 
   Future<void> _onSubscribe(BuildContext context, WidgetRef ref) async {
     final platform = Platform.isIOS ? 'ios' : 'android';
     final products = await ref.read(iapProductsProvider.future);
     final productId = _selectedPlan.productId;
     try {
+      AnalyticsService.instance.log(AnalyticsEvent.paywallSubscribeStarted, {
+        'plan': productId,
+      });
       if (products.isEmpty || !products.containsKey(productId)) {
         if (!context.mounted) return;
         final l = AppLocalizations.of(context)!;
@@ -77,6 +92,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         planId: productId,
       );
       ref.read(subscriptionAccessRefreshProvider)();
+      AnalyticsService.instance.log(
+        AnalyticsEvent.paywallSubscribeSucceeded,
+        {'plan': productId},
+      );
       if (context.mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,6 +107,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         context.pop();
       }
     } on ApiException catch (e) {
+      AnalyticsService.instance.log(
+        AnalyticsEvent.paywallSubscribeFailed,
+        {'plan': productId, 'error_code': e.code},
+      );
       if (!context.mounted) return;
       final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,6 +120,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         ),
       );
     } catch (e) {
+      AnalyticsService.instance.log(
+        AnalyticsEvent.paywallSubscribeFailed,
+        {'plan': productId, 'error_code': 'UNKNOWN'},
+      );
       if (!context.mounted) return;
       final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -154,6 +181,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final accent = Theme.of(context).colorScheme.primary;
+    final secondary = Theme.of(context).colorScheme.secondary;
     final ent = ref.watch(entitlementsProvider);
     final productsAsync = ref.watch(iapProductsProvider);
 
@@ -183,6 +211,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
     final features = ent.isFemale ? femaleFeatures : maleFeatures;
     final hasActiveSubscription = ref.watch(subscriptionStateProvider).valueOrNull?.isActive ?? false;
+    if (!_hasLoggedPaywallView) {
+      _hasLoggedPaywallView = true;
+      AnalyticsService.instance.log(
+        AnalyticsEvent.paywallViewed,
+        {
+          'is_female': ent.isFemale,
+          'has_active_subscription': hasActiveSubscription,
+        },
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -197,21 +235,48 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.saffron.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+            // Radial glow hero
+            Center(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.85, end: 1.0),
+                duration: AppMotion.loop,
+                curve: Curves.easeInOut,
+                builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.gold.withValues(alpha: 0.45),
+                        AppColors.saffron.withValues(alpha: 0.18),
+                        AppColors.saffron.withValues(alpha: 0),
+                      ],
+                      stops: const [0.0, 0.55, 1.0],
+                    ),
+                  ),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.gold, AppColors.saffron],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: AppTokens.shadowGlow(AppColors.gold, intensity: 0.4),
+                      ),
+                      child: const Icon(Icons.workspace_premium, size: 40, color: Colors.white),
+                    ),
+                  ),
+                ),
               ),
-              child: Icon(
-                Icons.workspace_premium,
-                size: 48,
-                color: AppColors.saffron,
-              ),
-            ),
-            const SizedBox(height: 16),
+            ).animate().fadeIn(duration: AppMotion.enter).scale(begin: const Offset(0.8, 0.8), curve: AppMotion.reveal),
+            const SizedBox(height: 20),
             Text(
-              'Unlock more with Shubhmilan',
+              _kPaywallTitle,
               style: AppTypography.displaySmall,
               textAlign: TextAlign.center,
             ).animate().fadeIn().slideY(begin: -0.05, end: 0),
@@ -232,10 +297,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.indiaGreen.withValues(alpha: 0.08),
+                  color: secondary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.indiaGreen.withValues(alpha: 0.2),
+                    color: secondary.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -243,14 +308,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     Icon(
                       Icons.check_circle,
                       size: 20,
-                      color: AppColors.indiaGreen,
+                      color: secondary,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'You already have free access to messaging, seeing likes, and contact requests.',
+                        _kPaywallFemaleAccess,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.indiaGreen,
+                          color: secondary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -268,7 +333,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               savings: null,
               isSelected: _selectedPlan == PremiumPlan.monthly,
               accent: accent,
-              onTap: () => setState(() => _selectedPlan = PremiumPlan.monthly),
+              onTap: () {
+                setState(() => _selectedPlan = PremiumPlan.monthly);
+                AnalyticsService.instance.log(
+                  AnalyticsEvent.paywallPlanSelected,
+                  {'plan': PremiumPlan.monthly.productId},
+                );
+              },
             ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.03, end: 0),
             const SizedBox(height: 8),
             _SubscriptionPlanTile(
@@ -278,7 +349,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               savings: 'Save 29%',
               isSelected: _selectedPlan == PremiumPlan.quarterly,
               accent: accent,
-              onTap: () => setState(() => _selectedPlan = PremiumPlan.quarterly),
+              onTap: () {
+                setState(() => _selectedPlan = PremiumPlan.quarterly);
+                AnalyticsService.instance.log(
+                  AnalyticsEvent.paywallPlanSelected,
+                  {'plan': PremiumPlan.quarterly.productId},
+                );
+              },
             ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.03, end: 0),
             const SizedBox(height: 8),
             _SubscriptionPlanTile(
@@ -288,7 +365,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               savings: 'Best value',
               isSelected: _selectedPlan == PremiumPlan.annual,
               accent: accent,
-              onTap: () => setState(() => _selectedPlan = PremiumPlan.annual),
+              onTap: () {
+                setState(() => _selectedPlan = PremiumPlan.annual);
+                AnalyticsService.instance.log(
+                  AnalyticsEvent.paywallPlanSelected,
+                  {'plan': PremiumPlan.annual.productId},
+                );
+              },
             ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.03, end: 0),
             const SizedBox(height: 16),
             Padding(
@@ -297,38 +380,36 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'All plans include:',
+                    _kAllPlansInclude,
                     style: AppTypography.labelLarge.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...features.take(5).map(
-                    (f) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle, size: 18, color: accent),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(f, style: AppTypography.bodySmall)),
-                        ],
-                      ),
-                    ),
+                  ...features.take(5).indexed.map(
+                    (entry) {
+                      final (idx, f) = entry;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 18, color: accent),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(f, style: AppTypography.bodySmall)),
+                          ],
+                        ),
+                      ).animate(delay: AppMotion.stagger(idx, stepMs: 60) + 210.ms).fadeIn(duration: AppMotion.medium).slideX(begin: 0.08, curve: AppMotion.spring);
+                    },
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 210.ms),
+            ),
             const SizedBox(height: 24),
-            FilledButton(
+            // Gradient CTA button with scale pulse on tap
+            _GradientCtaButton(
+              label: l.subscribe,
               onPressed: () => _onSubscribe(context, ref),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Text(l.subscribe),
-            ).animate().fadeIn(delay: 250.ms),
+            ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.04, curve: AppMotion.spring),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => _onRestore(context, ref),
@@ -338,12 +419,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               const SizedBox(height: 4),
               TextButton(
                 onPressed: () => _openManageSubscription(),
-                child: const Text('Manage subscription'),
+                child: const Text(_kManageSubscriptionLabel),
               ),
             ],
             const SizedBox(height: 16),
             Text(
-              'Profile boost available separately',
+              _kPaywallBoostNote,
               style: AppTypography.bodySmall.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
@@ -361,6 +442,72 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.saathi',
     );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+/// Full-width gradient CTA button with scale-pulse on tap.
+class _GradientCtaButton extends StatefulWidget {
+  const _GradientCtaButton({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  State<_GradientCtaButton> createState() => _GradientCtaButtonState();
+}
+
+class _GradientCtaButtonState extends State<_GradientCtaButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: AppMotion.micro, lowerBound: 0.95, upperBound: 1.0);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onTap() async {
+    await _ctrl.reverse();
+    await _ctrl.forward();
+    widget.onPressed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, child) => Transform.scale(scale: _ctrl.value, child: child),
+      child: GestureDetector(
+        onTap: _onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.saffron, AppColors.gold, AppColors.saffronDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppTokens.shadowGlow(AppColors.saffron, intensity: 0.35),
+          ),
+          child: Text(
+            widget.label,
+            textAlign: TextAlign.center,
+            style: AppTypography.titleMedium.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -384,20 +531,31 @@ class _SubscriptionPlanTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedScale(
+      scale: isSelected ? 1.02 : 1.0,
+      duration: AppMotion.fast,
+      curve: AppMotion.reveal,
+      child: Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? accent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+              color: isSelected ? accent : cs.onSurface.withValues(alpha: 0.12),
               width: isSelected ? 2 : 1,
             ),
-            color: isSelected ? accent.withValues(alpha: 0.06) : null,
+            gradient: isSelected ? LinearGradient(
+              colors: [accent.withValues(alpha: 0.12), AppColors.gold.withValues(alpha: 0.06)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ) : null,
+            boxShadow: isSelected ? AppTokens.shadowGlow(accent, intensity: 0.18) : null,
           ),
           child: Row(
             children: [
@@ -407,13 +565,17 @@ class _SubscriptionPlanTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? accent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                    color: isSelected ? accent : cs.onSurface.withValues(alpha: 0.4),
                     width: 2,
                   ),
-                  color: isSelected ? accent : Colors.transparent,
+                  gradient: isSelected ? LinearGradient(
+                    colors: [accent, AppColors.gold],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ) : null,
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    ? Icon(Icons.check, size: 14, color: cs.onPrimary)
                     : null,
               ),
               const SizedBox(width: 14),
@@ -468,6 +630,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

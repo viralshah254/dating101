@@ -165,10 +165,19 @@ final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
 
 final chatWebSocketClientProvider = Provider<ChatWebSocketClient?>((ref) {
   if (_config.useFakeBackend) return null;
-  return ChatWebSocketClient(
+  final wsClient = ChatWebSocketClient(
     wsBaseUrl: _config.baseUrl,
     tokenStorage: ref.watch(tokenStorageProvider),
   );
+  // Dispose WS connection when provider is destroyed (e.g. on logout via ref.invalidate)
+  ref.onDispose(wsClient.dispose);
+  // Also disconnect when user logs out (token cleared)
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  if (!tokenStorage.isLoggedIn) {
+    wsClient.dispose();
+    return null;
+  }
+  return wsClient;
 });
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {

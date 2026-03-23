@@ -8,3 +8,4 @@ export 'feedback_toast.dart';
 export 'loading_state.dart';
 export 'primary_button.dart';
 export 'section_card.dart';
+export '../theme/brand_theme.dart';

@@ -9,7 +9,9 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
@@ -335,60 +337,21 @@ class _VisitorsTab extends ConsumerWidget {
     final remaining = quota?.remaining ?? 2;
     final canUnlockByAd = remaining > 0;
 
-    final choice = await showModalBottomSheet<String?>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l.visitorUnlockTitle,
-                style: AppTypography.titleMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                canUnlockByAd
-                    ? l.visitorUnlockWatchAd(remaining)
-                    : l.visitorUnlockLimitReached,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (canUnlockByAd)
-                FilledButton.icon(
-                  onPressed: () => Navigator.of(ctx).pop('watch_ad'),
-                  icon: const Icon(Icons.play_circle_outline, size: 22),
-                  label: Text(l.watchAdToUnlock),
-                ),
-              if (canUnlockByAd) const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => Navigator.of(ctx).pop('upgrade'),
-                icon: const Icon(Icons.workspace_premium_outlined, size: 22),
-                label: Text(l.visitorUnlockUpgrade),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(null),
-                child: Text(l.cancel),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final choice = await showGateDecisionSheet(
+      context,
+      title: l.visitorUnlockTitle,
+      message: canUnlockByAd
+          ? l.visitorUnlockWatchAd(remaining)
+          : l.visitorUnlockLimitReached,
+      canWatchAd: canUnlockByAd,
+      watchAdLabel: l.watchAdToUnlock,
     );
     if (!context.mounted || choice == null) return;
-    if (choice == 'upgrade') {
+    if (choice == GateDecision.upgrade) {
       context.push('/paywall');
       return;
     }
-    if (choice == 'watch_ad') {
+    if (choice == GateDecision.watchAd) {
       final shown = await loadAndShowInterstitialWithLoading(
         context,
         ref,
@@ -480,7 +443,7 @@ class _VisitorsBlurredListView extends StatelessWidget {
           entry: entry,
           showUnblurred: showUnblurred,
           onTap: () => onTap(entry),
-        );
+        ).staggeredItem(index);
       },
     );
   }
@@ -653,7 +616,7 @@ class _ProfileListView extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return _LikesProfileTile(item: item, onInvalidate: onInvalidate);
+        return _LikesProfileTile(item: item, onInvalidate: onInvalidate).staggeredItem(index);
       },
     );
   }

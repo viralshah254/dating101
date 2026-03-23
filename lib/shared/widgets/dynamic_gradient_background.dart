@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 
-/// Week 13 — Dynamic gradient backgrounds (adaptive dark/light).
+/// Dynamic gradient backgrounds (adaptive dark/light).
 class DynamicGradientBackground extends StatelessWidget {
   const DynamicGradientBackground({
     super.key,
@@ -14,16 +14,17 @@ class DynamicGradientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final defaultGradient = gradient ??
         (isDark
             ? LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.darkBackground,
-                  AppColors.darkSurface,
-                  AppColors.darkBackground,
+                  theme.scaffoldBackgroundColor,
+                  theme.colorScheme.surface,
+                  theme.scaffoldBackgroundColor,
                 ],
               )
             : AppColors.splashGradient);

@@ -22,7 +22,7 @@ final discoveryFilterParamsProvider = StateProvider<DiscoveryFilterParams?>(
 );
 
 /// Discovery feed: recommended (with optional travel city) or filtered explore results.
-final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+final discoveryFeedProvider = FutureProvider<List<ProfileSummary>>((
   ref,
 ) async {
   final mode = ref.watch(appModeProvider) ?? AppMode.dating;
@@ -44,6 +44,7 @@ final discoveryFeedProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
       diet: filterParams.diet,
       bodyType: filterParams.bodyType,
       maritalStatus: filterParams.maritalStatus,
+      motherTongue: filterParams.motherTongue,
       limit: 20,
     );
   }
@@ -86,9 +87,8 @@ final compatibilityProvider = FutureProvider.autoDispose
     });
 
 /// Filter options for Explore tab (GET /discovery/filter-options). Use for dropdown options and defaults.
-final filterOptionsProvider = FutureProvider.autoDispose<FilterOptions>((
-  ref,
-) async {
+/// Not autoDispose so filter options are cached across navigation.
+final filterOptionsProvider = FutureProvider<FilterOptions>((ref) async {
   final repo = ref.watch(discoveryRepositoryProvider);
   return repo.getFilterOptions();
 });

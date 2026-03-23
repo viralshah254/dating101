@@ -1,14 +1,15 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/locale/language_picker_sheet.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../auth_post_sign_in.dart';
 
 class _CountryCode {
   const _CountryCode(this.code, this.label, this.flag);
@@ -26,7 +27,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _referralCodeController = TextEditingController();
+  bool _isSignUp = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   bool _ageConfirmed = false;
   bool _isSending = false;
   String? _errorMessage;
@@ -91,6 +97,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void dispose() {
     _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _referralCodeController.dispose();
     super.dispose();
   }
@@ -101,11 +109,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return raw.replaceFirst(RegExp(r'^0+'), '');
   }
 
+  bool get _passwordLongEnough => _passwordController.text.length >= 8;
+
+  bool get _passwordsMatch =>
+      _confirmPasswordController.text == _passwordController.text;
+
   bool get _canContinue =>
-      _ageConfirmed && _normalizedPhone.length >= 7 && !_isSending;
+      _ageConfirmed &&
+      _normalizedPhone.length >= 7 &&
+      _passwordLongEnough &&
+      !_isSending &&
+      (!_isSignUp || _passwordsMatch);
 
   Future<void> _continue() async {
     if (!_canContinue) return;
+    final l = AppLocalizations.of(context)!;
+    if (_isSignUp && !_passwordsMatch) {
+      setState(() {
+        _errorMessage = l.authPasswordsMismatch;
+        _errorCode = null;
+      });
+      return;
+    }
     setState(() {
       _isSending = true;
       _errorMessage = null;
@@ -114,26 +139,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final phone = _normalizedPhone;
     final authRepo = ref.read(authRepositoryProvider);
-    final result = await authRepo.sendOtp(
-      countryCode: _country.code,
-      phone: phone,
-    );
+    final AuthResult result;
+    if (_isSignUp) {
+      final refCode = _referralCodeController.text.trim();
+      result = await authRepo.signUpWithPassword(
+        countryCode: _country.code,
+        phone: phone,
+        password: _passwordController.text,
+        referralCode: refCode.isEmpty ? null : refCode,
+      );
+    } else {
+      result = await authRepo.signInWithPassword(
+        countryCode: _country.code,
+        phone: phone,
+        password: _passwordController.text,
+      );
+    }
 
     if (!mounted) return;
     setState(() => _isSending = false);
 
     switch (result) {
-      case SendOtpSuccess(:final verificationId):
-        final displayPhone = '${_country.code} $phone';
-        var otpPath =
-            '/otp?phone=${Uri.encodeComponent(displayPhone)}&vid=${Uri.encodeComponent(verificationId)}'
-            '&cc=${Uri.encodeComponent(_country.code)}&pn=${Uri.encodeComponent(phone)}';
-        final refCode = _referralCodeController.text.trim();
-        if (refCode.isNotEmpty) {
-          otpPath += '&ref=${Uri.encodeComponent(refCode)}';
-        }
-        context.push(otpPath);
-      case SendOtpFailure(:final message, :final code):
+      case AuthSuccess(:final isNewUser, :final referralApplied):
+        await navigateAfterAuthSuccess(
+          context,
+          ref,
+          isNewUser: isNewUser,
+          referralApplied: referralApplied,
+        );
+      case AuthFailure(:final message, :final code):
         setState(() {
           _errorMessage = message;
           _errorCode = code;
@@ -195,6 +229,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                       const SizedBox(height: 40),
+
+                      // Glass form card
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.18),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
 
                       // Phone input
                       Row(
@@ -260,14 +312,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ],
-                      ).animate().fadeIn(delay: 250.ms),
+                      ),
+
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: onSurface,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: l.authPasswordLabel,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: onSurface.withValues(alpha: 0.5),
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                        onChanged: (_) =>
+                            setState(() { _errorMessage = null; _errorCode = null; }),
+                      ),
+
+                      if (_isSignUp) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirm,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: onSurface,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: l.authConfirmPasswordLabel,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirm
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: onSurface.withValues(alpha: 0.5),
+                              ),
+                              onPressed: () =>
+                                  setState(() => _obscureConfirm = !_obscureConfirm),
+                            ),
+                          ),
+                          onChanged: (_) =>
+                              setState(() { _errorMessage = null; _errorCode = null; }),
+                        ),
+                      ],
+
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => setState(() {
+                            _isSignUp = !_isSignUp;
+                            _errorMessage = null;
+                            _errorCode = null;
+                          }),
+                          child: Text(
+                            _isSignUp ? l.authSignInLink : l.authSignUpLink,
+                            style: AppTypography.labelLarge.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
 
                       if (_errorMessage != null) ...[
                         const SizedBox(height: 12),
                         _buildErrorWidget(context),
                       ],
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
                       // Age confirmation
                       GestureDetector(
@@ -301,32 +428,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
-
-                      // Optional referral code
-                      Text(
-                        l.referralCodeHint,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _referralCodeController,
-                        textCapitalization: TextCapitalization.characters,
-                        autocorrect: false,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: onSurface,
-                          letterSpacing: 1.2,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: l.referralCodeOptional,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      if (_isSignUp) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l.referralCodeHint,
+                          style: AppTypography.labelMedium.copyWith(
+                            color: onSurface.withValues(alpha: 0.7),
                           ),
                         ),
-                        onChanged: (_) => setState(() {}),
-                      ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _referralCodeController,
+                          textCapitalization: TextCapitalization.characters,
+                          autocorrect: false,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: onSurface,
+                            letterSpacing: 1.2,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: l.referralCodeOptional,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
 
                       const SizedBox(height: 24),
 
@@ -342,16 +469,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           child: _isSending
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 22,
                                   height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    color: Colors.white,
+                                    color: Theme.of(context).colorScheme.onPrimary,
                                   ),
                                 )
                               : Text(
-                                  l.continueButton,
+                                  _isSignUp ? l.authCreateAccountButton : l.authSignInButton,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -359,6 +486,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                         ),
                       ),
+
+                      // close glass card Column + Container + BackdropFilter + ClipRRect
+                              ],
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideY(begin: 0.05, end: 0),
 
                     ],
                   ),
@@ -511,7 +645,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               controller: _searchController,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: 'Search country...',
+                hintText: AppLocalizations.of(context)!.searchCountryHint,
                 prefixIcon: Icon(Icons.search, color: onSurface.withValues(alpha: 0.4)),
                 filled: true,
                 fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -531,7 +665,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                     child: Padding(
                       padding: const EdgeInsets.all(32),
                       child: Text(
-                        'No countries found',
+                        AppLocalizations.of(context)!.noCountriesFound,
                         style: AppTypography.bodyMedium.copyWith(
                           color: onSurface.withValues(alpha: 0.4),
                         ),

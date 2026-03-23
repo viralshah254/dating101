@@ -13,10 +13,12 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String toUserId, {
     String? source,
     AppMode? mode,
+    String? message,
   }) async {
     final body = <String, dynamic>{'toUserId': toUserId};
     if (source != null && source.isNotEmpty) body['source'] = source;
     if (mode != null && mode.isSingleMode) body['mode'] = mode.name;
+    if (message != null && message.isNotEmpty) body['message'] = message;
     final res = await api.post('/interactions/interest', body: body);
     return _parseResult(res);
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
 /// Badge showing "Premium" or "Free" for profile/cards.
@@ -17,7 +16,7 @@ class PremiumBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isPremium ? AppColors.saffron : Colors.grey;
+    final color = isPremium ? Theme.of(context).colorScheme.primary : Colors.grey;
     if (compact) {
       return Tooltip(
         message: isPremium ? 'Premium' : 'Free',

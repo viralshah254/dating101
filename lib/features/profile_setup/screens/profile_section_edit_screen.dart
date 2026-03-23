@@ -106,11 +106,17 @@ class _ProfileSectionEditScreenState
     if (_isSaving) return;
     setState(() => _isSaving = true);
     try {
-      await _uploadPhotosIfNeeded();
       final repo = ref.read(profileRepositoryProvider);
-      final json = _formData.toFullJson();
       final existing = await repo.getMyProfile();
-      await repo.saveProfileJson(json, create: existing == null);
+      if (existing == null) {
+        final json = _formData.toFullJson();
+        final jsonForCreate = Map<String, dynamic>.from(json)
+          ..['photoUrls'] = [];
+        await repo.saveProfileJson(jsonForCreate, create: true);
+      }
+      await _uploadPhotosIfNeeded();
+      final json = _formData.toFullJson();
+      await repo.saveProfileJson(json, create: false);
       if (!mounted) return;
       context.pop();
     } catch (e) {
@@ -127,15 +133,17 @@ class _ProfileSectionEditScreenState
     }
   }
 
-  static String _profileSaveErrorMessage(Object e) {
+  String _profileSaveErrorMessage(Object e) {
+    final l = AppLocalizations.of(context);
     if (e is ApiException) {
       if (e.code == 'INTERNAL_ERROR' &&
           e.message.toLowerCase().contains('credentials')) {
-        return 'Profile saved. Photo upload is temporarily unavailable.';
+        return l?.profileSavePhotoUnavailable ??
+            'Profile saved. Photo upload is temporarily unavailable.';
       }
-      return 'Failed to save: ${e.message}';
+      return l?.profileSaveFailed(e.message) ?? 'Failed to save: ${e.message}';
     }
-    return 'Failed to save: $e';
+    return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
   }
 
   Future<void> _uploadPhotosIfNeeded() async {

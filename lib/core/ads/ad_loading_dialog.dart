@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/repository_providers.dart';
 import '../theme/app_typography.dart';
+import '../analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import 'ad_service.dart';
 
@@ -15,6 +16,8 @@ Future<bool> loadAndShowInterstitialWithLoading(
   AdRewardReason reason,
 ) async {
   final l = AppLocalizations.of(context)!;
+  final analytics = AnalyticsService.instance;
+  analytics.log(AnalyticsEvent.adLoadStarted, {'reason': reason.name});
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -46,9 +49,14 @@ Future<bool> loadAndShowInterstitialWithLoading(
   );
   try {
     final result = await ref.read(adServiceProvider).loadAndShowInterstitial(reason);
+    analytics.log(AnalyticsEvent.adLoadResult, {'reason': reason.name, 'loaded': result});
+    if (result) {
+      analytics.log(AnalyticsEvent.adShown, {'reason': reason.name});
+    }
     if (context.mounted) Navigator.of(context).pop();
     return result;
   } catch (_) {
+    analytics.log(AnalyticsEvent.adLoadResult, {'reason': reason.name, 'loaded': false});
     if (context.mounted) Navigator.of(context).pop();
     return false;
   }

@@ -50,3 +50,61 @@ final messageRequestsCountProvider = FutureProvider.autoDispose<int>((ref) async
   return repo.getMessageRequestsCount(mode: modeStr);
 });
 
+// ── Focus Mode ────────────────────────────────────────────────────────────
+
+/// A resolved Focus Mode entry with display-ready data (name, days, nudge flag).
+class FocusModeDisplayEntry {
+  const FocusModeDisplayEntry({
+    required this.threadId,
+    required this.otherPersonName,
+    required this.daysConnected,
+    required this.messageCount,
+    required this.showMeetNudge,
+  });
+  final String threadId;
+  final String otherPersonName;
+  final int daysConnected;
+  final int messageCount;
+  final bool showMeetNudge;
+}
+
+/// Fetches active Focus Mode sessions from GET /focus-mode and enriches each
+/// with `otherPersonName` from the chat threads list. Returns an empty list
+/// when the backend is unavailable or the user has no active focus modes.
+final focusModeProvider =
+    FutureProvider.autoDispose<List<FocusModeDisplayEntry>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+
+  // Fetch concurrently; threads may fail (e.g. no internet) — degrade gracefully
+  final modesBodyFuture = api.get('/focus-mode');
+  final threadsFuture = ref
+      .watch(chatThreadsProvider.future)
+      .catchError((_) => <ChatThreadSummary>[]);
+
+  final modesBody = await modesBodyFuture;
+  final threads = await threadsFuture;
+
+  final threadMap = {for (final t in threads) t.id: t};
+  final raw = (modesBody['focusModes'] as List<dynamic>? ?? []);
+
+  final entries = <FocusModeDisplayEntry>[];
+  for (final item in raw) {
+    final m = item as Map<String, dynamic>;
+    final threadId = m['threadId'] as String? ?? '';
+    final thread = threadMap[threadId];
+    final activatedAt = m['activatedAt'] != null
+        ? DateTime.tryParse(m['activatedAt'] as String) ?? DateTime.now()
+        : DateTime.now();
+    final daysConnected =
+        DateTime.now().difference(activatedAt).inDays.clamp(1, 999);
+    entries.add(FocusModeDisplayEntry(
+      threadId: threadId,
+      otherPersonName: thread?.otherName ?? 'your match',
+      daysConnected: daysConnected,
+      messageCount: (m['messageCount'] as int?) ?? 20,
+      showMeetNudge: (m['shouldNudge'] as bool?) ?? false,
+    ));
+  }
+  return entries;
+});
+

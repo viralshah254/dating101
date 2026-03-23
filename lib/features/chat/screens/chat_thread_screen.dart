@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -12,7 +13,7 @@ import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/repositories/chat_repository.dart';
@@ -48,13 +49,21 @@ const _icebreakerSuggestions = [
   'Tell me about yourself',
 ];
 
-class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
+class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
+    with SingleTickerProviderStateMixin {
   /// True after first send when we used [ChatThreadScreen.initialAdToken].
   bool _consumedInitialAdToken = false;
+  late final AnimationController _pulseCtrl;
 
   @override
   void initState() {
     super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: AppMotion.loop,
+      lowerBound: 0.4,
+      upperBound: 1.0,
+    )..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await ref.read(chatRepositoryProvider).markThreadRead(widget.threadId);
@@ -65,6 +74,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
   @override
   void dispose() {
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
@@ -80,6 +90,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     // Free user: require ad unless chatting with a match (matches can message without ad).
     final isMatch = widget.otherUserId != null &&
         (await ref.read(matchedUserIdsProvider.future)).contains(widget.otherUserId!);
+    if (!context.mounted) return;
     final requireAd = !ent.canSendMessageDirect && !isMatch;
 
     String? adToken;
@@ -183,7 +194,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -198,10 +209,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                 },
               ),
             ListTile(
-              leading: const Icon(Icons.block, color: Colors.red),
+              leading: Icon(Icons.block, color: Theme.of(ctx).colorScheme.error),
               title: Text(
                 AppLocalizations.of(ctx)!.blockUser,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: Theme.of(ctx).colorScheme.error),
               ),
               onTap: () async {
                 Navigator.pop(ctx);
@@ -223,7 +234,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                         FilledButton(
                           onPressed: () => Navigator.pop(d, true),
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.red,
+                            backgroundColor: Theme.of(d).colorScheme.error,
                           ),
                           child: Text(l.block),
                         ),
@@ -243,7 +254,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.flag_outlined, color: Colors.orange),
+              leading: Icon(Icons.flag_outlined, color: Theme.of(ctx).colorScheme.tertiary),
               title: Text(AppLocalizations.of(ctx)!.reportUser),
               onTap: () async {
                 Navigator.pop(ctx);
@@ -265,7 +276,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                         FilledButton(
                           onPressed: () => Navigator.pop(d, true),
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                            backgroundColor: Theme.of(d).colorScheme.tertiary,
                           ),
                           child: Text(l.report),
                         ),
@@ -369,78 +380,114 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final avatarUrl = profile?.imageUrl;
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: InkWell(
-          onTap: () {
-            if (otherUserId != null) context.push('/profile/$otherUserId');
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.saffron.withValues(alpha: 0.2),
-                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: avatarUrl == null || avatarUrl.isEmpty
-                      ? Text(
-                          initial,
-                          style: AppTypography.titleMedium.copyWith(
-                            color: AppColors.saffron,
-                            fontWeight: FontWeight.w600,
+      extendBodyBehindAppBar: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: AppBar(
+              backgroundColor: cs.surface.withValues(alpha: isDark ? 0.75 : 0.85),
+              titleSpacing: 0,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
+              title: InkWell(
+                onTap: () {
+                  if (otherUserId != null) context.push('/profile/$otherUserId');
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: cs.primary.withValues(alpha: 0.2),
+                            backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                            child: avatarUrl == null || avatarUrl.isEmpty
+                                ? Text(
+                                    initial,
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  )
+                                : null,
                           ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      displayName,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface,
+                          // Active indicator with pulse animation
+                          Positioned(
+                            bottom: 1,
+                            right: 1,
+                            child: AnimatedBuilder(
+                              animation: _pulseCtrl,
+                              builder: (_, __) => Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: cs.primary.withValues(alpha: _pulseCtrl.value),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: cs.surface,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: AppTypography.caption.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            displayName,
+                            style: AppTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          Text(
+                            subtitle,
+                            style: AppTypography.caption.copyWith(
+                              color: cs.onSurface.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                if (otherUserId != null) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.4),
+                      if (otherUserId != null) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: cs.onSurface.withValues(alpha: 0.4),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onPressed: () => _showMoreOptions(context, ref, otherUserId),
+                ),
               ],
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
-            onPressed: () => _showMoreOptions(context, ref, otherUserId),
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -466,7 +513,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: AppColors.saffron.withValues(
+                                color: Theme.of(context).colorScheme.primary.withValues(
                                   alpha: 0.08,
                                 ),
                                 shape: BoxShape.circle,
@@ -474,7 +521,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                               child: Icon(
                                 Icons.waving_hand_rounded,
                                 size: 48,
-                                color: AppColors.saffron.withValues(alpha: 0.8),
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -502,12 +549,18 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                               alignment: WrapAlignment.center,
                               spacing: 8,
                               runSpacing: 8,
-                              children: icebreakerList.map((s) {
+                              children: icebreakerList.indexed.map((entry) {
+                                final (idx, s) = entry;
                                 return ActionChip(
                                   label: Text(s),
                                   onPressed: () =>
                                       _sendMessageText(context, ref, s),
-                                );
+                                )
+                                    .animate(
+                                      delay: AppMotion.stagger(idx, stepMs: 50),
+                                    )
+                                    .fadeIn(duration: AppMotion.medium)
+                                    .slideX(begin: 0.15, curve: AppMotion.spring);
                               }).toList(),
                             ),
                           ],
@@ -517,10 +570,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                   }
                   final reversed = messages.reversed.toList();
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                    padding: EdgeInsets.fromLTRB(16, kToolbarHeight + MediaQuery.of(context).padding.top + 8, 16, 16),
                     reverse: true,
                     itemCount: reversed.length,
                     itemBuilder: (context, i) {
@@ -656,11 +706,13 @@ class _MessageBubble extends StatelessWidget {
     final onSurface = theme.colorScheme.onSurface;
     final timeStr = _formatTime(sentAt);
     final bubbleBg = isMe
-        ? AppColors.saffron.withValues(alpha: 0.2)
+        ? theme.colorScheme.primaryContainer
         : theme.colorScheme.surfaceContainerHighest;
-    final textColor = isMe ? const Color(0xFF5C3400) : onSurface;
+    final textColor = isMe
+        ? theme.colorScheme.onPrimaryContainer
+        : onSurface;
     final timeColor = isMe
-        ? const Color(0xFF8B5A00).withValues(alpha: 0.85)
+        ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.65)
         : onSurface.withValues(alpha: 0.55);
 
     return Align(
@@ -680,7 +732,7 @@ class _MessageBubble extends StatelessWidget {
             bottomRight: Radius.circular(isMe ? 6 : 18),
           ),
           border: isMe
-              ? Border.all(color: AppColors.saffron.withValues(alpha: 0.35))
+              ? Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.35))
               : null,
           boxShadow: [
             BoxShadow(
@@ -760,12 +812,20 @@ class _TypingBar extends StatefulWidget {
   State<_TypingBar> createState() => _TypingBarState();
 }
 
-class _TypingBarState extends State<_TypingBar> {
+class _TypingBarState extends State<_TypingBar>
+    with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
+  late final AnimationController _sendAnim;
 
   @override
   void initState() {
     super.initState();
+    _sendAnim = AnimationController(
+      vsync: this,
+      duration: AppMotion.micro,
+      lowerBound: 0.88,
+      upperBound: 1.0,
+    );
     final initial = widget.initialText;
     if (initial != null && initial.trim().isNotEmpty) {
       _controller.text = initial.trim();
@@ -818,7 +878,7 @@ class _TypingBarState extends State<_TypingBar> {
                         .colorScheme
                         .surfaceContainerHighest
                         .withValues(alpha: 0.3),
-                    indicatorColor: AppColors.saffron,
+                    indicatorColor: Theme.of(ctx).colorScheme.primary,
                   ),
                 ),
               ),
@@ -829,8 +889,18 @@ class _TypingBarState extends State<_TypingBar> {
     );
   }
 
+  Future<void> _triggerSend() async {
+    final t = _controller.text.trim();
+    if (t.isEmpty) return;
+    await _sendAnim.reverse();
+    await _sendAnim.forward();
+    widget.onSend(t);
+    _controller.clear();
+  }
+
   @override
   void dispose() {
+    _sendAnim.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -839,8 +909,21 @@ class _TypingBarState extends State<_TypingBar> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    return SafeArea(
-      child: Padding(
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surface.withValues(alpha: isDark ? 0.80 : 0.88),
+            border: Border(
+              top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -872,30 +955,29 @@ class _TypingBarState extends State<_TypingBar> {
                 maxLines: 5,
                 minLines: 1,
                 textInputAction: TextInputAction.send,
-                onSubmitted: (v) {
-                  if (v.trim().isNotEmpty) {
-                    widget.onSend(v.trim());
-                    _controller.clear();
-                  }
-                },
+                onSubmitted: (_) => _triggerSend(),
               ),
             ),
             const SizedBox(width: 6),
-            IconButton.filled(
-              icon: const Icon(Icons.send_rounded, size: 22),
-              onPressed: () {
-                final t = _controller.text.trim();
-                if (t.isNotEmpty) {
-                  widget.onSend(t);
-                  _controller.clear();
-                }
-              },
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.saffron,
-                foregroundColor: Colors.white,
+            AnimatedBuilder(
+              animation: _sendAnim,
+              builder: (_, child) => Transform.scale(
+                scale: _sendAnim.value,
+                child: child,
+              ),
+              child: IconButton.filled(
+                icon: const Icon(Icons.send_rounded, size: 22),
+                onPressed: _triggerSend,
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
               ),
             ),
           ],
+        ),
+        ),
+          ),
         ),
       ),
     );

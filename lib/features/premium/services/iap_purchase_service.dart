@@ -130,7 +130,7 @@ Future<IapRestoreResult> runIapRestore() async {
     (purchases) {
       for (final p in purchases) {
         if (p.status != PurchaseStatus.restored &&
-            p.status != PurchaseStatus.purchased) continue;
+            p.status != PurchaseStatus.purchased) { continue; }
         final data = p.verificationData.serverVerificationData;
         final local = p.verificationData.localVerificationData;
         final raw = data.isNotEmpty ? data : local;

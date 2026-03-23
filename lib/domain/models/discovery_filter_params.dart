@@ -11,6 +11,8 @@ class DiscoveryFilterParams {
     this.heightMaxCm,
     this.bodyType,
     this.maritalStatus,
+    this.motherTongue,
+    this.intentFilter,
   });
 
   final int? ageMin;
@@ -28,6 +30,13 @@ class DiscoveryFilterParams {
   /// Preferred marital status, e.g. "Never married", "Divorced".
   final String? maritalStatus;
 
+  /// Mother tongue filter, e.g. "Hindi", "Tamil".
+  final String? motherTongue;
+
+  /// Intent Match filter: show only profiles with this datingIntent
+  /// e.g. "marriage", "serious", "casual", "friends_first".
+  final String? intentFilter;
+
   bool get hasFilters =>
       ageMin != null ||
       ageMax != null ||
@@ -38,7 +47,9 @@ class DiscoveryFilterParams {
       heightMinCm != null ||
       heightMaxCm != null ||
       (bodyType != null && bodyType!.isNotEmpty) ||
-      (maritalStatus != null && maritalStatus!.isNotEmpty);
+      (maritalStatus != null && maritalStatus!.isNotEmpty) ||
+      (motherTongue != null && motherTongue!.isNotEmpty) ||
+      (intentFilter != null && intentFilter!.isNotEmpty);
 
   DiscoveryFilterParams copyWith({
     int? ageMin,
@@ -51,6 +62,8 @@ class DiscoveryFilterParams {
     int? heightMaxCm,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
+    String? intentFilter,
   }) {
     return DiscoveryFilterParams(
       ageMin: ageMin ?? this.ageMin,
@@ -63,6 +76,8 @@ class DiscoveryFilterParams {
       heightMaxCm: heightMaxCm ?? this.heightMaxCm,
       bodyType: bodyType ?? this.bodyType,
       maritalStatus: maritalStatus ?? this.maritalStatus,
+      motherTongue: motherTongue ?? this.motherTongue,
+      intentFilter: intentFilter ?? this.intentFilter,
     );
   }
 }

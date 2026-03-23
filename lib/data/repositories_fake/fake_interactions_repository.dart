@@ -8,6 +8,7 @@ class FakeInteractionsRepository implements InteractionsRepository {
   @override
   Future<ExpressInterestResult> expressInterest(
     String toUserId, {
+    String? message,
     String? source,
     AppMode? mode,
   }) async {

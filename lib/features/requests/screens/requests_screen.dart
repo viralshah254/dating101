@@ -6,11 +6,11 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/contact_request_status.dart';
@@ -99,9 +99,9 @@ class RequestsScreen extends ConsumerWidget {
             ),
           ),
           bottom: TabBar(
-            labelColor: AppColors.saffron,
+            labelColor: Theme.of(context).colorScheme.primary,
             unselectedLabelColor: onSurface.withValues(alpha: 0.6),
-            indicatorColor: AppColors.saffron,
+            indicatorColor: Theme.of(context).colorScheme.primary,
             isScrollable: true,
             tabs: [
               Tab(text: _tabLabel(l.requestsReceived, receivedCount)),
@@ -202,7 +202,7 @@ class _ReceivedTab extends ConsumerWidget {
               onAccept: () => _acceptAll(context, ref, group),
               onDecline: () => _declineAll(context, ref, group),
               onTap: () => context.push('/profile/${group.user.id}'),
-            );
+            ).staggeredItem(index);
           }
           final contactIndex = index - groups.length;
           if (contactIndex < contactRequests.length) {
@@ -212,7 +212,7 @@ class _ReceivedTab extends ConsumerWidget {
               onAccept: () => _acceptContact(context, ref, r.requestId),
               onDecline: () => _declineContact(context, ref, r.requestId),
               onTap: () => context.push('/profile/${r.fromUser.id}'),
-            );
+            ).staggeredItem(index);
           }
           final photoIndex = index - groups.length - contactRequests.length;
           final r = photoViewRequests[photoIndex];
@@ -221,7 +221,7 @@ class _ReceivedTab extends ConsumerWidget {
             onAccept: () => _acceptPhotoView(context, ref, r.requestId),
             onDecline: () => _declinePhotoView(context, ref, r.requestId),
             onTap: () => context.push('/profile/${r.fromUser.id}'),
-          );
+          ).staggeredItem(index);
         },
       ),
     );
@@ -518,14 +518,14 @@ class _SentTab extends ConsumerWidget {
                       )
                     : null,
                 onTap: () => context.push('/profile/${group.user.id}'),
-              );
+              ).staggeredItem(index);
             },
           ),
         );
       },
       loading: () => loadingSpinner(context),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(sentInteractionsProvider(mode)),
         retryLabel: l.retry,
       ),
@@ -633,7 +633,7 @@ class _RequestsReceivedPremiumGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.saffron;
+    final accent = Theme.of(context).colorScheme.primary;
     final unlocked = ref.watch(unlockedReceivedProvider);
     final quota = ref.watch(inboxUnlocksQuotaProvider);
     final remaining = quota?.remaining ?? initialRemaining;
@@ -775,14 +775,14 @@ class _RequestProfileTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: AppColors.saffron.withValues(alpha: 0.15),
+                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                 backgroundImage: imageUrl != null && imageUrl.isNotEmpty
                     ? NetworkImage(imageUrl)
                     : null,
                 child: imageUrl == null || imageUrl.isEmpty
                     ? Text(
                         profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-                        style: AppTypography.titleMedium.copyWith(color: AppColors.saffron),
+                        style: AppTypography.titleMedium.copyWith(color: Theme.of(context).colorScheme.primary),
                       )
                     : null,
               ),
@@ -826,7 +826,7 @@ class _RequestsPremiumGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.saffron;
+    final accent = Theme.of(context).colorScheme.primary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -912,7 +912,7 @@ class _PhotoViewRequestCard extends StatelessWidget {
                     onTap: onTap,
                     child: CircleAvatar(
                       radius: 28,
-                      backgroundColor: AppColors.saffron.withValues(
+                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(
                         alpha: 0.15,
                       ),
                       backgroundImage:
@@ -921,7 +921,7 @@ class _PhotoViewRequestCard extends StatelessWidget {
                           ? Text(
                               p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
                               style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.saffron,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w600,
                               ),
                             )
@@ -965,10 +965,10 @@ class _PhotoViewRequestCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
+                    FilledButton(
                     onPressed: onAccept,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.saffron,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 10,
@@ -1030,7 +1030,7 @@ class _ContactRequestCard extends StatelessWidget {
                     onTap: onTap,
                     child: CircleAvatar(
                       radius: 28,
-                      backgroundColor: AppColors.saffron.withValues(
+                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(
                         alpha: 0.15,
                       ),
                       backgroundImage:
@@ -1039,7 +1039,7 @@ class _ContactRequestCard extends StatelessWidget {
                           ? Text(
                               p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
                               style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.saffron,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w600,
                               ),
                             )
@@ -1083,10 +1083,10 @@ class _ContactRequestCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
+                    FilledButton(
                     onPressed: onAccept,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.saffron,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 10,
@@ -1159,7 +1159,7 @@ class _GroupedRequestCard extends StatelessWidget {
                     onTap: onTap,
                     child: CircleAvatar(
                       radius: 30,
-                      backgroundColor: AppColors.indiaGreen.withValues(
+                      backgroundColor: Theme.of(context).colorScheme.secondary.withValues(
                         alpha: 0.15,
                       ),
                       backgroundImage:
@@ -1168,7 +1168,7 @@ class _GroupedRequestCard extends StatelessWidget {
                           ? Text(
                               p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
                               style: AppTypography.titleLarge.copyWith(
-                                color: AppColors.indiaGreen,
+                                color: Theme.of(context).colorScheme.secondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             )
@@ -1208,13 +1208,13 @@ class _GroupedRequestCard extends StatelessWidget {
                               _Chip(
                                 icon: Icons.favorite_border_rounded,
                                 label: l.interested,
-                                color: AppColors.indiaGreen,
+                                color: Theme.of(context).colorScheme.secondary,
                               ),
                             if (group.hasPriority)
                               _Chip(
                                 icon: Icons.star_rounded,
                                 label: l.priorityInterest,
-                                color: AppColors.saffron,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                           ],
                         ),
@@ -1227,7 +1227,7 @@ class _GroupedRequestCard extends StatelessWidget {
                             padding: EdgeInsets.zero,
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            foregroundColor: AppColors.indiaGreen,
+                            foregroundColor: Theme.of(context).colorScheme.secondary,
                           ),
                         ),
                       ],
@@ -1267,8 +1267,8 @@ class _GroupedRequestCard extends StatelessWidget {
                         child: FilledButton(
                           onPressed: onAccept,
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.indiaGreen,
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.secondary,
+                            foregroundColor: Theme.of(context).colorScheme.onSecondary,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -1320,9 +1320,9 @@ class _GroupedRequestCard extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          foregroundColor: AppColors.saffron,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
                           side: BorderSide(
-                            color: AppColors.saffron.withValues(alpha: 0.5),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -1339,9 +1339,9 @@ class _GroupedRequestCard extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          foregroundColor: AppColors.indiaGreen,
+                          foregroundColor: Theme.of(context).colorScheme.secondary,
                           side: BorderSide(
-                            color: AppColors.indiaGreen.withValues(alpha: 0.5),
+                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -1362,9 +1362,9 @@ class _GroupedRequestCard extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          foregroundColor: AppColors.saffron,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
                           side: BorderSide(
-                            color: AppColors.saffron.withValues(alpha: 0.5),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -1433,11 +1433,11 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = status.toLowerCase() == 'accepted'
-        ? AppColors.indiaGreen
+        ? Theme.of(context).colorScheme.secondary
         : status.toLowerCase() == 'declined' ||
               status.toLowerCase() == 'withdrawn'
-        ? Colors.grey
-        : AppColors.saffron;
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

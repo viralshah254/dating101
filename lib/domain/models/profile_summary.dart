@@ -46,5 +46,16 @@ class ProfileSummary with _$ProfileSummary {
 
     /// Who manages this profile (matrimony). Only shown when not self.
     ProfileRole? roleManagingProfile,
+
+    /// Dating intent from DatingExtensions: serious / casual / marriage / friends_first.
+    String? datingIntent,
+
+    /// Whether this user has posted an active Moment (within 24h).
+    @Default(false) bool hasActiveMoment,
+    /// URL of the active moment image (used for story-ring preview).
+    String? momentImageUrl,
+
+    /// Voice intro URL (if recorded).
+    String? voiceIntroUrl,
   }) = _ProfileSummary;
 }

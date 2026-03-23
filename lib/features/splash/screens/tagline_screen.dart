@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 
-/// Week 13 — Launch tagline screen (optional post-splash).
+/// Launch tagline screen — cinematic entrance with layered stagger.
 class TaglineScreen extends StatelessWidget {
   const TaglineScreen({super.key});
 
@@ -13,52 +14,145 @@ class TaglineScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = Theme.of(context).colorScheme.primary;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: isDark
-              ? LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AppColors.darkBackground, AppColors.darkSurface],
-                )
-              : AppColors.splashGradient,
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                      'Depth-first connections.\nNo mindless swiping.',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.headlineMedium.copyWith(
-                        color: accent,
-                        height: 1.3,
-                      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background gradient
+          Container(
+            decoration: BoxDecoration(
+              gradient: isDark
+                  ? LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Theme.of(context).scaffoldBackgroundColor,
+                        Theme.of(context).colorScheme.surface,
+                      ],
                     )
-                    .animate()
-                    .fadeIn(duration: 500.ms)
-                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
-                const SizedBox(height: 24),
-                Text(
-                  'See full profiles. Send thoughtful intros. Explore by map.',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.bodyLarge,
-                ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-                const SizedBox(height: 48),
-                FilledButton(
-                  onPressed: () => context.go('/login'),
-                  child: Text(AppLocalizations.of(context)!.getStarted),
-                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05, end: 0),
-              ],
+                  : AppColors.splashGradient,
             ),
           ),
-        ),
+
+          // Ambient radial glow
+          Positioned(
+            top: size.height * 0.15,
+            left: 0,
+            right: 0,
+            height: size.height * 0.5,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [
+                    accent.withValues(alpha: isDark ? 0.15 : 0.10),
+                    accent.withValues(alpha: 0.0),
+                  ],
+                  radius: 0.7,
+                ),
+              ),
+            ).animate().fadeIn(duration: 800.ms),
+          ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 36),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Eyebrow label
+                  Text(
+                    'SHUBHMILAN',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 4,
+                      color: accent.withValues(alpha: 0.6),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: AppMotion.fast)
+                      .slideY(begin: 0.2, end: 0),
+
+                  const SizedBox(height: 20),
+
+                  // Hero headline — two lines with individual stagger
+                  Text(
+                        'Depth-first connections.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.headlineMedium.copyWith(
+                          color: accent,
+                          height: 1.3,
+                        ),
+                      )
+                      .animate()
+                      .fadeIn(delay: 150.ms, duration: AppMotion.medium)
+                      .slideY(
+                        begin: 0.12,
+                        end: 0,
+                        curve: AppMotion.reveal,
+                      ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                        'No mindless swiping.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.headlineMedium.copyWith(
+                          color: accent,
+                          height: 1.3,
+                        ),
+                      )
+                      .animate()
+                      .fadeIn(delay: 280.ms, duration: AppMotion.medium)
+                      .slideY(
+                        begin: 0.12,
+                        end: 0,
+                        curve: AppMotion.reveal,
+                      ),
+
+                  const SizedBox(height: 28),
+
+                  Text(
+                    'See full profiles. Send thoughtful intros.\nExplore by map.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      height: 1.55,
+                    ),
+                  ).animate().fadeIn(delay: 420.ms, duration: AppMotion.medium),
+
+                  const SizedBox(height: 52),
+
+                  // CTA
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton(
+                      onPressed: () => context.go('/login'),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.getStarted,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(delay: 560.ms, duration: AppMotion.medium)
+                      .slideY(begin: 0.08, end: 0, curve: AppMotion.spring),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

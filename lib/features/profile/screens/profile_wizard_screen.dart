@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_ctas.dart';
 import '../../../l10n/app_localizations.dart';
+import '../widgets/voice_intro_recorder.dart';
 
 class ProfileWizardScreen extends StatefulWidget {
   const ProfileWizardScreen({super.key});
@@ -381,7 +382,7 @@ class _PhotoSlot extends StatelessWidget {
                   child: Text(
                     AppLocalizations.of(context)!.primaryPhoto,
                     style: AppTypography.labelSmall.copyWith(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -481,12 +482,18 @@ class _PromptsAndTagsStep extends StatelessWidget {
   }
 }
 
-class _VoiceIntroStep extends StatelessWidget {
+class _VoiceIntroStep extends StatefulWidget {
+  @override
+  State<_VoiceIntroStep> createState() => _VoiceIntroStepState();
+}
+
+class _VoiceIntroStepState extends State<_VoiceIntroStep> {
+  String? _recordedPath;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final primary = Theme.of(context).colorScheme.primary;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -494,7 +501,7 @@ class _VoiceIntroStep extends StatelessWidget {
         children: [
           const SizedBox(height: 24),
           Text(
-            AppLocalizations.of(context)!.recordYourIntro,
+            l.recordYourIntro,
             style: AppTypography.headlineMedium.copyWith(
               color: onSurface,
               fontWeight: FontWeight.w600,
@@ -502,45 +509,40 @@ class _VoiceIntroStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            AppLocalizations.of(context)!.voiceIntroDescription,
+            l.voiceIntroDescription,
             style: AppTypography.bodyLarge.copyWith(
               color: onSurface.withValues(alpha: 0.85),
             ),
           ),
           const SizedBox(height: 32),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.mic_none, size: 64, color: primary),
-            ),
+          VoiceIntroRecorder(
+            existingUrl: _recordedPath,
+            onRecordingComplete: (path) {
+              setState(() => _recordedPath = path);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l.voiceIntroSaved),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            onDelete: () => setState(() => _recordedPath = null),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppLocalizations.of(context)!.voiceIntroSaved),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                context.go('/');
-              },
-              icon: const Icon(Icons.mic, size: 20),
-              label: Text(l.recordYourIntro),
+            child: FilledButton(
+              onPressed: () => context.go('/'),
+              child: Text(_recordedPath != null ? l.continueLabel : l.skipForNow),
             ),
           ),
           const SizedBox(height: 12),
-          Center(
-            child: TextButton(
-              onPressed: () => context.go('/'),
-              child: Text(l.skipForNow),
-            ),
+          if (_recordedPath == null)
+            Center(
+              child: TextButton(
+                onPressed: () => context.go('/'),
+                child: Text(l.skipForNow),
+              ),
           ),
         ],
       ),

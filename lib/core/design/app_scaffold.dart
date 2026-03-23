@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_typography.dart';
-
-/// Standard scaffold for app screens with consistent app bar styling.
-/// Use when you need a simple screen layout; for custom app bars (e.g. SliverAppBar)
-/// use a plain [Scaffold] and apply theme manually.
+/// Standard scaffold with consistent app bar styling.
+/// Reads all styling from the current ThemeData — no hardcoded colors.
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
     super.key,
@@ -27,7 +24,8 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final theme = Theme.of(context);
+
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: (title == null && titleWidget == null && actions == null && bottom == null)
@@ -37,8 +35,8 @@ class AppScaffold extends StatelessWidget {
                   (title != null
                       ? Text(
                           title!,
-                          style: AppTypography.headlineSmall.copyWith(
-                            color: onSurface,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.w700,
                           ),
                         )
