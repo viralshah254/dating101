@@ -38,8 +38,6 @@ class RootShell extends ConsumerWidget {
     final shortlistCount = ref.watch(whoShortlistedMeCountProvider).valueOrNull ?? 0;
     final chatUnread = ref.watch(chatNavUnreadCountProvider);
     final messageReqCount = ref.watch(messageRequestsCountProvider).valueOrNull ?? 0;
-    final notificationsUnread =
-        ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
     final badges = _badgesForMode(
       mode,
       flags,
@@ -47,7 +45,6 @@ class RootShell extends ConsumerWidget {
       shortlistCount,
       chatUnread,
       messageReqCount,
-      notificationsUnread,
     );
 
     return Scaffold(
@@ -99,15 +96,15 @@ class RootShell extends ConsumerWidget {
     int shortlistCount,
     int chatUnread,
     int messageReqCount,
-    int notificationsUnread,
   ) {
+    // Unread in-app notifications are surfaced on Profile → Notifications, not on the tab icon.
     if (mode == AppMode.dating) {
-      return [0, 0, chatUnread + messageReqCount, 0, notificationsUnread];
+      return [0, 0, chatUnread + messageReqCount, 0, 0];
     }
     if (flags.mapInMatrimony) {
-      return [0, 0, shortlistCount, chatUnread + messageReqCount, notificationsUnread];
+      return [0, 0, shortlistCount, chatUnread + messageReqCount, 0];
     }
-    return [0, requestsCount, shortlistCount, chatUnread + messageReqCount, notificationsUnread];
+    return [0, requestsCount, shortlistCount, chatUnread + messageReqCount, 0];
   }
 
   void _onTap(int index) {

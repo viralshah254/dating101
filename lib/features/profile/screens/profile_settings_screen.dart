@@ -47,6 +47,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final primary = Theme.of(context).colorScheme.primary;
     final profileAsync = ref.watch(_myProfileProvider);
+    final notifUnread = ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
 
     final profileName = profileAsync.whenOrNull(data: (p) => p?.name);
     final profilePhoto = profileAsync.whenOrNull(
@@ -183,7 +184,34 @@ class ProfileSettingsScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (notifUnread > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        notifUnread > 99 ? '99+' : '$notifUnread',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                Icon(
+                  Icons.chevron_right,
+                  color: onSurface.withValues(alpha: 0.45),
+                ),
+              ],
+            ),
             onTap: () => context.push('/notifications'),
             onLongPress: () => _showNotificationSettings(context, ref),
           ),
