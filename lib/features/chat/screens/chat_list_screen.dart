@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/datetime/app_time_format.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
 import '../../../core/mode/app_mode.dart';
-import '../../../core/theme/app_motion.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
@@ -22,6 +22,24 @@ import '../../discovery/providers/discovery_providers.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/chat_providers.dart';
+
+class _ChatTabLabel extends StatelessWidget {
+  const _ChatTabLabel({required this.text, required this.badgeCount});
+  final String text;
+  final int badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    if (badgeCount <= 0) return Text(text);
+    return Badge(
+      label: Text(
+        badgeCount > 99 ? '99+' : '$badgeCount',
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+      ),
+      child: Text(text),
+    );
+  }
+}
 
 class _ChatThreadSearchDelegate extends SearchDelegate<ChatThreadSummary?> {
   _ChatThreadSearchDelegate(this.threads, this.searchLabel);
@@ -178,17 +196,37 @@ class ChatListScreen extends ConsumerWidget {
               },
             ),
           ],
-          bottom: TabBar(
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: onSurface.withValues(alpha: 0.6),
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            labelStyle: AppTypography.labelLarge.copyWith(
-              fontWeight: FontWeight.w600,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: Consumer(
+              builder: (context, ref, _) {
+                final threads = ref.watch(chatThreadsProvider).valueOrNull ?? [];
+                final unreadSum = threads.fold<int>(0, (a, t) => a + t.unreadCount);
+                final reqCount = ref.watch(messageRequestsCountProvider).valueOrNull ?? 0;
+                return TabBar(
+                  labelColor: Theme.of(context).colorScheme.primary,
+                  unselectedLabelColor: onSurface.withValues(alpha: 0.6),
+                  indicatorColor: Theme.of(context).colorScheme.primary,
+                  labelStyle: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  tabs: [
+                    Tab(
+                      child: _ChatTabLabel(
+                        text: AppLocalizations.of(context)!.tabChats,
+                        badgeCount: unreadSum,
+                      ),
+                    ),
+                    Tab(
+                      child: _ChatTabLabel(
+                        text: AppLocalizations.of(context)!.tabMessageRequests,
+                        badgeCount: reqCount,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-            tabs: [
-              Tab(text: AppLocalizations.of(context)!.tabChats),
-              Tab(text: AppLocalizations.of(context)!.tabMessageRequests),
-            ],
           ),
         ),
         body: TabBarView(children: [_ChatsTab(), _ChatRequestsTab()]),
@@ -231,6 +269,7 @@ class _ChatsTab extends ConsumerWidget {
             itemBuilder: (context, i) {
               final t = threads[i];
               return _ChatThreadTile(
+                key: ValueKey(t.id),
                 thread: t,
                 onTap: () async {
                   await context.push(
@@ -238,7 +277,7 @@ class _ChatsTab extends ConsumerWidget {
                   );
                   if (context.mounted) ref.invalidate(chatThreadsProvider);
                 },
-              ).staggeredItem(i);
+              );
             },
           ),
         );
@@ -855,19 +894,30 @@ class _GroupedRequest {
 // ─── Thread tile (chats tab) ───────────────────────────────────────────────
 
 class _ChatThreadTile extends ConsumerWidget {
-  const _ChatThreadTile({required this.thread, required this.onTap});
+  const _ChatThreadTile({super.key, required this.thread, required this.onTap});
   final ChatThreadSummary thread;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final timeStr = _timeAgo(thread.lastMessageAt);
     final profileAsync = ref.watch(profileSummaryProvider(thread.otherUserId));
+    final lastActiveForSeen =
+        thread.otherLastActiveAt ?? profileAsync.valueOrNull?.lastActiveAt;
+    final timeStr = formatChatThreadListTrailingTime(
+      otherUserOnline: thread.otherUserOnline,
+      otherLastActiveAt: lastActiveForSeen,
+      lastMessageAt: thread.lastMessageAt,
+    );
     final imageUrl = profileAsync.valueOrNull?.imageUrl;
     final initial = thread.otherName.isNotEmpty
         ? thread.otherName[0].toUpperCase()
         : '?';
+    final cs = Theme.of(context).colorScheme;
+    final presenceReachable = thread.otherUserOnline ||
+        (thread.otherLastActiveAt != null &&
+            DateTime.now().difference(thread.otherLastActiveAt!) <=
+                const Duration(minutes: 10));
 
     return Material(
       color: Colors.transparent,
@@ -877,21 +927,44 @@ class _ChatThreadTile extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                    ? NetworkImage(imageUrl)
-                    : null,
-                child: imageUrl == null || imageUrl.isEmpty
-                    ? Text(
-                        initial,
-                        style: AppTypography.titleLarge.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: cs.primary.withValues(alpha: 0.2),
+                    backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                        ? NetworkImage(imageUrl)
+                        : null,
+                    child: imageUrl == null || imageUrl.isEmpty
+                        ? Text(
+                            initial,
+                            style: AppTypography.titleLarge.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        : null,
+                  ),
+                  Positioned(
+                    right: 2,
+                    bottom: 2,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: presenceReachable
+                            ? const Color(0xFF2196F3)
+                            : cs.onSurface.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          width: 2,
                         ),
-                      )
-                    : null,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -939,7 +1012,7 @@ class _ChatThreadTile extends ConsumerWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: cs.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -960,16 +1033,6 @@ class _ChatThreadTile extends ConsumerWidget {
     );
   }
 
-  static String? _timeAgo(DateTime? d) {
-    if (d == null) return null;
-    final now = DateTime.now();
-    final diff = now.difference(d);
-    if (diff.inMinutes < 1) return 'Now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${d.day}/${d.month}';
-  }
 }
 
 // ─── Message request tile (chat message requests: inbound on top) ───────────

@@ -54,20 +54,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _CountryCode('+60', 'Malaysia', '\u{1F1F2}\u{1F1FE}'),
   ];
 
-  /// ISO 3166-1 alpha-2 country code -> _CountryCode (for device locale).
   static final _isoToCountry = {
-    'IN': _countryCodes[0],   // India
-    'GB': _countryCodes[1],   // UK
-    'US': _countryCodes[2],   // USA
-    'AE': _countryCodes[3],   // UAE
-    'AU': _countryCodes[4],   // Australia
-    'SG': _countryCodes[5],   // Singapore
-    'DE': _countryCodes[6],   // Germany
-    'FR': _countryCodes[7],   // France
-    'CA': _countryCodes[8],   // Canada
-    'KE': _countryCodes[9],   // Kenya
-    'ZA': _countryCodes[10],  // South Africa
-    'MY': _countryCodes[11],  // Malaysia
+    'IN': _countryCodes[0],
+    'GB': _countryCodes[1],
+    'US': _countryCodes[2],
+    'AE': _countryCodes[3],
+    'AU': _countryCodes[4],
+    'SG': _countryCodes[5],
+    'DE': _countryCodes[6],
+    'FR': _countryCodes[7],
+    'CA': _countryCodes[8],
+    'KE': _countryCodes[9],
+    'ZA': _countryCodes[10],
+    'MY': _countryCodes[11],
   };
 
   static const _defaultCountry = _CountryCode(
@@ -82,7 +81,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _country = _countryCodeFromDeviceLocale();
   }
 
-  /// Picks country code from device locale (e.g. US, IN, GB); falls back to India.
   _CountryCode _countryCodeFromDeviceLocale() {
     final locale = WidgetsBinding.instance.platformDispatcher.locale;
     final iso = locale.countryCode;
@@ -103,7 +101,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// Normalized phone: strip leading zeros, keep only digits.
   String get _normalizedPhone {
     final raw = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
     return raw.replaceFirst(RegExp(r'^0+'), '');
@@ -194,8 +191,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     IconButton(
-                      onPressed: () =>
-                          showLanguagePickerSheet(context, ref),
+                      onPressed: () => showLanguagePickerSheet(context, ref),
                       icon: const Icon(Icons.language_rounded),
                       tooltip: l.appLanguage,
                     ),
@@ -210,13 +206,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       const SizedBox(height: 24),
                       Text(
-                            l.loginHeroTitle,
-                            style: AppTypography.displayLarge.copyWith(
-                              color: onSurface,
-                              fontSize: 40,
-                              height: 1.15,
-                            ),
-                          )
+                        l.loginHeroTitle,
+                        style: AppTypography.displayLarge.copyWith(
+                          color: onSurface,
+                          fontSize: 40,
+                          height: 1.15,
+                        ),
+                      )
                           .animate()
                           .fadeIn(duration: 500.ms)
                           .slideY(begin: -0.15, end: 0, curve: Curves.easeOut),
@@ -229,8 +225,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                       const SizedBox(height: 40),
-
-                      // Glass form card
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: BackdropFilter(
@@ -238,262 +232,287 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.72),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surface
+                                  .withValues(alpha: 0.72),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.18),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withValues(alpha: 0.18),
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-
-                      // Phone input
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => _showCountryPicker(context),
-                            child: Container(
-                              height: 56,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Theme.of(context).dividerColor,
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => _showCountryPicker(context),
+                                      child: Container(
+                                        height: 56,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color:
+                                                Theme.of(context).dividerColor,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              _country.flag,
+                                              style: const TextStyle(
+                                                fontSize: 22,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _country.code,
+                                              style: AppTypography.bodyMedium
+                                                  .copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: onSurface,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Icon(
+                                              Icons.keyboard_arrow_down,
+                                              size: 20,
+                                              color: onSurface.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _phoneController,
+                                        keyboardType: TextInputType.phone,
+                                        style: AppTypography.bodyLarge.copyWith(
+                                          color: onSurface,
+                                          letterSpacing: 1.2,
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: l.phoneNumber,
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        onChanged: (_) => setState(() {
+                                          _errorMessage = null;
+                                          _errorCode = null;
+                                        }),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _country.flag,
-                                    style: const TextStyle(fontSize: 22),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  style: AppTypography.bodyLarge.copyWith(
+                                    color: onSurface,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _country.code,
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: onSurface,
+                                  decoration: InputDecoration(
+                                    labelText: l.authPasswordLabel,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                        color: onSurface.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
+                                      onPressed: () => setState(() =>
+                                          _obscurePassword = !_obscurePassword),
                                     ),
                                   ),
-                                  const SizedBox(width: 2),
-                                  Icon(
-                                    Icons.keyboard_arrow_down,
-                                    size: 20,
-                                    color: onSurface.withValues(alpha: 0.5),
+                                  onChanged: (_) => setState(() {
+                                    _errorMessage = null;
+                                    _errorCode = null;
+                                  }),
+                                ),
+                                if (_isSignUp) ...[
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: _confirmPasswordController,
+                                    obscureText: _obscureConfirm,
+                                    style: AppTypography.bodyLarge.copyWith(
+                                      color: onSurface,
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: l.authConfirmPasswordLabel,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscureConfirm
+                                              ? Icons.visibility_outlined
+                                              : Icons.visibility_off_outlined,
+                                          color: onSurface.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                        ),
+                                        onPressed: () => setState(() =>
+                                            _obscureConfirm = !_obscureConfirm),
+                                      ),
+                                    ),
+                                    onChanged: (_) => setState(() {
+                                      _errorMessage = null;
+                                      _errorCode = null;
+                                    }),
                                   ),
                                 ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              style: AppTypography.bodyLarge.copyWith(
-                                color: onSurface,
-                                letterSpacing: 1.2,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: l.phoneNumber,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onChanged: (_) =>
-                                  setState(() { _errorMessage = null; _errorCode = null; }),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: onSurface,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: l.authPasswordLabel,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              color: onSurface.withValues(alpha: 0.5),
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscurePassword = !_obscurePassword),
-                          ),
-                        ),
-                        onChanged: (_) =>
-                            setState(() { _errorMessage = null; _errorCode = null; }),
-                      ),
-
-                      if (_isSignUp) ...[
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirm,
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: onSurface,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: l.authConfirmPasswordLabel,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureConfirm
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                color: onSurface.withValues(alpha: 0.5),
-                              ),
-                              onPressed: () =>
-                                  setState(() => _obscureConfirm = !_obscureConfirm),
-                            ),
-                          ),
-                          onChanged: (_) =>
-                              setState(() { _errorMessage = null; _errorCode = null; }),
-                        ),
-                      ],
-
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => setState(() {
-                            _isSignUp = !_isSignUp;
-                            _errorMessage = null;
-                            _errorCode = null;
-                          }),
-                          child: Text(
-                            _isSignUp ? l.authSignInLink : l.authSignUpLink,
-                            style: AppTypography.labelLarge.copyWith(
-                              color: accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      if (_errorMessage != null) ...[
-                        const SizedBox(height: 12),
-                        _buildErrorWidget(context),
-                      ],
-
-                      const SizedBox(height: 12),
-
-                      // Age confirmation
-                      GestureDetector(
-                        onTap: () =>
-                            setState(() => _ageConfirmed = !_ageConfirmed),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: Checkbox(
-                                value: _ageConfirmed,
-                                onChanged: (v) =>
-                                    setState(() => _ageConfirmed = v ?? false),
-                                activeColor: accent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                l.ageConfirmation,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      if (_isSignUp) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          l.referralCodeHint,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _referralCodeController,
-                          textCapitalization: TextCapitalization.characters,
-                          autocorrect: false,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: onSurface,
-                            letterSpacing: 1.2,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: l.referralCodeOptional,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ],
-
-                      const SizedBox(height: 24),
-
-                      // CTA
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: FilledButton(
-                          onPressed: _canContinue ? _continue : null,
-                          style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: _isSending
-                              ? SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                  ),
-                                )
-                              : Text(
-                                  _isSignUp ? l.authCreateAccountButton : l.authSignInButton,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () => setState(() {
+                                      _isSignUp = !_isSignUp;
+                                      _errorMessage = null;
+                                      _errorCode = null;
+                                    }),
+                                    child: Text(
+                                      _isSignUp
+                                          ? l.authSignInLink
+                                          : l.authSignUpLink,
+                                      style: AppTypography.labelLarge.copyWith(
+                                        color: accent,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                        ),
-                      ),
-
-                      // close glass card Column + Container + BackdropFilter + ClipRRect
+                                if (_errorMessage != null) ...[
+                                  const SizedBox(height: 12),
+                                  _buildErrorWidget(context),
+                                ],
+                                const SizedBox(height: 12),
+                                GestureDetector(
+                                  onTap: () => setState(
+                                    () => _ageConfirmed = !_ageConfirmed,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: Checkbox(
+                                          value: _ageConfirmed,
+                                          onChanged: (v) => setState(() =>
+                                              _ageConfirmed = v ?? false),
+                                          activeColor: accent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          l.ageConfirmation,
+                                          style: AppTypography.bodySmall
+                                              .copyWith(
+                                            color: onSurface.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_isSignUp) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    l.referralCodeHint,
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color:
+                                          onSurface.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _referralCodeController,
+                                    textCapitalization:
+                                        TextCapitalization.characters,
+                                    autocorrect: false,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      color: onSurface,
+                                      letterSpacing: 1.2,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: l.referralCodeOptional,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    onChanged: (_) => setState(() {}),
+                                  ),
+                                ],
+                                const SizedBox(height: 24),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 54,
+                                  child: FilledButton(
+                                    onPressed:
+                                        _canContinue ? _continue : null,
+                                    style: FilledButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    child: _isSending
+                                        ? SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onPrimary,
+                                            ),
+                                          )
+                                        : Text(
+                                            _isSignUp
+                                                ? l.authCreateAccountButton
+                                                : l.authSignInButton,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ),
-                      ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideY(begin: 0.05, end: 0),
-
+                      ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideY(
+                            begin: 0.05,
+                            end: 0,
+                          ),
                     ],
                   ),
                 ),
@@ -616,8 +635,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       } else {
         _filtered = widget.countries
             .where((c) =>
-                c.label.toLowerCase().contains(q) ||
-                c.code.contains(q))
+                c.label.toLowerCase().contains(q) || c.code.contains(q))
             .toList();
       }
     });
@@ -646,14 +664,17 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context)!.searchCountryHint,
-                prefixIcon: Icon(Icons.search, color: onSurface.withValues(alpha: 0.4)),
+                prefixIcon:
+                    Icon(Icons.search, color: onSurface.withValues(alpha: 0.4)),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12),
               ),
               onChanged: _onSearch,
             ),
@@ -678,7 +699,8 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                     itemBuilder: (context, i) {
                       final c = _filtered[i];
                       return ListTile(
-                        leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
+                        leading:
+                            Text(c.flag, style: const TextStyle(fontSize: 24)),
                         title: Text(c.label),
                         trailing: Text(c.code, style: AppTypography.labelLarge),
                         onTap: () => widget.onSelect(c),
@@ -691,4 +713,3 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     );
   }
 }
-

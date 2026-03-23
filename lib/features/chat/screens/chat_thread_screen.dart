@@ -4,15 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/datetime/app_time_format.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
@@ -49,33 +50,28 @@ const _icebreakerSuggestions = [
   'Tell me about yourself',
 ];
 
-class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
-    with SingleTickerProviderStateMixin {
+class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   /// True after first send when we used [ChatThreadScreen.initialAdToken].
   bool _consumedInitialAdToken = false;
-  late final AnimationController _pulseCtrl;
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: AppMotion.loop,
-      lowerBound: 0.4,
-      upperBound: 1.0,
-    )..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final repo = ref.read(chatRepositoryProvider);
+      final ws = ref.read(chatWebSocketClientProvider);
       try {
-        await ref.read(chatRepositoryProvider).markThreadRead(widget.threadId);
+        await repo.markThreadRead(widget.threadId);
+        ws?.sendMarkRead(widget.threadId);
         if (mounted) ref.invalidate(chatThreadsProvider);
       } catch (_) {}
+      try {
+        final peer = await repo.getPeerLastReadAt(widget.threadId);
+        if (mounted) {
+          ref.read(threadPeerReadAtProvider(widget.threadId).notifier).state = peer;
+        }
+      } catch (_) {}
     });
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _sendMessageText(
@@ -85,6 +81,17 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
   ) async {
     final chatRepo = ref.read(chatRepositoryProvider);
     final me = ref.read(authRepositoryProvider).currentUserId;
+    if (me == null || me.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
     final ent = ref.read(entitlementsProvider);
 
     // Free user: require ad unless chatting with a match (matches can message without ad).
@@ -120,7 +127,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
 
     final pendingMsg = ChatMessage(
       id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
-      senderId: me ?? 'me',
+      senderId: me,
       text: text,
       sentAt: DateTime.now(),
     );
@@ -320,11 +327,21 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
     String? currentUserId,
     List<ChatMessage> pendingSent,
   ) {
+    bool sameSender(ChatMessage m, ChatMessage p) {
+      if (m.senderId == p.senderId) return true;
+      if (currentUserId != null &&
+          m.senderId == currentUserId &&
+          (p.senderId == 'me' || p.senderId == currentUserId)) {
+        return true;
+      }
+      return false;
+    }
+
     final merged = List<ChatMessage>.from(server);
     for (final p in pendingSent) {
       final match = merged.any(
         (m) =>
-            m.senderId == p.senderId &&
+            sameSender(m, p) &&
             m.text == p.text &&
             (m.sentAt.difference(p.sentAt).inSeconds.abs() < 120),
       );
@@ -339,6 +356,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
     final currentUserId = ref.watch(authRepositoryProvider).currentUserId;
     final messagesAsync = ref.watch(_threadMessagesProvider(widget.threadId));
     final pendingSent = ref.watch(pendingSentMessagesProvider(widget.threadId));
+    final peerReadAt = ref.watch(threadPeerReadAtProvider(widget.threadId));
     final suggestionsAsync = ref.watch(chatSuggestionsProvider);
     final icebreakerList =
         suggestionsAsync.valueOrNull ?? _icebreakerSuggestions;
@@ -367,15 +385,30 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
 
     final profile = profileAsync?.valueOrNull;
     final displayName = profile?.name ?? 'Chat';
+    ChatThreadSummary? threadRow;
+    for (final t in ref.watch(chatThreadsProvider).valueOrNull ?? const <ChatThreadSummary>[]) {
+      if (t.id == widget.threadId) {
+        threadRow = t;
+        break;
+      }
+    }
+    final online = threadRow?.otherUserOnline ?? false;
+    final lastActive =
+        threadRow?.otherLastActiveAt ?? profile?.lastActiveAt;
+    final headerPresence = _chatHeaderPresence(online: online, lastActive: lastActive);
+    final presenceLabel =
+        formatProfileLastSeenSubtitle(online: online, lastActive: lastActive);
     final compatibilityScore = profile?.compatibilityScore;
     final scoreLabel = compatibilityScore != null
         ? '${(compatibilityScore * 100).round()}% match'
         : null;
-    final subtitle =
-        scoreLabel ??
-        (profile?.city != null
-            ? '${profile!.city!} · Active now'
-            : 'Active now');
+    final subtitle = [
+      if (scoreLabel != null) scoreLabel,
+      if (presenceLabel != null) presenceLabel,
+    ].join(' · ');
+    final subtitleFinal = subtitle.isNotEmpty
+        ? subtitle
+        : (profile?.city != null ? profile!.city! : '');
 
     final avatarUrl = profile?.imageUrl;
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
@@ -407,6 +440,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Stack(
+                        clipBehavior: Clip.none,
                         children: [
                           CircleAvatar(
                             radius: 20,
@@ -424,22 +458,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                                   )
                                 : null,
                           ),
-                          // Active indicator with pulse animation
                           Positioned(
-                            bottom: 1,
-                            right: 1,
-                            child: AnimatedBuilder(
-                              animation: _pulseCtrl,
-                              builder: (_, __) => Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: cs.primary.withValues(alpha: _pulseCtrl.value),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: cs.surface,
-                                    width: 1.5,
-                                  ),
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 11,
+                              height: 11,
+                              decoration: BoxDecoration(
+                                color: headerPresence == _ChatHeaderPresence.reachable
+                                    ? const Color(0xFF2196F3)
+                                    : cs.onSurface.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: cs.surface,
+                                  width: 1.5,
                                 ),
                               ),
                             ),
@@ -459,7 +491,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                             ),
                           ),
                           Text(
-                            subtitle,
+                            subtitleFinal,
                             style: AppTypography.caption.copyWith(
                               color: cs.onSurface.withValues(alpha: 0.7),
                               fontWeight: FontWeight.w500,
@@ -579,7 +611,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                           currentUserId != null && m.senderId == currentUserId;
                       final showDateSeparator =
                           i == 0 ||
-                          !_isSameDay(m.sentAt, reversed[i - 1].sentAt);
+                          !isSameLocalDay(m.sentAt, reversed[i - 1].sentAt);
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -587,10 +619,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                           if (showDateSeparator)
                             _DateSeparator(sentAt: m.sentAt),
                           _MessageBubble(
+                                messageId: m.id,
                                 text: m.text,
                                 sentAt: m.sentAt,
                                 isMe: isMe,
                                 isVoiceNote: m.isVoiceNote,
+                                peerReadAt: peerReadAt,
+                                otherUserOnline: online,
+                                otherLastActiveAt: lastActive,
                               )
                               .animate()
                               .fadeIn(delay: (20 * i).ms)
@@ -638,11 +674,23 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
 
 final _threadMessagesProvider = StreamProvider.autoDispose
     .family<List<ChatMessage>, String>((ref, threadId) {
-      return ref.watch(chatRepositoryProvider).watchMessages(threadId);
+      final viewerId = ref.watch(authRepositoryProvider).currentUserId;
+      return ref.watch(chatRepositoryProvider).watchMessages(threadId, viewerUserId: viewerId);
     });
 
-bool _isSameDay(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
+/// Bottom-right dot on chat header avatar: blue if online or active within [recentWithin], else pale.
+enum _ChatHeaderPresence { offline, reachable }
+
+_ChatHeaderPresence _chatHeaderPresence({
+  required bool online,
+  DateTime? lastActive,
+  Duration recentWithin = const Duration(minutes: 10),
+}) {
+  if (online) return _ChatHeaderPresence.reachable;
+  if (lastActive != null && DateTime.now().difference(lastActive) <= recentWithin) {
+    return _ChatHeaderPresence.reachable;
+  }
+  return _ChatHeaderPresence.offline;
 }
 
 class _DateSeparator extends StatelessWidget {
@@ -651,17 +699,7 @@ class _DateSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final messageDay = DateTime(sentAt.year, sentAt.month, sentAt.day);
-    String label;
-    if (messageDay == today) {
-      label = 'Today';
-    } else if (messageDay == today.subtract(const Duration(days: 1))) {
-      label = 'Yesterday';
-    } else {
-      label = DateFormat.MMMd().format(sentAt);
-    }
+    final label = formatChatDateSeparator(sentAt);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Center(
@@ -690,30 +728,102 @@ class _DateSeparator extends StatelessWidget {
 
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
+    required this.messageId,
     required this.text,
     required this.sentAt,
     required this.isMe,
     this.isVoiceNote = false,
+    this.peerReadAt,
+    this.otherUserOnline = false,
+    this.otherLastActiveAt,
   });
+  final String messageId;
   final String text;
   final DateTime sentAt;
   final bool isMe;
   final bool isVoiceNote;
+  /// Other participant's read time (for ✓ on your messages).
+  final DateTime? peerReadAt;
+  /// From thread summary / presence — for double-grey "reachable" ticks.
+  final bool otherUserOnline;
+  final DateTime? otherLastActiveAt;
+
+  static const Duration _recentlyActiveWindow = Duration(minutes: 10);
+
+  /// True while message is only on the client (sending / not yet persisted).
+  static bool _isClientOptimisticPending(String id) {
+    if (id.startsWith('temp_')) return true;
+    if (id.startsWith('pending-') && !id.startsWith('pending-req:')) return true;
+    return false;
+  }
+
+  /// Persisted on server (including pending message-request rows).
+  static bool _isDeliveredToServer(String id) => !_isClientOptimisticPending(id);
+
+  static bool _readByPeer(DateTime sentAt, DateTime? peerReadAt) {
+    if (peerReadAt == null) return false;
+    return !peerReadAt.isBefore(sentAt.subtract(const Duration(seconds: 1)));
+  }
+
+  static bool _peerRecentlyReachable(bool online, DateTime? lastActive) {
+    if (online) return true;
+    if (lastActive == null) return false;
+    return DateTime.now().difference(lastActive) <= _recentlyActiveWindow;
+  }
+
+  /// WhatsApp-style: single = sent (they're offline / not recently active), double grey = online or active ~10m, double green = read.
+  Widget? _outgoingReceiptRow(Color outgoingFg) {
+    if (!isMe) return null;
+    final optimistic = _isClientOptimisticPending(messageId);
+    if (optimistic) {
+      return Icon(
+        Icons.done_rounded,
+        size: 15,
+        color: outgoingFg.withValues(alpha: 0.42),
+      );
+    }
+    if (!_isDeliveredToServer(messageId)) return null;
+
+    final read = _readByPeer(sentAt, peerReadAt);
+    if (read) {
+      return Icon(
+        Icons.done_all_rounded,
+        size: 15,
+        color: const Color(0xFF8FE1A0),
+      );
+    }
+    if (_peerRecentlyReachable(otherUserOnline, otherLastActiveAt)) {
+      return Icon(
+        Icons.done_all_rounded,
+        size: 15,
+        color: outgoingFg.withValues(alpha: 0.52),
+      );
+    }
+    return Icon(
+      Icons.done_rounded,
+      size: 15,
+      color: outgoingFg.withValues(alpha: 0.88),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
-    final timeStr = _formatTime(sentAt);
+    final cs = theme.colorScheme;
+    final onSurface = cs.onSurface;
+    final timeStr = formatChatBubbleTime(sentAt);
+    // Outgoing: use saturated brand oranges — ColorScheme.primary can resolve to a light
+    // tint on some devices/themes (peach + white text = unreadable).
+    final bool light = theme.brightness == Brightness.light;
     final bubbleBg = isMe
-        ? theme.colorScheme.primaryContainer
-        : theme.colorScheme.surfaceContainerHighest;
-    final textColor = isMe
-        ? theme.colorScheme.onPrimaryContainer
-        : onSurface;
+        ? (light ? AppColors.saffronDark : AppColors.darkAccentDim)
+        : cs.surfaceContainerHighest;
+    const outgoingFg = Colors.white;
+    final textColor = isMe ? outgoingFg : onSurface;
     final timeColor = isMe
-        ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.65)
+        ? outgoingFg.withValues(alpha: 0.88)
         : onSurface.withValues(alpha: 0.55);
+    final receipt = _outgoingReceiptRow(outgoingFg);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -732,7 +842,9 @@ class _MessageBubble extends StatelessWidget {
             bottomRight: Radius.circular(isMe ? 6 : 18),
           ),
           border: isMe
-              ? Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.35))
+              ? Border.all(
+                  color: outgoingFg.withValues(alpha: 0.2),
+                )
               : null,
           boxShadow: [
             BoxShadow(
@@ -753,7 +865,7 @@ class _MessageBubble extends StatelessWidget {
                   Icon(
                     Icons.mic_rounded,
                     size: 18,
-                    color: theme.colorScheme.primary,
+                    color: isMe ? outgoingFg : cs.primary,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -763,7 +875,7 @@ class _MessageBubble extends StatelessWidget {
                 ],
               )
             else
-              Text(
+              SelectableText(
                 text,
                 style: AppTypography.bodyMedium.copyWith(
                   color: textColor,
@@ -771,12 +883,19 @@ class _MessageBubble extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 4),
-            Text(
-              timeStr,
-              style: AppTypography.caption.copyWith(
-                color: timeColor,
-                fontSize: 11,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    timeStr,
+                    style: AppTypography.caption.copyWith(
+                      color: timeColor,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                if (receipt != null) receipt,
+              ],
             ),
           ],
         ),
@@ -784,23 +903,6 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  static String _formatTime(DateTime d) {
-    final now = DateTime.now();
-    final diff = now.difference(d);
-    if (diff.inSeconds < 60) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (d.day == now.day && d.month == now.month && d.year == now.year) {
-      return DateFormat.jm().format(d);
-    }
-    final yesterday = now.subtract(const Duration(days: 1));
-    if (d.day == yesterday.day &&
-        d.month == yesterday.month &&
-        d.year == yesterday.year) {
-      return 'Yesterday ${DateFormat.jm().format(d)}';
-    }
-    if (diff.inDays < 7) return DateFormat.E().add_jm().format(d);
-    return DateFormat.MMMd().add_jm().format(d);
-  }
 }
 
 class _TypingBar extends StatefulWidget {

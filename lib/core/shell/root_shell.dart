@@ -33,13 +33,21 @@ class RootShell extends ConsumerWidget {
     final theme = Theme.of(context);
     final brand = theme.extension<BrandTheme>();
     final items = _navItems(mode, flags, l);
+    ref.watch(chatRealtimeHubProvider);
     final requestsCount = ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
     final shortlistCount = ref.watch(whoShortlistedMeCountProvider).valueOrNull ?? 0;
-    final chatUnread = ref.watch(chatUnreadTotalProvider).valueOrNull ?? 0;
+    final chatUnread = ref.watch(chatNavUnreadCountProvider);
+    final messageReqCount = ref.watch(messageRequestsCountProvider).valueOrNull ?? 0;
     final notificationsUnread =
         ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
     final badges = _badgesForMode(
-      mode, flags, requestsCount, shortlistCount, chatUnread, notificationsUnread,
+      mode,
+      flags,
+      requestsCount,
+      shortlistCount,
+      chatUnread,
+      messageReqCount,
+      notificationsUnread,
     );
 
     return Scaffold(
@@ -90,15 +98,16 @@ class RootShell extends ConsumerWidget {
     int requestsCount,
     int shortlistCount,
     int chatUnread,
+    int messageReqCount,
     int notificationsUnread,
   ) {
     if (mode == AppMode.dating) {
-      return [0, 0, chatUnread, 0, notificationsUnread];
+      return [0, 0, chatUnread + messageReqCount, 0, notificationsUnread];
     }
     if (flags.mapInMatrimony) {
-      return [0, 0, shortlistCount, chatUnread, notificationsUnread];
+      return [0, 0, shortlistCount, chatUnread + messageReqCount, notificationsUnread];
     }
-    return [0, requestsCount, shortlistCount, chatUnread, notificationsUnread];
+    return [0, requestsCount, shortlistCount, chatUnread + messageReqCount, notificationsUnread];
   }
 
   void _onTap(int index) {

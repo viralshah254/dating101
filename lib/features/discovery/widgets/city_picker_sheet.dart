@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/location/app_location_service.dart';
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/city_option.dart';
@@ -10,6 +12,7 @@ import '../../../domain/models/discovery_filter_params.dart';
 import '../../../domain/repositories/location_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/discovery_providers.dart';
+import 'discover_feed_loading_surface.dart';
 
 /// Change city bottom sheet: Your area, Nearby cities (with user counts),
 /// Browse by country → country → city (with user counts).
@@ -27,6 +30,8 @@ void showCityPickerSheet(BuildContext context, WidgetRef ref) {
         builder: (_, scrollController) => _CityPickerContent(
           scrollController: scrollController,
           onSelectCity: (cityName) {
+            ref.read(discoveryLoadingCueProvider.notifier).state =
+                DiscoveryLoadingCue.location;
             ref.read(discoveryTravelCityProvider.notifier).state = cityName;
             final fp = ref.read(discoveryFilterParamsProvider);
             ref.read(discoveryFilterParamsProvider.notifier).state =
@@ -35,6 +40,8 @@ void showCityPickerSheet(BuildContext context, WidgetRef ref) {
             if (context.mounted) Navigator.pop(ctx);
           },
           onSelectYourArea: () {
+            ref.read(discoveryLoadingCueProvider.notifier).state =
+                DiscoveryLoadingCue.location;
             ref.read(discoveryTravelCityProvider.notifier).state = null;
             final fp = ref.read(discoveryFilterParamsProvider);
             if (fp != null) {
@@ -141,7 +148,7 @@ class _YourAreaTile extends StatelessWidget {
   }
 }
 
-class _NearbyCitiesSection extends StatelessWidget {
+class _NearbyCitiesSection extends ConsumerWidget {
   const _NearbyCitiesSection({
     required this.locRepo,
     required this.onSelectCity,
@@ -150,34 +157,62 @@ class _NearbyCitiesSection extends StatelessWidget {
   final LocationRepository locRepo;
   final void Function(String) onSelectCity;
 
+  Widget _sectionHeader(BuildContext context, AppLocalizations l) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        l.nearbyCities,
+        style: AppTypography.titleSmall.copyWith(
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingNearby(BuildContext context, AppLocalizations l) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(context, l),
+        const DiscoverInlineListShimmer(itemCount: 4),
+      ],
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final discoverMode = ref.watch(appModeProvider) ?? AppMode.dating;
     return FutureBuilder<ProfileCreationLocation?>(
       future: AppLocationService.instance.getCurrentCreationLocation(),
       builder: (context, locSnap) {
+        if (locSnap.connectionState == ConnectionState.waiting) {
+          return _loadingNearby(context, l);
+        }
         if (locSnap.data == null) {
           return const SizedBox.shrink();
         }
         final lat = locSnap.data!.latitude;
         final lng = locSnap.data!.longitude;
         return FutureBuilder<List<CityOption>>(
-          future: locRepo.getNearbyCities(lat: lat, lng: lng, limit: 10),
+          future: locRepo.getNearbyCities(
+            lat: lat,
+            lng: lng,
+            limit: 10,
+            forDiscoveryMode: discoverMode,
+          ),
           builder: (context, snap) {
-            if (!snap.hasData || snap.data!.isEmpty) return const SizedBox.shrink();
+            if (snap.connectionState == ConnectionState.waiting) {
+              return _loadingNearby(context, l);
+            }
+            if (!snap.hasData || snap.data!.isEmpty) {
+              return const SizedBox.shrink();
+            }
             final cities = snap.data!;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    l.nearbyCities,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ),
+                _sectionHeader(context, l),
                 ...cities.map((c) => _CityTile(
                       city: c,
                       onTap: () => onSelectCity(c.name),
@@ -191,7 +226,7 @@ class _NearbyCitiesSection extends StatelessWidget {
   }
 }
 
-class _BrowseByCountrySection extends StatelessWidget {
+class _BrowseByCountrySection extends ConsumerWidget {
   const _BrowseByCountrySection({
     required this.locRepo,
     required this.selectedCountry,
@@ -207,18 +242,19 @@ class _BrowseByCountrySection extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final discoverMode = ref.watch(appModeProvider) ?? AppMode.dating;
 
     if (selectedCountry != null) {
       return FutureBuilder<List<CityOption>>(
-        future: locRepo.getCitiesByCountry(selectedCountry!.code),
+        future: locRepo.getCitiesByCountry(
+          selectedCountry!.code,
+          forDiscoveryMode: discoverMode,
+        ),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: Padding(
-              padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator(),
-            ));
+            return const DiscoverInlineListShimmer();
           }
           final cities = snap.data ?? [];
           if (cities.isEmpty) {

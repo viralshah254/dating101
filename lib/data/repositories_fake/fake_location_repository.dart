@@ -1,3 +1,4 @@
+import '../../core/mode/app_mode.dart';
 import '../../domain/models/city_option.dart';
 import '../../domain/models/country_option.dart';
 import '../../domain/repositories/location_repository.dart';
@@ -76,6 +77,7 @@ class FakeLocationRepository implements LocationRepository {
     required double lat,
     required double lng,
     int limit = 10,
+    AppMode? forDiscoveryMode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     return _nearbyCities.take(limit).toList();
@@ -88,7 +90,10 @@ class FakeLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<List<CityOption>> getCitiesByCountry(String countryCode) async {
+  Future<List<CityOption>> getCitiesByCountry(
+    String countryCode, {
+    AppMode? forDiscoveryMode,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     return _citiesByCountry[countryCode] ?? [];
   }

@@ -52,5 +52,6 @@ ProfileSummary profileToSummary(
     familyType: mat?.familyDetails?.familyType,
     photoCount: p.photoUrls.length,
     roleManagingProfile: mat?.roleManagingProfile,
+    lastActiveAt: p.lastActiveAt,
   );
 }

@@ -111,6 +111,12 @@ class AppLocalizationsMl extends AppLocalizations {
   String get verifyYourNumber => 'Verify your number';
 
   @override
+  String get authSignInUsePassword => 'Use password';
+
+  @override
+  String get authSignInUseSmsCode => 'Use SMS code';
+
+  @override
   String get enterOtp => 'Enter the 6-digit code';
 
   @override
@@ -258,6 +264,15 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get discoverTitle => 'Discover';
+
+  @override
+  String get discoverLoadingInitial => 'Finding great people for you…';
+
+  @override
+  String get discoverLoadingFilters => 'Refining your discovery…';
+
+  @override
+  String get discoverLoadingLocation => 'Gathering profiles in this area…';
 
   @override
   String get discoverNoMoreProfilesTitle => 'ഇപ്പോൾ കൂടുതൽ പ്രൊഫൈലുകളില്ല';
@@ -552,6 +567,9 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get signOut => 'Sign out';
+
+  @override
+  String get signOutSubtitle => 'Clears saved preferences on this device';
 
   @override
   String get editProfile => 'Edit profile';

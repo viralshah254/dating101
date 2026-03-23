@@ -10,6 +10,7 @@ import '../../domain/models/partner_preferences.dart';
 import '../../domain/models/profile_summary.dart';
 import '../../domain/models/user_profile.dart';
 import '../../domain/models/verification_status.dart';
+import '../../core/datetime/app_time_format.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../api/api_client.dart';
 
@@ -259,7 +260,7 @@ class ApiProfileRepository implements ProfileRepository {
           ? _parsePreferences(j['partnerPreferences'] as Map<String, dynamic>)
           : null,
       lastActiveAt: j['lastActiveAt'] != null
-          ? DateTime.tryParse(j['lastActiveAt'] as String)
+          ? parseApiDateTime(j['lastActiveAt'] as String)
           : null,
       isPremium: _safeBool(j['isPremium'], false),
       creationLat: (j['creationLat'] as num?)?.toDouble(),
@@ -552,6 +553,7 @@ class ApiProfileRepository implements ProfileRepository {
       matchReasons: _strList(j['matchReasons']),
       breakdown: breakdown,
       roleManagingProfile: roleManagingProfile,
+      lastActiveAt: parseApiDateTime(j['lastActiveAt'] as String?),
     );
   }
 

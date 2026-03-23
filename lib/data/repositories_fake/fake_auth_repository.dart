@@ -3,7 +3,6 @@ import 'dart:async';
 import '../../domain/repositories/auth_repository.dart';
 
 /// Fake auth for development. Any password with length ≥ 8 succeeds.
-/// Simulates new vs returning user based on phone number.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository() {
     _userIdController = StreamController<String?>.broadcast();
@@ -15,7 +14,6 @@ class FakeAuthRepository implements AuthRepository {
 
   static const String _fakeUserId = 'me';
 
-  /// Phones ending in 0000 are treated as "returning" users for testing.
   static bool _isReturningUser(String phone) {
     return phone.trim().endsWith('0000');
   }

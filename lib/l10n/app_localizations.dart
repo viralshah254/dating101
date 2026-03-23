@@ -314,10 +314,22 @@ abstract class AppLocalizations {
   /// **'Verify your number'**
   String get verifyYourNumber;
 
+  /// No description provided for @authSignInUsePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Use password'**
+  String get authSignInUsePassword;
+
+  /// No description provided for @authSignInUseSmsCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Use SMS code'**
+  String get authSignInUseSmsCode;
+
   /// No description provided for @enterOtp.
   ///
   /// In en, this message translates to:
-  /// **'Enter the 6-digit code'**
+  /// **'Enter the 4-digit code'**
   String get enterOtp;
 
   /// No description provided for @otpSentTo.
@@ -577,6 +589,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discover'**
   String get discoverTitle;
+
+  /// No description provided for @discoverLoadingInitial.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding great people for you…'**
+  String get discoverLoadingInitial;
+
+  /// No description provided for @discoverLoadingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Refining your discovery…'**
+  String get discoverLoadingFilters;
+
+  /// No description provided for @discoverLoadingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Gathering profiles in this area…'**
+  String get discoverLoadingLocation;
 
   /// No description provided for @discoverNoMoreProfilesTitle.
   ///
@@ -1105,6 +1135,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOut;
+
+  /// No description provided for @signOutSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clears saved preferences on this device'**
+  String get signOutSubtitle;
 
   /// No description provided for @editProfile.
   ///
@@ -1847,7 +1883,7 @@ abstract class AppLocalizations {
   /// No description provided for @otpSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Enter the 6-digit code sent to'**
+  /// **'Enter the 4-digit code sent to'**
   String get otpSubtitle;
 
   /// No description provided for @otpDidntReceive.

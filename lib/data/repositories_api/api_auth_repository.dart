@@ -35,7 +35,11 @@ class ApiAuthRepository implements AuthRepository {
       isNewUser: isNewUser,
     );
     _authStateController.add(userId);
-    return AuthSuccess(userId: userId, isNewUser: isNewUser, referralApplied: referralApplied);
+    return AuthSuccess(
+      userId: userId,
+      isNewUser: isNewUser,
+      referralApplied: referralApplied,
+    );
   }
 
   @override
@@ -119,10 +123,9 @@ class ApiAuthRepository implements AuthRepository {
       case 'RATE_LIMITED':
         return 'Too many attempts. Please wait a few minutes and try again.';
       case 'INVALID_CODE':
-        return 'Incorrect code. Please check and try again.';
       case 'EXPIRED_OTP':
       case 'NOT_FOUND':
-        return 'Code expired. Please request a new one.';
+        return 'Code expired or invalid. Please try again.';
       case 'SEND_FAILED':
         return 'Could not send SMS. Please try again shortly.';
       case 'INVALID_PHONE':
@@ -133,8 +136,6 @@ class ApiAuthRepository implements AuthRepository {
         return 'An account with this phone number already exists. Sign in instead.';
       case 'INVALID_CREDENTIALS':
         return 'Invalid phone number or password.';
-      case 'PASSWORD_NOT_SET':
-        return 'Password sign-in is not set up for this number. Create an account or contact support.';
       case 'SERVER_ERROR':
       case 'INTERNAL_ERROR':
         return 'Something went wrong on our end. Please try again.';

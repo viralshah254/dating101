@@ -78,7 +78,7 @@ class TokenStorage extends ChangeNotifier {
     ]);
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyIsNew);
+    await prefs.clear();
 
     notifyListeners();
   }

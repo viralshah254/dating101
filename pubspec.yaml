@@ -60,8 +60,8 @@ dependencies:
   flutter_svg: ^2.0.10+1
   lottie: ^3.1.2
 
-  # Audio — voice intro recording & playback
-  record: ^5.2.0
+  # Audio — voice intro recording & playback (6.x aligns record_linux with record_platform_interface 1.5+)
+  record: ^6.2.0
   just_audio: ^0.9.42
 
   # Forms & media
