@@ -6,6 +6,17 @@ import '../../core/datetime/app_time_format.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../api/api_client.dart';
 import '../api/chat_websocket_client.dart';
+import '../chat_thread_pagination_store.dart';
+import '../local/chat_thread_disk_cache.dart';
+
+/// Last list shown per thread — re-seeded when [watchMessages] restarts after invalidation so the UI
+/// does not briefly show loading/empty (dating and matrimony use the same stream).
+final Map<String, List<ChatMessage>> _threadMessageDisplayCache = {};
+
+void clearChatThreadMessageDisplayCache() {
+  _threadMessageDisplayCache.clear();
+  ChatThreadPaginationStore.clearAll();
+}
 
 class ApiChatRepository implements ChatRepository {
   ApiChatRepository({required this.api, this.wsClient});
@@ -62,8 +73,33 @@ class ApiChatRepository implements ChatRepository {
 
     void emit(List<ChatMessage> msgs) {
       latest = msgs;
-      if (!controller.isClosed) controller.add(msgs);
+      _threadMessageDisplayCache[threadId] = List<ChatMessage>.from(msgs);
+      final uid = viewerUserId;
+      if (uid != null && uid.isNotEmpty) {
+        ChatThreadDiskCache.scheduleWrite(uid, threadId, msgs);
+      }
+      if (!controller.isClosed) controller.add(List<ChatMessage>.from(msgs));
     }
+
+    final cached = _threadMessageDisplayCache[threadId];
+    if (cached != null && cached.isNotEmpty) {
+      latest = List<ChatMessage>.from(cached);
+      controller.add(List<ChatMessage>.from(cached));
+    }
+
+    Future<void> seedFromDisk() async {
+      final uid = viewerUserId;
+      if (uid == null || uid.isEmpty) return;
+      final disk = await ChatThreadDiskCache.read(uid, threadId);
+      if (controller.isClosed) return;
+      if (latest.isNotEmpty) return;
+      if (disk.isEmpty) return;
+      latest = List<ChatMessage>.from(disk);
+      _threadMessageDisplayCache[threadId] = latest;
+      if (!controller.isClosed) controller.add(List<ChatMessage>.from(disk));
+    }
+
+    unawaited(seedFromDisk());
 
     bool isNearDuplicate(ChatMessage msg) {
       return latest.any(
@@ -74,7 +110,36 @@ class ApiChatRepository implements ChatRepository {
       );
     }
 
-    _fetchMessages(threadId).then(emit).catchError((e) {
+    List<ChatMessage> reconcileFetchWithPrior(
+      List<ChatMessage> remote,
+      List<ChatMessage> prior,
+    ) {
+      if (prior.isEmpty) return remote;
+      final byId = {for (final p in prior) p.id: p};
+      return remote.map((m) {
+        final prev = byId[m.id];
+        if (prev != null && prev.outboundSeq != null) {
+          return ChatMessage(
+            id: m.id,
+            senderId: m.senderId,
+            text: m.text,
+            sentAt: prev.sentAt,
+            outboundSeq: prev.outboundSeq,
+            isVoiceNote: m.isVoiceNote,
+          );
+        }
+        return m;
+      }).toList();
+    }
+
+    _fetchMessagePage(threadId).then((page) {
+      if (controller.isClosed) return;
+      final uid = viewerUserId;
+      if (uid != null && uid.isNotEmpty) {
+        ChatThreadPaginationStore.setNextOlderCursor(uid, threadId, page.nextOlderCursor);
+      }
+      emit(reconcileFetchWithPrior(page.messages, latest));
+    }).catchError((e) {
       if (!controller.isClosed) controller.addError(e);
     });
 
@@ -103,38 +168,90 @@ class ApiChatRepository implements ChatRepository {
             text: m.text,
             sentAt: m.sentAt,
             isVoiceNote: m.isVoiceNote,
+            outboundSeq: null,
           );
           // Dedup: replace matching temp_ bubble with real-id version, or append if new
           final tempId = event.tempId;
           final existingTempIdx = tempId != null ? latest.indexWhere((e) => e.id == tempId) : -1;
           if (existingTempIdx >= 0) {
             final updated = [...latest];
-            updated[existingTempIdx] = msg;
+            final prev = updated[existingTempIdx];
+            // Keep the optimistic bubble's [sentAt] so [_mergeMessages] sort matches tap order
+            // while sends are in flight (server timestamps can reorder rapid outbound lines).
+            updated[existingTempIdx] = ChatMessage(
+              id: msg.id,
+              senderId: msg.senderId,
+              text: msg.text,
+              sentAt: prev.sentAt,
+              isVoiceNote: msg.isVoiceNote,
+              outboundSeq: prev.outboundSeq,
+            );
             emit(updated);
           } else {
             final byId = latest.indexWhere((e) => e.id == msg.id);
             if (byId >= 0) {
               final updated = [...latest];
-              updated[byId] = msg;
+              final prev = updated[byId];
+              // `message_persisted` (and similar) often follows `sent` after the row already has a
+              // real id. Do not replace [sentAt] with the server value or rapid sends reorder in UI.
+              updated[byId] = ChatMessage(
+                id: msg.id,
+                senderId: msg.senderId,
+                text: msg.text,
+                sentAt: prev.sentAt,
+                isVoiceNote: msg.isVoiceNote,
+                outboundSeq: prev.outboundSeq,
+              );
               emit(updated);
             } else if (!latest.any((e) => e.id == msg.id) && !isNearDuplicate(msg)) {
               emit([...latest, msg]);
             }
           }
         }
-        // messageRequestCreated: ad-gated send became a request — remove the pending temp bubble
+        // messageRequestCreated: swap temp bubble for synthetic pending-req row (no provider invalidation).
         if (event.type == IncomingEventType.messageRequestCreated &&
             event.threadId == threadId &&
-            event.tempId != null) {
-          final updated = latest.where((e) => e.id != event.tempId).toList();
-          if (updated.length != latest.length) emit(updated);
+            event.tempId != null &&
+            viewerUserId != null) {
+          final rid = event.messageRequestId;
+          final tempId = event.tempId!;
+          var body = event.messageRequestText?.trim();
+          final tempIdx = latest.indexWhere((e) => e.id == tempId);
+          if ((body == null || body.isEmpty) && tempIdx >= 0) {
+            body = latest[tempIdx].text;
+          }
+          var updated = latest.where((e) => e.id != tempId).toList();
+          final willAddSynthetic =
+              rid != null && body != null && body.isNotEmpty;
+          if (willAddSynthetic) {
+            updated = [
+              ...updated,
+              ChatMessage(
+                id: 'pending-req:$rid',
+                senderId: viewerUserId,
+                text: body,
+                sentAt: DateTime.now(),
+              ),
+            ];
+            updated.sort((a, b) => a.sentAt.compareTo(b.sentAt));
+          }
+          final hadTempBubble = tempIdx >= 0;
+          if (hadTempBubble || willAddSynthetic) {
+            emit(updated);
+          }
         }
       });
     } else {
       pollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
         try {
-          final msgs = await _fetchMessages(threadId);
-          if (!controller.isClosed) emit(msgs);
+          final page = await _fetchMessagePage(threadId);
+          if (!controller.isClosed) {
+            final uid = viewerUserId;
+            if (uid != null && uid.isNotEmpty) {
+              ChatThreadPaginationStore.setNextOlderCursor(uid, threadId, page.nextOlderCursor);
+            }
+            emit(reconcileFetchWithPrior(page.messages, latest));
+          }
         } catch (_) {}
       });
     }
@@ -146,8 +263,16 @@ class ApiChatRepository implements ChatRepository {
     return controller.stream;
   }
 
-  Future<List<ChatMessage>> _fetchMessages(String threadId) async {
-    final body = await api.get('/chat/threads/$threadId/messages', query: {'limit': '100'});
+  Future<({List<ChatMessage> messages, String? nextOlderCursor})> _fetchMessagePage(
+    String threadId, {
+    String? cursor,
+    int limit = 50,
+  }) async {
+    final query = <String, String>{'limit': '$limit'};
+    if (cursor != null && cursor.isNotEmpty) {
+      query['cursor'] = cursor;
+    }
+    final body = await api.get('/chat/threads/$threadId/messages', query: query);
     final raw = body['messages'] ?? body['data'];
     final list = raw is List ? raw : <dynamic>[];
     final out = <ChatMessage>[];
@@ -159,27 +284,60 @@ class ApiChatRepository implements ChatRepository {
         // skip malformed message
       }
     }
-    return out;
+    final next = body['nextCursor'] as String?;
+    return (messages: out, nextOlderCursor: next);
   }
 
   @override
-  Future<void> sendMessage(
+  Future<ChatOlderMessagesPage> loadOlderChatMessages(
+    String threadId, {
+    required String viewerUserId,
+  }) async {
+    if (!ChatThreadPaginationStore.isPaginationKnown(viewerUserId, threadId)) {
+      return const ChatOlderMessagesPage(messages: [], nextOlderCursor: null);
+    }
+    final cur = ChatThreadPaginationStore.getNextOlderCursor(viewerUserId, threadId);
+    if (cur == null || cur.isEmpty) {
+      return const ChatOlderMessagesPage(messages: [], nextOlderCursor: null);
+    }
+    final page = await _fetchMessagePage(threadId, cursor: cur, limit: 50);
+    ChatThreadPaginationStore.setNextOlderCursor(viewerUserId, threadId, page.nextOlderCursor);
+    return ChatOlderMessagesPage(
+      messages: page.messages,
+      nextOlderCursor: page.nextOlderCursor,
+    );
+  }
+
+  @override
+  Future<ChatSendTransport> sendMessage(
     String threadId,
     String text, {
     String? adCompletionToken,
+    String? outgoingTempId,
+    bool forceHttp = false,
   }) async {
-    // Try WS first — returns tempId string if successfully queued, null if not connected
-    if (wsClient != null) {
+    if (!forceHttp && wsClient != null) {
       if (!wsClient!.isConnected) await wsClient!.connect();
-      final tempId = await wsClient!.send(threadId, text, adCompletionToken: adCompletionToken);
-      if (tempId != null) return; // WS path: server will echo 'sent' frame with real id
+      final ready = await wsClient!.waitUntilSessionReady(timeout: const Duration(seconds: 10));
+      if (ready) {
+        final tempId = await wsClient!.send(
+          threadId,
+          text,
+          adCompletionToken: adCompletionToken,
+          outgoingTempId: outgoingTempId,
+        );
+        if (tempId != null) return ChatSendTransport.websocket;
+      }
     }
-    // HTTP fallback — backend will broadcastToUser for the recipient's WS
     final body = <String, dynamic>{'text': text};
     if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
       body['adCompletionToken'] = adCompletionToken;
     }
+    if (outgoingTempId != null && outgoingTempId.isNotEmpty) {
+      body['clientDedupeKey'] = outgoingTempId;
+    }
     await api.post('/chat/threads/$threadId/messages', body: body);
+    return ChatSendTransport.http;
   }
 
   @override

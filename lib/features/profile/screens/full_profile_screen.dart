@@ -49,7 +49,7 @@ class FullProfileScreen extends ConsumerWidget {
     final l = AppLocalizations.of(context)!;
 
     if (mode == AppMode.matrimony) {
-      final asyncFull = ref.watch(fullUserProfileProvider(profileId));
+      final asyncFull = ref.watch(matrimonyProfileViewProvider(profileId));
       return asyncFull.when(
         data: (profile) {
           if (profile == null) {
@@ -66,7 +66,7 @@ class FullProfileScreen extends ConsumerWidget {
         ),
         error: (_, __) => _ErrorScaffold(
           l: l,
-          onRetry: () => ref.invalidate(fullUserProfileProvider(profileId)),
+          onRetry: () => ref.invalidate(matrimonyProfileViewProvider(profileId)),
         ),
       );
     }
@@ -154,40 +154,39 @@ class _MatrimonyProfileContentState
             onReport: () =>
                 _showReportConfirm(context, ref, profile.id, profile.name),
           ),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SectionNavDelegate(
-              height: 48,
-              child: _SectionNavBar(
-                accent: accent,
-                onTap: _scrollTo,
-                items: [
-                  if (profile.aboutMe.isNotEmpty ||
-                      (mat?.aboutEducation?.isNotEmpty == true))
-                    (label: 'About', key: _aboutKey),
-                  if (profile.photosHidden || profile.photoUrls.isNotEmpty)
-                    (label: 'Photos', key: _photosKey),
-                  (label: 'Basics', key: _basicsKey),
-                  if (mat != null)
-                    (label: 'Edu & Career', key: _eduCareerKey),
-                  if (mat?.familyDetails != null)
-                    (label: 'Family', key: _familyKey),
-                  if (mat != null)
-                    (label: 'Lifestyle', key: _lifestyleKey),
-                  if (flags.horoscope && mat?.horoscope != null)
-                    (label: 'Horoscope', key: _horoscopeKey),
-                  if (prefs != null)
-                    (label: 'Looking For', key: _lookingForKey),
-                ],
-              ),
-            ),
-          ),
+          // Section chips live in the scroll body (not a pinned sliver) to avoid
+          // SliverGeometry errors from nested horizontal scroll under a pinned header.
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionNavBar(
+                  accent: accent,
+                  onTap: _scrollTo,
+                  items: [
+                    if (profile.aboutMe.isNotEmpty ||
+                        (mat?.aboutEducation?.isNotEmpty == true))
+                      (label: 'About', key: _aboutKey),
+                    if (profile.photosHidden || profile.photoUrls.isNotEmpty)
+                      (label: 'Photos', key: _photosKey),
+                    (label: 'Basics', key: _basicsKey),
+                    if (mat != null)
+                      (label: 'Edu & Career', key: _eduCareerKey),
+                    if (mat?.familyDetails != null)
+                      (label: 'Family', key: _familyKey),
+                    if (mat != null)
+                      (label: 'Lifestyle', key: _lifestyleKey),
+                    if (flags.horoscope && mat?.horoscope != null)
+                      (label: 'Horoscope', key: _horoscopeKey),
+                    if (prefs != null)
+                      (label: 'Looking For', key: _lookingForKey),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   const SizedBox(height: 20),
 
                   Row(
@@ -364,8 +363,10 @@ class _MatrimonyProfileContentState
 
                   // Space for floating bottom bar
                   const SizedBox(height: 100),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -3250,7 +3251,7 @@ class _LockedPhotosHeroBackground extends ConsumerWidget {
       await ref.read(photoViewRequestRepositoryProvider).sendRequest(profileId);
       if (!context.mounted) return;
       ref.invalidate(photoViewStatusProvider(profileId));
-      ref.invalidate(fullUserProfileProvider(profileId));
+      ref.invalidate(matrimonyProfileViewProvider(profileId));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.requestToViewPhotosSent),
@@ -3562,13 +3563,15 @@ class _CompatibilityCard extends ConsumerWidget {
           ],
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.03, end: 0);
+    );
   }
 
   static String _prettifyKey(String key) {
-    return key
-        .replaceAll('_', ' ')
-        .replaceAllMapped(RegExp(r'(^|\s)\w'), (m) => m[0]!.toUpperCase());
+    if (key.isEmpty) return key;
+    return key.replaceAll('_', ' ').replaceAllMapped(
+          RegExp(r'(^|\s)\w'),
+          (m) => (m.group(0) ?? '').toUpperCase(),
+        );
   }
 }
 
@@ -3775,7 +3778,7 @@ class _PhotosLockedSection extends ConsumerWidget {
       await ref.read(photoViewRequestRepositoryProvider).sendRequest(profileId);
       if (!context.mounted) return;
       ref.invalidate(photoViewStatusProvider(profileId));
-      ref.invalidate(fullUserProfileProvider(profileId));
+      ref.invalidate(matrimonyProfileViewProvider(profileId));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.requestToViewPhotosSent),
@@ -4216,6 +4219,7 @@ class _FamilyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fam = mat.familyDetails;
+    if (fam == null) return const SizedBox.shrink();
     final rows = <_DetailRow>[];
     if (fam.householdIncome != null) {
       rows.add(_DetailRow('Household income', fam.householdIncome));
@@ -4330,6 +4334,7 @@ class _HoroscopeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final hor = mat.horoscope;
+    if (hor == null) return const SizedBox.shrink();
     final rows = <_DetailRow>[];
     if (hor.dateOfBirth != null) {
       rows.add(_DetailRow(l.dateOfBirth, hor.dateOfBirth));
@@ -4638,27 +4643,6 @@ class _DetailRow {
 //  SECTION NAV BAR
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SectionNavDelegate extends SliverPersistentHeaderDelegate {
-  const _SectionNavDelegate({required this.child, required this.height});
-  final Widget child;
-  final double height;
-
-  @override
-  double get minExtent => height;
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
-  }
-
-  @override
-  bool shouldRebuild(_SectionNavDelegate old) => old.child != child;
-}
-
 class _SectionNavBar extends StatelessWidget {
   const _SectionNavBar({
     required this.items,
@@ -4683,6 +4667,7 @@ class _SectionNavBar extends StatelessWidget {
         ),
       ),
       child: SingleChildScrollView(
+        primary: false,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
         child: Row(

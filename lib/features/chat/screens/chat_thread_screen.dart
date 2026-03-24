@@ -22,6 +22,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
+import '../../../data/chat_thread_pagination_store.dart';
 import '../../../domain/repositories/chat_repository.dart';
 import '../../discovery/providers/discovery_providers.dart';
 import '../../matches/providers/matches_providers.dart';
@@ -55,12 +56,46 @@ const _icebreakerSuggestions = [
   'Tell me about yourself',
 ];
 
+/// Idempotent HTTP retry uses same optimistic id as `clientDedupeKey` on the server.
+const _kChatHttpFallbackDelay = Duration(seconds: 7);
+
+/// One outbound line: FIFO with [gate] so network runs in tap order even when match/ad futures finish out of order.
+class _OutboundSlot {
+  _OutboundSlot({required this.text, required this.tempId});
+  final String text;
+  final String tempId;
+  final Completer<_OutboundGateResult> gate = Completer<_OutboundGateResult>();
+}
+
+class _OutboundGateResult {
+  const _OutboundGateResult({required this.proceed, this.adToken});
+  final bool proceed;
+  final String? adToken;
+}
+
 class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   /// True after first send when we used [ChatThreadScreen.initialAdToken].
   bool _consumedInitialAdToken = false;
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _connectivityRetryDebounce;
+
+  /// Serialized network sends only; optimistic bubbles are added immediately on each tap (dating + matrimony).
+  Future<void> _transportChain = Future.value();
+
+  /// Tie-breaker for optimistic [ChatMessage.sentAt] when many sends share the same clock tick.
+  int _localSendOrder = 0;
+
+  final List<_OutboundSlot> _outboundSlots = [];
+
+  final ScrollController _scrollController = ScrollController();
+
+  /// History loaded above the live window (cursor pagination).
+  final List<ChatMessage> _olderLoaded = [];
+
+  bool _loadingOlderPage = false;
+  bool _olderExhausted = false;
+  DateTime? _lastOlderLoadAttempt;
 
   @override
   void initState() {
@@ -92,7 +127,24 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   }
 
   @override
+  void didUpdateWidget(ChatThreadScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.threadId != widget.threadId) {
+      _olderLoaded.clear();
+      _olderExhausted = false;
+      _loadingOlderPage = false;
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.dispose();
+    for (final s in _outboundSlots) {
+      if (!s.gate.isCompleted) {
+        s.gate.complete(const _OutboundGateResult(proceed: false));
+      }
+    }
+    _outboundSlots.clear();
     _connectivitySub?.cancel();
     _connectivityRetryDebounce?.cancel();
     super.dispose();
@@ -118,16 +170,17 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         s.contains('timed out');
   }
 
-  void _markOutgoingAsFailed(String text) {
+  void _markOutgoingAsFailedByTempId(String outgoingTempId) {
     ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
           (list) => list
               .map(
-                (m) => m.text == text && m.id.startsWith('pending-')
+                (m) => m.id == outgoingTempId
                     ? ChatMessage(
-                        id: 'failed-${m.id}',
+                        id: 'failed-$outgoingTempId',
                         senderId: m.senderId,
                         text: m.text,
                         sentAt: m.sentAt,
+                        outboundSeq: m.outboundSeq,
                       )
                     : m,
               )
@@ -156,12 +209,17 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     }
   }
 
+  void _removePendingByTempId(WidgetRef ref, String threadId, String tempId) {
+    ref.read(pendingSentMessagesProvider(threadId).notifier).update(
+          (list) => list.where((p) => p.id != tempId).toList(),
+        );
+  }
+
   Future<void> _sendMessageText(
     BuildContext context,
     WidgetRef ref,
     String text,
   ) async {
-    final chatRepo = ref.read(chatRepositoryProvider);
     final me = ref.read(authRepositoryProvider).currentUserId;
     if (me == null || me.isEmpty) {
       if (context.mounted) {
@@ -174,60 +232,146 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       }
       return;
     }
-    final ent = ref.read(entitlementsProvider);
 
-    // Free user: require ad unless chatting with a match (matches can message without ad).
-    final isMatch = widget.otherUserId != null &&
-        (await ref.read(matchedUserIdsProvider.future)).contains(widget.otherUserId!);
-    if (!context.mounted) return;
-    final requireAd = !ent.canSendMessageDirect && !isMatch;
+    // First line that can use profile "watch ad" token (only one message per open).
+    var useProfileAdToken = false;
+    if (widget.initialAdToken != null && !_consumedInitialAdToken) {
+      useProfileAdToken = true;
+      _consumedInitialAdToken = true;
+    }
+    final profileTok = useProfileAdToken ? widget.initialAdToken : null;
 
-    String? adToken;
-    if (requireAd) {
-      if (widget.initialAdToken != null && !_consumedInitialAdToken) {
-        adToken = widget.initialAdToken;
-        setState(() => _consumedInitialAdToken = true);
-      } else {
+    // WhatsApp-style: show this bubble immediately; transport runs on [_transportChain] in tap order.
+    final order = _localSendOrder++;
+    final baseUs = DateTime.now().microsecondsSinceEpoch;
+    final outgoingTempId = 'temp_${baseUs}_$order';
+    ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+          (list) => [
+                ...list,
+                ChatMessage(
+                  id: outgoingTempId,
+                  senderId: me,
+                  text: text,
+                  sentAt: DateTime.fromMicrosecondsSinceEpoch(baseUs + order),
+                  outboundSeq: order,
+                ),
+              ],
+        );
+
+    if (useProfileAdToken && mounted) {
+      setState(() {});
+    }
+
+    final slot = _OutboundSlot(text: text, tempId: outgoingTempId);
+    _outboundSlots.add(slot);
+    _transportChain = _transportChain
+        .then((_) async {
+      if (!mounted || !context.mounted) return;
+      await _drainNextOutboundSlot(context, ref);
+    })
+        .catchError((Object e, StackTrace st) {
+      debugPrint('[Chat] transport chain: $e\n$st');
+    });
+    unawaited(_fillOutboundSlotGate(context, ref, slot, profileTok));
+  }
+
+  void _safeCompleteGate(_OutboundSlot slot, _OutboundGateResult result) {
+    if (!slot.gate.isCompleted) slot.gate.complete(result);
+  }
+
+  /// Resolves [slot.gate] when match/ad rules are satisfied (any order); drain still runs FIFO by tap.
+  Future<void> _fillOutboundSlotGate(
+    BuildContext context,
+    WidgetRef ref,
+    _OutboundSlot slot,
+    String? profileAdToken,
+  ) async {
+    if (!mounted || !context.mounted) {
+      _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
+      return;
+    }
+    try {
+      final ent = ref.read(entitlementsProvider);
+      final isMatch = widget.otherUserId != null &&
+          (await ref.read(matchedUserIdsProvider.future)).contains(widget.otherUserId!);
+      if (!mounted || !context.mounted) {
+        _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
+        return;
+      }
+      final requireAd = !ent.canSendMessageDirect && !isMatch;
+
+      String? adToken = profileAdToken;
+      if (requireAd && adToken == null) {
         final shown = await loadAndShowInterstitialWithLoading(
           context,
           ref,
           AdRewardReason.sendMessage,
         );
-        if (!context.mounted) return;
+        if (!mounted || !context.mounted) {
+          _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
+          return;
+        }
         if (!shown) {
+          _removePendingByTempId(ref, widget.threadId, slot.tempId);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
               behavior: SnackBarBehavior.floating,
             ),
           );
+          _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
           return;
         }
         adToken = const Uuid().v4();
       }
-    }
 
-    final pendingMsg = ChatMessage(
-      id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
-      senderId: me,
-      text: text,
-      sentAt: DateTime.now(),
+      if (!mounted) {
+        _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
+        return;
+      }
+      _safeCompleteGate(slot, _OutboundGateResult(proceed: true, adToken: adToken));
+    } catch (e, st) {
+      debugPrint('[Chat] fillOutboundSlotGate: $e\n$st');
+      if (mounted) {
+        _removePendingByTempId(ref, widget.threadId, slot.tempId);
+      }
+      _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
+    }
+  }
+
+  Future<void> _drainNextOutboundSlot(BuildContext context, WidgetRef ref) async {
+    if (_outboundSlots.isEmpty || !mounted) return;
+    final slot = _outboundSlots.removeAt(0);
+    final result = await slot.gate.future;
+    if (!mounted || !context.mounted || !result.proceed) return;
+    final chatRepo = ref.read(chatRepositoryProvider);
+    await _completeOutgoingSend(
+      context: context,
+      ref: ref,
+      chatRepo: chatRepo,
+      text: slot.text,
+      outgoingTempId: slot.tempId,
+      adCompletionToken: result.adToken,
     );
-    ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
-          (list) => [...list, pendingMsg],
-        );
-    // Paint the optimistic bubble (clock icon) before first WS connect / HTTP — avoids a frozen UI.
-    await Future<void>.delayed(Duration.zero);
-    if (!context.mounted) return;
-    unawaited(
-      _completeOutgoingSend(
-        context: context,
-        ref: ref,
-        chatRepo: chatRepo,
-        text: text,
-        adCompletionToken: adToken,
-      ),
-    );
+    if (!mounted) return;
+    await _waitUntilTempPendingCleared(ref, widget.threadId, slot.tempId);
+  }
+
+  /// After WebSocket submit, wait until hub clears this temp (or failed- replacement) so the next send stays in sequence.
+  Future<void> _waitUntilTempPendingCleared(
+    WidgetRef ref,
+    String threadId,
+    String tempId,
+  ) async {
+    const poll = Duration(milliseconds: 32);
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    while (DateTime.now().isBefore(deadline)) {
+      if (!mounted) return;
+      final pending = ref.read(pendingSentMessagesProvider(threadId));
+      final still = pending.any((p) => p.id == tempId);
+      if (!still) return;
+      await Future<void>.delayed(poll);
+    }
   }
 
   Future<void> _completeOutgoingSend({
@@ -235,28 +379,59 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     required WidgetRef ref,
     required ChatRepository chatRepo,
     required String text,
+    required String outgoingTempId,
     String? adCompletionToken,
   }) async {
     try {
-      await chatRepo.sendMessage(
+      final transport = await chatRepo.sendMessage(
         widget.threadId,
         text,
         adCompletionToken: adCompletionToken,
+        outgoingTempId: outgoingTempId,
       );
+      if (!context.mounted) return;
+      if (transport == ChatSendTransport.http) {
+        ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
+              (list) => list.where((p) => p.id != outgoingTempId).toList(),
+            );
+        ref.invalidate(threadMessagesProvider(widget.threadId));
+      } else {
+        final threadId = widget.threadId;
+        // Idempotent HTTP retry: server dedupes ChatMessage (direct) and MessageRequest (ad) via clientDedupeKey.
+        // WS ack wait runs once in [_enqueueTransportOnly] after this returns.
+        Future<void>.delayed(_kChatHttpFallbackDelay, () async {
+          if (!context.mounted) return;
+          final stillPending = ref
+              .read(pendingSentMessagesProvider(threadId))
+              .any((p) => p.id == outgoingTempId);
+          if (!stillPending) return;
+          try {
+            await chatRepo.sendMessage(
+              threadId,
+              text,
+              adCompletionToken: adCompletionToken,
+              outgoingTempId: outgoingTempId,
+              forceHttp: true,
+            );
+            if (!context.mounted) return;
+            ref.read(pendingSentMessagesProvider(threadId).notifier).update(
+                  (list) => list.where((p) => p.id != outgoingTempId).toList(),
+                );
+            ref.invalidate(threadMessagesProvider(threadId));
+            ref.invalidate(chatThreadsProvider);
+            ref.invalidate(messageRequestsProvider);
+            ref.invalidate(messageRequestsCountProvider);
+          } catch (_) {}
+        });
+      }
     } on ApiException catch (e) {
       if (!context.mounted) return;
       if (_isLikelyNetworkFailure(e)) {
-        _markOutgoingAsFailed(text);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _markOutgoingAsFailedByTempId(outgoingTempId);
         return;
       }
       ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
-            (list) => list.where((m) => m.text != text).toList(),
+            (list) => list.where((m) => m.id != outgoingTempId).toList(),
           );
       final showUpgrade = e.code == 'PREMIUM_REQUIRED' ||
           e.code == 'INTRO_LIMIT' ||
@@ -281,17 +456,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     } catch (e) {
       if (!context.mounted) return;
       if (_isLikelyNetworkFailure(e)) {
-        _markOutgoingAsFailed(text);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.failedToSendTryAgain),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _markOutgoingAsFailedByTempId(outgoingTempId);
         return;
       }
       ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
-            (list) => list.where((m) => m.text != text).toList(),
+            (list) => list.where((m) => m.id != outgoingTempId).toList(),
           );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -302,14 +471,18 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       return;
     }
     if (!context.mounted) return;
-    ref.invalidate(chatThreadsProvider);
+    unawaited(
+      Future<void>.microtask(() {
+        if (context.mounted) {
+          ref.invalidate(chatThreadsProvider);
+        }
+      }),
+    );
   }
 
-  Future<void> _retryFailedOutgoingTap(String text) async {
+  Future<void> _retryFailedOutgoingTap(String failedMessageId, String text) async {
     ref.read(pendingSentMessagesProvider(widget.threadId).notifier).update(
-          (list) => list
-              .where((m) => !(m.id.startsWith('failed-') && m.text == text))
-              .toList(),
+          (list) => list.where((m) => m.id != failedMessageId).toList(),
         );
     await _sendMessageText(context, ref, text);
   }
@@ -453,6 +626,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     );
   }
 
+  /// Parse `temp_<micros>_<order>` (or `failed-temp_...`) for stable ordering when [sentAt] ties.
+  static int? _clientSendOrdinal(String id) {
+    var s = id;
+    if (s.startsWith('failed-')) {
+      s = s.substring('failed-'.length);
+    }
+    final m = RegExp(r'^temp_(\d+)_(\d+)$').firstMatch(s);
+    if (m == null) return null;
+    final base = int.tryParse(m.group(1)!);
+    final ord = int.tryParse(m.group(2)!);
+    if (base == null || ord == null) return null;
+    return base * 1000000 + ord;
+  }
+
   /// Merge server messages with pending sent (from provider), deduping so we don't show the same message twice.
   List<ChatMessage> _mergeMessages(
     List<ChatMessage> server,
@@ -469,6 +656,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       return false;
     }
 
+    bool isMe(ChatMessage x) =>
+        currentUserId != null &&
+        (x.senderId == currentUserId || x.senderId == 'me');
+
     final merged = List<ChatMessage>.from(server);
     for (final p in pendingSent) {
       final match = merged.any(
@@ -479,14 +670,86 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       );
       if (!match) merged.add(p);
     }
-    merged.sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    merged.sort((a, b) {
+      if (isMe(a) && isMe(b)) {
+        final sa = a.outboundSeq;
+        final sb = b.outboundSeq;
+        if (sa != null && sb != null && sa != sb) {
+          return sa.compareTo(sb);
+        }
+      }
+      final byTime = a.sentAt.compareTo(b.sentAt);
+      if (byTime != 0) return byTime;
+      final oa = _clientSendOrdinal(a.id);
+      final ob = _clientSendOrdinal(b.id);
+      if (oa != null && ob != null) return oa.compareTo(ob);
+      return a.id.compareTo(b.id);
+    });
     return merged;
+  }
+
+  List<ChatMessage> _serverWindowPlusOlder(List<ChatMessage> window) {
+    final byId = <String, ChatMessage>{};
+    for (final m in _olderLoaded) {
+      byId[m.id] = m;
+    }
+    for (final m in window) {
+      byId[m.id] = m;
+    }
+    return byId.values.toList();
+  }
+
+  Future<void> _maybeLoadOlderMessages() async {
+    if (_loadingOlderPage || _olderExhausted) return;
+    final uid = ref.read(authRepositoryProvider).currentUserId;
+    if (uid == null || uid.isEmpty) return;
+    if (!ref.read(threadMessagesProvider(widget.threadId)).hasValue) return;
+    if (!ChatThreadPaginationStore.isPaginationKnown(uid, widget.threadId)) return;
+    final cur = ChatThreadPaginationStore.getNextOlderCursor(uid, widget.threadId);
+    if (cur == null || cur.isEmpty) {
+      if (mounted) setState(() => _olderExhausted = true);
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastOlderLoadAttempt != null &&
+        now.difference(_lastOlderLoadAttempt!) < const Duration(milliseconds: 700)) {
+      return;
+    }
+    _lastOlderLoadAttempt = now;
+    if (mounted) setState(() => _loadingOlderPage = true);
+    try {
+      final page = await ref
+          .read(chatRepositoryProvider)
+          .loadOlderChatMessages(widget.threadId, viewerUserId: uid);
+      if (!mounted) return;
+      if (page.messages.isEmpty) {
+        setState(() {
+          _olderExhausted = true;
+          _loadingOlderPage = false;
+        });
+        return;
+      }
+      setState(() {
+        final seen = {for (final m in _olderLoaded) m.id};
+        final incoming = page.messages.where((m) => !seen.contains(m.id)).toList();
+        _olderLoaded.insertAll(0, incoming);
+        if (page.nextOlderCursor == null || page.nextOlderCursor!.isEmpty) {
+          _olderExhausted = true;
+        }
+        _loadingOlderPage = false;
+        if (_olderLoaded.length > 400) {
+          _olderLoaded.removeRange(0, _olderLoaded.length - 400);
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingOlderPage = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(authRepositoryProvider).currentUserId;
-    final messagesAsync = ref.watch(_threadMessagesProvider(widget.threadId));
+    final messagesAsync = ref.watch(threadMessagesProvider(widget.threadId));
     final pendingSent = ref.watch(pendingSentMessagesProvider(widget.threadId));
     final peerReadAt = ref.watch(threadPeerReadAtProvider(widget.threadId));
     final suggestionsAsync = ref.watch(chatSuggestionsProvider);
@@ -497,7 +760,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         ? ref.watch(profileSummaryProvider(otherUserId))
         : null;
 
-    ref.listen(_threadMessagesProvider(widget.threadId), (prev, next) {
+    ref.listen(threadMessagesProvider(widget.threadId), (prev, next) {
       if (!next.hasValue || !context.mounted) return;
       final outboundQueue =
           ref.read(pendingSentMessagesProvider(widget.threadId));
@@ -663,9 +926,12 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                 context,
               ).colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
               child: messagesAsync.when(
+                skipLoadingOnReload: true,
+                skipLoadingOnRefresh: true,
                 data: (serverMessages) {
+                  final window = _serverWindowPlusOlder(serverMessages);
                   final messages = _mergeMessages(
-                    serverMessages,
+                    window,
                     currentUserId,
                     pendingSent,
                   );
@@ -735,14 +1001,42 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                     );
                   }
                   final reversed = messages.reversed.toList();
-                  return ListView.builder(
+                  return NotificationListener<ScrollNotification>(
+                    onNotification: (ScrollNotification n) {
+                      if (n is! ScrollUpdateNotification) return false;
+                      final m = n.metrics;
+                      if (!m.hasPixels || m.maxScrollExtent <= 0) return false;
+                      if (m.pixels >= m.maxScrollExtent - 140) {
+                        unawaited(_maybeLoadOlderMessages());
+                      }
+                      return false;
+                    },
+                    child: ListView.builder(
+                    controller: _scrollController,
                     padding: EdgeInsets.fromLTRB(16, kToolbarHeight + MediaQuery.of(context).padding.top + 8, 16, 16),
                     reverse: true,
-                    itemCount: reversed.length,
+                    itemCount: reversed.length + (_loadingOlderPage ? 1 : 0),
                     itemBuilder: (context, i) {
+                      if (_loadingOlderPage && i == reversed.length) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
                       final m = reversed[i];
                       final isMe =
                           currentUserId != null && m.senderId == currentUserId;
+                      final outboundPending =
+                          isMe && pendingSent.any((p) => p.id == m.id);
                       final showDateSeparator =
                           i == 0 ||
                           !isSameLocalDay(m.sentAt, reversed[i - 1].sentAt);
@@ -757,6 +1051,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                                 text: m.text,
                                 sentAt: m.sentAt,
                                 isMe: isMe,
+                                outboundPending: outboundPending,
                                 isVoiceNote: m.isVoiceNote,
                                 peerReadAt: peerReadAt,
                                 otherUserOnline: online,
@@ -764,16 +1059,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                                 onRetryOutgoingFailed: isMe &&
                                         m.id.startsWith('failed-')
                                     ? () => unawaited(
-                                          _retryFailedOutgoingTap(m.text),
+                                          _retryFailedOutgoingTap(m.id, m.text),
                                         )
                                     : null,
-                              )
-                              .animate()
-                              .fadeIn(delay: (20 * i).ms)
-                              .slideY(begin: 0.03, end: 0),
+                              ),
                         ],
                       );
                     },
+                  ),
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -791,7 +1084,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: () => ref.invalidate(
-                            _threadMessagesProvider(widget.threadId),
+                            threadMessagesProvider(widget.threadId),
                           ),
                           child: Text(AppLocalizations.of(context)!.retry),
                         ),
@@ -811,12 +1104,6 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     );
   }
 }
-
-final _threadMessagesProvider = StreamProvider.autoDispose
-    .family<List<ChatMessage>, String>((ref, threadId) {
-      final viewerId = ref.watch(authRepositoryProvider).currentUserId;
-      return ref.watch(chatRepositoryProvider).watchMessages(threadId, viewerUserId: viewerId);
-    });
 
 /// Bottom-right dot on chat header avatar: blue if online or active within [recentWithin], else pale.
 enum _ChatHeaderPresence { offline, reachable }
@@ -872,6 +1159,7 @@ class _MessageBubble extends StatelessWidget {
     required this.text,
     required this.sentAt,
     required this.isMe,
+    this.outboundPending = false,
     this.isVoiceNote = false,
     this.peerReadAt,
     this.otherUserOnline = false,
@@ -882,6 +1170,8 @@ class _MessageBubble extends StatelessWidget {
   final String text;
   final DateTime sentAt;
   final bool isMe;
+  /// Still in [pendingSentMessagesProvider] (waiting for server ack or refetch).
+  final bool outboundPending;
   final bool isVoiceNote;
   /// Other participant's read time (for ✓ on your messages).
   final DateTime? peerReadAt;
@@ -893,18 +1183,11 @@ class _MessageBubble extends StatelessWidget {
 
   static const Duration _recentlyActiveWindow = Duration(minutes: 10);
 
-  /// True while message is only on the client (sending / not yet persisted).
-  static bool _isClientOptimisticPending(String id) {
-    if (id.startsWith('temp_')) return true;
-    if (id.startsWith('pending-') && !id.startsWith('pending-req:')) return true;
-    return false;
-  }
-
   static bool _isFailedOutbound(String id) => id.startsWith('failed-');
 
   /// Persisted on server (including pending message-request rows).
-  static bool _isDeliveredToServer(String id) =>
-      !_isClientOptimisticPending(id) && !_isFailedOutbound(id);
+  static bool _isDeliveredToServer(String id, {required bool outboundPending}) =>
+      !outboundPending && !_isFailedOutbound(id);
 
   static bool _readByPeer(DateTime sentAt, DateTime? peerReadAt) {
     if (peerReadAt == null) return false;
@@ -927,11 +1210,12 @@ class _MessageBubble extends StatelessWidget {
         color: outgoingFg.withValues(alpha: 0.78),
       );
     }
-    final optimistic = _isClientOptimisticPending(messageId);
-    if (optimistic) {
+    if (outboundPending) {
       return _SendingClockPulse(color: outgoingFg.withValues(alpha: 0.9));
     }
-    if (!_isDeliveredToServer(messageId)) return null;
+    if (!_isDeliveredToServer(messageId, outboundPending: outboundPending)) {
+      return null;
+    }
 
     final read = _readByPeer(sentAt, peerReadAt);
     if (read) {

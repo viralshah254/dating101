@@ -116,12 +116,26 @@ class ChatMessage {
     required this.text,
     required this.sentAt,
     this.isVoiceNote = false,
+    /// Monotonic send order for the current user's lines in this session; preserved on WS/HTTP
+    /// merge so rapid sends and refetches cannot reorder vs pending bubbles.
+    this.outboundSeq,
   });
   final String id;
   final String senderId;
   final String text;
   final DateTime sentAt;
   final bool isVoiceNote;
+  final int? outboundSeq;
+}
+
+/// How [sendMessage] reached the server. HTTP path does not push to the live stream — caller should refetch thread messages.
+enum ChatSendTransport { websocket, http }
+
+/// Older page from GET /chat/threads/:id/messages?cursor=…
+class ChatOlderMessagesPage {
+  const ChatOlderMessagesPage({required this.messages, this.nextOlderCursor});
+  final List<ChatMessage> messages;
+  final String? nextOlderCursor;
 }
 
 /// Chat threads and messages. Dating and matrimony have separate threads (no mixing).
@@ -138,11 +152,25 @@ abstract class ChatRepository {
   /// [viewerUserId] — when set, WS `message` frames from this user are ignored (own-send echo / misdelivery); `sent` + `message_persisted` still apply.
   Stream<List<ChatMessage>> watchMessages(String threadId, {String? viewerUserId});
 
+  /// Loads the next older page using the cursor last reported for this thread (see API `nextCursor`).
+  Future<ChatOlderMessagesPage> loadOlderChatMessages(
+    String threadId, {
+    required String viewerUserId,
+  });
+
   /// [adCompletionToken] — when provided (e.g. after free user watches ad), backend may create a message request instead of direct message.
-  Future<void> sendMessage(
+  ///
+  /// Returns [ChatSendTransport.http] when the message was sent over REST; the UI should refresh the thread stream so pending bubbles clear.
+  ///
+  /// [outgoingTempId] — same id as the optimistic bubble and WebSocket `tempId` so server acks can clear [pendingSentMessagesProvider].
+  ///
+  /// [forceHttp] — skip WebSocket (idempotent HTTP retry with [outgoingTempId] as `clientDedupeKey` when set).
+  Future<ChatSendTransport> sendMessage(
     String threadId,
     String text, {
     String? adCompletionToken,
+    String? outgoingTempId,
+    bool forceHttp = false,
   });
 
   Future<void> markThreadRead(String threadId);

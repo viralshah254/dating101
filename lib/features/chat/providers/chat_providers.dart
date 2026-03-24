@@ -33,6 +33,14 @@ final chatNavUnreadCountProvider = Provider.autoDispose<int>((ref) {
 /// Other participant's read cursor for a thread (for ✓✓ on your messages). Updated from WS `thread_read` and on open.
 final threadPeerReadAtProvider = StateProvider.family<DateTime?, String>((ref, _) => null);
 
+/// Live messages for one thread: initial GET + WebSocket deltas. Used by [ChatThreadScreen].
+final threadMessagesProvider = StreamProvider.autoDispose
+    .family<List<ChatMessage>, String>((ref, threadId) {
+  ref.keepAlive();
+  final viewerId = ref.watch(authRepositoryProvider).currentUserId;
+  return ref.watch(chatRepositoryProvider).watchMessages(threadId, viewerUserId: viewerId);
+});
+
 /// Connects chat WebSocket app-wide and refreshes thread lists / peer-read on events.
 final chatRealtimeHubProvider = Provider<void>((ref) {
   final client = ref.watch(chatWebSocketClientProvider);
@@ -41,17 +49,59 @@ final chatRealtimeHubProvider = Provider<void>((ref) {
   Future.microtask(() => client.connect());
 
   final sub = client.incoming.listen((ev) {
+    void stripOutboundPendingByTempId() {
+      final tid = ev.threadId?.trim();
+      final tmp = ev.tempId?.trim();
+      if (tid == null || tid.isEmpty || tmp == null || tmp.isEmpty) return;
+      ref.read(pendingSentMessagesProvider(tid).notifier).update(
+            (list) => list.where((p) => p.id != tmp).toList(),
+          );
+    }
+
     switch (ev.type) {
       case IncomingEventType.message:
-      case IncomingEventType.sent:
-      case IncomingEventType.messagePersisted:
       case IncomingEventType.threadRead:
         ref.invalidate(chatThreadsProvider);
         break;
+      case IncomingEventType.sent:
+      case IncomingEventType.messagePersisted:
+        stripOutboundPendingByTempId();
+        ref.invalidate(chatThreadsProvider);
+        break;
       case IncomingEventType.messageRequestCreated:
+        stripOutboundPendingByTempId();
         ref.invalidate(chatThreadsProvider);
         ref.invalidate(messageRequestsProvider);
         ref.invalidate(messageRequestsCountProvider);
+        break;
+      case IncomingEventType.error:
+        final tid = ev.threadId?.trim();
+        final tmp = ev.tempId?.trim();
+        if (tid != null &&
+            tid.isNotEmpty &&
+            tmp != null &&
+            tmp.isNotEmpty &&
+            ev.code != null &&
+            ev.code != 'INVALID_TOKEN' &&
+            ev.code != 'UNAUTHORIZED') {
+          ref.read(pendingSentMessagesProvider(tid).notifier).update(
+                (list) => list
+                    .map(
+                      (p) => p.id == tmp
+                          ? ChatMessage(
+                              id: 'failed-$tmp',
+                              senderId: p.senderId,
+                              text: p.text,
+                              sentAt: p.sentAt,
+                              outboundSeq: p.outboundSeq,
+                            )
+                          : p,
+                    )
+                    .toList(),
+              );
+          ref.invalidate(threadMessagesProvider(tid));
+          ref.invalidate(chatThreadsProvider);
+        }
         break;
       default:
         break;

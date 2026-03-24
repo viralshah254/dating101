@@ -126,6 +126,11 @@ class ApiClient {
         _logResponse('DELETE (retry)', uri, retryResp);
         if (retryResp.statusCode == 204 || retryResp.statusCode == 200) return;
         _throwFromResponse(retryResp);
+      } else if (tokenStorage.isLoggedIn) {
+        final retryResp = await _http.delete(uri, headers: _headers);
+        _logResponse('DELETE (retry after session change)', uri, retryResp);
+        if (retryResp.statusCode == 204 || retryResp.statusCode == 200) return;
+        _throwFromResponse(retryResp);
       }
     }
     _throwFromResponse(resp);
@@ -174,6 +179,15 @@ class ApiClient {
             resp.request?.url,
             resp,
           );
+        } else if (tokenStorage.isLoggedIn) {
+          // e.g. new login while a stale shared refresh finished without applying
+          debugPrint('[API] Retrying once with current session (req-id: $requestId)');
+          resp = await request();
+          _logResponse(
+            '${resp.request?.method ?? '?'} (retry after session change)',
+            resp.request?.url,
+            resp,
+          );
         }
       }
       return _parseResponse(resp);
@@ -216,9 +230,12 @@ class ApiClient {
   }
 
   Future<bool> _executeRefresh() async {
+    final startedGen = tokenStorage.sessionGeneration;
     if (tokenStorage.refreshToken == null) {
       debugPrint('[API] No refresh token, cannot refresh');
-      await tokenStorage.clear();
+      if (tokenStorage.sessionGeneration == startedGen && tokenStorage.isLoggedIn) {
+        await tokenStorage.clear();
+      }
       return false;
     }
     try {
@@ -228,11 +245,19 @@ class ApiClient {
         if (attempt > 0) {
           await Future<void>.delayed(const Duration(milliseconds: 500));
         }
+        if (tokenStorage.sessionGeneration != startedGen) {
+          debugPrint('[API] Refresh aborted (session changed)');
+          return false;
+        }
         debugPrint('[API] POST $uri (token refresh, attempt ${attempt + 1}/$maxAttempts)');
+        final refreshToken = tokenStorage.refreshToken;
+        if (refreshToken == null) {
+          return false;
+        }
         final resp = await _http.post(
           uri,
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body: jsonEncode({'refreshToken': tokenStorage.refreshToken}),
+          body: jsonEncode({'refreshToken': refreshToken}),
         );
         debugPrint('[API] Refresh response: ${resp.statusCode}');
         if (resp.statusCode == 200) {
@@ -240,7 +265,13 @@ class ApiClient {
           final access = body['accessToken'] as String?;
           if (access == null || access.isEmpty) {
             debugPrint('[API] Refresh 200 but missing accessToken, clearing session');
-            await tokenStorage.clear();
+            if (tokenStorage.sessionGeneration == startedGen) {
+              await tokenStorage.clear();
+            }
+            return false;
+          }
+          if (tokenStorage.sessionGeneration != startedGen) {
+            debugPrint('[API] Ignoring refresh success (session changed)');
             return false;
           }
           await tokenStorage.updateAccessToken(access);
@@ -249,7 +280,9 @@ class ApiClient {
         final isInvalid = resp.statusCode == 401 || resp.statusCode == 403;
         if (isInvalid) {
           debugPrint('[API] Refresh rejected (${resp.statusCode}), clearing session');
-          await tokenStorage.clear();
+          if (tokenStorage.sessionGeneration == startedGen) {
+            await tokenStorage.clear();
+          }
           return false;
         }
         final maybeTransient = resp.statusCode >= 500 && resp.statusCode < 600;
@@ -258,10 +291,14 @@ class ApiClient {
           continue;
         }
         debugPrint('[API] Refresh failed, clearing session');
-        await tokenStorage.clear();
+        if (tokenStorage.sessionGeneration == startedGen) {
+          await tokenStorage.clear();
+        }
         return false;
       }
-      await tokenStorage.clear();
+      if (tokenStorage.sessionGeneration == startedGen) {
+        await tokenStorage.clear();
+      }
       return false;
     } catch (e) {
       debugPrint('[API] Refresh error: $e');
@@ -273,7 +310,9 @@ class ApiClient {
         debugPrint('[API] Refresh network/transient error — keeping tokens; retry later');
         return false;
       }
-      await tokenStorage.clear();
+      if (tokenStorage.sessionGeneration == startedGen) {
+        await tokenStorage.clear();
+      }
       return false;
     }
   }

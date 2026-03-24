@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/local/chat_thread_disk_cache.dart';
+import '../../data/repositories_api/api_chat_repository.dart';
 import '../../features/chat/providers/chat_providers.dart';
 import '../../features/discovery/providers/discovery_providers.dart';
 import '../../features/likes/providers/likes_screen_data_provider.dart';
@@ -20,6 +24,8 @@ import '../providers/repository_providers.dart';
 ///
 /// Accepts [WidgetRef] or [Ref] (same [invalidate] API).
 void invalidateSessionScopedApiCaches(dynamic ref) {
+  clearChatThreadMessageDisplayCache();
+  unawaited(ChatThreadDiskCache.clearAll());
   ref.invalidate(chatWebSocketClientProvider);
   ref.invalidate(realtimeWebSocketClientProvider);
   ref.invalidate(pendingSentMessagesProvider);

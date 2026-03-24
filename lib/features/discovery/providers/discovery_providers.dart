@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../data/profile_view_merge.dart';
 import '../../../domain/models/discovery_filter_params.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../domain/models/user_profile.dart';
@@ -78,11 +79,19 @@ final profileSummaryProvider = FutureProvider.autoDispose
       return repo.getProfileSummary(userId);
     });
 
-/// Full UserProfile by id (for detailed profile view, matrimony).
-final fullUserProfileProvider = FutureProvider.autoDispose
+/// Matrimony full profile: merges [GET /profile/:id] with [GET /summary] so photos
+/// and card-level fields stay in sync when the full payload is sparse or degraded.
+final matrimonyProfileViewProvider = FutureProvider.autoDispose
     .family<UserProfile?, String>((ref, userId) async {
       final repo = ref.watch(profileRepositoryProvider);
-      return repo.getProfile(userId);
+      final results = await Future.wait([
+        repo.getProfile(userId),
+        repo.getProfileSummary(userId),
+      ]);
+      final full = results[0] as UserProfile?;
+      final summary = results[1] as ProfileSummary?;
+      if (full == null) return null;
+      return mergeFullUserProfileWithSummary(full, summary);
     });
 
 /// Compatibility breakdown for a specific candidate.

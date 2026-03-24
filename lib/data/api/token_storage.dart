@@ -25,6 +25,11 @@ class TokenStorage extends ChangeNotifier {
   String? _refreshToken;
   String? _userId;
 
+  /// Bumped on every [save] / [clear] so [ApiClient] can ignore stale token-refresh
+  /// completions that finish after sign-out or a new login.
+  int _sessionGeneration = 0;
+  int get sessionGeneration => _sessionGeneration;
+
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   String? get userId => _userId;
@@ -57,6 +62,7 @@ class TokenStorage extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsNew, isNewUser);
 
+    _sessionGeneration++;
     notifyListeners();
   }
 
@@ -80,6 +86,7 @@ class TokenStorage extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
+    _sessionGeneration++;
     notifyListeners();
   }
 }

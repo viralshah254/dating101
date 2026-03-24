@@ -134,12 +134,23 @@ class ApiProfileRepository implements ProfileRepository {
   static UserProfile _minimalProfileFromMap(Map<String, dynamic> j) {
     final photosHidden = _safeBool(j['photosHidden'], false);
     final canViewPhotos = j['canViewPhotos'] as bool?;
-    final rawUrls = _strList(
-      j['photoUrls'],
-    ).where((u) => !u.contains('/seed/')).toList();
-    final photoUrls = (photosHidden && canViewPhotos != true)
-        ? <String>[]
-        : rawUrls;
+    final List<String> photoUrls;
+    if (photosHidden && canViewPhotos != true) {
+      photoUrls = [];
+    } else {
+      final parsed = _parseImageUrls(j['photoUrls'] ?? j['imageUrls']);
+      final single = _sanitizeImageUrl(j['imageUrl'] as String?);
+      if (parsed != null && parsed.isNotEmpty) {
+        photoUrls = parsed;
+      } else if (single != null) {
+        photoUrls = [single];
+      } else {
+        photoUrls = _strList(j['photoUrls'])
+            .map(_sanitizeImageUrl)
+            .whereType<String>()
+            .toList();
+      }
+    }
     return UserProfile(
       id: (j['id'] as String?) ?? '',
       name: (j['name'] as String?) ?? 'Unknown',
@@ -211,13 +222,24 @@ class ApiProfileRepository implements ProfileRepository {
   static UserProfile _parseProfile(Map<String, dynamic> j) {
     final photosHidden = j['photosHidden'] as bool? ?? false;
     final canViewPhotos = j['canViewPhotos'] as bool?;
-    // When owner has hidden photos and viewer is not allowed, never expose photoUrls.
-    final rawUrls = _strList(
-      j['photoUrls'],
-    ).where((u) => !u.contains('/seed/')).toList();
-    final photoUrls = (photosHidden && canViewPhotos != true)
-        ? <String>[]
-        : rawUrls;
+    // Same resolution as profile summary: photoUrls | imageUrls | imageUrl (sanitized).
+    final List<String> photoUrls;
+    if (photosHidden && canViewPhotos != true) {
+      photoUrls = [];
+    } else {
+      final parsed = _parseImageUrls(j['photoUrls'] ?? j['imageUrls']);
+      final single = _sanitizeImageUrl(j['imageUrl'] as String?);
+      if (parsed != null && parsed.isNotEmpty) {
+        photoUrls = parsed;
+      } else if (single != null) {
+        photoUrls = [single];
+      } else {
+        photoUrls = _strList(j['photoUrls'])
+            .map(_sanitizeImageUrl)
+            .whereType<String>()
+            .toList();
+      }
+    }
 
     VerificationStatus verificationStatus = const VerificationStatus();
     if (j['verificationStatus'] is Map<String, dynamic>) {
