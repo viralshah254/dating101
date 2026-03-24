@@ -70,6 +70,9 @@ mixin _$ProfileSummary {
   /// Voice intro URL (if recorded).
   String? get voiceIntroUrl => throw _privateConstructorUsedError;
 
+  /// Server `Profile.lastActiveAt` (ISO); for last-seen when chat thread omits it.
+  DateTime? get lastActiveAt => throw _privateConstructorUsedError;
+
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -120,6 +123,7 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     bool hasActiveMoment,
     String? momentImageUrl,
     String? voiceIntroUrl,
+    DateTime? lastActiveAt,
   });
 }
 
@@ -173,6 +177,7 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? hasActiveMoment = null,
     Object? momentImageUrl = freezed,
     Object? voiceIntroUrl = freezed,
+    Object? lastActiveAt = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -316,6 +321,10 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.voiceIntroUrl
                 : voiceIntroUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            lastActiveAt: freezed == lastActiveAt
+                ? _value.lastActiveAt
+                : lastActiveAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
           )
           as $Val,
     );
@@ -367,6 +376,7 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     bool hasActiveMoment,
     String? momentImageUrl,
     String? voiceIntroUrl,
+    DateTime? lastActiveAt,
   });
 }
 
@@ -419,6 +429,7 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? hasActiveMoment = null,
     Object? momentImageUrl = freezed,
     Object? voiceIntroUrl = freezed,
+    Object? lastActiveAt = freezed,
   }) {
     return _then(
       _$ProfileSummaryImpl(
@@ -562,6 +573,10 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value.voiceIntroUrl
             : voiceIntroUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        lastActiveAt: freezed == lastActiveAt
+            ? _value.lastActiveAt
+            : lastActiveAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
       ),
     );
   }
@@ -606,6 +621,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     this.hasActiveMoment = false,
     this.momentImageUrl,
     this.voiceIntroUrl,
+    this.lastActiveAt,
   }) : _imageUrls = imageUrls,
        _interests = interests,
        _sharedInterests = sharedInterests,
@@ -744,9 +760,13 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
   @override
   final String? voiceIntroUrl;
 
+  /// Server `Profile.lastActiveAt` (ISO); for last-seen when chat thread omits it.
+  @override
+  final DateTime? lastActiveAt;
+
   @override
   String toString() {
-    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile, datingIntent: $datingIntent, hasActiveMoment: $hasActiveMoment, momentImageUrl: $momentImageUrl, voiceIntroUrl: $voiceIntroUrl)';
+    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile, datingIntent: $datingIntent, hasActiveMoment: $hasActiveMoment, momentImageUrl: $momentImageUrl, voiceIntroUrl: $voiceIntroUrl, lastActiveAt: $lastActiveAt)';
   }
 
   @override
@@ -827,7 +847,9 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
             (identical(other.momentImageUrl, momentImageUrl) ||
                 other.momentImageUrl == momentImageUrl) &&
             (identical(other.voiceIntroUrl, voiceIntroUrl) ||
-                other.voiceIntroUrl == voiceIntroUrl));
+                other.voiceIntroUrl == voiceIntroUrl) &&
+            (identical(other.lastActiveAt, lastActiveAt) ||
+                other.lastActiveAt == lastActiveAt));
   }
 
   @override
@@ -868,6 +890,7 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     hasActiveMoment,
     momentImageUrl,
     voiceIntroUrl,
+    lastActiveAt,
   ]);
 
   /// Create a copy of ProfileSummary
@@ -919,6 +942,7 @@ abstract class _ProfileSummary implements ProfileSummary {
     final bool hasActiveMoment,
     final String? momentImageUrl,
     final String? voiceIntroUrl,
+    final DateTime? lastActiveAt,
   }) = _$ProfileSummaryImpl;
 
   @override
@@ -1007,6 +1031,10 @@ abstract class _ProfileSummary implements ProfileSummary {
   /// Voice intro URL (if recorded).
   @override
   String? get voiceIntroUrl;
+
+  /// Server `Profile.lastActiveAt` (ISO); for last-seen when chat thread omits it.
+  @override
+  DateTime? get lastActiveAt;
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.

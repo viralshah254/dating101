@@ -1,4 +1,4 @@
-/// Result of phone + password sign-in / sign-up.
+/// Phone + password sign-in / sign-up (no OTP in current product flow).
 sealed class AuthResult {
   const AuthResult();
 }
@@ -12,10 +12,9 @@ class AuthSuccess extends AuthResult {
   final String? userId;
 
   /// true = user has no profile yet → route to mode-select / signup flow
-  /// false = returning user → route to home
   final bool isNewUser;
 
-  /// true when backend applied a valid referral code and granted 30 days Premium (response field referralApplied).
+  /// Referral benefit applied on register.
   final bool referralApplied;
 }
 
@@ -27,7 +26,7 @@ class AuthFailure extends AuthResult {
 
 /// Auth: phone + password, social sign-in, sign-out.
 abstract class AuthRepository {
-  /// Create account with phone + password. Fails if the number is already registered.
+  /// New account: POST /auth/register
   Future<AuthResult> signUpWithPassword({
     required String countryCode,
     required String phone,
@@ -35,25 +34,20 @@ abstract class AuthRepository {
     String? referralCode,
   });
 
-  /// Sign in with phone + password.
+  /// Existing account: POST /auth/login (legacy OTP-only users: first password is saved, then login)
   Future<AuthResult> signInWithPassword({
     required String countryCode,
     required String phone,
     required String password,
   });
 
-  /// Sign in with Google.
   Future<AuthResult> signInWithGoogle();
 
-  /// Sign in with Apple.
   Future<AuthResult> signInWithApple();
 
-  /// Current user id (null = not logged in). Synchronous check.
   String? get currentUserId;
 
-  /// Stream of auth state changes.
   Stream<String?> get authStateChanges;
 
-  /// Sign out.
   Future<void> signOut();
 }

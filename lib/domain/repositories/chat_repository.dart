@@ -1,7 +1,7 @@
 /// Chat thread summary for list.
 /// [mode] is optional; when set, threads are scoped to dating or matrimony (no mixing).
 class ChatThreadSummary {
-  const ChatThreadSummary({
+  ChatThreadSummary({
     required this.id,
     required this.otherUserId,
     required this.otherName,
@@ -9,7 +9,36 @@ class ChatThreadSummary {
     this.lastMessageAt,
     this.unreadCount = 0,
     this.mode,
+    this.otherParticipantLastReadAt,
+    this.otherUserOnline = false,
+    this.otherLastActiveAt,
   });
+
+  /// Parses GET /chat/threads row. Kept on the model so constructor + parser stay in sync (avoids hot-reload / partial rebuild mismatches).
+  factory ChatThreadSummary.fromApiMap(Map<String, dynamic> j) {
+    final unreadRaw = j['unreadCount'] ?? j['unread_count'];
+    final unreadCount = _coerceInt(unreadRaw);
+    final onlineRaw = j['otherUserOnline'] ?? j['other_user_online'];
+    final otherUserOnline = _coerceBool(onlineRaw);
+    return ChatThreadSummary(
+      id: _coerceString(j['id']) ?? '',
+      otherUserId:
+          _coerceString(j['otherUserId']) ?? _coerceString(j['other_user_id']) ?? '',
+      otherName:
+          _coerceString(j['otherName']) ?? _coerceString(j['other_name']) ?? '',
+      lastMessage:
+          _coerceString(j['lastMessage']) ?? _coerceString(j['last_message']),
+      lastMessageAt: _parseOptDateTime(j['lastMessageAt'] ?? j['last_message_at']),
+      unreadCount: unreadCount,
+      mode: _coerceString(j['mode']),
+      otherParticipantLastReadAt: _parseOptDateTime(
+        j['otherParticipantLastReadAt'] ?? j['other_participant_last_read_at'],
+      ),
+      otherUserOnline: otherUserOnline,
+      otherLastActiveAt: _parseOptDateTime(j['otherLastActiveAt'] ?? j['other_last_active_at']),
+    );
+  }
+
   final String id;
   final String otherUserId;
   final String otherName;
@@ -18,6 +47,43 @@ class ChatThreadSummary {
   final int unreadCount;
   /// `dating` or `matrimony`; used to separate chats by product mode.
   final String? mode;
+  /// Other person's read cursor (for your sent message ticks).
+  final DateTime? otherParticipantLastReadAt;
+  final bool otherUserOnline;
+  final DateTime? otherLastActiveAt;
+
+  static String? _coerceString(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return v;
+    return v.toString();
+  }
+
+  static bool _coerceBool(dynamic v) {
+    if (v == true || v == 1) return true;
+    if (v == false || v == 0 || v == null) return false;
+    if (v is String) {
+      final s = v.trim().toLowerCase();
+      return s == 'true' || s == '1' || s == 'yes';
+    }
+    return false;
+  }
+
+  static int _coerceInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is num) return v.round();
+    return int.tryParse(v.toString().trim()) ?? 0;
+  }
+
+  static DateTime? _parseOptDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is String) {
+      final p = DateTime.tryParse(v);
+      if (p == null) return null;
+      return p.isUtc ? p.toLocal() : p;
+    }
+    return null;
+  }
 }
 
 /// Pending message request (from GET /chat/message-requests).
@@ -69,7 +135,8 @@ abstract class ChatRepository {
   /// Create (or get existing) thread with another user for the given [mode]. Returns thread ID.
   Future<String> createThread(String otherUserId, {String? mode});
 
-  Stream<List<ChatMessage>> watchMessages(String threadId);
+  /// [viewerUserId] — when set, WS `message` frames from this user are ignored (own-send echo / misdelivery); `sent` + `message_persisted` still apply.
+  Stream<List<ChatMessage>> watchMessages(String threadId, {String? viewerUserId});
 
   /// [adCompletionToken] — when provided (e.g. after free user watches ad), backend may create a message request instead of direct message.
   Future<void> sendMessage(
@@ -79,6 +146,9 @@ abstract class ChatRepository {
   });
 
   Future<void> markThreadRead(String threadId);
+
+  /// GET /chat/threads/:id/peer-read — when the other person last read this thread.
+  Future<DateTime?> getPeerLastReadAt(String threadId);
 
   /// Message requests (GET /chat/message-requests). Pending messages from non-matches. [mode] = dating | matrimony.
   Future<List<MessageRequest>> getMessageRequests({int limit = 20, String? mode});

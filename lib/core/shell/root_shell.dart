@@ -33,13 +33,18 @@ class RootShell extends ConsumerWidget {
     final theme = Theme.of(context);
     final brand = theme.extension<BrandTheme>();
     final items = _navItems(mode, flags, l);
+    ref.watch(chatRealtimeHubProvider);
     final requestsCount = ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
     final shortlistCount = ref.watch(whoShortlistedMeCountProvider).valueOrNull ?? 0;
-    final chatUnread = ref.watch(chatUnreadTotalProvider).valueOrNull ?? 0;
-    final notificationsUnread =
-        ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
+    final chatUnread = ref.watch(chatNavUnreadCountProvider);
+    final messageReqCount = ref.watch(messageRequestsCountProvider).valueOrNull ?? 0;
     final badges = _badgesForMode(
-      mode, flags, requestsCount, shortlistCount, chatUnread, notificationsUnread,
+      mode,
+      flags,
+      requestsCount,
+      shortlistCount,
+      chatUnread,
+      messageReqCount,
     );
 
     return Scaffold(
@@ -90,15 +95,16 @@ class RootShell extends ConsumerWidget {
     int requestsCount,
     int shortlistCount,
     int chatUnread,
-    int notificationsUnread,
+    int messageReqCount,
   ) {
+    // Unread in-app notifications are surfaced on Profile → Notifications, not on the tab icon.
     if (mode == AppMode.dating) {
-      return [0, 0, chatUnread, 0, notificationsUnread];
+      return [0, 0, chatUnread + messageReqCount, 0, 0];
     }
     if (flags.mapInMatrimony) {
-      return [0, 0, shortlistCount, chatUnread, notificationsUnread];
+      return [0, 0, shortlistCount, chatUnread + messageReqCount, 0];
     }
-    return [0, requestsCount, shortlistCount, chatUnread, notificationsUnread];
+    return [0, requestsCount, shortlistCount, chatUnread + messageReqCount, 0];
   }
 
   void _onTap(int index) {

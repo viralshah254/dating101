@@ -57,5 +57,8 @@ class ProfileSummary with _$ProfileSummary {
 
     /// Voice intro URL (if recorded).
     String? voiceIntroUrl,
+
+    /// Server `Profile.lastActiveAt` (ISO); for last-seen when chat thread omits it.
+    DateTime? lastActiveAt,
   }) = _ProfileSummary;
 }

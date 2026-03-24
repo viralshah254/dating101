@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -36,7 +37,10 @@ class ApiClient {
   final TokenStorage tokenStorage;
   final http.Client _http;
   final String? Function()? _localeGetter;
-  bool _isRefreshing = false;
+
+  /// One shared refresh; concurrent 401s must await this instead of skipping refresh
+  /// while `_isRefreshing` was true (that caused spurious 401 → logout).
+  Future<bool>? _refreshInFlight;
 
   Map<String, String> _buildHeaders({String? requestId}) {
     final headers = <String, String>{
@@ -115,7 +119,7 @@ class ApiClient {
     final resp = await _http.delete(uri, headers: _headers);
     _logResponse('DELETE', uri, resp);
     if (resp.statusCode == 204 || resp.statusCode == 200) return;
-    if (resp.statusCode == 401 && !_isRefreshing) {
+    if (resp.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final retryResp = await _http.delete(uri, headers: _headers);
@@ -159,7 +163,7 @@ class ApiClient {
     try {
       var resp = await request();
       _logResponse(resp.request?.method ?? '?', resp.request?.url, resp);
-      if (resp.statusCode == 401 && !_isRefreshing) {
+      if (resp.statusCode == 401) {
         debugPrint('[API] 401 → attempting token refresh... (req-id: $requestId)');
         final refreshed = await _tryRefresh();
         if (refreshed) {
@@ -202,36 +206,75 @@ class ApiClient {
     throw ApiException(resp.statusCode, code, message, details);
   }
 
-  Future<bool> _tryRefresh() async {
+  /// All callers awaiting 401 recovery share one refresh; avoids parallel requests
+  /// seeing `401` while another refresh is in progress and incorrectly failing.
+  Future<bool> _tryRefresh() {
+    _refreshInFlight ??= _executeRefresh().whenComplete(() {
+      _refreshInFlight = null;
+    });
+    return _refreshInFlight!;
+  }
+
+  Future<bool> _executeRefresh() async {
     if (tokenStorage.refreshToken == null) {
       debugPrint('[API] No refresh token, cannot refresh');
       await tokenStorage.clear();
       return false;
     }
-    _isRefreshing = true;
     try {
       final uri = _buildUri('/auth/refresh');
-      debugPrint('[API] POST $uri (token refresh)');
-      final resp = await _http.post(
-        uri,
-        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-        body: jsonEncode({'refreshToken': tokenStorage.refreshToken}),
-      );
-      debugPrint('[API] Refresh response: ${resp.statusCode}');
-      if (resp.statusCode == 200) {
-        final body = jsonDecode(resp.body) as Map<String, dynamic>;
-        await tokenStorage.updateAccessToken(body['accessToken'] as String);
-        return true;
+      const maxAttempts = 2;
+      for (var attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+        debugPrint('[API] POST $uri (token refresh, attempt ${attempt + 1}/$maxAttempts)');
+        final resp = await _http.post(
+          uri,
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode({'refreshToken': tokenStorage.refreshToken}),
+        );
+        debugPrint('[API] Refresh response: ${resp.statusCode}');
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body) as Map<String, dynamic>;
+          final access = body['accessToken'] as String?;
+          if (access == null || access.isEmpty) {
+            debugPrint('[API] Refresh 200 but missing accessToken, clearing session');
+            await tokenStorage.clear();
+            return false;
+          }
+          await tokenStorage.updateAccessToken(access);
+          return true;
+        }
+        final isInvalid = resp.statusCode == 401 || resp.statusCode == 403;
+        if (isInvalid) {
+          debugPrint('[API] Refresh rejected (${resp.statusCode}), clearing session');
+          await tokenStorage.clear();
+          return false;
+        }
+        final maybeTransient = resp.statusCode >= 500 && resp.statusCode < 600;
+        if (maybeTransient && attempt < maxAttempts - 1) {
+          debugPrint('[API] Refresh server error, will retry...');
+          continue;
+        }
+        debugPrint('[API] Refresh failed, clearing session');
+        await tokenStorage.clear();
+        return false;
       }
-      debugPrint('[API] Refresh failed, clearing session');
       await tokenStorage.clear();
       return false;
     } catch (e) {
       debugPrint('[API] Refresh error: $e');
+      if (e is SocketException ||
+          e is HttpException ||
+          e is HandshakeException ||
+          e is http.ClientException ||
+          e is TimeoutException) {
+        debugPrint('[API] Refresh network/transient error — keeping tokens; retry later');
+        return false;
+      }
       await tokenStorage.clear();
       return false;
-    } finally {
-      _isRefreshing = false;
     }
   }
 

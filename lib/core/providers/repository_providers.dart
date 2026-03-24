@@ -8,6 +8,7 @@ import '../../core/notifications/notification_service.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/api_config.dart';
 import '../../data/api/chat_websocket_client.dart';
+import '../../data/api/realtime_websocket_client.dart';
 import '../../data/api/token_storage.dart';
 import '../../data/services/photo_upload_service.dart';
 import '../../data/services/security_service.dart';
@@ -178,6 +179,22 @@ final chatWebSocketClientProvider = Provider<ChatWebSocketClient?>((ref) {
     return null;
   }
   return wsClient;
+});
+
+/// Realtime RPC (Likes snapshot, etc.). Registered after chat WS plugin on server.
+final realtimeWebSocketClientProvider = Provider<RealtimeWebSocketClient?>((ref) {
+  if (_config.useFakeBackend) return null;
+  final client = RealtimeWebSocketClient(
+    wsBaseUrl: _config.baseUrl,
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
+  ref.onDispose(client.dispose);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  if (!tokenStorage.isLoggedIn) {
+    client.dispose();
+    return null;
+  }
+  return client;
 });
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {

@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
+import '../../core/datetime/app_time_format.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../api/api_client.dart';
 import '../api/chat_websocket_client.dart';
@@ -29,7 +32,17 @@ class ApiChatRepository implements ChatRepository {
     final query = <String, String>{'limit': '$limit', 'mode': safeMode};
     final body = await api.get('/chat/threads', query: query);
     final list = body['threads'] as List? ?? [];
-    return list.map((e) => _parseThread(e as Map<String, dynamic>)).toList();
+    final out = <ChatThreadSummary>[];
+    for (final e in list) {
+      if (e is! Map) continue;
+      try {
+        out.add(ChatThreadSummary.fromApiMap(Map<String, dynamic>.from(e)));
+      } catch (err, st) {
+        debugPrint('[Chat] Skipping malformed thread row: $err');
+        debugPrint('$st');
+      }
+    }
+    return out;
   }
 
   @override
@@ -41,7 +54,7 @@ class ApiChatRepository implements ChatRepository {
   }
 
   @override
-  Stream<List<ChatMessage>> watchMessages(String threadId) {
+  Stream<List<ChatMessage>> watchMessages(String threadId, {String? viewerUserId}) {
     final controller = StreamController<List<ChatMessage>>();
     List<ChatMessage> latest = [];
     StreamSubscription? wsSub;
@@ -52,6 +65,15 @@ class ApiChatRepository implements ChatRepository {
       if (!controller.isClosed) controller.add(msgs);
     }
 
+    bool isNearDuplicate(ChatMessage msg) {
+      return latest.any(
+        (e) =>
+            e.senderId == msg.senderId &&
+            e.text == msg.text &&
+            e.sentAt.difference(msg.sentAt).inSeconds.abs() < 8,
+      );
+    }
+
     _fetchMessages(threadId).then(emit).catchError((e) {
       if (!controller.isClosed) controller.addError(e);
     });
@@ -59,8 +81,19 @@ class ApiChatRepository implements ChatRepository {
     if (wsClient != null) {
       if (!wsClient!.isConnected) wsClient!.connect();
       wsSub = wsClient!.incoming.listen((event) {
-        // Incoming message pushed from server to recipient
-        if ((event.type == IncomingEventType.message || event.type == IncomingEventType.sent) &&
+        // Real-time `message` is for the recipient only; if it ever hits the sender's socket,
+        // it would duplicate `sent` / `message_persisted` and show as a false "incoming" line.
+        if (event.type == IncomingEventType.message &&
+            event.threadId == threadId &&
+            event.message != null &&
+            viewerUserId != null &&
+            event.message!.senderId == viewerUserId) {
+          return;
+        }
+
+        if ((event.type == IncomingEventType.message ||
+                event.type == IncomingEventType.sent ||
+                event.type == IncomingEventType.messagePersisted) &&
             event.threadId == threadId &&
             event.message != null) {
           final m = event.message!;
@@ -78,8 +111,15 @@ class ApiChatRepository implements ChatRepository {
             final updated = [...latest];
             updated[existingTempIdx] = msg;
             emit(updated);
-          } else if (!latest.any((e) => e.id == msg.id)) {
-            emit([...latest, msg]);
+          } else {
+            final byId = latest.indexWhere((e) => e.id == msg.id);
+            if (byId >= 0) {
+              final updated = [...latest];
+              updated[byId] = msg;
+              emit(updated);
+            } else if (!latest.any((e) => e.id == msg.id) && !isNearDuplicate(msg)) {
+              emit([...latest, msg]);
+            }
           }
         }
         // messageRequestCreated: ad-gated send became a request — remove the pending temp bubble
@@ -107,7 +147,7 @@ class ApiChatRepository implements ChatRepository {
   }
 
   Future<List<ChatMessage>> _fetchMessages(String threadId) async {
-    final body = await api.get('/chat/threads/$threadId/messages', query: {'limit': '50'});
+    final body = await api.get('/chat/threads/$threadId/messages', query: {'limit': '100'});
     final raw = body['messages'] ?? body['data'];
     final list = raw is List ? raw : <dynamic>[];
     final out = <ChatMessage>[];
@@ -145,6 +185,14 @@ class ApiChatRepository implements ChatRepository {
   @override
   Future<void> markThreadRead(String threadId) async {
     await api.post('/chat/threads/$threadId/read', body: <String, dynamic>{});
+  }
+
+  @override
+  Future<DateTime?> getPeerLastReadAt(String threadId) async {
+    final body = await api.get('/chat/threads/$threadId/peer-read');
+    final s = body['otherParticipantLastReadAt'] as String?;
+    if (s == null || s.isEmpty) return null;
+    return parseApiDateTime(s);
   }
 
   @override
@@ -197,36 +245,16 @@ class ApiChatRepository implements ChatRepository {
       otherUserId: otherMap['id'] ?? j['otherUserId'] ?? '',
       otherName: otherMap['name'] ?? j['otherName'] as String?,
       text: j['text'] ?? j['message'] as String?,
-      createdAt: j['createdAt'] != null ? DateTime.tryParse(j['createdAt'] as String) : null,
+      createdAt: j['createdAt'] != null ? parseApiDateTime(j['createdAt'] as String) : null,
       threadId: j['threadId'] as String?,
       isInbound: isInbound,
     );
   }
 
-  static ChatThreadSummary _parseThread(Map<String, dynamic> j) {
-    final unreadRaw = j['unreadCount'] ?? j['unread_count'];
-    final unreadCount = unreadRaw is int ? unreadRaw : (int.tryParse('$unreadRaw') ?? 0);
-    return ChatThreadSummary(
-      id: j['id'] as String? ?? '',
-      otherUserId: j['otherUserId'] as String? ?? j['other_user_id'] as String? ?? '',
-      otherName: j['otherName'] as String? ?? j['other_name'] as String? ?? '',
-      lastMessage: j['lastMessage'] as String? ?? j['last_message'] as String?,
-      lastMessageAt: _parseOptDateTime(j['lastMessageAt'] ?? j['last_message_at']),
-      unreadCount: unreadCount,
-      mode: j['mode'] as String?,
-    );
-  }
-
-  static DateTime? _parseOptDateTime(dynamic v) {
-    if (v == null) return null;
-    if (v is String) return DateTime.tryParse(v);
-    return null;
-  }
-
   static ChatMessage _parseMessage(Map<String, dynamic> j) {
     final sentAtRaw = j['sentAt'] ?? j['createdAt'] ?? j['timestamp'];
     final sentAt = sentAtRaw is String
-        ? DateTime.tryParse(sentAtRaw) ?? DateTime.now()
+        ? (parseApiDateTime(sentAtRaw) ?? DateTime.now())
         : DateTime.now();
     return ChatMessage(
       id: j['id'] as String? ?? '',

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../data/api/chat_websocket_client.dart';
 import '../../../domain/repositories/chat_repository.dart';
 
 /// Pending sent messages per thread (survives navigation). Backend may return messageRequestId and not include message in GET; we keep these until server list includes them so the thread does not look blank on re-entry.
@@ -18,9 +19,51 @@ final chatThreadsProvider = FutureProvider.autoDispose<List<ChatThreadSummary>>(
 });
 
 /// Total unread messages across all threads — for nav badge.
-final chatUnreadTotalProvider = FutureProvider.autoDispose<int>((ref) async {
-  final threads = await ref.watch(chatThreadsProvider.future);
-  return threads.fold<int>(0, (sum, t) => sum + t.unreadCount);
+/// Sync [Provider] (not [FutureProvider]) reading [chatThreadsProvider]'s [AsyncValue] — avoids
+/// awaiting [.future] on error, and avoids hot-reload crashes when this used to be a FutureProvider.
+final chatNavUnreadCountProvider = Provider.autoDispose<int>((ref) {
+  final async = ref.watch(chatThreadsProvider);
+  return async.when(
+    data: (threads) => threads.fold<int>(0, (sum, t) => sum + t.unreadCount),
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
+});
+
+/// Other participant's read cursor for a thread (for ✓✓ on your messages). Updated from WS `thread_read` and on open.
+final threadPeerReadAtProvider = StateProvider.family<DateTime?, String>((ref, _) => null);
+
+/// Connects chat WebSocket app-wide and refreshes thread lists / peer-read on events.
+final chatRealtimeHubProvider = Provider<void>((ref) {
+  final client = ref.watch(chatWebSocketClientProvider);
+  if (client == null) return;
+
+  Future.microtask(() => client.connect());
+
+  final sub = client.incoming.listen((ev) {
+    switch (ev.type) {
+      case IncomingEventType.message:
+      case IncomingEventType.sent:
+      case IncomingEventType.messagePersisted:
+      case IncomingEventType.threadRead:
+        ref.invalidate(chatThreadsProvider);
+        break;
+      case IncomingEventType.messageRequestCreated:
+        ref.invalidate(chatThreadsProvider);
+        ref.invalidate(messageRequestsProvider);
+        ref.invalidate(messageRequestsCountProvider);
+        break;
+      default:
+        break;
+    }
+    if (ev.type == IncomingEventType.threadRead &&
+        ev.threadId != null &&
+        ev.readAt != null) {
+      ref.read(threadPeerReadAtProvider(ev.threadId!).notifier).state = ev.readAt;
+    }
+  });
+
+  ref.onDispose(sub.cancel);
 });
 
 /// GET /chat/suggestions?mode=... — icebreaker chips. Fallback to static list if empty.
@@ -75,14 +118,12 @@ final focusModeProvider =
     FutureProvider.autoDispose<List<FocusModeDisplayEntry>>((ref) async {
   final api = ref.watch(apiClientProvider);
 
-  // Fetch concurrently; threads may fail (e.g. no internet) — degrade gracefully
+  // Do not await chatThreadsProvider.future — on error it would fail this provider too.
   final modesBodyFuture = api.get('/focus-mode');
-  final threadsFuture = ref
-      .watch(chatThreadsProvider.future)
-      .catchError((_) => <ChatThreadSummary>[]);
+  final threads =
+      ref.watch(chatThreadsProvider).valueOrNull ?? <ChatThreadSummary>[];
 
   final modesBody = await modesBodyFuture;
-  final threads = await threadsFuture;
 
   final threadMap = {for (final t in threads) t.id: t};
   final raw = (modesBody['focusModes'] as List<dynamic>? ?? []);

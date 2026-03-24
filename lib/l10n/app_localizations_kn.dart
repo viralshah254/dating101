@@ -109,6 +109,12 @@ class AppLocalizationsKn extends AppLocalizations {
   String get verifyYourNumber => 'ನಿಮ್ಮ ನಂಬರ್ ಪರಿಶೀಲಿಸಿ';
 
   @override
+  String get authSignInUsePassword => 'Use password';
+
+  @override
+  String get authSignInUseSmsCode => 'Use SMS code';
+
+  @override
   String get enterOtp => '೬ ಅಂಕಿಯ ಕೋಡ್ ನಮೂದಿಸಿ';
 
   @override
@@ -256,6 +262,15 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get discoverTitle => 'ಆವಿಷ್ಕರಿಸಿ';
+
+  @override
+  String get discoverLoadingInitial => 'Finding great people for you…';
+
+  @override
+  String get discoverLoadingFilters => 'Refining your discovery…';
+
+  @override
+  String get discoverLoadingLocation => 'Gathering profiles in this area…';
 
   @override
   String get discoverNoMoreProfilesTitle => 'ಇದೀಗ ಹೆಚ್ಚು ಪ್ರೊಫೈಲ್‌ಗಳಿಲ್ಲ';
@@ -550,6 +565,9 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get signOut => 'ಸೈನ್ ಔಟ್';
+
+  @override
+  String get signOutSubtitle => 'Clears saved preferences on this device';
 
   @override
   String get editProfile => 'Edit profile';

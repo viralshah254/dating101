@@ -2290,7 +2290,7 @@ class _DatingInterestChip extends StatelessWidget {
   }
 }
 
-/// Wrapper: show Pass/Super like/Like bar only when user has not yet interacted (no pass, like, or super like).
+/// Dating bottom bar: Pass / Super like / Like / Message before any action; after like or super like, Message-only bar.
 class _DatingProfileBottomBar extends ConsumerWidget {
   const _DatingProfileBottomBar({
     required this.profileId,
@@ -2314,15 +2314,273 @@ class _DatingProfileBottomBar extends ConsumerWidget {
     final isLiked = sentInterestIds.contains(profileId) ||
         (optimisticSent?.contains(profileId) ?? false);
     final isSuperLiked = sentPriorityIds.contains(profileId);
-    final hasInteracted = isPassed || isLiked || isSuperLiked;
 
-    if (hasInteracted) {
+    if (isPassed && !isLiked && !isSuperLiked) {
       return const SizedBox.shrink();
+    }
+    if (isLiked || isSuperLiked) {
+      return _DatingPostInterestBar(
+        profileId: profileId,
+        profileName: profileName,
+      );
     }
     return _DatingFloatingBar(
       profileId: profileId,
       profileName: profileName,
     );
+  }
+}
+
+/// After like / super like: keep a clear [Message] CTA (full bar was hidden before).
+class _DatingPostInterestBar extends ConsumerWidget {
+  const _DatingPostInterestBar({
+    required this.profileId,
+    required this.profileName,
+  });
+
+  final String profileId;
+  final String profileName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final matched =
+        ref.watch(matchedUserIdsProvider).valueOrNull?.contains(profileId) ??
+            false;
+    final hint = matched
+        ? l.toastMatchWith(profileName)
+        : l.toastInterestSent;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.grey.shade900.withValues(alpha: 0.92)
+                : Colors.white.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 24,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                hint,
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySmall.copyWith(
+                  color: onSurface.withValues(alpha: 0.72),
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () =>
+                    _datingFullProfileOnMessage(context, ref, profileId),
+                icon: const Icon(Icons.chat_bubble_rounded, size: 22),
+                label: Text(l.ctaSendMessage),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _datingFullProfileOpenChat(
+  BuildContext context,
+  WidgetRef ref,
+  String profileId,
+  String? initialAdToken,
+) async {
+  final l = AppLocalizations.of(context)!;
+  final navigator = Navigator.of(context);
+  try {
+    final threadId = await ref.read(chatRepositoryProvider).createThread(
+          profileId,
+          mode: 'dating',
+        );
+    if (!context.mounted) return;
+    ref.invalidate(messageRequestsProvider);
+    ref.invalidate(messageRequestsCountProvider);
+    ref.invalidate(receivedRequestsCountProvider);
+    ref.invalidate(chatThreadsProvider);
+    ref.invalidate(discoveryFeedProvider);
+    ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
+    navigator.pop();
+    if (!context.mounted) return;
+    final query = 'otherUserId=${Uri.encodeComponent(profileId)}';
+    final tokenParam = initialAdToken != null
+        ? '&initialAdToken=${Uri.encodeComponent(initialAdToken)}'
+        : '';
+    context.push('/chat/$threadId?$query$tokenParam');
+  } on ApiException catch (e) {
+    if (!context.mounted) return;
+    ref.invalidate(discoveryFeedProvider);
+    ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
+    navigator.pop();
+    if (!context.mounted) return;
+    context.push('/chats');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          e.code == 'CONNECTION_REQUIRED'
+              ? l.likedOpenChatFromChats
+              : e.code == 'DAILY_MESSAGE_AD_LIMIT_REACHED'
+                  ? l.datingMessageAdLimitReached
+                  : e.message,
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
+    navigator.pop();
+    if (!context.mounted) return;
+    context.push('/chats');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l.errorGeneric),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+Future<void> _datingFullProfileOnMessage(
+  BuildContext context,
+  WidgetRef ref,
+  String profileId,
+) async {
+  final ent = ref.read(entitlementsProvider);
+  final l = AppLocalizations.of(context)!;
+  if (ent.canSendMessage) {
+    await _datingFullProfileOpenChat(context, ref, profileId, null);
+    return;
+  }
+  final choice = await showModalBottomSheet<String?>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l.datingMessageGateTitle,
+              style: AppTypography.titleMedium.copyWith(
+                color: Theme.of(ctx).colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.datingMessageGateBody,
+              style: AppTypography.bodyMedium.copyWith(
+                color:
+                    Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(ctx).pop('watch_ad'),
+              icon: const Icon(Icons.play_circle_outline, size: 22),
+              label: Text(l.watchAdToSendMessage),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => Navigator.of(ctx).pop('upgrade'),
+              icon: const Icon(Icons.workspace_premium_outlined, size: 22),
+              label: Text(l.ctaUpgradeToPremium),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: Text(l.cancel),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (!context.mounted || choice == null) return;
+  if (choice == 'upgrade') {
+    context.push('/paywall');
+    return;
+  }
+  if (choice == 'watch_ad') {
+    final shown = await loadAndShowInterstitialWithLoading(
+      context,
+      ref,
+      AdRewardReason.sendMessage,
+    );
+    if (!context.mounted) return;
+    if (!shown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.failedToSendTryAgain),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final adToken = const Uuid().v4();
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    final sentIds =
+        ref.read(sentInterestProfileIdsProvider(mode)).valueOrNull ??
+            <String>{};
+    final optimisticSent =
+        ref.read(optimisticSentInterestProfileIdsProvider)[mode];
+    final alreadySent = sentIds.contains(profileId) ||
+        (optimisticSent?.contains(profileId) ?? false);
+    if (!alreadySent) {
+      try {
+        await ref.read(interactionsRepositoryProvider).expressInterest(
+              profileId,
+              source: 'profile',
+              mode: mode,
+            );
+        if (!context.mounted) return;
+        ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+              (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
+            );
+        ref.invalidate(sentInteractionsProvider(mode));
+      } on ApiException catch (e) {
+        if (!context.mounted) return;
+        if (e.code != 'ALREADY_SENT') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        ref.invalidate(sentInteractionsProvider(mode));
+      }
+    }
+    await _datingFullProfileOpenChat(context, ref, profileId, adToken);
   }
 }
 
@@ -2417,7 +2675,8 @@ class _DatingFloatingBar extends ConsumerWidget {
                 gradient: const [Color(0xFF74B9FF), Color(0xFF0984E3)],
                 enabled: true,
                 showBadge: !canMessageDirect,
-                onTap: () => _onMessage(context, ref),
+                onTap: () =>
+                    _datingFullProfileOnMessage(context, ref, profileId),
               ),
             ],
           ),
@@ -2529,165 +2788,6 @@ class _DatingFloatingBar extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
-    }
-  }
-
-  Future<void> _onMessage(BuildContext context, WidgetRef ref) async {
-    final ent = ref.read(entitlementsProvider);
-    final l = AppLocalizations.of(context)!;
-    if (ent.canSendMessage) {
-      await _openDatingChat(context, ref, null);
-      return;
-    }
-    // Free user: watch ad (5/day) or upgrade. Message goes to message request (dating).
-    final choice = await showModalBottomSheet<String?>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l.datingMessageGateTitle,
-                style: AppTypography.titleMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l.datingMessageGateBody,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: () => Navigator.of(ctx).pop('watch_ad'),
-                icon: const Icon(Icons.play_circle_outline, size: 22),
-                label: Text(l.watchAdToSendMessage),
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => Navigator.of(ctx).pop('upgrade'),
-                icon: const Icon(Icons.workspace_premium_outlined, size: 22),
-                label: Text(l.ctaUpgradeToPremium),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(null),
-                child: Text(l.cancel),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (!context.mounted || choice == null) return;
-    if (choice == 'upgrade') {
-      context.push('/paywall');
-      return;
-    }
-    if (choice == 'watch_ad') {
-      final shown = await loadAndShowInterstitialWithLoading(
-        context,
-        ref,
-        AdRewardReason.sendMessage,
-      );
-      if (!context.mounted) return;
-      if (!shown) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.failedToSendTryAgain),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
-      final adToken = const Uuid().v4();
-      final mode = ref.read(appModeProvider) ?? AppMode.dating;
-      final sentIds = ref.read(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
-      final optimisticSent = ref.read(optimisticSentInterestProfileIdsProvider)[mode];
-      final alreadySent = sentIds.contains(profileId) || (optimisticSent?.contains(profileId) ?? false);
-      if (!alreadySent) {
-        try {
-          await ref.read(interactionsRepositoryProvider).expressInterest(
-                profileId,
-                source: 'profile',
-                mode: mode,
-              );
-          if (!context.mounted) return;
-          ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
-                (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
-              );
-          ref.invalidate(sentInteractionsProvider(mode));
-        } on ApiException catch (e) {
-          if (!context.mounted) return;
-          if (e.code != 'ALREADY_SENT') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-            );
-            return;
-          }
-          ref.invalidate(sentInteractionsProvider(mode));
-        }
-      }
-      await _openDatingChat(context, ref, adToken);
-    }
-  }
-
-  Future<void> _openDatingChat(BuildContext context, WidgetRef ref, String? initialAdToken) async {
-    final l = AppLocalizations.of(context)!;
-    final navigator = Navigator.of(context);
-    try {
-      final threadId = await ref.read(chatRepositoryProvider).createThread(
-            profileId,
-            mode: 'dating',
-          );
-      if (!context.mounted) return;
-      ref.invalidate(messageRequestsProvider);
-      ref.invalidate(messageRequestsCountProvider);
-      ref.invalidate(receivedRequestsCountProvider);
-      ref.invalidate(chatThreadsProvider);
-      ref.invalidate(discoveryFeedProvider);
-      ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
-      navigator.pop();
-      if (!context.mounted) return;
-      final query = 'otherUserId=${Uri.encodeComponent(profileId)}';
-      final tokenParam = initialAdToken != null
-          ? '&initialAdToken=${Uri.encodeComponent(initialAdToken)}'
-          : '';
-      context.push('/chat/$threadId?$query$tokenParam');
-    } on ApiException catch (e) {
-      if (!context.mounted) return;
-      ref.invalidate(discoveryFeedProvider);
-      ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
-      navigator.pop();
-      if (!context.mounted) return;
-      context.push('/chats');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.code == 'CONNECTION_REQUIRED'
-                ? l.likedOpenChatFromChats
-                : e.code == 'DAILY_MESSAGE_AD_LIMIT_REACHED'
-                    ? l.datingMessageAdLimitReached
-                    : e.message,
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } catch (_) {
-      if (!context.mounted) return;
-      ref.read(discoveryAdvancePastProfileIdProvider.notifier).state = profileId;
-      navigator.pop();
-      if (!context.mounted) return;
-      context.push('/chats');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.errorGeneric), behavior: SnackBarBehavior.floating),
       );
     }
   }

@@ -110,6 +110,12 @@ class AppLocalizationsGu extends AppLocalizations {
   String get verifyYourNumber => 'તમારો નંબર ચકાસો';
 
   @override
+  String get authSignInUsePassword => 'Use password';
+
+  @override
+  String get authSignInUseSmsCode => 'Use SMS code';
+
+  @override
   String get enterOtp => '6 અંકનો કોડ દાખલ કરો';
 
   @override
@@ -256,6 +262,15 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get discoverTitle => 'શોધો';
+
+  @override
+  String get discoverLoadingInitial => 'Finding great people for you…';
+
+  @override
+  String get discoverLoadingFilters => 'Refining your discovery…';
+
+  @override
+  String get discoverLoadingLocation => 'Gathering profiles in this area…';
 
   @override
   String get discoverNoMoreProfilesTitle => 'હમણાં વધુ પ્રોફાઇલ્સ નથી';
@@ -546,6 +561,9 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get signOut => 'સાઇન આઉટ';
+
+  @override
+  String get signOutSubtitle => 'Clears saved preferences on this device';
 
   @override
   String get editProfile => 'Edit profile';

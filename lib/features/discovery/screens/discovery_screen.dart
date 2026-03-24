@@ -19,8 +19,10 @@ import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/discovery_providers.dart';
 import '../../chat/providers/chat_providers.dart';
+import '../../likes/providers/likes_screen_data_provider.dart';
 import '../../chat/widgets/focus_mode_banner.dart';
 import '../widgets/city_picker_sheet.dart';
+import '../widgets/discover_feed_loading_surface.dart';
 import '../widgets/discovery_card_stack.dart';
 import '../widgets/like_note_sheet.dart';
 import '../widgets/unified_filter_sheet.dart';
@@ -46,6 +48,18 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final hasCityFilter = _effectiveCity(filterParams, travelCity)
         ?.isNotEmpty == true;
     final asyncProfiles = ref.watch(discoveryFeedProvider);
+    final loadingCue = ref.watch(discoveryLoadingCueProvider);
+
+    ref.listen<AsyncValue<List<ProfileSummary>>>(discoveryFeedProvider, (prev, next) {
+      next.whenOrNull(
+        data: (_) {
+          ref.read(discoveryLoadingCueProvider.notifier).state = DiscoveryLoadingCue.none;
+        },
+        error: (_, __) {
+          ref.read(discoveryLoadingCueProvider.notifier).state = DiscoveryLoadingCue.none;
+        },
+      );
+    });
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -85,6 +99,18 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       body: asyncProfiles.when(
         skipLoadingOnReload: true,
         data: (profiles) {
+          if (loadingCue != DiscoveryLoadingCue.none) {
+            final effectiveCity = _effectiveCity(filterParams, travelCity);
+            return _buildLoadingShell(
+              context,
+              ref,
+              mode,
+              accent,
+              l,
+              effectiveCity,
+              loadingCue,
+            );
+          }
           // When returning from profile after liking (e.g. watch-ad message flow), advance past this card.
           final advanceId = ref.watch(discoveryAdvancePastProfileIdProvider);
           if (advanceId != null &&
@@ -98,7 +124,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               }
             });
           }
-          final filterParams = ref.watch(discoveryFilterParamsProvider);
           final effectiveCity = _effectiveCity(filterParams, travelCity);
           return _buildBody(
             context,
@@ -110,7 +135,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             effectiveCity,
           );
         },
-        loading: () => loadingSpinner(context),
+        loading: () => _buildLoadingShell(
+              context,
+              ref,
+              mode,
+              accent,
+              l,
+              _effectiveCity(filterParams, travelCity),
+              DiscoveryLoadingCue.initial,
+            ),
         error: (e, _) => ErrorState(
           error: e,
           onRetry: () => ref.invalidate(discoveryFeedProvider),
@@ -124,6 +157,68 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final c = fp?.city;
     if (c != null && c.isNotEmpty) return c;
     return travelCity;
+  }
+
+  /// Discover chrome + themed loading (filters, city change, or first paint).
+  Widget _buildLoadingShell(
+    BuildContext context,
+    WidgetRef ref,
+    AppMode mode,
+    Color accent,
+    AppLocalizations l,
+    String? effectiveCity,
+    DiscoveryLoadingCue cue,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!_focusModeBannerDismissed)
+          _FocusModeBannerContainer(
+            onDismiss: () => setState(() => _focusModeBannerDismissed = true),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.dailyCuratedSet,
+                      style: AppTypography.caption.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _CityChip(
+                      city: effectiveCity,
+                      onTap: () => showCityPickerSheet(context, ref),
+                      exploreLabel: l.exploreCity(effectiveCity ?? ''),
+                      changeCityLabel: l.changeCity,
+                    ),
+                  ],
+                ),
+              ),
+              if (effectiveCity != null && effectiveCity.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Icon(
+                    Icons.flight_takeoff_rounded,
+                    size: 18,
+                    color: accent.withValues(alpha: 0.8),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: DiscoverFeedLoadingSurface(cue: cue),
+        ),
+      ],
+    );
   }
 
   Widget _buildBody(
@@ -204,6 +299,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   : null,
               onCta: effectiveCity != null && effectiveCity.isNotEmpty
                   ? () {
+                      ref.read(discoveryLoadingCueProvider.notifier).state =
+                          DiscoveryLoadingCue.location;
                       ref.read(discoveryTravelCityProvider.notifier).state = null;
                       final fp = ref.read(discoveryFilterParamsProvider);
                       if (fp != null) {
@@ -248,6 +345,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 : null),
         initialSort: ref.read(sortByProvider),
         onApply: (params, sort) {
+          ref.read(discoveryLoadingCueProvider.notifier).state = DiscoveryLoadingCue.filters;
           ref.read(discoveryFilterParamsProvider.notifier).state = params;
           ref.read(sortByProvider.notifier).state = sort;
           ref.invalidate(discoveryFeedProvider);
@@ -359,6 +457,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
       ref.invalidate(sentInteractionsProvider(mode));
+      invalidateLikesScreenData(ref);
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
@@ -411,6 +510,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
       ref.invalidate(sentInteractionsProvider(mode));
+      invalidateLikesScreenData(ref);
       ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(

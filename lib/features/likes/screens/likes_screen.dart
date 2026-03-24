@@ -23,6 +23,7 @@ import '../../../domain/models/visitor_entry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
 import '../../requests/providers/requests_providers.dart';
+import '../providers/likes_screen_data_provider.dart';
 
 /// Dating: Likes tab — Liked you | Visitors | You liked. Replaces Communities in nav.
 class LikesScreen extends ConsumerWidget {
@@ -32,45 +33,108 @@ class LikesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
-    final receivedAsync = ref.watch(receivedInteractionsProvider);
-    final visitorsEntriesAsync = ref.watch(visitorsEntriesProvider);
-    final sentAsync = ref.watch(sentInteractionsProvider(mode));
+    final bundle = ref.watch(likesScreenDataProvider);
 
-    final receivedCount = receivedAsync.valueOrNull?.length ?? 0;
-    final visitorsCount = visitorsEntriesAsync.valueOrNull?.length ?? 0;
-    final sentCount = sentAsync.valueOrNull?.length ?? 0;
-
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            l.navLikes,
-            style: AppTypography.headlineSmall.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
+    return bundle.when(
+      loading: () => DefaultTabController(
+        length: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              l.navLikes,
+              style: AppTypography.headlineSmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            bottom: TabBar(
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              indicatorColor: Theme.of(context).colorScheme.primary,
+              isScrollable: true,
+              tabs: [
+                Tab(text: _tabLabel(l.likesTabLikedYou, 0)),
+                Tab(text: _tabLabel(l.likesTabVisitors, 0)),
+                Tab(text: _tabLabel(l.likesTabYouLiked, 0)),
+              ],
             ),
           ),
-          bottom: TabBar(
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            isScrollable: true,
-            tabs: [
-              Tab(text: _tabLabel(l.likesTabLikedYou, receivedCount)),
-              Tab(text: _tabLabel(l.likesTabVisitors, visitorsCount)),
-              Tab(text: _tabLabel(l.likesTabYouLiked, sentCount)),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _LikedYouTab(asyncItems: receivedAsync),
-            _VisitorsTab(asyncEntries: visitorsEntriesAsync),
-            _YouLikedTab(asyncItems: sentAsync),
-          ],
+          body: const Center(child: CircularProgressIndicator()),
         ),
       ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: Text(l.navLikes)),
+        body: ErrorState(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(likesScreenDataProvider),
+          retryLabel: l.retry,
+        ),
+      ),
+      data: (data) {
+        final receivedAsync = data.receivedError != null &&
+                data.receivedError!.code == 'PREMIUM_REQUIRED'
+            ? AsyncValue<List<InteractionInboxItem>>.error(
+                data.receivedError!,
+                StackTrace.current,
+              )
+            : AsyncValue<List<InteractionInboxItem>>.data(data.receivedItems);
+        final visitorsAsync = AsyncValue<List<VisitorEntry>>.data(data.visitorEntries);
+        final sentAsync = AsyncValue<List<InteractionInboxItem>>.data(data.sentItems);
+
+        return DefaultTabController(
+          length: 3,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(
+                l.navLikes,
+                style: AppTypography.headlineSmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              bottom: TabBar(
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                isScrollable: true,
+                tabs: [
+                  Tab(text: _tabLabel(l.likesTabLikedYou, data.likedYouCount)),
+                  Tab(text: _tabLabel(l.likesTabVisitors, data.visitorsCount)),
+                  Tab(text: _tabLabel(l.likesTabYouLiked, data.youLikedCount)),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                _LikedYouTab(
+                  asyncItems: receivedAsync,
+                  onRetry: () => ref.invalidate(likesScreenDataProvider),
+                  onRefreshAfterInteraction: () {
+                    ref.invalidate(receivedInteractionsProvider);
+                    invalidateLikesScreenData(ref);
+                  },
+                ),
+                _VisitorsTab(
+                  asyncEntries: visitorsAsync,
+                  onRetry: () => ref.invalidate(likesScreenDataProvider),
+                ),
+                _YouLikedTab(
+                  asyncItems: sentAsync,
+                  mode: mode,
+                  onInvalidate: () {
+                    ref.invalidate(sentInteractionsProvider(mode));
+                    invalidateLikesScreenData(ref);
+                  },
+                  onRetry: () {
+                    ref.invalidate(sentInteractionsProvider(mode));
+                    invalidateLikesScreenData(ref);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -80,8 +144,15 @@ class LikesScreen extends ConsumerWidget {
 }
 
 class _LikedYouTab extends ConsumerWidget {
-  const _LikedYouTab({required this.asyncItems});
+  const _LikedYouTab({
+    required this.asyncItems,
+    this.onRetry,
+    this.onRefreshAfterInteraction,
+  });
   final AsyncValue<List<InteractionInboxItem>> asyncItems;
+  final VoidCallback? onRetry;
+  /// After reminder / list actions that change server state.
+  final VoidCallback? onRefreshAfterInteraction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -111,13 +182,13 @@ class _LikedYouTab extends ConsumerWidget {
         }
         return _ProfileListView(
           items: items,
-          onInvalidate: null,
+          onInvalidate: onRefreshAfterInteraction,
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorState(
         message: e.toString(),
-        onRetry: () => ref.invalidate(receivedInteractionsProvider),
+        onRetry: onRetry ?? () => ref.invalidate(receivedInteractionsProvider),
         retryLabel: l.retry,
       ),
     );
@@ -261,6 +332,7 @@ class _LikedYouPremiumGate extends ConsumerWidget {
           resetsAt: result.resetsAt,
         );
         ref.invalidate(receivedInteractionsProvider);
+        invalidateLikesScreenData(ref);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -286,8 +358,9 @@ class _LikedYouPremiumGate extends ConsumerWidget {
 }
 
 class _VisitorsTab extends ConsumerWidget {
-  const _VisitorsTab({required this.asyncEntries});
+  const _VisitorsTab({required this.asyncEntries, this.onRetry});
   final AsyncValue<List<VisitorEntry>> asyncEntries;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -314,7 +387,7 @@ class _VisitorsTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => _VisitorsErrorState(
         error: e,
-        onRetry: () => ref.invalidate(visitorsEntriesProvider),
+        onRetry: onRetry ?? () => ref.invalidate(visitorsEntriesProvider),
         l: l,
       ),
     );
@@ -381,6 +454,7 @@ class _VisitorsTab extends ConsumerWidget {
             resetsAt: result.resetsAt,
           );
           ref.invalidate(visitorsEntriesProvider);
+          invalidateLikesScreenData(ref);
           context.push('/profile/${result.visitor.id}');
         }
       } on ApiException catch (e) {
@@ -568,8 +642,16 @@ class _VisitorsBlurredTile extends StatelessWidget {
 }
 
 class _YouLikedTab extends ConsumerWidget {
-  const _YouLikedTab({required this.asyncItems});
+  const _YouLikedTab({
+    required this.asyncItems,
+    required this.mode,
+    this.onInvalidate,
+    this.onRetry,
+  });
   final AsyncValue<List<InteractionInboxItem>> asyncItems;
+  final AppMode mode;
+  final VoidCallback? onInvalidate;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -583,17 +665,22 @@ class _YouLikedTab extends ConsumerWidget {
             body: l.likesEmptyYouLikedBody,
           );
         }
-        return _ProfileListView(items: items, onInvalidate: () {
-          final mode = ref.read(appModeProvider) ?? AppMode.dating;
-          ref.invalidate(sentInteractionsProvider(mode));
-        });
+        return _ProfileListView(
+          items: items,
+          onInvalidate: onInvalidate ??
+              () {
+                ref.invalidate(sentInteractionsProvider(mode));
+              },
+        );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) {
-        final mode = ref.read(appModeProvider) ?? AppMode.dating;
         return ErrorState(
           message: e.toString(),
-          onRetry: () => ref.invalidate(sentInteractionsProvider(mode)),
+          onRetry: onRetry ??
+              () {
+                ref.invalidate(sentInteractionsProvider(mode));
+              },
           retryLabel: l.retry,
         );
       },

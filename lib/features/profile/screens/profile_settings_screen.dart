@@ -47,6 +47,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final primary = Theme.of(context).colorScheme.primary;
     final profileAsync = ref.watch(_myProfileProvider);
+    final notifUnread = ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
 
     final profileName = profileAsync.whenOrNull(data: (p) => p?.name);
     final profilePhoto = profileAsync.whenOrNull(
@@ -183,7 +184,34 @@ class ProfileSettingsScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (notifUnread > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        notifUnread > 99 ? '99+' : '$notifUnread',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                Icon(
+                  Icons.chevron_right,
+                  color: onSurface.withValues(alpha: 0.45),
+                ),
+              ],
+            ),
             onTap: () => context.push('/notifications'),
             onLongPress: () => _showNotificationSettings(context, ref),
           ),
@@ -216,6 +244,24 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => showLanguagePickerSheet(context, ref),
+          ),
+          ListTile(
+            leading: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
+            title: Text(
+              l.signOut,
+              style: AppTypography.bodyLarge.copyWith(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              l.signOutSubtitle,
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _signOutAndGoLogin(context, ref),
           ),
           const SizedBox(height: 24),
           // ── Family Circle ──────────────────────────────────────────
@@ -335,20 +381,6 @@ class ProfileSettingsScreen extends ConsumerWidget {
               Uri.parse('https://desilink.app/terms'),
             ),
           ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () async {
-              await ref.read(notificationServiceProvider).onLogout();
-              try {
-                await ref.read(profileRepositoryProvider).deleteFcmToken();
-              } catch (_) {}
-              final authRepo = ref.read(authRepositoryProvider);
-              await authRepo.signOut();
-              if (context.mounted) context.go('/login');
-            },
-            icon: const Icon(Icons.logout, size: 20),
-            label: Text(l.signOut),
-          ),
         ],
       ),
     );
@@ -371,6 +403,15 @@ class ProfileSettingsScreen extends ConsumerWidget {
       child: Icon(Icons.person, size: radius, color: primary),
     );
   }
+}
+
+Future<void> _signOutAndGoLogin(BuildContext context, WidgetRef ref) async {
+  await ref.read(notificationServiceProvider).onLogout();
+  try {
+    await ref.read(profileRepositoryProvider).deleteFcmToken();
+  } catch (_) {}
+  await ref.read(authRepositoryProvider).signOut();
+  if (context.mounted) context.go('/login');
 }
 
 Future<void> _openSupportUrl(BuildContext context, Uri uri) async {

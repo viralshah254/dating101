@@ -10,6 +10,17 @@ import '../../../domain/models/user_profile.dart';
 import '../../../domain/models/filter_options.dart';
 import '../../../domain/repositories/discovery_repository.dart';
 
+/// Why Discover is showing the loading surface (filters / city / first open).
+enum DiscoveryLoadingCue {
+  none,
+  initial,
+  filters,
+  location,
+}
+
+final discoveryLoadingCueProvider =
+    StateProvider<DiscoveryLoadingCue>((ref) => DiscoveryLoadingCue.none);
+
 /// Travel mode: when non-null, discovery shows profiles for this city (from "Change city").
 final discoveryTravelCityProvider = StateProvider<String?>((ref) => null);
 

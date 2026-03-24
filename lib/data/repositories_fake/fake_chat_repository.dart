@@ -56,7 +56,7 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Stream<List<ChatMessage>> watchMessages(String threadId) async* {
+  Stream<List<ChatMessage>> watchMessages(String threadId, {String? viewerUserId}) async* {
     await Future.delayed(const Duration(milliseconds: 50));
     final list =
         _threads[threadId] ??
@@ -112,6 +112,12 @@ class FakeChatRepository implements ChatRepository {
   @override
   Future<void> markThreadRead(String threadId) async {
     await Future.delayed(const Duration(milliseconds: 20));
+  }
+
+  @override
+  Future<DateTime?> getPeerLastReadAt(String threadId) async {
+    await Future.delayed(const Duration(milliseconds: 20));
+    return DateTime.now().subtract(const Duration(minutes: 30));
   }
 
   @override

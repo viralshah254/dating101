@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../../core/datetime/app_time_format.dart';
 import 'token_storage.dart';
 
 /// Real-time chat over WebSocket. Connects with JWT, receives messages, sends via WS.
@@ -18,6 +19,7 @@ class ChatWebSocketClient {
 
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
+  Timer? _pingTimer;
   bool _connecting = false;
   bool _disposed = false;
 
@@ -28,7 +30,19 @@ class ChatWebSocketClient {
 
   bool get isConnected => _channel != null;
 
-  /// Connect to WebSocket. Call when user opens chat.
+  /// Drop the active socket without marking the client [dispose]d (allows reconnect).
+  void _tearDownConnection() {
+    _pingTimer?.cancel();
+    _pingTimer = null;
+    _subscription?.cancel();
+    _subscription = null;
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
+    _channel = null;
+  }
+
+  /// Connect to WebSocket. Call when user opens chat (or app-wide hub connects).
   Future<void> connect() async {
     if (_connecting || _disposed) return;
     final token = tokenStorage.accessToken;
@@ -36,6 +50,12 @@ class ChatWebSocketClient {
 
     _connecting = true;
     try {
+      // New JWT (e.g. account switch): close old socket first. Otherwise a second
+      // [StreamSubscription] keeps receiving on the old channel → duplicate events.
+      if (_channel != null) {
+        _tearDownConnection();
+      }
+
       final wsUrl = wsBaseUrl
           .replaceFirst('https://', 'wss://')
           .replaceFirst('http://', 'ws://');
@@ -49,17 +69,23 @@ class ChatWebSocketClient {
       _connecting = false;
       _incomingController.add(IncomingChatEvent(type: IncomingEventType.connected));
 
+      _pingTimer = Timer.periodic(const Duration(seconds: 25), (_) => sendPing());
+
       _subscription = channel.stream.listen(
         _onMessage,
         onError: (e) {
           debugPrint('[ChatWS] stream error: $e');
           _channel = null;
           _subscription = null;
+          _pingTimer?.cancel();
+          _pingTimer = null;
           _incomingController.add(IncomingChatEvent(type: IncomingEventType.error, error: e.toString()));
         },
         onDone: () {
           _channel = null;
           _subscription = null;
+          _pingTimer?.cancel();
+          _pingTimer = null;
         },
       );
     } catch (e) {
@@ -78,12 +104,12 @@ class ChatWebSocketClient {
       final type = json['type'] as String?;
 
       if (type == 'message') {
-        // Pushed to recipient from server
         final threadId = json['threadId'] as String?;
         final senderId = json['senderId'] as String?;
         final textMsg = json['text'] as String?;
-        final sentAt = json['sentAt'] != null ? DateTime.tryParse(json['sentAt'] as String) : null;
-        final id = json['id'] as String?;
+        final sentAt =
+            json['sentAt'] != null ? parseApiDateTime(json['sentAt'] as String) : null;
+        final id = json['id'] as String? ?? json['tempId'] as String?;
         if (threadId != null && senderId != null && textMsg != null) {
           _incomingController.add(IncomingChatEvent(
             type: IncomingEventType.message,
@@ -98,11 +124,11 @@ class ChatWebSocketClient {
           ));
         }
       } else if (type == 'sent') {
-        // Echo back to sender: carries real DB id and tempId for dedup
         final threadId = json['threadId'] as String?;
         final senderId = json['senderId'] as String?;
         final textMsg = json['text'] as String?;
-        final sentAt = json['sentAt'] != null ? DateTime.tryParse(json['sentAt'] as String) : null;
+        final sentAt =
+            json['sentAt'] != null ? parseApiDateTime(json['sentAt'] as String) : null;
         final id = json['id'] as String?;
         final tempId = json['tempId'] as String?;
         if (threadId != null && senderId != null && textMsg != null) {
@@ -119,10 +145,44 @@ class ChatWebSocketClient {
             ),
           ));
         }
-      } else if (type == 'message_request_created') {
-        // Free-tier ad-gated: message became a message request
+      } else if (type == 'message_persisted') {
         final threadId = json['threadId'] as String?;
-        final messageRequestId = json['messageRequestId'] as String?;
+        final messageId = json['messageId'] as String?;
+        final tempId = json['tempId'] as String?;
+        final senderId = json['senderId'] as String?;
+        final textMsg = json['text'] as String?;
+        final sentAt =
+            json['sentAt'] != null ? parseApiDateTime(json['sentAt'] as String) : null;
+        if (threadId != null && messageId != null && senderId != null && textMsg != null) {
+          _incomingController.add(IncomingChatEvent(
+            type: IncomingEventType.messagePersisted,
+            threadId: threadId,
+            tempId: tempId,
+            message: IncomingMessage(
+              id: messageId,
+              senderId: senderId,
+              text: textMsg,
+              sentAt: sentAt ?? DateTime.now(),
+              isVoiceNote: false,
+            ),
+          ));
+        }
+      } else if (type == 'thread_read') {
+        final threadId = json['threadId'] as String?;
+        final readerId = json['readerId'] as String?;
+        final readAt =
+            json['readAt'] != null ? parseApiDateTime(json['readAt'] as String) : null;
+        if (threadId != null && readerId != null && readAt != null) {
+          _incomingController.add(IncomingChatEvent(
+            type: IncomingEventType.threadRead,
+            threadId: threadId,
+            readerId: readerId,
+            readAt: readAt,
+          ));
+        }
+      } else if (type == 'message_request_created' || type == 'message_request') {
+        final threadId = json['threadId'] as String?;
+        final messageRequestId = json['messageRequestId'] as String? ?? json['id'] as String?;
         final tempId = json['tempId'] as String?;
         _incomingController.add(IncomingChatEvent(
           type: IncomingEventType.messageRequestCreated,
@@ -164,12 +224,25 @@ class ChatWebSocketClient {
     }
   }
 
+  void sendMarkRead(String threadId) {
+    if (_channel == null) return;
+    try {
+      _channel!.sink.add(jsonEncode({'type': 'mark_read', 'threadId': threadId}));
+    } catch (e) {
+      debugPrint('[ChatWS] mark_read error: $e');
+    }
+  }
+
+  void sendPing() {
+    if (_channel == null) return;
+    try {
+      _channel!.sink.add(jsonEncode({'type': 'ping'}));
+    } catch (_) {}
+  }
+
   void dispose() {
     _disposed = true;
-    _subscription?.cancel();
-    _channel?.sink.close();
-    _channel = null;
-    _subscription = null;
+    _tearDownConnection();
     if (!_incomingController.isClosed) _incomingController.close();
   }
 }
@@ -178,6 +251,8 @@ enum IncomingEventType {
   connected,
   message,
   sent,
+  messagePersisted,
+  threadRead,
   messageRequestCreated,
   error,
 }
@@ -191,16 +266,18 @@ class IncomingChatEvent {
     this.code,
     this.tempId,
     this.messageRequestId,
+    this.readerId,
+    this.readAt,
   });
   final IncomingEventType type;
   final String? threadId;
   final IncomingMessage? message;
   final String? error;
   final String? code;
-  /// Client-side tempId for optimistic bubble resolution.
   final String? tempId;
-  /// Present when type == messageRequestCreated.
   final String? messageRequestId;
+  final String? readerId;
+  final DateTime? readAt;
 }
 
 class IncomingMessage {
