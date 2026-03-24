@@ -305,7 +305,7 @@ abstract class AppLocalizations {
   /// No description provided for @termsConsent.
   ///
   /// In en, this message translates to:
-  /// **'By continuing you agree to our Terms and Privacy Policy.'**
+  /// **'Continuing means you agree to our Terms and Privacy Policy.'**
   String get termsConsent;
 
   /// No description provided for @verifyYourNumber.
@@ -1721,7 +1721,7 @@ abstract class AppLocalizations {
   /// No description provided for @referralCodeHint.
   ///
   /// In en, this message translates to:
-  /// **'Have a referral code?'**
+  /// **'Invited by someone?'**
   String get referralCodeHint;
 
   /// No description provided for @referralCodeOptional.
@@ -1769,13 +1769,13 @@ abstract class AppLocalizations {
   /// No description provided for @loginHeroTitle.
   ///
   /// In en, this message translates to:
-  /// **'Find your\nperson'**
+  /// **'Where you\nbelong'**
   String get loginHeroTitle;
 
   /// No description provided for @loginHeroSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Meaningful connections for the Indian diaspora, worldwide.'**
+  /// **'Dating and matrimony for the Indian diaspora—with intention, wherever you are.'**
   String get loginHeroSubtitle;
 
   /// No description provided for @authPasswordLabel.
@@ -1793,7 +1793,7 @@ abstract class AppLocalizations {
   /// No description provided for @authSignInLink.
   ///
   /// In en, this message translates to:
-  /// **'Already have an account? Sign in'**
+  /// **'Have an account? Sign in'**
   String get authSignInLink;
 
   /// No description provided for @authSignUpLink.
@@ -1835,7 +1835,7 @@ abstract class AppLocalizations {
   /// No description provided for @ageConfirmation.
   ///
   /// In en, this message translates to:
-  /// **'I confirm I am 18 years or older'**
+  /// **'I\'m 18 or older'**
   String get ageConfirmation;
 
   /// No description provided for @otpTitle.

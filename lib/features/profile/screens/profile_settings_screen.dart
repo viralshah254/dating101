@@ -854,14 +854,14 @@ class _DeactivateConfirmDialogState extends State<_DeactivateConfirmDialog> {
                     // ignore: use_build_context_synchronously
                     context.go('/login');
                   } catch (_) {
-                    if (!mounted) return;
-                    setState(() => _loading = false);
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(l.deactivationFailed),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
+                    setState(() => _loading = false);
                   }
                 },
           child: _loading
@@ -969,14 +969,14 @@ class _DeleteAccountConfirmDialogState extends State<_DeleteAccountConfirmDialog
                         // ignore: use_build_context_synchronously
                         context.go('/login');
                       } catch (_) {
-                        if (!mounted) return;
-                        setState(() => _loading = false);
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(l.deleteFailed),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
+                        setState(() => _loading = false);
                       }
                     }),
           style: FilledButton.styleFrom(backgroundColor: errorColor),

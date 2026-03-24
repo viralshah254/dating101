@@ -115,6 +115,14 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   static String _userFriendlyMessage(ApiException e) {
+    // Prefer HTTP semantics when the server doesn’t return a structured code.
+    if (e.statusCode == 404) {
+      return 'We can’t reach the service right now. Check your connection and try again.';
+    }
+    if (e.statusCode == 503 || e.statusCode == 502) {
+      return 'We’re temporarily unavailable. Please try again in a few minutes.';
+    }
+
     switch (e.code) {
       case 'RATE_LIMITED':
         return 'Too many attempts. Please wait a few minutes and try again.';
@@ -138,6 +146,14 @@ class ApiAuthRepository implements AuthRepository {
       case 'SERVER_ERROR':
       case 'INTERNAL_ERROR':
         return 'Something went wrong on our end. Please try again.';
+      case 'UNKNOWN':
+        if (e.statusCode >= 500) {
+          return 'Something went wrong on our end. Please try again.';
+        }
+        if (e.statusCode >= 400) {
+          return 'Something went wrong. Please try again.';
+        }
+        return e.message;
       default:
         if (e.statusCode >= 500) {
           return 'Something went wrong on our end. Please try again.';

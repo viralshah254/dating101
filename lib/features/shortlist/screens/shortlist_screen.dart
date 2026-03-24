@@ -91,9 +91,8 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       final result = await ref
           .read(interactionsRepositoryProvider)
           .expressInterest(p.id, source: 'shortlist', mode: mode);
-      if (!context.mounted) return;
-      final ctx = context;
-      final l = AppLocalizations.of(ctx)!;
+      if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
@@ -103,17 +102,16 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
             );
-        showSuccessToast(ctx, l.toastMatchWith(p.name));
-        ctx.push(
+        showSuccessToast(context, l.toastMatchWith(p.name));
+        context.push(
           '/chat/${result.chatThreadId}?otherUserId=${Uri.encodeComponent(p.id)}',
         );
       } else {
-        showSuccessToast(ctx, l.toastInterestSentTo(p.name));
+        showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
-      if (!context.mounted) return;
-      final ctx = context;
-      showErrorToast(ctx, e.message);
+      if (!mounted) return;
+      showErrorToast(context, e.message);
     }
   }
 
@@ -123,15 +121,15 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     if (ent.dailyPriorityInterestLimit == 0) {
       bool? watchAd = await _showWatchAdOrPremiumChoice(context);
       while (watchAd == false) {
-        if (!context.mounted) return;
+        if (!mounted) return;
         await context.push('/paywall');
-        if (!context.mounted) return;
+        if (!mounted) return;
         watchAd = await _showWatchAdOrPremiumChoice(context);
       }
-      if (!context.mounted) return;
+      if (!mounted) return;
       if (watchAd != true) return;
       final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.priorityInterest);
-      if (!context.mounted) return;
+      if (!mounted) return;
       if (!shown) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -148,7 +146,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       final result = await ref
           .read(interactionsRepositoryProvider)
           .expressPriorityInterest(p.id, source: 'shortlist', adCompletionToken: adToken, mode: mode);
-      if (!context.mounted) return;
+      if (!mounted) return;
       final l = AppLocalizations.of(context)!;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
@@ -167,7 +165,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
     } on ApiException catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       showErrorToast(context, e.message);
     }
   }
@@ -234,14 +232,14 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         source: 'shortlist',
         mode: mode,
       );
-      if (!context.mounted) return;
+      if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(sentInteractionsProvider(mode));
       ref.invalidate(recommendedPaginatedProvider);
     } on ApiException catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
         ref.invalidate(sentInteractionsProvider(mode));
       }
@@ -256,17 +254,15 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       final threadId = await ref
           .read(chatRepositoryProvider)
           .createThread(p.id, mode: modeStr);
-      if (!context.mounted) return;
-      final ctx = context;
+      if (!mounted) return;
       final query = 'otherUserId=${Uri.encodeComponent(p.id)}';
       final tokenParam = initialAdToken != null
           ? '&initialAdToken=${Uri.encodeComponent(initialAdToken)}'
           : '';
-      ctx.push('/chat/$threadId?$query$tokenParam');
+      context.push('/chat/$threadId?$query$tokenParam');
     } on ApiException catch (e) {
-      if (!context.mounted) return;
-      final ctx = context;
-      ScaffoldMessenger.of(ctx).showSnackBar(
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             e.code == 'CONNECTION_REQUIRED'
@@ -276,11 +272,10 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      ctx.push('/chats');
+      context.push('/chats');
     } catch (_) {
-      if (!context.mounted) return;
-      final ctx = context;
-      ctx.push('/chats');
+      if (!mounted) return;
+      context.push('/chats');
     }
   }
 
@@ -311,10 +306,9 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   Future<void> _onBlock(ProfileSummary p) async {
     final l = AppLocalizations.of(context)!;
     final reason = await showBlockReasonPicker(context);
-    if (reason == null || !context.mounted) return;
-    final ctx = context;
+    if (reason == null || !mounted) return;
     final confirmed = await showDialog<bool>(
-      context: ctx,
+      context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.block),
         content: Text(
@@ -335,22 +329,20 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !mounted) return;
     try {
       await ref
           .read(safetyRepositoryProvider)
           .block(p.id, reason, source: 'shortlist');
-      if (!context.mounted) return;
-      final ctx = context;
+      if (!mounted) return;
       ref.invalidate(shortlistProvider);
       ref.invalidate(shortlistedIdsProvider);
       ref.invalidate(mutualMatchesProvider);
       ref.invalidate(matchedUserIdsProvider);
-      showSuccessToast(ctx, l.toastBlocked(p.name));
+      showSuccessToast(context, l.toastBlocked(p.name));
     } catch (_) {
-      if (!context.mounted) return;
-      final ctx = context;
-      showErrorToast(ctx, l.toastErrorGeneric);
+      if (!mounted) return;
+      showErrorToast(context, l.toastErrorGeneric);
     }
   }
 
@@ -401,18 +393,16 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       ref.invalidate(shortlistProvider);
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      final ctx = context;
-      showErrorToast(ctx, e.message);
+      showErrorToast(context, e.message);
     }
   }
 
   Future<void> _onReport(ProfileSummary p) async {
     final l = AppLocalizations.of(context)!;
     final result = await showReportReasonPicker(context);
-    if (result == null || !context.mounted) return;
-    final ctx = context;
+    if (result == null || !mounted) return;
     final confirmed = await showDialog<bool>(
-      context: ctx,
+      context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.report),
         content: Text(
@@ -433,7 +423,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !mounted) return;
     try {
       await ref
           .read(safetyRepositoryProvider)
@@ -443,13 +433,11 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
             details: result.details,
             source: 'shortlist',
           );
-      if (!context.mounted) return;
-      final ctx = context;
-      showSuccessToast(ctx, l.toastReportSubmitted);
+      if (!mounted) return;
+      showSuccessToast(context, l.toastReportSubmitted);
     } catch (_) {
-      if (!context.mounted) return;
-      final ctx = context;
-      showErrorToast(ctx, l.toastErrorGeneric);
+      if (!mounted) return;
+      showErrorToast(context, l.toastErrorGeneric);
     }
   }
 

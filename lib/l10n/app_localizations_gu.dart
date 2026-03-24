@@ -928,7 +928,7 @@ class AppLocalizationsGu extends AppLocalizations {
   String get authConfirmPasswordLabel => 'Confirm password';
 
   @override
-  String get authSignInLink => 'Already have an account? Sign in';
+  String get authSignInLink => 'Have an account? Sign in';
 
   @override
   String get authSignUpLink => 'New here? Create an account';
