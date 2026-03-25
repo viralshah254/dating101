@@ -7,6 +7,7 @@ class ChatThreadSummary {
     required this.otherName,
     this.lastMessage,
     this.lastMessageAt,
+    this.lastMessageSenderId,
     this.unreadCount = 0,
     this.mode,
     this.otherParticipantLastReadAt,
@@ -29,6 +30,8 @@ class ChatThreadSummary {
       lastMessage:
           _coerceString(j['lastMessage']) ?? _coerceString(j['last_message']),
       lastMessageAt: _parseOptDateTime(j['lastMessageAt'] ?? j['last_message_at']),
+      lastMessageSenderId: _coerceString(j['lastMessageSenderId']) ??
+          _coerceString(j['last_message_sender_id']),
       unreadCount: unreadCount,
       mode: _coerceString(j['mode']),
       otherParticipantLastReadAt: _parseOptDateTime(
@@ -44,6 +47,8 @@ class ChatThreadSummary {
   final String otherName;
   final String? lastMessage;
   final DateTime? lastMessageAt;
+  /// Sender of the preview line (for read-receipt ticks when it is the viewer).
+  final String? lastMessageSenderId;
   final int unreadCount;
   /// `dating` or `matrimony`; used to separate chats by product mode.
   final String? mode;

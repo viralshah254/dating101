@@ -1852,6 +1852,9 @@ class AppLocalizationsTe extends AppLocalizations {
   String get chatMessageHint => 'Message...';
 
   @override
+  String get chatPeerTyping => 'typing…';
+
+  @override
   String get discoverSwipePassHint => 'పాస్ చేయడానికి ఎడమ స్వైప్ చేయండి';
 
   @override

@@ -29,15 +29,30 @@ import '../providers/likes_screen_data_provider.dart';
 class LikesScreen extends ConsumerWidget {
   const LikesScreen({super.key});
 
+  static int _tabIndexFromQuery(String? tab) {
+    switch (tab) {
+      case 'visitors':
+        return 1;
+      case 'you_liked':
+        return 2;
+      case 'liked_you':
+      default:
+        return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final bundle = ref.watch(likesScreenDataProvider);
+    final tabRaw = _tabIndexFromQuery(GoRouterState.of(context).uri.queryParameters['tab']);
+    final tabIndex = tabRaw < 0 ? 0 : (tabRaw > 2 ? 2 : tabRaw);
 
     return bundle.when(
       loading: () => DefaultTabController(
         length: 3,
+        initialIndex: tabIndex,
         child: Scaffold(
           appBar: AppBar(
             title: Text(
@@ -62,12 +77,16 @@ class LikesScreen extends ConsumerWidget {
           body: const Center(child: CircularProgressIndicator()),
         ),
       ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(title: Text(l.navLikes)),
-        body: ErrorState(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(likesScreenDataProvider),
-          retryLabel: l.retry,
+      error: (e, _) => DefaultTabController(
+        length: 3,
+        initialIndex: tabIndex,
+        child: Scaffold(
+          appBar: AppBar(title: Text(l.navLikes)),
+          body: ErrorState(
+            message: e.toString(),
+            onRetry: () => ref.invalidate(likesScreenDataProvider),
+            retryLabel: l.retry,
+          ),
         ),
       ),
       data: (data) {
@@ -83,6 +102,7 @@ class LikesScreen extends ConsumerWidget {
 
         return DefaultTabController(
           length: 3,
+          initialIndex: tabIndex,
           child: Scaffold(
             appBar: AppBar(
               title: Text(

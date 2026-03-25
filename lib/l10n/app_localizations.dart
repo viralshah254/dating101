@@ -3500,6 +3500,12 @@ abstract class AppLocalizations {
   /// **'Message...'**
   String get chatMessageHint;
 
+  /// No description provided for @chatPeerTyping.
+  ///
+  /// In en, this message translates to:
+  /// **'typing…'**
+  String get chatPeerTyping;
+
   /// No description provided for @discoverSwipePassHint.
   ///
   /// In en, this message translates to:

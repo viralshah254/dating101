@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/entitlements/entitlements.dart';
 import 'core/locale/app_locale_provider.dart';
+import 'core/mode/app_mode.dart';
 import 'core/mode/mode_provider.dart';
+import 'core/notifications/notification_deep_link.dart';
 import 'core/providers/repository_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -101,7 +103,11 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     try {
       final router = ref.read(appRouterProvider);
       final service = ref.read(notificationServiceProvider);
-      service.setOnNotificationTap((path) => router.go(path));
+      service.setOnNotificationTap((data) {
+        final mode = ref.read(appModeProvider) ?? AppMode.dating;
+        final path = notificationDataToPath(data, appMode: mode);
+        if (path != null) router.go(path);
+      });
       service.initialize();
       if (kDebugMode) debugPrint('[FCM] Initialized');
     } catch (e) {

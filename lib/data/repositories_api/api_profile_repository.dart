@@ -797,8 +797,18 @@ class ApiProfileRepository implements ProfileRepository {
     'mutualMatch': true,
     'profileVisited': true,
     'newMessage': true,
+    'morningReminder': true,
     'contactRequestAccepted': true,
     'contactRequestDeclined': false,
+    'interestReminderPrompt': true,
+    'interestReminderReceived': true,
+    'shortlistedYou': true,
+    'messageRequestReceived': true,
+    'messageRequestAccepted': true,
+    'messageRequestDeclined': false,
+    'photoViewRequestReceived': true,
+    'photoViewRequestAccepted': true,
+    'photoViewRequestDeclined': false,
   };
 
   @override

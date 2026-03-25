@@ -1853,6 +1853,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get chatMessageHint => 'Message...';
 
   @override
+  String get chatPeerTyping => 'typing…';
+
+  @override
   String get discoverSwipePassHint => 'தள்ள இடது சுவைப் செய்யுங்கள்';
 
   @override

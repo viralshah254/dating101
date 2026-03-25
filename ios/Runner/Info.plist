@@ -45,6 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>We’ll notify you about new messages, matches, and important updates.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Shubhmilan uses your location to show &quot;You are in [city]&quot; and to suggest local matches and events.</string>
 	<key>GADApplicationIdentifier</key>

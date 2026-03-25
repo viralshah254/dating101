@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/mode/app_mode.dart';
@@ -33,6 +35,49 @@ final chatNavUnreadCountProvider = Provider.autoDispose<int>((ref) {
 /// Other participant's read cursor for a thread (for ✓✓ on your messages). Updated from WS `thread_read` and on open.
 final threadPeerReadAtProvider = StateProvider.family<DateTime?, String>((ref, _) => null);
 
+/// Map threadId → other user is typing (from WS `peer_typing`). Auto-clears after idle unless renewed.
+final peerTypingProvider =
+    StateNotifierProvider<PeerTypingNotifier, Map<String, bool>>((ref) {
+  return PeerTypingNotifier();
+});
+
+class PeerTypingNotifier extends StateNotifier<Map<String, bool>> {
+  PeerTypingNotifier() : super(const {});
+
+  final Map<String, Timer> _timers = {};
+
+  static const _idleClear = Duration(seconds: 5);
+
+  void setPeerTyping(String threadId, bool typing) {
+    final tid = threadId.trim();
+    if (tid.isEmpty) return;
+    _timers[tid]?.cancel();
+    if (typing) {
+      state = {...state, tid: true};
+      _timers[tid] = Timer(_idleClear, () {
+        _timers.remove(tid);
+        if (state[tid] == true) {
+          state = Map<String, bool>.from(state)..remove(tid);
+        }
+      });
+    } else {
+      _timers.remove(tid);
+      if (state.containsKey(tid)) {
+        state = Map<String, bool>.from(state)..remove(tid);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final t in _timers.values) {
+      t.cancel();
+    }
+    _timers.clear();
+    super.dispose();
+  }
+}
+
 /// Live messages for one thread: initial GET + WebSocket deltas. Used by [ChatThreadScreen].
 final threadMessagesProvider = StreamProvider.autoDispose
     .family<List<ChatMessage>, String>((ref, threadId) {
@@ -59,7 +104,19 @@ final chatRealtimeHubProvider = Provider<void>((ref) {
     }
 
     switch (ev.type) {
+      case IncomingEventType.peerTyping:
+        final tid = ev.threadId?.trim();
+        if (tid != null && tid.isNotEmpty && ev.peerTyping != null) {
+          ref.read(peerTypingProvider.notifier).setPeerTyping(tid, ev.peerTyping!);
+        }
+        break;
       case IncomingEventType.message:
+        final msgTid = ev.threadId?.trim();
+        if (msgTid != null && msgTid.isNotEmpty) {
+          ref.read(peerTypingProvider.notifier).setPeerTyping(msgTid, false);
+        }
+        ref.invalidate(chatThreadsProvider);
+        break;
       case IncomingEventType.threadRead:
         ref.invalidate(chatThreadsProvider);
         break;

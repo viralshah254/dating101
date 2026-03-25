@@ -23,10 +23,9 @@ class RootShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    Future.microtask(() {
-      ref.read(recordSecurityLocationProvider)();
-      ref.read(registerFcmTokenProvider);
-    });
+    Future.microtask(() => ref.read(recordSecurityLocationProvider)());
+    // Watch so after login [invalidateSessionScopedApiCaches] re-runs FCM registration.
+    ref.watch(registerFcmTokenProvider);
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final flags = ref.watch(featureFlagsProvider);
     final l = AppLocalizations.of(context)!;

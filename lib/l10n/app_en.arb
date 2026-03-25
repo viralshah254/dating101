@@ -686,6 +686,7 @@
   },
   "chatEmojiTooltip": "Emoji",
   "chatMessageHint": "Message...",
+  "chatPeerTyping": "typing…",
   "discoverSwipePassHint": "Swipe left to pass",
   "discoverSwipeLikeHint": "Swipe right to like",
   "discoverSwipeSuperLikeHint": "Swipe up for super like",

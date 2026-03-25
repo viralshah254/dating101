@@ -131,6 +131,8 @@ class _ChatThreadSearchDelegate extends SearchDelegate<ChatThreadSummary?> {
 class ChatListScreen extends ConsumerWidget {
   const ChatListScreen({super.key});
 
+  static int _initialTabIndex(String? tab) => tab == 'requests' ? 1 : 0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
@@ -138,9 +140,11 @@ class ChatListScreen extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final modeLabel = mode.isMatrimony ? l.modeMatrimony : l.modeDating;
     final cachedThreads = ref.watch(chatThreadsProvider).valueOrNull ?? const <ChatThreadSummary>[];
+    final initialTab = _initialTabIndex(GoRouterState.of(context).uri.queryParameters['tab']);
 
     return DefaultTabController(
       length: 2,
+      initialIndex: initialTab > 1 ? 1 : initialTab,
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
@@ -893,6 +897,58 @@ class _GroupedRequest {
 
 // ─── Thread tile (chats tab) ───────────────────────────────────────────────
 
+/// WhatsApp-style ticks for the thread list when the preview line is yours.
+class _ThreadListOutgoingTicks extends StatelessWidget {
+  const _ThreadListOutgoingTicks({
+    required this.lastMessageAt,
+    required this.peerReadAt,
+    required this.otherUserOnline,
+    required this.otherLastActiveAt,
+  });
+
+  final DateTime? lastMessageAt;
+  final DateTime? peerReadAt;
+  final bool otherUserOnline;
+  final DateTime? otherLastActiveAt;
+
+  static const Duration _recentlyActiveWindow = Duration(minutes: 10);
+
+  static bool _readByPeer(DateTime? sentAt, DateTime? peerReadAt) {
+    if (sentAt == null || peerReadAt == null) return false;
+    return !peerReadAt.isBefore(sentAt.subtract(const Duration(seconds: 1)));
+  }
+
+  static bool _peerRecentlyReachable(bool online, DateTime? lastActive) {
+    if (online) return true;
+    if (lastActive == null) return false;
+    return DateTime.now().difference(lastActive) <= _recentlyActiveWindow;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const fg = Color(0xFF9E9E9E);
+    if (lastMessageAt == null) {
+      return Icon(Icons.done_rounded, size: 14, color: fg.withValues(alpha: 0.88));
+    }
+    final read = _readByPeer(lastMessageAt, peerReadAt);
+    if (read) {
+      return const Icon(
+        Icons.done_all_rounded,
+        size: 14,
+        color: Color(0xFF53BDEB),
+      );
+    }
+    if (_peerRecentlyReachable(otherUserOnline, otherLastActiveAt)) {
+      return Icon(
+        Icons.done_all_rounded,
+        size: 14,
+        color: fg.withValues(alpha: 0.55),
+      );
+    }
+    return Icon(Icons.done_rounded, size: 14, color: fg.withValues(alpha: 0.88));
+  }
+}
+
 class _ChatThreadTile extends ConsumerWidget {
   const _ChatThreadTile({super.key, required this.thread, required this.onTap});
   final ChatThreadSummary thread;
@@ -901,6 +957,8 @@ class _ChatThreadTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final me = ref.watch(authRepositoryProvider).currentUserId;
+    final peerTyping = ref.watch(peerTypingProvider)[thread.id] == true;
     final profileAsync = ref.watch(profileSummaryProvider(thread.otherUserId));
     final lastActiveForSeen =
         thread.otherLastActiveAt ?? profileAsync.valueOrNull?.lastActiveAt;
@@ -981,13 +1039,39 @@ class _ChatThreadTile extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      thread.lastMessage ?? 'No messages yet',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: onSurface.withValues(alpha: 0.65),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        if (!peerTyping &&
+                            me != null &&
+                            me.isNotEmpty &&
+                            thread.lastMessageSenderId != null &&
+                            thread.lastMessageSenderId == me) ...[
+                          _ThreadListOutgoingTicks(
+                            lastMessageAt: thread.lastMessageAt,
+                            peerReadAt: thread.otherParticipantLastReadAt,
+                            otherUserOnline: thread.otherUserOnline,
+                            otherLastActiveAt: lastActiveForSeen,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                          child: Text(
+                            peerTyping
+                                ? AppLocalizations.of(context)!.chatPeerTyping
+                                : (thread.lastMessage ?? 'No messages yet'),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: peerTyping
+                                  ? const Color(0xFF34B7F1)
+                                  : onSurface.withValues(alpha: 0.65),
+                              fontStyle: peerTyping ? FontStyle.italic : FontStyle.normal,
+                              fontWeight:
+                                  peerTyping ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

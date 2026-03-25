@@ -1849,6 +1849,9 @@ class AppLocalizationsMr extends AppLocalizations {
   String get chatMessageHint => 'Message...';
 
   @override
+  String get chatPeerTyping => 'typing…';
+
+  @override
   String get discoverSwipePassHint => 'पास करण्यासाठी डावीकडे स्वाइप करा';
 
   @override

@@ -223,6 +223,16 @@ class ChatWebSocketClient {
             readAt: readAt,
           ));
         }
+      } else if (type == 'peer_typing') {
+        final threadId = json['threadId'] as String?;
+        final typing = json['typing'] == true;
+        if (threadId != null) {
+          _incomingController.add(IncomingChatEvent(
+            type: IncomingEventType.peerTyping,
+            threadId: threadId,
+            peerTyping: typing,
+          ));
+        }
       } else if (type == 'message_request_created' || type == 'message_request') {
         final threadId = json['threadId'] as String?;
         final messageRequestId = json['messageRequestId'] as String? ?? json['id'] as String?;
@@ -288,6 +298,20 @@ class ChatWebSocketClient {
     }
   }
 
+  /// Notify the other participant that the user is (or is not) typing in [threadId].
+  void sendTyping(String threadId, bool typing) {
+    if (_channel == null) return;
+    try {
+      _channel!.sink.add(jsonEncode({
+        'type': 'typing',
+        'threadId': threadId,
+        'typing': typing,
+      }));
+    } catch (e) {
+      debugPrint('[ChatWS] typing error: $e');
+    }
+  }
+
   void sendPing() {
     if (_channel == null) return;
     try {
@@ -308,6 +332,7 @@ enum IncomingEventType {
   sent,
   messagePersisted,
   threadRead,
+  peerTyping,
   messageRequestCreated,
   error,
 }
@@ -324,6 +349,7 @@ class IncomingChatEvent {
     this.messageRequestText,
     this.readerId,
     this.readAt,
+    this.peerTyping,
   });
   final IncomingEventType type;
   final String? threadId;
@@ -336,6 +362,8 @@ class IncomingChatEvent {
   final String? messageRequestText;
   final String? readerId;
   final DateTime? readAt;
+  /// From `peer_typing`: whether the other user is typing in [threadId].
+  final bool? peerTyping;
 }
 
 class IncomingMessage {

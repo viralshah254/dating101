@@ -806,12 +806,16 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final subtitleFinal = subtitle.isNotEmpty
         ? subtitle
         : (profile?.city != null ? profile!.city! : '');
+    final peerTypingHere = ref.watch(peerTypingProvider)[widget.threadId] == true;
 
     final avatarUrl = profile?.imageUrl;
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    final headerSubtitleText =
+        peerTypingHere ? l10n.chatPeerTyping : subtitleFinal;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -888,10 +892,15 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                             ),
                           ),
                           Text(
-                            subtitleFinal,
+                            headerSubtitleText,
                             style: AppTypography.caption.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.7),
+                              color: peerTypingHere
+                                  ? const Color(0xFF34B7F1)
+                                  : cs.onSurface.withValues(alpha: 0.7),
                               fontWeight: FontWeight.w500,
+                              fontStyle: peerTypingHere
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
                             ),
                           ),
                         ],
@@ -1096,6 +1105,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             ),
           ),
           _TypingBar(
+            threadId: widget.threadId,
             initialText: widget.initialText,
             onSend: (text) => _sendMessageText(context, ref, text),
           ),
@@ -1395,19 +1405,26 @@ class _SendingClockPulseState extends State<_SendingClockPulse>
   }
 }
 
-class _TypingBar extends StatefulWidget {
-  const _TypingBar({required this.onSend, this.initialText});
+class _TypingBar extends ConsumerStatefulWidget {
+  const _TypingBar({
+    required this.threadId,
+    required this.onSend,
+    this.initialText,
+  });
+  final String threadId;
   final ValueChanged<String> onSend;
   final String? initialText;
 
   @override
-  State<_TypingBar> createState() => _TypingBarState();
+  ConsumerState<_TypingBar> createState() => _TypingBarState();
 }
 
-class _TypingBarState extends State<_TypingBar>
+class _TypingBarState extends ConsumerState<_TypingBar>
     with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   late final AnimationController _sendAnim;
+  Timer? _typingDebounce;
+  bool _typingActive = false;
 
   @override
   void initState() {
@@ -1423,6 +1440,29 @@ class _TypingBarState extends State<_TypingBar>
       _controller.text = initial.trim();
       _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
     }
+    _controller.addListener(_onDraftChanged);
+  }
+
+  void _onDraftChanged() {
+    _typingDebounce?.cancel();
+    final ws = ref.read(chatWebSocketClientProvider);
+    final hasText = _controller.text.trim().isNotEmpty;
+    if (!hasText) {
+      if (_typingActive) {
+        ws?.sendTyping(widget.threadId, false);
+        _typingActive = false;
+      }
+      return;
+    }
+    if (!_typingActive) {
+      ws?.sendTyping(widget.threadId, true);
+      _typingActive = true;
+    }
+    _typingDebounce = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      if (_controller.text.trim().isEmpty) return;
+      ws?.sendTyping(widget.threadId, true);
+    });
   }
 
   void _showEmojiPicker() {
@@ -1484,6 +1524,11 @@ class _TypingBarState extends State<_TypingBar>
   Future<void> _triggerSend() async {
     final t = _controller.text.trim();
     if (t.isEmpty) return;
+    _typingDebounce?.cancel();
+    if (_typingActive) {
+      ref.read(chatWebSocketClientProvider)?.sendTyping(widget.threadId, false);
+      _typingActive = false;
+    }
     await _sendAnim.reverse();
     await _sendAnim.forward();
     widget.onSend(t);
@@ -1492,6 +1537,11 @@ class _TypingBarState extends State<_TypingBar>
 
   @override
   void dispose() {
+    _typingDebounce?.cancel();
+    _controller.removeListener(_onDraftChanged);
+    if (_typingActive) {
+      ref.read(chatWebSocketClientProvider)?.sendTyping(widget.threadId, false);
+    }
     _sendAnim.dispose();
     _controller.dispose();
     super.dispose();

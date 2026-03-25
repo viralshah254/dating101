@@ -434,8 +434,18 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
     'mutualMatch': true,
     'profileVisited': true,
     'newMessage': true,
+    'morningReminder': true,
     'contactRequestAccepted': true,
     'contactRequestDeclined': false,
+    'interestReminderPrompt': true,
+    'interestReminderReceived': true,
+    'shortlistedYou': true,
+    'messageRequestReceived': true,
+    'messageRequestAccepted': true,
+    'messageRequestDeclined': false,
+    'photoViewRequestReceived': true,
+    'photoViewRequestAccepted': true,
+    'photoViewRequestDeclined': false,
   };
   Map<String, bool> prefs = Map.from(defaultPrefs);
   try {
@@ -464,8 +474,18 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
           'mutualMatch': 'Mutual match',
           'profileVisited': 'Profile visited',
           'newMessage': 'New message',
+          'morningReminder': 'Morning reminder',
           'contactRequestAccepted': 'Contact request accepted',
           'contactRequestDeclined': 'Contact request declined',
+          'interestReminderPrompt': 'Interest reminder (prompt)',
+          'interestReminderReceived': 'Interest reminder received',
+          'shortlistedYou': 'Shortlisted you',
+          'messageRequestReceived': 'Message requests',
+          'messageRequestAccepted': 'Message request accepted',
+          'messageRequestDeclined': 'Message request declined',
+          'photoViewRequestReceived': 'Photo view requests',
+          'photoViewRequestAccepted': 'Photo view accepted',
+          'photoViewRequestDeclined': 'Photo view declined',
         };
         return SafeArea(
           child: Padding(

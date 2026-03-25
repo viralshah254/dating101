@@ -282,12 +282,29 @@ final adServiceProvider = Provider<AdService>((_) => AdService());
 /// One-shot: when read (e.g. from shell), registers FCM token with backend if user is logged in.
 final registerFcmTokenProvider = FutureProvider<void>((ref) async {
   final tokenStorage = ref.read(tokenStorageProvider);
-  if (!tokenStorage.isLoggedIn) return;
+  if (!tokenStorage.isLoggedIn) {
+    if (kDebugMode) debugPrint('[FCM] skip register: not logged in');
+    return;
+  }
   final service = ref.read(notificationServiceProvider);
   final token = await service.getToken();
-  if (token != null) {
+  if (token == null) {
+    if (kDebugMode) {
+      debugPrint(
+        '[FCM] skip register: no token (permission denied or FCM unavailable). '
+        'Backend will have no device to send pushes to.',
+      );
+    }
+    return;
+  }
+  try {
     await service.registerTokenWithBackend(token);
-    if (kDebugMode) debugPrint('[FCM] Token registered with backend');
+    if (kDebugMode) debugPrint('[FCM] Token registered with backend (POST /profile/me/fcm-token ok)');
+  } catch (e, st) {
+    if (kDebugMode) {
+      debugPrint('[FCM] registerTokenWithBackend failed: $e');
+      debugPrint('$st');
+    }
   }
 });
 

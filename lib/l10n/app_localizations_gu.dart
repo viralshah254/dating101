@@ -1847,6 +1847,9 @@ class AppLocalizationsGu extends AppLocalizations {
   String get chatMessageHint => 'Message...';
 
   @override
+  String get chatPeerTyping => 'typing…';
+
+  @override
   String get discoverSwipePassHint => 'પાસ કરવા ડાબી સ્વાઇપ કરો';
 
   @override
