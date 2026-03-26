@@ -237,47 +237,11 @@ class DiscoverySwipeCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Minimal info overlay — name, city/job, one badge
-              Positioned(
-                left: 20,
-                right: 80,
-                bottom: 100,
-                child: _OverlayInfo(profile: profile, accent: accent),
-              ),
-              // Moment story ring (top-left)
-              if (profile.hasActiveMoment)
-                Positioned(
-                  left: 16,
-                  top: 28,
-                  child: MomentStoryRing(
-                    hasActiveMoment: true,
-                    ringWidth: 2.5,
-                    child: ClipOval(
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        color: Colors.white24,
-                        child: profile.momentImageUrl != null
-                            ? Image.network(profile.momentImageUrl!, fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.photo, color: Colors.white, size: 20))
-                            : const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 22),
-                      ),
-                    ),
-                  ),
-                ),
-              // Voice intro badge
-              if (profile.voiceIntroUrl != null && profile.voiceIntroUrl!.isNotEmpty)
-                Positioned(
-                  left: 20,
-                  bottom: 88,
-                  child: VoiceIntroBadge(url: profile.voiceIntroUrl!),
-                ),
-              // Frosted action bar — pass, super like, like, info
+              // Frosted action bar — drawn first so profile text can sit above it in z-order
               Positioned(
                 left: 32,
                 right: 32,
-                bottom: 20,
+                bottom: 40,
                 child: SafeArea(
                   top: false,
                   child: Column(
@@ -336,6 +300,43 @@ class DiscoverySwipeCard extends StatelessWidget {
                   ),
                 ),
               ),
+              // Profile text above the dock — IgnorePointer so taps still hit the buttons
+              Positioned(
+                left: 20,
+                right: 80,
+                bottom: 228,
+                child: IgnorePointer(
+                  child: _OverlayInfo(profile: profile, accent: accent),
+                ),
+              ),
+              if (profile.voiceIntroUrl != null && profile.voiceIntroUrl!.isNotEmpty)
+                Positioned(
+                  left: 20,
+                  bottom: 242,
+                  child: VoiceIntroBadge(url: profile.voiceIntroUrl!),
+                ),
+              // Moment story ring (top-left)
+              if (profile.hasActiveMoment)
+                Positioned(
+                  left: 16,
+                  top: 28,
+                  child: MomentStoryRing(
+                    hasActiveMoment: true,
+                    ringWidth: 2.5,
+                    child: ClipOval(
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        color: Colors.white24,
+                        child: profile.momentImageUrl != null
+                            ? Image.network(profile.momentImageUrl!, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.photo, color: Colors.white, size: 20))
+                            : const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                ),
               // More menu — top right
               Positioned(
                 top: 12,
