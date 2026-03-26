@@ -244,17 +244,32 @@ class _ChatsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
+    final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final async = ref.watch(chatThreadsProvider);
 
     return async.when(
       data: (threads) {
         if (threads.isEmpty) {
-          return EmptyState(
-            icon: Icons.chat_bubble_outline_rounded,
-            title: l.noConversationsYet,
-            body: l.noConversationsYetBody,
-            ctaLabel: l.retry,
-            onCta: () => ref.invalidate(chatThreadsProvider),
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(chatThreadsProvider),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyState(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: l.noConversationsYet,
+                    body: mode == AppMode.dating
+                        ? l.noConversationsYetGuidanceDating
+                        : l.noConversationsYetGuidanceMatrimony,
+                    ctaLabel:
+                        mode == AppMode.dating ? l.navDiscover : l.navMatches,
+                    onCta: () => context.go('/'),
+                  ),
+                ),
+              ],
+            ),
           );
         }
         return RefreshIndicator(

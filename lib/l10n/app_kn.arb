@@ -684,6 +684,8 @@
   "blockUser": "ಯೂಸರ್ ಬ್ಲಾಕ್ ಮಾಡಿ",
   "matchToContinueOrUpgrade": "ಮುಂದುವರಿಸಲು ಅಥವಾ ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಲು ಮ್ಯಾಚ್ ಮಾಡಿ",
   "noConversationsYetBody": "ಯಾರಾದರೂ ಮ್ಯಾಚ್ ಆದಾಗ ನಿಮ್ಮ ಚಾಟ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.",
+  "noConversationsYetGuidanceDating": "Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you'll get.",
+  "noConversationsYetGuidanceMatrimony": "Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.",
   "noChatRequestsBody": "ಯಾರಾದರೂ ಆಸಕ್ತಿ ಕಳುಹಿಸಿದರೆ ಇಲ್ಲಿ ಸ್ವೀಕರಿಸಿ ಚಾಟ್ ಪ್ರಾರಂಭಿಸಬಹುದು.",
   "noContactRequestsBody": "ಯಾರಾದರೂ ನಿಮ್ಮ ಸಂಪರ್ಕ ಕೋರಿದರೆ ಇಲ್ಲಿ ಸ್ವೀಕರಿಸಿ ಅಥವಾ ನಿರಾಕರಿಸಿ.",
   "requestedYourContact": "ನಿಮ್ಮ ಸಂಪರ್ಕ ಕೋರಿದ್ದಾರೆ",

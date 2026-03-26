@@ -43,12 +43,12 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
   double _dragDx = 0;
   double _dragDy = 0;
 
-  static const double _threshold = 70;
-  static const double _velocityThreshold = 400;
-  static const double _maxDrag = 140;
-  static const double _rotationDegPerPixel = 0.35;
-  static const double _translationFactor = 0.65;
-  static const double _minScale = 0.96;
+  static const double _threshold = 85;
+  static const double _velocityThreshold = 320;
+  static const double _maxDrag = 200;
+  static const double _rotationDegPerPixel = 0.08;
+  static const double _translationFactor = 0.80;
+  static const double _minScale = 0.97;
 
   /// The pixel threshold that enters the "curiosity zone" triggering Deep Look.
   static const double _deepLookThreshold = 90;
@@ -83,7 +83,7 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
 
     _exitController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 240),
+      duration: const Duration(milliseconds: 180),
     );
     _exitAnimation = CurvedAnimation(
       parent: _exitController,
@@ -129,31 +129,31 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
     _updateDeepLookTimer();
   }
 
+  static const double _overlayThreshold = 25;
+
   void _maybeHapticOverlay() {
-    // Level 1: light tick at 35 px
-    if (_dragDx > 35 && !_hasHapticLike) {
+    if (_dragDx > _overlayThreshold && !_hasHapticLike) {
       _hasHapticLike = true;
       HapticFeedback.lightImpact();
-    } else if (_dragDx < -35 && !_hasHapticPass) {
+    } else if (_dragDx < -_overlayThreshold && !_hasHapticPass) {
       _hasHapticPass = true;
       HapticFeedback.lightImpact();
-    } else if (_dragDy < -35 && !_hasHapticSuper) {
+    } else if (_dragDy < -_overlayThreshold && !_hasHapticSuper) {
       _hasHapticSuper = true;
       HapticFeedback.lightImpact();
     }
 
-    // Level 2: medium tick when entering curiosity zone
     if (_dragDx > _deepLookThreshold && !_hasHapticCuriosity) {
       _hasHapticCuriosity = true;
       HapticFeedback.mediumImpact();
     }
 
-    if (_dragDx.abs() < 30) {
+    if (_dragDx.abs() < 20) {
       _hasHapticLike = false;
       _hasHapticPass = false;
       _hasHapticCuriosity = false;
     }
-    if (_dragDy.abs() < 30) _hasHapticSuper = false;
+    if (_dragDy.abs() < 20) _hasHapticSuper = false;
   }
 
   void _updateDeepLookTimer() {
@@ -291,14 +291,12 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final showLike = _dragDx > 35;
-    final showPass = _dragDx < -35;
-    final showSuperLike = _dragDy < -35;
+    final showLike = _dragDx > _overlayThreshold;
+    final showPass = _dragDx < -_overlayThreshold;
+    final showSuperLike = _dragDy < -_overlayThreshold;
 
     final dragAmount = math.sqrt(_dragDx * _dragDx + _dragDy * _dragDy);
     final scale = 1.0 - (1.0 - _minScale) * (dragAmount / _maxDrag).clamp(0.0, 1.0);
-    // Subtle card lift when in deep look zone
     final deepLookScale = _showDeepLook ? 1.02 : 1.0;
     final rotationRad = _dragDx * _rotationDegPerPixel * math.pi / 180;
     final exitProgress = _exitController.isAnimating ? _exitAnimation.value : 0.0;
@@ -323,7 +321,7 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
                 return Transform(
                   alignment: Alignment.center,
                   transform: Matrix4.identity()
-                    ..translateByDouble(_dragDx * 0.5, _dragDy * 0.5, 0.0, 1.0)
+                    ..translateByDouble(_dragDx * 0.9, _dragDy * 0.9, 0.0, 1.0)
                     ..rotateZ(rotationRad)
                     ..scaleByDouble(scale * deepLookScale, scale * deepLookScale, 1.0, 1.0),
                   child: Opacity(
@@ -332,7 +330,6 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
                       clipBehavior: Clip.hardEdge,
                       children: [
                         Positioned.fill(child: child!),
-                        // Deep Look overlay — slides up from the bottom half
                         if (widget.deepLookContent != null)
                           AnimatedBuilder(
                             animation: _deepLookAnimation,
@@ -362,25 +359,26 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
             ),
           ),
         ),
+        // Bold rotated stamp overlays
         if (showLike && !_isAnimatingOut)
           Positioned(
-            left: 24,
-            top: size.height * 0.26,
-            child: _SwipeOverlay(
-              icon: Icons.favorite_rounded,
+            left: 32,
+            top: 80,
+            child: _SwipeStamp(
               label: widget.likeLabel.toUpperCase(),
-              color: Theme.of(context).colorScheme.primary,
+              color: const Color(0xFF4ADE80),
+              rotationDeg: -12,
               progress: (_dragDx / _maxDrag).clamp(0.0, 1.0),
             ),
           ),
         if (showPass && !_isAnimatingOut)
           Positioned(
-            right: 24,
-            top: size.height * 0.26,
-            child: _SwipeOverlay(
-              icon: Icons.close_rounded,
+            right: 32,
+            top: 80,
+            child: _SwipeStamp(
               label: widget.passLabel.toUpperCase(),
-              color: Theme.of(context).colorScheme.error,
+              color: const Color(0xFFFF6B6B),
+              rotationDeg: 12,
               progress: (-_dragDx / _maxDrag).clamp(0.0, 1.0),
             ),
           ),
@@ -388,12 +386,12 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
           Positioned(
             left: 0,
             right: 0,
-            top: size.height * 0.16,
+            top: 100,
             child: Center(
-              child: _SwipeOverlay(
-                icon: Icons.star_rounded,
+              child: _SwipeStamp(
                 label: widget.superLikeLabel.toUpperCase(),
-                color: Theme.of(context).colorScheme.secondary,
+                color: const Color(0xFF4FC3F7),
+                rotationDeg: 0,
                 progress: (-_dragDy / _maxDrag).clamp(0.0, 1.0),
               ),
             ),
@@ -405,61 +403,45 @@ class _DiscoverySwipeableCardState extends State<DiscoverySwipeableCard>
 
 enum _SwipeAction { like, pass, superLike }
 
-class _SwipeOverlay extends StatelessWidget {
-  const _SwipeOverlay({
-    required this.icon,
+/// Bold rotated text stamp — border-only, no fill, no blur.
+class _SwipeStamp extends StatelessWidget {
+  const _SwipeStamp({
     required this.label,
     required this.color,
+    required this.rotationDeg,
     required this.progress,
   });
 
-  final IconData icon;
   final String label;
   final Color color;
+  final double rotationDeg;
   final double progress;
 
   @override
   Widget build(BuildContext context) {
-    final opacity = (0.5 + 0.5 * progress).clamp(0.0, 1.0);
-    final scale = 0.9 + 0.1 * progress;
+    final opacity = (0.4 + 0.6 * progress).clamp(0.0, 1.0);
+    final scale = 0.85 + 0.15 * progress;
     return IgnorePointer(
       child: Opacity(
         opacity: opacity,
         child: Transform.scale(
           scale: scale,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
-                  color: color.withValues(alpha: 0.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.25),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 28, color: color),
-                    const SizedBox(width: 10),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
+          child: Transform.rotate(
+            angle: rotationDeg * math.pi / 180,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: color, width: 3),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
+                  height: 1.0,
                 ),
               ),
             ),

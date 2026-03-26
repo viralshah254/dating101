@@ -1268,6 +1268,24 @@ abstract class AppLocalizations {
   /// **'Share what matters to you — work, interests, and what you\'re looking for.'**
   String get aboutMeHint;
 
+  /// No description provided for @aboutMeCharCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {max}'**
+  String aboutMeCharCount(int current, int max);
+
+  /// No description provided for @aboutMeMinRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'At least {min} characters recommended'**
+  String aboutMeMinRecommended(int min);
+
+  /// No description provided for @photoTapToChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to change'**
+  String get photoTapToChange;
+
   /// No description provided for @profileSetupPhotosHint.
   ///
   /// In en, this message translates to:
@@ -4777,6 +4795,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When you match with someone, your chats will appear here.'**
   String get noConversationsYetBody;
+
+  /// No description provided for @noConversationsYetGuidanceDating.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you\'ll get.'**
+  String get noConversationsYetGuidanceDating;
+
+  /// No description provided for @noConversationsYetGuidanceMatrimony.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.'**
+  String get noConversationsYetGuidanceMatrimony;
 
   /// No description provided for @noChatRequestsBody.
   ///

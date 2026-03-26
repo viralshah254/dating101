@@ -100,6 +100,8 @@ String? notificationDataToPath(
       return '${chatListShellPath(appMode)}?tab=requests';
     case 'mutual_match':
     case 'interest_accepted':
+      // Prefer opening the chat thread so users can start talking immediately.
+      if (threadId != null && threadId.isNotEmpty) return chatPathWithOther();
       if (matchId != null && matchId.isNotEmpty) return '/';
       if (profileId != null) return '/profile/$profileId';
       return '/';
@@ -121,6 +123,8 @@ String? notificationDataToPath(
     case 'contact_request_declined':
       return '/';
     case 'shortlisted_you':
+      // Open the person's profile so the recipient can see who shortlisted them.
+      if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
       return shortlistShellPath(appMode);
     case 'photo_view_request':
       return '/requests';
@@ -130,6 +134,7 @@ String? notificationDataToPath(
     case 'photo_view_declined':
       return '/notifications';
     case 'morning_reminder':
+    case 'inactive_reminder':
       return '/';
     default:
       return '/notifications';

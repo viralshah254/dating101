@@ -637,6 +637,19 @@ class AppLocalizationsGu extends AppLocalizations {
       'Share what matters to you — work, interests, and what you\'re looking for.';
 
   @override
+  String aboutMeCharCount(int current, int max) {
+    return '$current / $max';
+  }
+
+  @override
+  String aboutMeMinRecommended(int min) {
+    return 'At least $min characters recommended';
+  }
+
+  @override
+  String get photoTapToChange => 'Tap to change';
+
+  @override
   String get profileSetupPhotosHint =>
       'Add at least 2 photos. Profiles with clear face photos get more matches.';
 
@@ -2537,6 +2550,14 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get noConversationsYetBody => 'કોઈ સાથે મેચ થયે ચેટ અહીં દેખાશે.';
+
+  @override
+  String get noConversationsYetGuidanceDating =>
+      'Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you\'ll get.';
+
+  @override
+  String get noConversationsYetGuidanceMatrimony =>
+      'Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.';
 
   @override
   String get noChatRequestsBody =>

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/location/place_search_service.dart';
@@ -9,6 +10,10 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/university/university_search_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../screens/profile_setup_screen.dart';
+
+/// About Me bio limits (aligned with discovery “strong bio” heuristics).
+const int kAboutMeMaxChars = 2000;
+const int kAboutMeMinRecommendedChars = 50;
 
 const _degreeOptions = [
   'High School',
@@ -1834,6 +1839,8 @@ class _DatingDetails extends StatelessWidget {
           _MultilineField(
             value: formData.bio,
             hint: l.aboutMeHint,
+            maxLength: kAboutMeMaxChars,
+            minRecommended: kAboutMeMinRecommendedChars,
             onChanged: (v) {
               formData.bio = v;
               onChanged();
@@ -1933,6 +1940,8 @@ class _MatrimonyDetails extends StatelessWidget {
             _MultilineField(
               value: formData.bio,
               hint: l.aboutMeHint,
+              maxLength: kAboutMeMaxChars,
+              minRecommended: kAboutMeMinRecommendedChars,
               onChanged: (v) {
                 formData.bio = v;
                 onChanged();
@@ -2773,11 +2782,17 @@ class _MultilineField extends StatefulWidget {
     required this.value,
     required this.hint,
     required this.onChanged,
+    this.maxLength,
+    this.minRecommended,
   });
 
   final String value;
   final String hint;
   final ValueChanged<String> onChanged;
+  /// When set, shows `current / max` and optional minimum guidance below the field.
+  final int? maxLength;
+  /// Soft minimum for UX (field may still be left empty when optional).
+  final int? minRecommended;
 
   @override
   State<_MultilineField> createState() => _MultilineFieldState();
@@ -2786,15 +2801,25 @@ class _MultilineField extends StatefulWidget {
 class _MultilineFieldState extends State<_MultilineField> {
   late final TextEditingController _ctrl;
 
+  void _onTextChanged() => setState(() {});
+
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(text: widget.value);
+    if (widget.maxLength != null) {
+      _ctrl.addListener(_onTextChanged);
+    }
   }
 
   @override
   void didUpdateWidget(_MultilineField old) {
     super.didUpdateWidget(old);
+    if (old.maxLength == null && widget.maxLength != null) {
+      _ctrl.addListener(_onTextChanged);
+    } else if (old.maxLength != null && widget.maxLength == null) {
+      _ctrl.removeListener(_onTextChanged);
+    }
     if (old.value != widget.value && widget.value != _ctrl.text) {
       _ctrl.text = widget.value;
     }
@@ -2802,25 +2827,75 @@ class _MultilineFieldState extends State<_MultilineField> {
 
   @override
   void dispose() {
+    if (widget.maxLength != null) {
+      _ctrl.removeListener(_onTextChanged);
+    }
     _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: _ctrl,
-      maxLines: 4,
-      textInputAction: TextInputAction.newline,
-      keyboardType: TextInputType.multiline,
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.all(16),
-      ),
-      onChanged: widget.onChanged,
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
+    final onSurface = theme.colorScheme.onSurface;
+    final l = AppLocalizations.of(context)!;
+    final max = widget.maxLength;
+    final min = widget.minRecommended;
+    final len = _ctrl.text.length;
+    final belowMin = min != null && len > 0 && len < min;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _ctrl,
+          maxLines: 4,
+          maxLength: max,
+          maxLengthEnforcement: max != null
+              ? MaxLengthEnforcement.enforced
+              : MaxLengthEnforcement.none,
+          textInputAction: TextInputAction.newline,
+          keyboardType: TextInputType.multiline,
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainerHighest,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.all(16),
+            counterText: '',
+          ),
+          onChanged: widget.onChanged,
+        ),
+        if (max != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (min != null)
+                Expanded(
+                  child: Text(
+                    l.aboutMeMinRecommended(min),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: belowMin
+                          ? accent.withValues(alpha: 0.95)
+                          : onSurface.withValues(alpha: 0.45),
+                      fontWeight: belowMin ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              Text(
+                l.aboutMeCharCount(len, max),
+                style: AppTypography.bodySmall.copyWith(
+                  color: onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

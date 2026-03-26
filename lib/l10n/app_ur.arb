@@ -684,6 +684,8 @@
   "blockUser": "صارف کو بلاک کریں",
   "matchToContinueOrUpgrade": "جاری رکھنے یا اپ گریڈ کے لیے میچ کریں",
   "noConversationsYetBody": "جب آپ کسی سے میچ کریں گے، آپ کی چیٹس یہاں نظر آئیں گی۔",
+  "noConversationsYetGuidanceDating": "Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you'll get.",
+  "noConversationsYetGuidanceMatrimony": "Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.",
   "noChatRequestsBody": "جب کوئی آپ کو دلچسپی بھیجے گا، چیٹ شروع کرنے کے لیے یہاں قبول کر سکتے ہیں۔",
   "noContactRequestsBody": "جب کوئی آپ کا رابطہ مانگے گا، یہاں قبول یا مسترد کر سکتے ہیں۔",
   "requestedYourContact": "آپ کا رابطہ مانگا ہے",

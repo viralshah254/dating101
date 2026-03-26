@@ -254,6 +254,20 @@
   "profileBuilderPartnerPrefs": "Partner preferences",
   "completeProfile": "Complete your profile — {percent}%",
   "aboutMeHint": "Share what matters to you — work, interests, and what you're looking for.",
+  "aboutMeCharCount": "{current} / {max}",
+  "@aboutMeCharCount": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "aboutMeMinRecommended": "At least {min} characters recommended",
+  "@aboutMeMinRecommended": {
+    "placeholders": {
+      "min": {"type": "int"}
+    }
+  },
+  "photoTapToChange": "Tap to change",
   "profileSetupPhotosHint": "Add at least 2 photos. Profiles with clear face photos get more matches.",
   "profilePhotoTipsTitle": "Tips for great photos",
   "profilePhotoTipsBody": "Use clear, well-lit photos.\nInclude at least one clear face photo.\nAvoid group photos for your main picture.\nSmile — it helps others connect.",
@@ -911,6 +925,8 @@
   "blockUser": "Block user",
   "matchToContinueOrUpgrade": "Match to continue or upgrade",
   "noConversationsYetBody": "When you match with someone, your chats will appear here.",
+  "noConversationsYetGuidanceDating": "Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you'll get.",
+  "noConversationsYetGuidanceMatrimony": "Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.",
   "noChatRequestsBody": "When someone sends you an interest, you can accept here to start chatting.",
   "inboundRequest": "Received",
   "outboundRequest": "Sent",

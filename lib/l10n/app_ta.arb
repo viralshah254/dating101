@@ -684,6 +684,8 @@
   "blockUser": "பயனரைத் தடு",
   "matchToContinueOrUpgrade": "தொடர அல்லது மேம்படுத்த பொருத்தம் செய்யவும்",
   "noConversationsYetBody": "ஒருவருடன் பொருத்தமானால், உங்கள் சாட்கள் இங்கே தோன்றும்.",
+  "noConversationsYetGuidanceDating": "Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you'll get.",
+  "noConversationsYetGuidanceMatrimony": "Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.",
   "noChatRequestsBody": "ஒருவர் உங்களுக்கு விருப்பம் அனுப்பினால், சாட் தொடங்க இங்கே ஏற்கலாம்.",
   "noContactRequestsBody": "ஒருவர் உங்கள் தொடர்பை கோரினால், இங்கே ஏற்க அல்லது நிராகரிக்கலாம்.",
   "requestedYourContact": "உங்கள் தொடர்பை கோரினார்",

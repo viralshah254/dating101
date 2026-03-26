@@ -69,13 +69,27 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text(
-          l.discoverTitle,
-          style: AppTypography.titleLarge.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
-          ),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l.discoverTitle,
+              style: AppTypography.titleLarge.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.5,
+              ),
+            ),
+            if (hasCityFilter)
+              Text(
+                _effectiveCity(filterParams, travelCity) ?? '',
+                style: AppTypography.caption.copyWith(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+          ],
         ),
         actions: [
           IconButton(
@@ -176,44 +190,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           _FocusModeBannerContainer(
             onDismiss: () => setState(() => _focusModeBannerDismissed = true),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.dailyCuratedSet,
-                      style: AppTypography.caption.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    _CityChip(
-                      city: effectiveCity,
-                      onTap: () => showCityPickerSheet(context, ref),
-                      exploreLabel: l.exploreCity(effectiveCity ?? ''),
-                      changeCityLabel: l.changeCity,
-                    ),
-                  ],
-                ),
-              ),
-              if (effectiveCity != null && effectiveCity.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Icon(
-                    Icons.flight_takeoff_rounded,
-                    size: 18,
-                    color: accent.withValues(alpha: 0.8),
-                  ),
-                ),
-            ],
-          ),
-        ),
         Expanded(
           child: DiscoverFeedLoadingSurface(cue: cue),
         ),
@@ -240,50 +216,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Focus Mode banner — shown when user has an active deep conversation
         if (!_focusModeBannerDismissed)
           _FocusModeBannerContainer(
             onDismiss: () => setState(() => _focusModeBannerDismissed = true),
           ),
-        // Minimal header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.dailyCuratedSet,
-                      style: AppTypography.caption.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    _CityChip(
-                      city: effectiveCity,
-                      onTap: () => showCityPickerSheet(context, ref),
-                      exploreLabel: l.exploreCity(effectiveCity ?? ''),
-                      changeCityLabel: l.changeCity,
-                    ),
-                  ],
-                ),
-              ),
-              if (effectiveCity != null && effectiveCity.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Icon(
-                    Icons.flight_takeoff_rounded,
-                    size: 18,
-                    color: accent.withValues(alpha: 0.8),
-                  ),
-                ),
-            ],
-          ),
-        ),
         if (profiles.isEmpty)
           Expanded(
             child: EmptyState(
@@ -721,71 +657,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return openers.toSet().toList().take(3).toList();
   }
 }
-
-class _CityChip extends StatelessWidget {
-  const _CityChip({
-    required this.city,
-    required this.onTap,
-    required this.exploreLabel,
-    required this.changeCityLabel,
-  });
-  final String? city;
-  final VoidCallback onTap;
-  final String exploreLabel;
-  final String changeCityLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accent.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.location_on_rounded, size: 18, color: accent),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    changeCityLabel,
-                    style: AppTypography.labelMedium.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (city != null && city!.isNotEmpty)
-                    Text(
-                      exploreLabel,
-                      style: AppTypography.caption.copyWith(
-                        color: onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 
 /// Watches [focusModeProvider] and renders [FocusModeBanner] for the first active
 /// Focus Mode entry. Silently hides itself if there are no active focus modes

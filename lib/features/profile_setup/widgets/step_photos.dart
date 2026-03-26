@@ -48,6 +48,23 @@ class _StepPhotosState extends State<StepPhotos> {
     widget.onChanged();
   }
 
+  /// Replace a single slot (same flow as add, but keeps order / main photo index).
+  Future<void> _replacePhoto(int index) async {
+    if (index < 0 || index >= _photos.length) return;
+    HapticFeedback.lightImpact();
+    final picked = await _picker.pickImage(
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      source: ImageSource.gallery,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _photos[index] = picked.path;
+    });
+    widget.onChanged();
+  }
+
   void _removePhoto(int index) {
     HapticFeedback.lightImpact();
     setState(() {
@@ -181,14 +198,21 @@ class _StepPhotosState extends State<StepPhotos> {
           width: slotWidth,
           height: slotHeight,
           child: isFilled
-              ? _buildFilledSlot(i, accent, slotWidth, slotHeight)
+              ? _buildFilledSlot(context, i, accent, slotWidth, slotHeight)
               : _buildEmptySlot(i, accent, onSurface),
         );
       }),
     ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.04, end: 0);
   }
 
-  Widget _buildFilledSlot(int i, Color accent, double w, double h) {
+  Widget _buildFilledSlot(
+    BuildContext context,
+    int i,
+    Color accent,
+    double w,
+    double h,
+  ) {
+    final l = AppLocalizations.of(context)!;
     return LongPressDraggable<int>(
       data: i,
       delay: const Duration(milliseconds: 150),
@@ -217,27 +241,64 @@ class _StepPhotosState extends State<StepPhotos> {
           border: Border.all(color: accent.withValues(alpha: 0.3), width: 2),
         ),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          _PhotoCard(path: _photos[i], isPrimary: i == 0, accent: accent),
-          Positioned(
-            top: -6,
-            right: -6,
-            child: GestureDetector(
-              onTap: () => _removePhoto(i),
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: () => _replacePhoto(i),
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _PhotoCard(path: _photos[i], isPrimary: i == 0, accent: accent),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.65),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: Text(
+                    l.photoTapToChange,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              top: -6,
+              right: -6,
+              child: GestureDetector(
+                onTap: () => _removePhoto(i),
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

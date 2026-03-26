@@ -684,6 +684,8 @@
   "blockUser": "ഉപയോക്താവിനെ ബ്ലോക്ക് ചെയ്യുക",
   "matchToContinueOrUpgrade": "തുടരാൻ അല്ലെങ്കിൽ അപ്ഗ്രേഡ് ചെയ്യാൻ മാച്ച് ചെയ്യുക",
   "noConversationsYetBody": "ആരെയെങ്കിലും മാച്ച് ചെയ്യുമ്പോൾ, നിങ്ങളുടെ ചാറ്റുകൾ ഇവിടെ കാണപ്പെടും.",
+  "noConversationsYetGuidanceDating": "Chats open after you match.\n\nGo to Discover, swipe right on people you like, or send a like from their profile. The more active you are, the more matches you'll get.",
+  "noConversationsYetGuidanceMatrimony": "Chats open after you connect.\n\nGo to Matches, browse profiles, and send interest. When both sides accept, you can chat here.",
   "noChatRequestsBody": "ആരെങ്കിലും നിങ്ങൾക്ക് ആസക്തി അയയ്ക്കുമ്പോൾ, ചാറ്റ് ആരംഭിക്കാൻ ഇവിടെ സ്വീകരിക്കാം.",
   "noContactRequestsBody": "ആരെങ്കിലും നിങ്ങളുടെ ബന്ധം അഭ്യർത്ഥിക്കുമ്പോൾ, ഇവിടെ സ്വീകരിക്കാനോ നിരാകരിക്കാനോ കഴിയും.",
   "requestedYourContact": "നിങ്ങളുടെ ബന്ധം അഭ്യർത്ഥിച്ചു",
