@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_motion.dart';
@@ -82,13 +81,11 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
       clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
-        // Back cards — next 2 profiles, scaled down and offset
         if (index + 2 < profiles.length)
           _StackedCard(
             profile: profiles[index + 2],
-            scale: 0.88,
-            offsetY: 24,
-            rotationDeg: -1.5,
+            scale: 0.91,
+            offsetY: 18,
             onTapProfile: widget.onTapProfile,
             onBlock: widget.onBlock,
             onReport: widget.onReport,
@@ -97,8 +94,8 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
         if (index + 1 < profiles.length)
           _StackedCard(
             profile: profiles[index + 1],
-            scale: 0.92,
-            offsetY: 12,
+            scale: 0.95,
+            offsetY: 10,
             onTapProfile: widget.onTapProfile,
             onBlock: widget.onBlock,
             onReport: widget.onReport,
@@ -109,7 +106,7 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
           animation: _scaleAnimation,
           builder: (context, child) {
             final t = index > 0 ? _scaleAnimation.value : 1.0;
-            final scale = 0.92 + 0.08 * t;
+            final scale = 0.95 + 0.05 * t;
             return Transform.scale(
               scale: scale,
               alignment: Alignment.center,
@@ -147,7 +144,6 @@ class _StackedCard extends StatelessWidget {
     required this.profile,
     required this.scale,
     required this.offsetY,
-    this.rotationDeg = 0,
     required this.onTapProfile,
     required this.onBlock,
     required this.onReport,
@@ -157,8 +153,6 @@ class _StackedCard extends StatelessWidget {
   final ProfileSummary profile;
   final double scale;
   final double offsetY;
-  /// Subtle tilt in degrees for depth effect.
-  final double rotationDeg;
   final void Function(ProfileSummary) onTapProfile;
   final void Function(ProfileSummary) onBlock;
   final void Function(ProfileSummary) onReport;
@@ -172,22 +166,16 @@ class _StackedCard extends StatelessWidget {
         child: Transform.scale(
           scale: scale,
           alignment: Alignment.center,
-          child: Transform.rotate(
-            angle: rotationDeg * math.pi / 180,
-            child: IgnorePointer(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: DiscoverySwipeCard(
-                  profile: profile,
-                  onTap: () => onTapProfile(profile),
-                  onPass: () {},
-                  onLike: () {},
-                  onSuperLike: () {},
-                  onBlock: () => onBlock(profile),
-                  onReport: () => onReport(profile),
-                  showManagedByChip: showManagedByChip,
-                ),
-              ),
+          child: IgnorePointer(
+            child: DiscoverySwipeCard(
+              profile: profile,
+              onTap: () => onTapProfile(profile),
+              onPass: () {},
+              onLike: () {},
+              onSuperLike: () {},
+              onBlock: () => onBlock(profile),
+              onReport: () => onReport(profile),
+              showManagedByChip: showManagedByChip,
             ),
           ),
         ),
