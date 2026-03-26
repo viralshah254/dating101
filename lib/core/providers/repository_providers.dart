@@ -272,7 +272,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   final profileRepo = ref.watch(profileRepositoryProvider);
   return FirebaseNotificationService(
     onRegisterToken: (token) => profileRepo.registerFcmToken(token),
-    onLogoutCallback: () => profileRepo.deleteFcmToken(),
+    // Do not call DELETE /profile/me/fcm-token on logout — keep server tokens for push delivery.
   );
 });
 

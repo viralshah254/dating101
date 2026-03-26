@@ -841,11 +841,7 @@ class ApiProfileRepository implements ProfileRepository {
 
   @override
   Future<void> deleteFcmToken() async {
-    try {
-      await api.delete('/profile/me/fcm-token');
-    } on ApiException catch (_) {
-      // Optional: backend may not implement DELETE; ignore so sign-out still completes
-    }
+    // Intentionally no-op: do not DELETE /profile/me/fcm-token (keep tokens on server for push).
   }
 
   static List<String> _strList(dynamic v) {

@@ -222,6 +222,19 @@ class FirebaseNotificationService extends NotificationService {
       if (kDebugMode && token == null) {
         debugPrint('[FCM] getToken returned null (check Play services / Firebase project / emulator image)');
       }
+      // iOS: Apple’s device token is used internally by Firebase; the value we register with the
+      // backend is still this FCM token (same as Android). APNs-only apps use a different token shape.
+      if (kDebugMode && !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        final apns = await FirebaseMessaging.instance.getAPNSToken();
+        if (apns == null) {
+          debugPrint(
+            '[FCM] iOS getAPNSToken=null (simulator or APNs not ready yet). '
+            'Physical device: enable Push capability, upload APNs key to Firebase Console.',
+          );
+        } else {
+          debugPrint('[FCM] iOS APNs registered (len=${apns.length}); FCM token above is what the API stores.');
+        }
+      }
       return token;
     } on MissingPluginException {
       return null;
@@ -235,11 +248,7 @@ class FirebaseNotificationService extends NotificationService {
 
   @override
   Future<void> onLogout() async {
-    try {
-      await FirebaseMessaging.instance.deleteToken();
-    } on MissingPluginException {
-      // FCM not available on this platform
-    } catch (_) {}
+    // Do not call Firebase deleteToken() — keeps the same registration token so server rows stay valid.
     await onLogoutCallback?.call();
   }
 }

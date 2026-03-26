@@ -407,9 +407,6 @@ class ProfileSettingsScreen extends ConsumerWidget {
 
 Future<void> _signOutAndGoLogin(BuildContext context, WidgetRef ref) async {
   await ref.read(notificationServiceProvider).onLogout();
-  try {
-    await ref.read(profileRepositoryProvider).deleteFcmToken();
-  } catch (_) {}
   await ref.read(authRepositoryProvider).signOut();
   if (context.mounted) context.go('/login');
 }
@@ -909,7 +906,6 @@ class _DeactivateConfirmDialogState extends State<_DeactivateConfirmDialog> {
                     if (!mounted) return;
                     // ignore: use_build_context_synchronously
                     Navigator.pop(context);
-                    await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
                     await widget.ref.read(authRepositoryProvider).signOut();
                     if (!mounted) return;
                     // ignore: use_build_context_synchronously
@@ -1024,7 +1020,6 @@ class _DeleteAccountConfirmDialogState extends State<_DeleteAccountConfirmDialog
                         if (!mounted) return;
                         // ignore: use_build_context_synchronously
                         Navigator.pop(context);
-                        await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
                         await widget.ref.read(authRepositoryProvider).signOut();
                         if (!mounted) return;
                         // ignore: use_build_context_synchronously
