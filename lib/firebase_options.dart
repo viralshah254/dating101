@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError('Web not supported. Use a mobile or desktop platform.');
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -20,6 +20,16 @@ class DefaultFirebaseOptions {
         throw UnsupportedError('DefaultFirebaseOptions not supported for ${defaultTargetPlatform.name}');
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBwbDG-JRKT_D4vONYpNKocMv4gi_moaqg',
+    appId: '1:450608436873:web:19043f88f8fc10812e1858',
+    messagingSenderId: '450608436873',
+    projectId: 'shubhmilan-app',
+    authDomain: 'shubhmilan-app.firebaseapp.com',
+    storageBucket: 'shubhmilan-app.firebasestorage.app',
+    measurementId: 'G-6N9DKEVVB0',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAir75Ia4KBUKRXpt_kvkPWemydHRbIyBw',
