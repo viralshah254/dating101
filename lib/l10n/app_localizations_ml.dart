@@ -1800,7 +1800,7 @@ class AppLocalizationsMl extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'Shubhmilan മോഡ്';
+  String get shubhmilanMode => 'Shubhmilan മോഡ്';
 
   @override
   String get accountAndData => 'അക്കൗണ്ടും ഡാറ്റയും';

@@ -1797,7 +1797,7 @@ class AppLocalizationsGu extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'Shubhmilan મોડ';
+  String get shubhmilanMode => 'Shubhmilan મોડ';
 
   @override
   String get accountAndData => 'એકાઉન્ટ અને ડેટા';

@@ -439,7 +439,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   Future<void> _openManageSubscription() async {
     final uri = Uri.parse(
-      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.saathi',
+      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.shubhmilan',
     );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }

@@ -101,7 +101,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
             primary: primary,
           ).fadeSlideIn(delay: 200.ms),
           const SizedBox(height: 32),
-          _SectionHeader(title: l.saathiMode, onSurface: onSurface)
+          _SectionHeader(title: l.shubhmilanMode, onSurface: onSurface)
               .animate().fadeIn(delay: AppMotion.stagger(0, stepMs: 80), duration: AppMotion.medium)
               .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           _ModeSwitchTile(
@@ -363,7 +363,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSupportUrl(
               context,
-              Uri.parse('https://desilink.app/help'),
+              Uri.parse('https://shubhmilan.app/help'),
             ),
           ),
           ListTile(
@@ -378,7 +378,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSupportUrl(
               context,
-              Uri.parse('https://desilink.app/terms'),
+              Uri.parse('https://shubhmilan.app/terms'),
             ),
           ),
         ],
@@ -1294,7 +1294,7 @@ class _SubscriptionCard extends ConsumerWidget {
   static Future<bool> _openManageSubscription(BuildContext context) async {
     if (!Platform.isAndroid) return false;
     final uri = Uri.parse(
-      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.saathi',
+      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.shubhmilan',
     );
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && context.mounted) {

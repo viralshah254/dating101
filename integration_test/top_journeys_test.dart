@@ -4,16 +4,16 @@ import 'package:integration_test/integration_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:saathi/app.dart';
-import 'package:saathi/core/location/app_location_service.dart';
-import 'package:saathi/core/location/location_service_provider.dart';
-import 'package:saathi/core/mode/mode_provider.dart';
-import 'package:saathi/core/providers/repository_providers.dart';
-import 'package:saathi/data/repositories_fake/fake_profile_repository.dart';
-import 'package:saathi/domain/repositories/auth_repository.dart';
-import 'package:saathi/features/location/screens/location_required_screen.dart';
-import 'package:saathi/features/mode_select/screens/mode_select_screen.dart';
-import 'package:saathi/features/auth/screens/language_select_screen.dart';
+import 'package:shubhmilan/app.dart';
+import 'package:shubhmilan/core/location/app_location_service.dart';
+import 'package:shubhmilan/core/location/location_service_provider.dart';
+import 'package:shubhmilan/core/mode/mode_provider.dart';
+import 'package:shubhmilan/core/providers/repository_providers.dart';
+import 'package:shubhmilan/data/repositories_fake/fake_profile_repository.dart';
+import 'package:shubhmilan/domain/repositories/auth_repository.dart';
+import 'package:shubhmilan/features/location/screens/location_required_screen.dart';
+import 'package:shubhmilan/features/mode_select/screens/mode_select_screen.dart';
+import 'package:shubhmilan/features/auth/screens/language_select_screen.dart';
 
 class _TestAuthRepository implements AuthRepository {
   _TestAuthRepository(this._userId);

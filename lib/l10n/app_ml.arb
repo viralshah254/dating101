@@ -467,7 +467,7 @@
   "chooseAppLanguage": "നിങ്ങളുടെ ഭാഷ തിരഞ്ഞെടുക്കുക",
   "languageSelectSubtitle": "പിന്നീട് സെറ്റിംഗ്സിൽ നിന്ന് മാറ്റാം.",
   "languageSetTo": "ഭാഷ {name} ആയി സജ്ജമാക്കി",
-  "saathiMode": "Shubhmilan മോഡ്",
+  "shubhmilanMode": "Shubhmilan മോഡ്",
   "accountAndData": "അക്കൗണ്ടും ഡാറ്റയും",
   "viewProfile": "പ്രൊഫൈൽ കാണുക",
   "downloadMyData": "എന്റെ ഡാറ്റ ഡൗൺലോഡ് ചെയ്യുക",

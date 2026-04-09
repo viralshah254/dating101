@@ -13,7 +13,7 @@ class ApiConfig {
 
   /// Production config.
   static const production = ApiConfig(
-    baseUrl: 'https://api.saathi.app',
+    baseUrl: 'https://api.shubhmilan.app',
     useFakeBackend: false,
   );
 

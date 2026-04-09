@@ -1,4 +1,4 @@
-# Saathi — Matching & Compatibility Scoring Engine
+# Shubhmilan — Matching & Compatibility Scoring Engine
 
 Backend specification for the ML-powered matching pipeline. This system powers
 `GET /discovery/recommended`, compatibility badges on profile cards, and
@@ -356,7 +356,7 @@ Authorization: Bearer <accessToken>
       "name": "Priya S.",
       "age": 27,
       "city": "Mumbai",
-      "imageUrl": "https://cdn.saathi.app/photos/usr_abc/photo_1.jpg",
+      "imageUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_1.jpg",
       "distanceKm": 4.2,
       "verified": true,
       "bio": "Product designer who loves hiking and chai.",

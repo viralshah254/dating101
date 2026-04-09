@@ -485,7 +485,7 @@
   "chooseAppLanguage": "अपनी भाषा चुनें",
   "languageSelectSubtitle": "बाद में सेटिंग्स से बदल सकते हैं।",
   "languageSetTo": "भाषा {name} पर सेट की गई",
-  "saathiMode": "Shubhmilan मोड",
+  "shubhmilanMode": "Shubhmilan मोड",
   "accountAndData": "खाता और डेटा",
   "viewProfile": "प्रोफ़ाइल देखें",
   "downloadMyData": "मेरा डेटा डाउनलोड करें",

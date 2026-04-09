@@ -1,4 +1,4 @@
-# Saathi — Interactions, Interests & Visitors API
+# Shubhmilan — Interactions, Interests & Visitors API
 
 Backend specification for profile interactions: expressing interest, priority interest, shortlisting, profile visits (visitors), and the notifications/mutual-match flows that tie them together.
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:saathi/l10n/app_localizations.dart';
+import 'package:shubhmilan/l10n/app_localizations.dart';
 import '../../data/api/api_client.dart';
 import '../theme/app_tokens.dart';
 

@@ -1,6 +1,6 @@
-# Saathi Backend API Reference
+# Shubhmilan Backend API Reference
 
-Complete API documentation for the Saathi dating/matrimony backend.
+Complete API documentation for the Shubhmilan dating/matrimony backend.
 
 **→ For a full checklist of APIs to build, see [BACKEND_API_REQUIREMENTS.md](./BACKEND_API_REQUIREMENTS.md).**
 
@@ -10,7 +10,7 @@ Complete API documentation for the Saathi dating/matrimony backend.
 
 | Item | Value |
 |------|--------|
-| **Base URL** | `https://api.saathi.app` (use `http://localhost:3000` for local dev) |
+| **Base URL** | `https://api.shubhmilan.app` (use `http://localhost:3000` for local dev) |
 | **Content-Type** | `application/json` for all request and response bodies |
 | **Authorization** | After login: `Authorization: Bearer <accessToken>` |
 
@@ -329,18 +329,18 @@ The app calls this before uploading each photo. The backend generates an S3 pres
 {
   "uploads": [
     {
-      "uploadUrl": "https://saathi-photos.s3.amazonaws.com/usr_abc/photo_1.jpg?X-Amz-...",
-      "photoUrl": "https://cdn.saathi.app/photos/usr_abc/photo_1.jpg",
+      "uploadUrl": "https://shubhmilan-photos.s3.amazonaws.com/usr_abc/photo_1.jpg?X-Amz-...",
+      "photoUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_1.jpg",
       "key": "usr_abc/photo_1.jpg"
     },
     {
-      "uploadUrl": "https://saathi-photos.s3.amazonaws.com/usr_abc/photo_2.jpg?X-Amz-...",
-      "photoUrl": "https://cdn.saathi.app/photos/usr_abc/photo_2.jpg",
+      "uploadUrl": "https://shubhmilan-photos.s3.amazonaws.com/usr_abc/photo_2.jpg?X-Amz-...",
+      "photoUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_2.jpg",
       "key": "usr_abc/photo_2.jpg"
     },
     {
-      "uploadUrl": "https://saathi-photos.s3.amazonaws.com/usr_abc/photo_3.jpg?X-Amz-...",
-      "photoUrl": "https://cdn.saathi.app/photos/usr_abc/photo_3.jpg",
+      "uploadUrl": "https://shubhmilan-photos.s3.amazonaws.com/usr_abc/photo_3.jpg?X-Amz-...",
+      "photoUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_3.jpg",
       "key": "usr_abc/photo_3.jpg"
     }
   ]
@@ -395,7 +395,7 @@ Deletes a photo from S3 and removes it from the user's `photoUrls` array.
 
 ```json
 {
-  "photoUrls": ["https://cdn.saathi.app/photos/usr_abc/photo_2.jpg"]
+  "photoUrls": ["https://cdn.shubhmilan.app/photos/usr_abc/photo_2.jpg"]
 }
 ```
 
@@ -497,7 +497,7 @@ for the full response schema.
       "name": "Priya S.",
       "age": 27,
       "city": "Mumbai",
-      "imageUrl": "https://cdn.saathi.app/photos/usr_abc/photo_1.jpg",
+      "imageUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_1.jpg",
       "verified": true,
       "compatibilityScore": 0.87,
       "compatibilityLabel": "Excellent match",
@@ -1299,8 +1299,8 @@ Lightweight DTO used in discovery cards and lists.
 ```json
 {
   "photoUrls": [
-    "https://cdn.saathi.app/photos/usr_abc/1.jpg",
-    "https://cdn.saathi.app/photos/usr_abc/2.jpg"
+    "https://cdn.shubhmilan.app/photos/usr_abc/1.jpg",
+    "https://cdn.shubhmilan.app/photos/usr_abc/2.jpg"
   ]
 }
 ```

@@ -3410,11 +3410,11 @@ abstract class AppLocalizations {
   /// **'Language set to {name}'**
   String languageSetTo(Object name);
 
-  /// No description provided for @saathiMode.
+  /// No description provided for @shubhmilanMode.
   ///
   /// In en, this message translates to:
   /// **'Shubhmilan mode'**
-  String get saathiMode;
+  String get shubhmilanMode;
 
   /// No description provided for @accountAndData.
   ///

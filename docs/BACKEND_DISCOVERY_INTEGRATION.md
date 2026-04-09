@@ -1,4 +1,4 @@
-# Saathi — Discovery: Backend Integration (Frontend Contract)
+# Shubhmilan — Discovery: Backend Integration (Frontend Contract)
 
 This doc describes **what the frontend expects** from the discovery backend. Use it to implement or update APIs so the app’s Discovery screen (filters, travel mode, match reasons) works end-to-end.
 

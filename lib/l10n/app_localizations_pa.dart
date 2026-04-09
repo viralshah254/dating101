@@ -1799,7 +1799,7 @@ class AppLocalizationsPa extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'Shubhmilan ਮੋਡ';
+  String get shubhmilanMode => 'Shubhmilan ਮੋਡ';
 
   @override
   String get accountAndData => 'ਖਾਤਾ ਅਤੇ ਡਾਟਾ';

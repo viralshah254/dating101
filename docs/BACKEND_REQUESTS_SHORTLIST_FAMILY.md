@@ -1,4 +1,4 @@
-# Saathi — Requests, Shortlist, Family, Horoscope & Parent Role: Backend Contract
+# Shubhmilan — Requests, Shortlist, Family, Horoscope & Parent Role: Backend Contract
 
 Backend behaviour and API contract for **requests/interests**, **contact request gating**, **shortlist** (list, notes, reorder, tags), **family details**, **horoscope**, and **parent/guardian role**. Frontend is implemented against this contract.
 

@@ -25,16 +25,16 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyAir75Ia4KBUKRXpt_kvkPWemydHRbIyBw',
     appId: '1:1067844155109:android:1746f538ac45add7fa060c',
     messagingSenderId: '1067844155109',
-    projectId: 'saathi-2644b',
-    storageBucket: 'saathi-2644b.firebasestorage.app',
+    projectId: 'shubhmilan-app',
+    storageBucket: 'shubhmilan-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAW3f1H34EfhL3bkPhQ0_qYFiZiPJQ64G4',
     appId: '1:1067844155109:ios:971036ac32da087cfa060c',
     messagingSenderId: '1067844155109',
-    projectId: 'saathi-2644b',
-    storageBucket: 'saathi-2644b.firebasestorage.app',
-    iosBundleId: 'com.dvtechventures.saathi',
+    projectId: 'shubhmilan-app',
+    storageBucket: 'shubhmilan-app.firebasestorage.app',
+    iosBundleId: 'com.dvtechventures.shubhmilan',
   );
 }

@@ -1,6 +1,6 @@
-# Saathi — Frontend Integration Guide
+# Shubhmilan — Frontend Integration Guide
 
-How to connect your app (React Native, React Web, Flutter, etc.) to the Saathi backend. Use this with the full [BACKEND_API_AUTH_AND_PROFILE.md](./BACKEND_API_AUTH_AND_PROFILE.md) for request/response details.
+How to connect your app (React Native, React Web, Flutter, etc.) to the Shubhmilan backend. Use this with the full [BACKEND_API_AUTH_AND_PROFILE.md](./BACKEND_API_AUTH_AND_PROFILE.md) for request/response details.
 
 ---
 
@@ -23,7 +23,7 @@ How to connect your app (React Native, React Web, Flutter, etc.) to the Saathi b
 
 | Need | Where / how |
 |------|-------------|
-| **Base URL** | `https://api.saathi.app` (prod) or `http://localhost:3000` (local). Make it env-driven. |
+| **Base URL** | `https://api.shubhmilan.app` (prod) or `http://localhost:3000` (local). Make it env-driven. |
 | **Access token** | From `POST /auth/verify-otp` (or refresh). Store securely (e.g. secure store / keychain). |
 | **Refresh token** | From verify-otp. Store securely; use when access token expires (401). |
 | **User ID** | From verify-otp (`userId`). Use for "my profile", "my preferences", and as viewer in discovery. |
@@ -40,7 +40,7 @@ Optional but recommended:
 ## 2. Base URL & headers
 
 - **Base URL:**
-  - Production: `https://api.saathi.app`
+  - Production: `https://api.shubhmilan.app`
   - Local: `http://localhost:3000` (or your dev URL)
 
 - **Every request:**
@@ -323,7 +323,7 @@ Authorization: Bearer <accessToken>
       "name": "Priya S.",
       "age": 27,
       "city": "Mumbai",
-      "imageUrl": "https://cdn.saathi.app/photos/usr_abc/photo_1.jpg",
+      "imageUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_1.jpg",
       "distanceKm": 4.2,
       "verified": true,
       "bio": "Product designer who loves hiking and chai.",
@@ -512,8 +512,8 @@ Response:
 {
   "uploads": [
     {
-      "uploadUrl": "https://saathi-photos.s3.amazonaws.com/usr_abc/photo_1.jpg?X-Amz-...",
-      "photoUrl": "https://cdn.saathi.app/photos/usr_abc/photo_1.jpg",
+      "uploadUrl": "https://shubhmilan-photos.s3.amazonaws.com/usr_abc/photo_1.jpg?X-Amz-...",
+      "photoUrl": "https://cdn.shubhmilan.app/photos/usr_abc/photo_1.jpg",
       "key": "usr_abc/photo_1.jpg"
     }
   ]
@@ -539,8 +539,8 @@ Content-Type: application/json
 
 {
   "photoUrls": [
-    "https://cdn.saathi.app/photos/usr_abc/photo_1.jpg",
-    "https://cdn.saathi.app/photos/usr_abc/photo_2.jpg"
+    "https://cdn.shubhmilan.app/photos/usr_abc/photo_1.jpg",
+    "https://cdn.shubhmilan.app/photos/usr_abc/photo_2.jpg"
   ]
 }
 ```
@@ -566,7 +566,7 @@ Use the `photoUrl` (CDN URL) returned from the upload. When loading a profile, `
 
 | | Value |
 |---|-------|
-| Prod API | `https://api.saathi.app` |
+| Prod API | `https://api.shubhmilan.app` |
 | Local API | `http://localhost:3000` |
 | Mock OTP (local) | Use code `1111` with `POST /auth/verify-otp` |
 

@@ -1,4 +1,4 @@
-# Saathi — Discovery Filter Options & Strict Preferences API
+# Shubhmilan — Discovery Filter Options & Strict Preferences API
 
 Backend specification for the **Explore** tab filters. Filters must respect the user’s profile and **strict preferences**: if the user has marked a preference as strict (e.g. religion, diet), the filter options and defaults must not offer choices that conflict with that.
 

@@ -23,21 +23,21 @@ Add these to your backend `.env` (or deployment config):
 
 ```env
 # Firebase Admin SDK — full JSON as a single-line string (escape quotes if needed)
-FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account","project_id":"saathi-2644b","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk-xxxxx@saathi-2644b.iam.gserviceaccount.com","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"..."}'
+FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account","project_id":"shubhmilan-app","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk-xxxxx@shubhmilan-app.iam.gserviceaccount.com","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"..."}'
 ```
 
 ### Option B: File path (traditional)
 
 ```env
 # Path to the service account JSON file on disk
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/saathi-firebase-adminsdk.json
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/shubhmilan-firebase-adminsdk.json
 ```
 
 ---
 
 ## How to get the service account JSON
 
-1. Open [Firebase Console](https://console.firebase.google.com/) → select project **saathi-2644b** (or your project).
+1. Open [Firebase Console](https://console.firebase.google.com/) → select project **shubhmilan-app** (or your project).
 2. Go to **Project settings** (gear icon) → **Service accounts**.
 3. Click **Generate new private key**.
 4. Save the downloaded JSON file. **Never commit it to git.**
@@ -76,7 +76,7 @@ DATABASE_URL=postgresql://...
 # Use ONE of these:
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 # OR
-GOOGLE_APPLICATION_CREDENTIALS=./saathi-firebase-adminsdk.json
+GOOGLE_APPLICATION_CREDENTIALS=./shubhmilan-firebase-adminsdk.json
 
 # Other
 JWT_SECRET=...

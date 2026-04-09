@@ -1802,7 +1802,7 @@ class AppLocalizationsTe extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'Shubhmilan మోడ్';
+  String get shubhmilanMode => 'Shubhmilan మోడ్';
 
   @override
   String get accountAndData => 'ఖాతా మరియు డేటా';

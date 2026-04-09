@@ -8,7 +8,7 @@ KEYS = [
     "toastErrorGeneric", "activeNow", "verified", "managedBy", "lastActive", "kmAway",
     "ageRange", "distance", "city", "religion", "motherTongue", "maritalStatus", "height",
     "educationLevel", "occupation", "income", "diet", "familyType", "familyValues",
-    "appLanguage", "chooseAppLanguage", "languageSetTo", "saathiMode", "accountAndData",
+    "appLanguage", "chooseAppLanguage", "languageSetTo", "shubhmilanMode", "accountAndData",
     "viewProfile", "downloadMyData", "requestDataCopy", "deactivateAccount",
     "deactivateAccountSubtitle", "deleteAccount", "deleteAccountSubtitle", "boostProfile",
     "appearMoreInDiscovery", "verificationSubtitle", "blockedUsers", "blockedUsersSubtitle",

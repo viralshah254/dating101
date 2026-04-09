@@ -7,7 +7,7 @@ import '../../domain/repositories/auth_repository.dart';
 import '../api/api_client.dart';
 import '../api/token_storage.dart';
 
-/// Auth repository backed by the real Saathi API.
+/// Auth repository backed by the production backend API.
 class ApiAuthRepository implements AuthRepository {
   ApiAuthRepository({required this.api, required this.tokenStorage}) {
     _authStateController = StreamController<String?>.broadcast();

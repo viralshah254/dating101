@@ -485,7 +485,7 @@
   "chooseAppLanguage": "ನಿಮ್ಮ ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ",
   "languageSelectSubtitle": "ನಂತರ ಸೆಟ್ಟಿಂಗ್‌ಗಳಿಂದ ಬದಲಾಯಿಸಬಹುದು.",
   "languageSetTo": "ಭಾಷೆ {name} ಗೆ ಸೆಟ್ ಆಯಿತು",
-  "saathiMode": "Shubhmilan ಮೋಡ್",
+  "shubhmilanMode": "Shubhmilan ಮೋಡ್",
   "accountAndData": "ಖಾತೆ ಮತ್ತು ಡೇಟಾ",
   "viewProfile": "ಪ್ರೊಫೈಲ್ ನೋಡಿ",
   "downloadMyData": "ನನ್ನ ಡೇಟಾ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",

@@ -662,7 +662,7 @@
   "languageSelectSubtitle": "You can change this later in settings.",
   "languageSetTo": "Language set to {name}",
 
-  "saathiMode": "Shubhmilan mode",
+  "shubhmilanMode": "Shubhmilan mode",
   "accountAndData": "Account & data",
   "viewProfile": "View profile",
   "discoverPass": "Pass",

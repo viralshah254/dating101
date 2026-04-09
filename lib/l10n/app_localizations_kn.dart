@@ -1802,7 +1802,7 @@ class AppLocalizationsKn extends AppLocalizations {
   }
 
   @override
-  String get saathiMode => 'Shubhmilan ಮೋಡ್';
+  String get shubhmilanMode => 'Shubhmilan ಮೋಡ್';
 
   @override
   String get accountAndData => 'ಖಾತೆ ಮತ್ತು ಡೇಟಾ';

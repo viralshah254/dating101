@@ -1,4 +1,4 @@
-package com.dvtechventures.saathi
+package com.dvtechventures.shubhmilan
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

@@ -10,7 +10,7 @@ Complete API documentation for the Shubhmilan dating/matrimony backend.
 
 | Item | Value |
 |------|--------|
-| **Base URL** | `https://api.saathi.app` (use `http://localhost:3000` for local dev) |
+| **Base URL** | `https://api.shubhmilan.app` (use `http://localhost:3000` for local dev) |
 | **Content-Type** | `application/json` for all request and response bodies |
 | **Authorization** | After login: `Authorization: Bearer <accessToken>` |
 

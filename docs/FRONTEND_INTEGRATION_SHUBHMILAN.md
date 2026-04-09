@@ -1,6 +1,6 @@
-# Connect your frontend to the Saathi backend
+# Connect your frontend to the Shubhmilan backend
 
-Use this doc to wire your app (Flutter, React Native, web, etc.) to the Saathi API. All request/response shapes and error codes you need are below.
+Use this doc to wire your app (Flutter, React Native, web, etc.) to the Shubhmilan API. All request/response shapes and error codes you need are below.
 
 ---
 
@@ -8,7 +8,7 @@ Use this doc to wire your app (Flutter, React Native, web, etc.) to the Saathi A
 
 | Item | Value |
 |------|--------|
-| **Base URL (prod)** | `https://api.saathi.app` |
+| **Base URL (prod)** | `https://api.shubhmilan.app` |
 | **Base URL (local)** | `http://localhost:3000` |
 | **Content-Type** | `application/json` for all request/response bodies |
 | **Auth** | `Authorization: Bearer <accessToken>` on every request **except** send-otp, verify-otp, refresh |
@@ -469,7 +469,7 @@ No body. **Critical:** Call this when the user **opens** the thread. The next **
 
 ## 15. Flutter (this app) — how we’re connected
 
-The Saathi Flutter app uses the endpoints above as follows:
+The Shubhmilan Flutter app uses the endpoints above as follows:
 
 | Area | Implementation |
 |------|----------------|
