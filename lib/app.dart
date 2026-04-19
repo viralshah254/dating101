@@ -120,11 +120,16 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     final router = ref.watch(appRouterProvider);
     final localeCode = ref.watch(appLocaleProvider);
     final locale = localeCode != null ? Locale(localeCode) : null;
+
+    // Derive gender from entitlements; falls back to `unknown` (rose theme)
+    // before the profile loads or when the user is logged out.
+    final gender = ref.watch(entitlementsProvider).gender;
+
     return MaterialApp.router(
       title: lookupAppLocalizations(locale ?? const Locale('en')).appTitle,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(gender: gender),
+      darkTheme: AppTheme.dark(gender: gender),
       themeMode: ThemeMode.system,
       locale: locale,
       routerConfig: router,

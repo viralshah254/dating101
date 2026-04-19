@@ -15,6 +15,7 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/daily_matches/daily_matches_provider.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
@@ -111,7 +112,21 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
-            backgroundColor: Theme.of(context).colorScheme.surface,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.rosePrimary.withValues(alpha: 0.07),
+                      Theme.of(context).colorScheme.surface,
+                    ],
+                  ),
+                ),
+              ),
+            ),
             title: Text(
               l.navDiscover,
               style: AppTypography.headlineSmall.copyWith(
@@ -851,14 +866,18 @@ class _TabBarSectionState extends State<_TabBarSection> {
           ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
+        // isScrollable + fill keeps all tabs visible on narrow screens while
+        // still distributing them evenly — no label truncation.
+        isScrollable: true,
+        tabAlignment: TabAlignment.fill,
         dividerColor: Colors.transparent,
         labelColor: cs.onPrimary,
         unselectedLabelColor: onSurface.withValues(alpha: 0.65),
         labelStyle: AppTypography.labelLarge.copyWith(
           fontWeight: FontWeight.w700,
-          fontSize: 13,
+          fontSize: 12,
         ),
-        unselectedLabelStyle: AppTypography.labelLarge.copyWith(fontSize: 13),
+        unselectedLabelStyle: AppTypography.labelLarge.copyWith(fontSize: 12),
         tabs: tabLabels
             .asMap()
             .entries
@@ -1844,40 +1863,48 @@ class _MatchToast extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      elevation: 8,
-      borderRadius: BorderRadius.circular(AppTokens.radius16),
-      shadowColor: cs.primary.withValues(alpha: 0.3),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(AppTokens.radius16),
-          border: Border.all(color: cs.primary.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.favorite_rounded, color: cs.primary, size: 22)
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(begin: const Offset(1, 1), end: const Offset(1.25, 1.25), duration: AppMotion.loop, curve: Curves.easeInOut),
-            const SizedBox(width: 12),
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: AppTypography.bodyMedium.copyWith(color: cs.onPrimaryContainer),
-                  children: [
-                    const TextSpan(text: "It's a match! "),
-                    TextSpan(
-                      text: name,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.heartGradient,
+        borderRadius: BorderRadius.circular(AppTokens.radius16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.rosePrimary.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTokens.radius16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              const Icon(Icons.favorite_rounded, color: Colors.white, size: 22)
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.25, 1.25), duration: AppMotion.loop, curve: Curves.easeInOut),
+              const SizedBox(width: 12),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.95),
                     ),
-                    const TextSpan(text: ' liked you back.'),
-                  ],
+                    children: [
+                      const TextSpan(text: "It's a match! "),
+                      TextSpan(
+                        text: name,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const TextSpan(text: ' liked you back.'),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

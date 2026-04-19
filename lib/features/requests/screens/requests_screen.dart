@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
@@ -79,7 +80,6 @@ class RequestsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
 
     final receivedCount =
         ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
@@ -90,26 +90,60 @@ class RequestsScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            l.navRequests,
-            style: AppTypography.headlineSmall.copyWith(
-              color: onSurface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          bottom: TabBar(
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: onSurface.withValues(alpha: 0.6),
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            isScrollable: true,
-            tabs: [
-              Tab(text: _tabLabel(l.requestsReceived, receivedCount)),
-              Tab(text: _tabLabel(l.requestsSent, sentCount)),
-            ],
-          ),
+        appBar: _RequestsAppBar(
+          title: l.navRequests,
+          tabs: [
+            Tab(text: _tabLabel(l.requestsReceived, receivedCount)),
+            Tab(text: _tabLabel(l.requestsSent, sentCount)),
+          ],
         ),
         body: TabBarView(children: [_ReceivedTab(), _SentTab()]),
+      ),
+    );
+  }
+}
+
+/// AppBar with a subtle gold ambient gradient (matrimony screen family) and brand-colored TabBar.
+class _RequestsAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _RequestsAppBar({required this.title, required this.tabs});
+  final String title;
+  final List<Widget> tabs;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 48);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.gold.withValues(alpha: 0.08),
+            cs.surface,
+          ],
+        ),
+      ),
+      child: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: Text(
+          title,
+          style: AppTypography.headlineSmall.copyWith(
+            color: cs.onSurface,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        bottom: TabBar(
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurface.withValues(alpha: 0.6),
+          indicatorColor: cs.primary,
+          isScrollable: true,
+          tabs: tabs,
+        ),
       ),
     );
   }

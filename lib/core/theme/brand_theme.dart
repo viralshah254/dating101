@@ -8,6 +8,7 @@ import 'app_colors.dart';
 class BrandTheme extends ThemeExtension<BrandTheme> {
   const BrandTheme({
     required this.accentGradient,
+    required this.heartGradient,
     required this.premiumGradient,
     required this.roseGradient,
     required this.goldGradient,
@@ -31,6 +32,7 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   });
 
   final LinearGradient accentGradient;
+  final LinearGradient heartGradient;
   final LinearGradient premiumGradient;
   final LinearGradient roseGradient;
   final LinearGradient goldGradient;
@@ -53,7 +55,8 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   final bool isDark;
 
   static const BrandTheme light = BrandTheme(
-    accentGradient: AppColors.accentGradientLight,
+    accentGradient: AppColors.brandGradient,
+    heartGradient: AppColors.heartGradient,
     premiumGradient: AppColors.premiumGradient,
     roseGradient: AppColors.roseGradient,
     goldGradient: AppColors.goldGradient,
@@ -64,38 +67,39 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
     saffron: AppColors.saffron,
     gold: AppColors.gold,
     emerald: AppColors.indiaGreen,
-    rose: AppColors.rose,
+    rose: AppColors.rosePrimary,
     cardBorder: Color(0x0F1E1B18),
     shimmerBase: Color(0xFFF3EDE7),
     shimmerHighlight: Color(0xFFFAF7F4),
     badgePremium: AppColors.gold,
-    badgeNew: AppColors.rose,
+    badgeNew: AppColors.rosePrimary,
     navBarSurface: Color(0xFAFFFFFF),
-    navBarBorder: Color(0x14CB6D35),
+    navBarBorder: Color(0x14D63B6A),
     heroOverlay: Color(0x33000000),
     isDark: false,
   );
 
   static const BrandTheme dark = BrandTheme(
     accentGradient: AppColors.accentGradientDark,
+    heartGradient: AppColors.heartGradient,
     premiumGradient: AppColors.premiumGradientDark,
     roseGradient: AppColors.roseGradient,
     goldGradient: AppColors.goldGradient,
     surfaceGlass: Color(0xCC1A1714),
-    surfaceGlassBorder: Color(0x33E8A46C),
+    surfaceGlassBorder: Color(0x33EA6090),
     textSubtle: AppColors.darkTextSecondary,
     textMuted: AppColors.darkTextTertiary,
     saffron: AppColors.darkAccent,
     gold: AppColors.goldLight,
     emerald: AppColors.indiaGreenLight,
-    rose: AppColors.roseLight,
+    rose: AppColors.rosePrimaryLight,
     cardBorder: Color(0x1AF5F2EF),
     shimmerBase: Color(0xFF262220),
     shimmerHighlight: Color(0xFF302C28),
     badgePremium: AppColors.goldLight,
-    badgeNew: AppColors.roseLight,
+    badgeNew: AppColors.rosePrimaryLight,
     navBarSurface: Color(0xFA1A1714),
-    navBarBorder: Color(0x14E8A46C),
+    navBarBorder: Color(0x14EA6090),
     heroOverlay: Color(0x55000000),
     isDark: true,
   );
@@ -103,6 +107,7 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   @override
   BrandTheme copyWith({
     LinearGradient? accentGradient,
+    LinearGradient? heartGradient,
     LinearGradient? premiumGradient,
     LinearGradient? roseGradient,
     LinearGradient? goldGradient,
@@ -126,6 +131,7 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   }) {
     return BrandTheme(
       accentGradient: accentGradient ?? this.accentGradient,
+      heartGradient: heartGradient ?? this.heartGradient,
       premiumGradient: premiumGradient ?? this.premiumGradient,
       roseGradient: roseGradient ?? this.roseGradient,
       goldGradient: goldGradient ?? this.goldGradient,
@@ -154,6 +160,7 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
     if (other is! BrandTheme) return this;
     return BrandTheme(
       accentGradient: t < 0.5 ? accentGradient : other.accentGradient,
+      heartGradient: t < 0.5 ? heartGradient : other.heartGradient,
       premiumGradient: t < 0.5 ? premiumGradient : other.premiumGradient,
       roseGradient: t < 0.5 ? roseGradient : other.roseGradient,
       goldGradient: t < 0.5 ? goldGradient : other.goldGradient,

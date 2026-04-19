@@ -188,6 +188,36 @@ abstract class AppLocalizations {
   /// **'Get started'**
   String get getStarted;
 
+  /// No description provided for @creatingProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating your profile…'**
+  String get creatingProfileTitle;
+
+  /// No description provided for @creatingProfileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We’re saving your details and preferences securely.'**
+  String get creatingProfileSubtitle;
+
+  /// No description provided for @creatingProfileHintTailoring.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailoring your experience…'**
+  String get creatingProfileHintTailoring;
+
+  /// No description provided for @creatingProfileHintMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your discovery feed…'**
+  String get creatingProfileHintMatches;
+
+  /// No description provided for @creatingProfileHintAlmost.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost there…'**
+  String get creatingProfileHintAlmost;
+
   /// No description provided for @finish.
   ///
   /// In en, this message translates to:

@@ -867,7 +867,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                               height: 11,
                               decoration: BoxDecoration(
                                 color: headerPresence == _ChatHeaderPresence.reachable
-                                    ? const Color(0xFF2196F3)
+                                    ? AppColors.indiaGreen
                                     : cs.onSurface.withValues(alpha: 0.2),
                                 shape: BoxShape.circle,
                                 border: Border.all(
@@ -895,7 +895,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                             headerSubtitleText,
                             style: AppTypography.caption.copyWith(
                               color: peerTypingHere
-                                  ? const Color(0xFF34B7F1)
+                                  ? cs.primary.withValues(alpha: 0.85)
                                   : cs.onSurface.withValues(alpha: 0.7),
                               fontWeight: FontWeight.w500,
                               fontStyle: peerTypingHere
@@ -993,7 +993,23 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                               children: icebreakerList.indexed.map((entry) {
                                 final (idx, s) = entry;
                                 return ActionChip(
-                                  label: Text(s),
+                                  label: Text(
+                                    s,
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.08),
+                                  side: BorderSide(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.3),
+                                  ),
                                   onPressed: () =>
                                       _sendMessageText(context, ref, s),
                                 )
@@ -1255,11 +1271,11 @@ class _MessageBubble extends StatelessWidget {
     final cs = theme.colorScheme;
     final onSurface = cs.onSurface;
     final timeStr = formatChatBubbleTime(sentAt);
-    // Outgoing: use saturated brand oranges — ColorScheme.primary can resolve to a light
-    // tint on some devices/themes (peach + white text = unreadable).
+    // Outgoing: use saturated brand rose — ensures strong contrast with white text
+    // on all devices and both light/dark modes.
     final bool light = theme.brightness == Brightness.light;
     final bubbleBg = isMe
-        ? (light ? AppColors.saffronDark : AppColors.darkAccentDim)
+        ? (light ? AppColors.rosePrimaryDark : AppColors.rosePrimary)
         : cs.surfaceContainerHighest;
     const outgoingFg = Colors.white;
     final textColor = isMe ? outgoingFg : onSurface;
@@ -1290,9 +1306,11 @@ class _MessageBubble extends StatelessWidget {
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
+            color: isMe
+                ? AppColors.rosePrimary.withValues(alpha: 0.18)
+                : Colors.black.withValues(alpha: 0.04),
+            blurRadius: isMe ? 12 : 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),

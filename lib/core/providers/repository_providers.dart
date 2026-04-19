@@ -98,6 +98,9 @@ ApiConfig _resolveApiConfig() {
 
 final _config = _resolveApiConfig();
 
+/// Exposed for pre-ProviderScope token warmup in main.dart.
+ApiConfig get resolvedApiConfig => _config;
+
 // ── Providers ────────────────────────────────────────────────────────────
 
 final apiConfigProvider = Provider<ApiConfig>((_) => _config);

@@ -844,6 +844,33 @@ class ApiProfileRepository implements ProfileRepository {
     // Intentionally no-op: do not DELETE /profile/me/fcm-token (keep tokens on server for push).
   }
 
+  /// Aggregated nav-badge counts from a single backend call (`GET /profile/me/nav-counts`).
+  /// Returns a record with `requests`, `shortlist`, and `msgReq` so [navBadgesProvider]
+  /// can replace 4+ individual count GETs with one round-trip.
+  Future<({int requests, int shortlist, int msgReq})> getNavCounts({
+    required String mode,
+  }) async {
+    try {
+      final body = await api.get(
+        '/profile/me/nav-counts',
+        query: {'mode': mode},
+      );
+      int safeInt(dynamic v) => (v is num) ? v.toInt() : 0;
+      final interactions = safeInt(body['requests']);
+      final contact      = safeInt(body['contactRequests']);
+      final photoView    = safeInt(body['photoView']);
+      final msgReq       = safeInt(body['messageRequests']);
+      return (
+        requests: interactions + contact + photoView,
+        shortlist: safeInt(body['shortlist']),
+        msgReq:   msgReq,
+      );
+    } catch (e) {
+      debugPrint('[NavCounts] Failed, falling back to zeros: $e');
+      return (requests: 0, shortlist: 0, msgReq: 0);
+    }
+  }
+
   static List<String> _strList(dynamic v) {
     if (v == null) return [];
     if (v is List) return v.map((e) => e.toString()).toList();

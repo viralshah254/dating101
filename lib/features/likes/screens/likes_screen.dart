@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
@@ -54,27 +55,15 @@ class LikesScreen extends ConsumerWidget {
         length: 3,
         initialIndex: tabIndex,
         child: Scaffold(
-          appBar: AppBar(
-            title: Text(
-              l.navLikes,
-              style: AppTypography.headlineSmall.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            bottom: TabBar(
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              indicatorColor: Theme.of(context).colorScheme.primary,
-              isScrollable: true,
-              tabs: [
-                Tab(text: _tabLabel(l.likesTabLikedYou, 0)),
-                Tab(text: _tabLabel(l.likesTabVisitors, 0)),
-                Tab(text: _tabLabel(l.likesTabYouLiked, 0)),
-              ],
-            ),
+          appBar: _LikesAppBar(
+            title: l.navLikes,
+            tabs: [
+              Tab(text: _tabLabel(l.likesTabLikedYou, 0)),
+              Tab(text: _tabLabel(l.likesTabVisitors, 0)),
+              Tab(text: _tabLabel(l.likesTabYouLiked, 0)),
+            ],
           ),
-          body: const Center(child: CircularProgressIndicator()),
+          body: const SkeletonCardList(itemCount: 5, itemHeight: 100),
         ),
       ),
       error: (e, _) => DefaultTabController(
@@ -104,25 +93,13 @@ class LikesScreen extends ConsumerWidget {
           length: 3,
           initialIndex: tabIndex,
           child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                l.navLikes,
-                style: AppTypography.headlineSmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              bottom: TabBar(
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                indicatorColor: Theme.of(context).colorScheme.primary,
-                isScrollable: true,
-                tabs: [
-                  Tab(text: _tabLabel(l.likesTabLikedYou, data.likedYouCount)),
-                  Tab(text: _tabLabel(l.likesTabVisitors, data.visitorsCount)),
-                  Tab(text: _tabLabel(l.likesTabYouLiked, data.youLikedCount)),
-                ],
-              ),
+            appBar: _LikesAppBar(
+              title: l.navLikes,
+              tabs: [
+                Tab(text: _tabLabel(l.likesTabLikedYou, data.likedYouCount)),
+                Tab(text: _tabLabel(l.likesTabVisitors, data.visitorsCount)),
+                Tab(text: _tabLabel(l.likesTabYouLiked, data.youLikedCount)),
+              ],
             ),
             body: TabBarView(
               children: [
@@ -160,6 +137,52 @@ class LikesScreen extends ConsumerWidget {
 
   static String _tabLabel(String label, int count) {
     return '$label ($count)';
+  }
+}
+
+/// AppBar with a subtle rose ambient gradient and brand-colored TabBar.
+class _LikesAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _LikesAppBar({required this.title, required this.tabs});
+  final String title;
+  final List<Widget> tabs;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 48);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.rosePrimary.withValues(alpha: 0.07),
+            cs.surface,
+          ],
+        ),
+      ),
+      child: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: Text(
+          title,
+          style: AppTypography.headlineSmall.copyWith(
+            color: cs.onSurface,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        bottom: TabBar(
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurface.withValues(alpha: 0.6),
+          indicatorColor: cs.primary,
+          isScrollable: true,
+          tabs: tabs,
+        ),
+      ),
+    );
   }
 }
 

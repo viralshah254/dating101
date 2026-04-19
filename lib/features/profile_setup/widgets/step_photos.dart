@@ -213,7 +213,8 @@ class _StepPhotosState extends State<StepPhotos> {
     double h,
   ) {
     final l = AppLocalizations.of(context)!;
-    return LongPressDraggable<int>(
+
+    final draggable = LongPressDraggable<int>(
       data: i,
       delay: const Duration(milliseconds: 150),
       onDragStarted: () => HapticFeedback.mediumImpact(),
@@ -300,6 +301,39 @@ class _StepPhotosState extends State<StepPhotos> {
           ],
         ),
       ),
+    );
+
+    // Wrap in DragTarget so filled slots can receive drops from OTHER filled
+    // slots — enabling full any-to-any photo reordering, not just into gaps.
+    return DragTarget<int>(
+      onWillAcceptWithDetails: (details) => details.data != i,
+      onAcceptWithDetails: (details) {
+        _onReorder(details.data, i);
+      },
+      builder: (context, candidateData, _) {
+        final isHovered = candidateData.isNotEmpty;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            draggable,
+            if (isHovered)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: accent,
+                        width: 2.5,
+                      ),
+                      color: accent.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 

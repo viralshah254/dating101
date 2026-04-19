@@ -1,5 +1,10 @@
 {
   "bn": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -101,6 +106,11 @@
   ],
 
   "gu": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -202,6 +212,11 @@
   ],
 
   "hi": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -303,6 +318,11 @@
   ],
 
   "kn": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -404,6 +424,11 @@
   ],
 
   "ml": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -505,6 +530,11 @@
   ],
 
   "mr": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -606,6 +636,11 @@
   ],
 
   "pa": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -707,6 +742,11 @@
   ],
 
   "ta": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -808,6 +848,11 @@
   ],
 
   "te": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",
@@ -909,6 +954,11 @@
   ],
 
   "ur": [
+    "creatingProfileTitle",
+    "creatingProfileSubtitle",
+    "creatingProfileHintTailoring",
+    "creatingProfileHintMatches",
+    "creatingProfileHintAlmost",
     "authSignInUsePassword",
     "authSignInUseSmsCode",
     "sendReminder",

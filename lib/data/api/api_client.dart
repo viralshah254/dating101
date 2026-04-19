@@ -220,6 +220,13 @@ class ApiClient {
     throw ApiException(resp.statusCode, code, message, details);
   }
 
+  /// Proactively refresh the access token before the first API burst.
+  ///
+  /// Call this early in the app lifecycle (e.g. in `main()` before `runApp`)
+  /// when the user is already logged in, so subsequent parallel requests don't
+  /// all hit a 401 and pay the round-trip penalty.
+  Future<bool> warmUpToken() => _tryRefresh();
+
   /// All callers awaiting 401 recovery share one refresh; avoids parallel requests
   /// seeing `401` while another refresh is in progress and incorrectly failing.
   Future<bool> _tryRefresh() {

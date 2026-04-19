@@ -8,6 +8,7 @@ import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/app_localizations.dart';
@@ -15,6 +16,7 @@ import '../widgets/step_identity.dart';
 import '../widgets/step_interests.dart';
 import '../widgets/step_photos.dart';
 import '../widgets/step_details.dart';
+import '../widgets/creating_profile_loading_overlay.dart';
 import '../widgets/step_preferences.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
@@ -449,9 +451,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
     }
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
@@ -459,6 +464,19 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.rosePrimary.withValues(alpha: 0.12),
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
           leading: IconButton(
             onPressed: _currentStep > 0 ? _back : () => context.pop(),
             icon: const Icon(Icons.arrow_back_ios_new, size: 20),
@@ -601,15 +619,26 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                                         ],
                                       ],
                                     ))
-                            : Text(
-                                _currentStep < _steps.length - 1
-                                    ? l.next
-                                    : l.getStarted,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            : _isCompleting
+                                ? SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                    ),
+                                  )
+                                : Text(
+                                    _currentStep < _steps.length - 1
+                                        ? l.next
+                                        : l.getStarted,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                       ),
                     ),
                     if (!widget.isEditing &&
@@ -633,6 +662,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ),
         ),
       ),
+        ),
+        if (_isCompleting && !widget.isEditing)
+          const Positioned.fill(child: CreatingProfileLoadingOverlay()),
+      ],
     );
   }
 
@@ -930,7 +963,7 @@ class ProfileFormData {
   String name = '';
   String? gender;
   DateTime? dateOfBirth;
-  bool confirmedAge18 = false;
+  bool confirmedAge18 = true; // date picker enforces 18+ dates; pre-tick for better UX
   String location = '';
   String hometown = '';
 

@@ -61,30 +61,29 @@ class RecommendedPaginatedNotifier extends AsyncNotifier<PaginatedFeedState> {
   Future<PaginatedFeedState> build() async {
     final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final repo = ref.read(discoveryRepositoryProvider);
-    final page = await repo.getRecommendedPage(
-      mode: mode,
-      limit: _recommendedPageSize,
-      cursor: null,
-    );
-    if (page.profiles.isNotEmpty) {
+
+    // Fire recommended and explore in parallel so that when the backend returns
+    // zero recommendations the explore fallback is already in-flight — eliminating
+    // the sequential second round-trip that previously added full RTT latency.
+    final results = await Future.wait([
+      repo.getRecommendedPage(mode: mode, limit: _recommendedPageSize, cursor: null),
+      repo.getExplorePage(mode: mode, limit: _explorePageSize, cursor: null),
+    ]);
+    final recommended = results[0];
+    final explore = results[1];
+
+    if (recommended.profiles.isNotEmpty) {
       return PaginatedFeedState(
-        profiles: page.profiles,
-        nextCursor: page.nextCursor,
+        profiles: recommended.profiles,
+        nextCursor: recommended.nextCursor,
         isWidenedSearch: false,
       );
     }
-    debugPrint(
-      '[Matches] No recommendations; using explore as fallback (paginated).',
-    );
-    final fallback = await repo.getExplorePage(
-      mode: mode,
-      limit: _recommendedPageSize,
-      cursor: null,
-    );
+    debugPrint('[Matches] No recommendations; using explore as fallback (parallel).');
     return PaginatedFeedState(
-      profiles: fallback.profiles,
-      nextCursor: fallback.nextCursor,
-      isWidenedSearch: fallback.profiles.isNotEmpty,
+      profiles: explore.profiles,
+      nextCursor: explore.nextCursor,
+      isWidenedSearch: explore.profiles.isNotEmpty,
     );
   }
 
@@ -202,25 +201,23 @@ final matchesRecommendedProvider =
       return results;
     });
 
-/// Recommendations with fallback: if recommended returns 0, call explore with no filters and show "We've widened the search" banner.
+/// Recommendations with fallback: if recommended returns 0, uses explore with no filters.
+/// Both requests are fired in parallel to eliminate sequential round-trip latency.
 final matchesRecommendedWithFallbackProvider =
     FutureProvider.autoDispose<DiscoveryFeedResult>((ref) async {
       final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
       final repo = ref.watch(discoveryRepositoryProvider);
-      final results = await repo.getRecommended(mode: mode, limit: 20);
-      if (results.isNotEmpty) {
-        return DiscoveryFeedResult(profiles: results);
+      final fetched = await Future.wait([
+        repo.getRecommended(mode: mode, limit: 20),
+        repo.getExplore(mode: mode, limit: 20),
+      ]);
+      final recommended = fetched[0];
+      final explore = fetched[1];
+      if (recommended.isNotEmpty) {
+        return DiscoveryFeedResult(profiles: recommended);
       }
-      debugPrint(
-        '[Matches] No recommendations (backend may have returned count-only); '
-        'using explore with no filters as fallback.',
-      );
-      final fallback = await repo.getExplore(mode: mode, limit: 20);
-      debugPrint('[Matches] Fallback explore returned ${fallback.length} profiles');
-      return DiscoveryFeedResult(
-        profiles: fallback,
-        isWidenedSearch: fallback.isNotEmpty,
-      );
+      debugPrint('[Matches] No recommendations; explore fallback returned ${explore.length} profiles.');
+      return DiscoveryFeedResult(profiles: explore, isWidenedSearch: explore.isNotEmpty);
     });
 
 /// Mutual matches (GET /matches). Used for Matches tab and to exclude from Explore.

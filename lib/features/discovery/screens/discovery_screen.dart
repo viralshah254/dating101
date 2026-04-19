@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/design/design.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
@@ -61,54 +62,79 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       );
     });
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l.discoverTitle,
-              style: AppTypography.titleLarge.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.5,
-              ),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: BoxDecoration(
+            // Subtle rose ambient glow at the top of the discover screen
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isDark
+                  ? [
+                      AppColors.roseDeep.withValues(alpha: 0.18),
+                      Theme.of(context).colorScheme.surface,
+                    ]
+                  : [
+                      AppColors.rosePrimary.withValues(alpha: 0.06),
+                      Theme.of(context).colorScheme.surface,
+                    ],
             ),
-            if (hasCityFilter)
-              Text(
-                _effectiveCity(filterParams, travelCity) ?? '',
-                style: AppTypography.caption.copyWith(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
+          ),
+          child: AppBar(
+            centerTitle: true,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Colors.transparent,
+            title: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l.discoverTitle,
+                  style: AppTypography.titleLarge.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
                 ),
+                if (hasCityFilter)
+                  Text(
+                    _effectiveCity(filterParams, travelCity) ?? '',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.rosePrimary.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.tune_rounded,
+                  size: 22,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                onPressed: () => _showFilters(context),
               ),
-          ],
+              IconButton(
+                icon: Icon(
+                  hasCityFilter ? Icons.flight_takeoff_rounded : Icons.location_on_rounded,
+                  size: 22,
+                  color: hasCityFilter
+                      ? AppColors.rosePrimary
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                onPressed: () => showCityPickerSheet(context, ref),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.tune_rounded,
-              size: 22,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            onPressed: () => _showFilters(context),
-          ),
-          IconButton(
-            icon: Icon(
-              hasCityFilter ? Icons.flight_takeoff_rounded : Icons.location_on_rounded,
-              size: 22,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            onPressed: () => showCityPickerSheet(context, ref),
-          ),
-        ],
       ),
       body: asyncProfiles.when(
         skipLoadingOnReload: true,

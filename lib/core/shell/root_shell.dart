@@ -10,10 +10,40 @@ import '../feature_flags/feature_flags.dart';
 import '../providers/repository_providers.dart';
 import '../theme/app_tokens.dart';
 import '../theme/brand_theme.dart';
+import '../../data/repositories_api/api_profile_repository.dart';
 import '../../features/chat/providers/chat_providers.dart';
 import '../../features/requests/providers/requests_providers.dart';
 import '../../features/shortlist/providers/shortlist_providers.dart';
 import '../../l10n/app_localizations.dart';
+
+/// Aggregated nav badge counts — one HTTP call replaces 4+ individual GETs.
+///
+/// Deferred by one microtask so the discovery feed can claim the first
+/// HTTP queue slots before badge-count requests compete on cold start.
+final navBadgesProvider =
+    FutureProvider<({int requests, int shortlist, int msgReq})>((ref) async {
+  // Yield so critical-path providers (recommendedPaginatedProvider, etc.)
+  // get a head-start in the HTTP queue.
+  await Future<void>.delayed(Duration.zero);
+
+  final mode = ref.read(appModeProvider) ?? AppMode.dating;
+  final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+  final profileRepo = ref.read(profileRepositoryProvider);
+
+  // Use the batched endpoint when available (real API), fallback to individual
+  // providers for fake backend / older server versions.
+  if (profileRepo is ApiProfileRepository) {
+    return profileRepo.getNavCounts(mode: modeStr);
+  }
+
+  // Fake / legacy fallback: fan out in parallel (no sequential penalty).
+  final results = await Future.wait([
+    ref.read(receivedRequestsCountProvider.future).catchError((_) => 0),
+    ref.read(whoShortlistedMeCountProvider.future).catchError((_) => 0),
+    ref.read(messageRequestsCountProvider.future).catchError((_) => 0),
+  ]);
+  return (requests: results[0], shortlist: results[1], msgReq: results[2]);
+});
 
 /// Mode-aware root shell with premium frosted-glass bottom navigation.
 class RootShell extends ConsumerWidget {
@@ -33,10 +63,11 @@ class RootShell extends ConsumerWidget {
     final brand = theme.extension<BrandTheme>();
     final items = _navItems(mode, flags, l);
     ref.watch(chatRealtimeHubProvider);
-    final requestsCount = ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
-    final shortlistCount = ref.watch(whoShortlistedMeCountProvider).valueOrNull ?? 0;
+    final badgesAsync = ref.watch(navBadgesProvider).valueOrNull;
+    final requestsCount = badgesAsync?.requests ?? 0;
+    final shortlistCount = badgesAsync?.shortlist ?? 0;
     final chatUnread = ref.watch(chatNavUnreadCountProvider);
-    final messageReqCount = ref.watch(messageRequestsCountProvider).valueOrNull ?? 0;
+    final messageReqCount = badgesAsync?.msgReq ?? 0;
     final badges = _badgesForMode(
       mode,
       flags,

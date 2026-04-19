@@ -10,6 +10,7 @@ import '../../features/likes/providers/likes_screen_data_provider.dart';
 import '../../features/matches/providers/matches_providers.dart';
 import '../entitlements/entitlements.dart';
 import '../providers/repository_providers.dart';
+import '../shell/root_shell.dart' show navBadgesProvider;
 
 /// Clears Riverpod-cached API results tied to the previous account.
 ///
@@ -37,6 +38,7 @@ void invalidateSessionScopedApiCaches(dynamic ref) {
   ref.invalidate(explorePaginatedProvider);
   ref.invalidate(visitorsEntriesProvider);
   ref.invalidate(visitorsProvider);
+  ref.invalidate(navBadgesProvider);
   ref.invalidate(navNotificationsUnreadCountProvider);
   ref.invalidate(subscriptionStateProvider);
   ref.invalidate(entitlementsAsyncProvider);

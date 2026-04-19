@@ -3132,11 +3132,19 @@ class _HeroAppBar extends StatelessWidget {
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: hasPhoto
-            ? Image.network(
-                profile.photoUrls.first,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    _AvatarFallback(profile: profile, accent: accent),
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _openPhotoGallery(
+                  context,
+                  profile.photoUrls,
+                  0,
+                ),
+                child: Image.network(
+                  profile.photoUrls.first,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      _AvatarFallback(profile: profile, accent: accent),
+                ),
               )
             : (profile.photosHidden && profile.canViewPhotos != true)
             ? _LockedPhotosHeroBackground(

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -31,128 +32,170 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 56),
-                    Text(
-                      l.modeSelectTitle,
-                      style: AppTypography.displayLarge.copyWith(
-                        color: onSurface,
-                        fontSize: 34,
-                        height: 1.15,
-                      ),
-                    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
-                    const SizedBox(height: 8),
-                    Text(
-                      l.modeSelectSubtitle,
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: onSurface.withValues(alpha: 0.65),
-                        height: 1.4,
-                      ),
-                    ).animate().fadeIn(delay: 100.ms),
-
-                    const SizedBox(height: 40),
-
-                    _ModeOption(
-                      mode: AppMode.dating,
-                      title: l.modeDating,
-                      subtitle: l.modeDatingSubtitle,
-                      gradientColors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primary,
-                      ],
-                      icon: Icons.favorite_rounded,
-                      isSelected: _selected == AppMode.dating,
-                      onTap: () => setState(() => _selected = AppMode.dating),
-                    ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.03, end: 0),
-
-                    const SizedBox(height: 16),
-
-                    _ModeOption(
-                      mode: AppMode.matrimony,
-                      title: l.modeMatrimony,
-                      subtitle: l.modeMatrimonySubtitle,
-                      gradientColors: [
-                        Theme.of(context).colorScheme.secondary,
-                        Theme.of(context).colorScheme.secondary,
-                      ],
-                      icon: Icons.diversity_3_rounded,
-                      isSelected: _selected == AppMode.matrimony,
-                      onTap: () => setState(() => _selected = AppMode.matrimony),
-                    ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.03, end: 0),
-
-                    const SizedBox(height: 16),
-
-                    _ModeOption(
-                      mode: AppMode.both,
-                      title: l.modeBoth,
-                      subtitle: l.modeBothSubtitle,
-                      gradientColors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.secondary,
-                      ],
-                      icon: Icons.people_alt_rounded,
-                      isSelected: _selected == AppMode.both,
-                      onTap: () => setState(() => _selected = AppMode.both),
-                    ).animate().fadeIn(delay: 350.ms).slideX(begin: -0.03, end: 0),
-
-                    const SizedBox(height: 24),
-
-                    Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.swap_horiz, size: 18, color: onSurface.withValues(alpha: 0.45)),
-                          const SizedBox(width: 6),
-                          Text(
-                            l.modeSwitchHint,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: onSurface.withValues(alpha: 0.45),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Soft ambient rose background — ties to login/auth screen family
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 280,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.rosePrimary.withValues(alpha: 0.10),
+                    AppColors.rosePrimary.withValues(alpha: 0.0),
                   ],
                 ),
               ),
             ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 56),
+                        Text(
+                          l.modeSelectTitle,
+                          style: AppTypography.displayLarge.copyWith(
+                            color: onSurface,
+                            fontSize: 34,
+                            height: 1.15,
+                          ),
+                        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+                        const SizedBox(height: 8),
+                        Text(
+                          l.modeSelectSubtitle,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: onSurface.withValues(alpha: 0.65),
+                            height: 1.4,
+                          ),
+                        ).animate().fadeIn(delay: 100.ms),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-              child: SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: _selected != null ? 1.0 : 0.4,
-                  child: FilledButton(
-                    onPressed: _selected != null ? _confirm : null,
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      backgroundColor: _selected == AppMode.matrimony
-                          ? Theme.of(context).colorScheme.secondary
-                          : _selected == AppMode.both
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                    ),
-                    child: Text(
-                      l.continueButton,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        const SizedBox(height: 40),
+
+                        // Dating: rose → deep rose (passionate, modern)
+                        _ModeOption(
+                          mode: AppMode.dating,
+                          title: l.modeDating,
+                          subtitle: l.modeDatingSubtitle,
+                          gradientColors: [AppColors.rosePrimary, AppColors.roseDeep],
+                          icon: Icons.favorite_rounded,
+                          isSelected: _selected == AppMode.dating,
+                          onTap: () => setState(() => _selected = AppMode.dating),
+                        ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.03, end: 0),
+
+                        const SizedBox(height: 16),
+
+                        // Matrimony: gold → saffron (heritage, warmth, Indian identity)
+                        _ModeOption(
+                          mode: AppMode.matrimony,
+                          title: l.modeMatrimony,
+                          subtitle: l.modeMatrimonySubtitle,
+                          gradientColors: [AppColors.gold, AppColors.saffron],
+                          icon: Icons.diversity_3_rounded,
+                          isSelected: _selected == AppMode.matrimony,
+                          onTap: () => setState(() => _selected = AppMode.matrimony),
+                        ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.03, end: 0),
+
+                        const SizedBox(height: 16),
+
+                        // Both: rose → gold (the full brand duo)
+                        _ModeOption(
+                          mode: AppMode.both,
+                          title: l.modeBoth,
+                          subtitle: l.modeBothSubtitle,
+                          gradientColors: [AppColors.rosePrimary, AppColors.gold],
+                          icon: Icons.people_alt_rounded,
+                          isSelected: _selected == AppMode.both,
+                          onTap: () => setState(() => _selected = AppMode.both),
+                        ).animate().fadeIn(delay: 350.ms).slideX(begin: -0.03, end: 0),
+
+                        const SizedBox(height: 24),
+
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.swap_horiz, size: 18, color: onSurface.withValues(alpha: 0.45)),
+                              const SizedBox(width: 6),
+                              Text(
+                                l.modeSwitchHint,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: onSurface.withValues(alpha: 0.45),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: _selected != null ? 1.0 : 0.45,
+                    child: GestureDetector(
+                      onTap: _selected != null ? _confirm : null,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: double.infinity,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: _selected == AppMode.matrimony
+                              ? const LinearGradient(
+                                  colors: [AppColors.gold, AppColors.saffron],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : _selected == AppMode.both
+                                  ? AppColors.brandGradient
+                                  : AppColors.heartGradient,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: _selected != null
+                              ? [
+                                  BoxShadow(
+                                    color: (_selected == AppMode.matrimony
+                                            ? AppColors.gold
+                                            : AppColors.rosePrimary)
+                                        .withValues(alpha: 0.35),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            l.continueButton,
+                            style: AppTypography.labelLarge.copyWith(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

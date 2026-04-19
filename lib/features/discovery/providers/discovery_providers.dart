@@ -10,6 +10,7 @@ import '../../../domain/models/profile_summary.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../domain/models/filter_options.dart';
 import '../../../domain/repositories/discovery_repository.dart';
+import '../../matches/providers/matches_providers.dart' show recommendedPaginatedProvider;
 
 /// Why Discover is showing the loading surface (filters / city / first open).
 enum DiscoveryLoadingCue {
@@ -34,6 +35,11 @@ final discoveryFilterParamsProvider = StateProvider<DiscoveryFilterParams?>(
 );
 
 /// Discovery feed: recommended (with optional travel city) or filtered explore results.
+///
+/// When no filter overrides are active, this provider delegates to
+/// [recommendedPaginatedProvider] so that navigating between the swipe-card
+/// Discover screen and the matrimony Matches screen shares one cached HTTP
+/// response instead of issuing duplicate requests.
 final discoveryFeedProvider = FutureProvider<List<ProfileSummary>>((
   ref,
 ) async {
@@ -43,24 +49,32 @@ final discoveryFeedProvider = FutureProvider<List<ProfileSummary>>((
   final repo = ref.watch(discoveryRepositoryProvider);
 
   final effectiveCity = filterParams?.city ?? travelCity;
-  if (filterParams != null && filterParams.hasFilters) {
-    return repo.getExplore(
-      mode: mode,
-      ageMin: filterParams.ageMin,
-      ageMax: filterParams.ageMax,
-      city: effectiveCity,
-      religion: filterParams.religion,
-      education: filterParams.education,
-      heightMinCm: filterParams.heightMinCm,
-      heightMaxCm: filterParams.heightMaxCm,
-      diet: filterParams.diet,
-      bodyType: filterParams.bodyType,
-      maritalStatus: filterParams.maritalStatus,
-      motherTongue: filterParams.motherTongue,
-      limit: 20,
-    );
+
+  // Filtered or travel-city requests cannot share the paginated cache.
+  if ((filterParams != null && filterParams.hasFilters) || travelCity != null) {
+    if (filterParams != null && filterParams.hasFilters) {
+      return repo.getExplore(
+        mode: mode,
+        ageMin: filterParams.ageMin,
+        ageMax: filterParams.ageMax,
+        city: effectiveCity,
+        religion: filterParams.religion,
+        education: filterParams.education,
+        heightMinCm: filterParams.heightMinCm,
+        heightMaxCm: filterParams.heightMaxCm,
+        diet: filterParams.diet,
+        bodyType: filterParams.bodyType,
+        maritalStatus: filterParams.maritalStatus,
+        motherTongue: filterParams.motherTongue,
+        limit: 20,
+      );
+    }
+    return repo.getRecommended(mode: mode, city: travelCity, limit: 20);
   }
-  return repo.getRecommended(mode: mode, city: travelCity, limit: 20);
+
+  // No overrides — share the paginated first page to avoid a duplicate HTTP call.
+  final paginated = await ref.watch(recommendedPaginatedProvider.future);
+  return paginated.profiles;
 });
 
 /// Recommended list for current mode (dating discovery / matrimony matches).

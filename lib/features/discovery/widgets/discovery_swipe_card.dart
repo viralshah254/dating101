@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/premium_badge.dart';
 import '../../../domain/models/matrimony_extensions.dart';
@@ -83,7 +84,7 @@ class DeepLookLayer extends StatelessWidget {
               if (hasCompat) ...[
                 _DeepLookRow(
                   icon: Icons.auto_awesome_rounded,
-                  iconColor: const Color(0xFFFFB300),
+                  iconColor: AppColors.gold,
                   text:
                       '${(profile.compatibilityScore! * 100).round()}% compatible — ${profile.compatibilityLabel ?? profile.matchReasons.take(2).join(', ')}',
                 ),
@@ -92,7 +93,7 @@ class DeepLookLayer extends StatelessWidget {
               if (hasIntent) ...[
                 _DeepLookRow(
                   icon: Icons.favorite_border_rounded,
-                  iconColor: const Color(0xFFFF6B6B),
+                  iconColor: AppColors.rosePrimary,
                   text: _intentLabel(profile.datingIntent!),
                 ),
                 const SizedBox(height: 10),
@@ -284,7 +285,6 @@ class DiscoverySwipeCard extends StatelessWidget {
                                   icon: Icons.favorite_rounded,
                                   variant: _ActionVariant.like,
                                   onPressed: onLike,
-                                  accent: accent,
                                 ),
                                 _ActionButton(
                                   icon: Icons.expand_less_rounded,
@@ -380,25 +380,55 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.variant,
     required this.onPressed,
-    this.accent,
   });
 
   final IconData icon;
   final _ActionVariant variant;
   final VoidCallback onPressed;
-  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
     final isLike = variant == _ActionVariant.like;
-    final size = isLike ? 56.0 : (variant == _ActionVariant.superLike ? 52.0 : 44.0);
-    final iconSize = isLike ? 26.0 : (variant == _ActionVariant.superLike ? 24.0 : 22.0);
+    final isSuperLike = variant == _ActionVariant.superLike;
+    final size = isLike ? 60.0 : (isSuperLike ? 52.0 : 46.0);
+    final iconSize = isLike ? 28.0 : (isSuperLike ? 24.0 : 22.0);
+
+    final Gradient? buttonGradient = switch (variant) {
+      _ActionVariant.like => AppColors.heartGradient,
+      _ActionVariant.superLike => AppColors.goldGradient,
+      _ => null,
+    };
 
     final iconColor = switch (variant) {
-      _ActionVariant.pass => Colors.white.withValues(alpha: 0.85),
-      _ActionVariant.superLike => const Color(0xFF4FC3F7),
+      _ActionVariant.pass => Colors.white.withValues(alpha: 0.9),
+      _ActionVariant.superLike => AppColors.goldDark,
       _ActionVariant.like => Colors.white,
-      _ActionVariant.info => Colors.white.withValues(alpha: 0.7),
+      _ActionVariant.info => Colors.white.withValues(alpha: 0.75),
+    };
+
+    final borderColor = switch (variant) {
+      _ActionVariant.like => Colors.transparent,
+      _ActionVariant.superLike => AppColors.gold.withValues(alpha: 0.4),
+      _ActionVariant.pass => Colors.white.withValues(alpha: 0.3),
+      _ActionVariant.info => Colors.white.withValues(alpha: 0.2),
+    };
+
+    final List<BoxShadow>? shadows = switch (variant) {
+      _ActionVariant.like => [
+          BoxShadow(
+            color: AppColors.rosePrimary.withValues(alpha: 0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      _ActionVariant.superLike => [
+          BoxShadow(
+            color: AppColors.gold.withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      _ => null,
     };
 
     return Material(
@@ -412,30 +442,10 @@ class _ActionButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: isLike && accent != null
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [accent!.withValues(alpha: 0.9), accent!],
-                  )
-                : null,
-            color: isLike ? null : Colors.white.withValues(alpha: 0.1),
-            border: Border.all(
-              color: isLike
-                  ? Colors.transparent
-                  : (variant == _ActionVariant.superLike
-                      ? const Color(0xFF4FC3F7).withValues(alpha: 0.3)
-                      : Colors.white.withValues(alpha: 0.2)),
-            ),
-            boxShadow: isLike
-                ? [
-                    BoxShadow(
-                      color: (accent ?? Colors.white).withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
+            gradient: buttonGradient,
+            color: buttonGradient == null ? Colors.white.withValues(alpha: 0.12) : null,
+            border: Border.all(color: borderColor),
+            boxShadow: shadows,
           ),
           child: Icon(icon, size: iconSize, color: iconColor),
         ),

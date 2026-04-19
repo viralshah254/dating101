@@ -45,6 +45,22 @@ class AppLocalizationsBn extends AppLocalizations {
   String get getStarted => 'শুরু করুন';
 
   @override
+  String get creatingProfileTitle => 'Creating your profile…';
+
+  @override
+  String get creatingProfileSubtitle =>
+      'We’re saving your details and preferences securely.';
+
+  @override
+  String get creatingProfileHintTailoring => 'Tailoring your experience…';
+
+  @override
+  String get creatingProfileHintMatches => 'Preparing your discovery feed…';
+
+  @override
+  String get creatingProfileHintAlmost => 'Almost there…';
+
+  @override
   String get finish => 'শেষ';
 
   @override

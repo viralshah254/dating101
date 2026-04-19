@@ -52,7 +52,15 @@
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>We’ll notify you about new messages, matches, and important updates.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Shubhmilan uses your location to show &quot;You are in [city]&quot; and to suggest local matches and events.</string>
+	<string>Shubhmilan uses your location to show "You are in [city]" and to suggest local matches and events.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Shubhmilan uses your location to show "You are in [city]" and to suggest local matches and events.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Shubhmilan uses your camera to take profile photos and record your voice introduction.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Shubhmilan uses your microphone to record a short voice introduction for your profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Shubhmilan accesses your photo library so you can choose profile photos to share with potential matches.</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~3347511713</string>
 </dict>

@@ -8,6 +8,8 @@ import '../../../core/locale/app_locale_provider.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/location/location_service_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
@@ -123,32 +125,47 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
     final size = MediaQuery.of(context).size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Radial glow behind the logo
+          // Splash gradient background — the token that was defined but never used
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: isDark
+                  ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.roseDeep,
+                        AppColors.darkBackground,
+                      ],
+                      stops: [0.0, 0.7],
+                    )
+                  : AppColors.splashGradient,
+            ),
+          ),
+
+          // Soft radial glow centered behind logo — enhanced with contrast
           Positioned(
-            top: size.height * 0.25,
-            left: size.width * 0.1,
-            right: size.width * 0.1,
-            height: size.height * 0.45,
+            top: size.height * 0.22,
+            left: size.width * 0.05,
+            right: size.width * 0.05,
+            height: size.height * 0.5,
             child: Container(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
-                    accent.withValues(alpha: 0.18),
-                    accent.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.22),
+                    Colors.white.withValues(alpha: 0.0),
                   ],
-                  radius: 0.8,
+                  radius: 0.75,
                 ),
               ),
-            )
-                .animate()
-                .fadeIn(delay: 300.ms, duration: 900.ms),
+            ).animate().fadeIn(delay: 300.ms, duration: 900.ms),
           ),
 
           SafeArea(
@@ -160,13 +177,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 // Logo — cinematic scale + blur clear
                 Center(
                   child: SizedBox(
-                    width: 392,
+                    width: 360,
                     child: ClipRect(
                       child: Align(
                         alignment: Alignment.center,
                         child: LogoWithTransparentWhite(
                           assetPath: 'assets/images/shubhmilan_logo.png',
-                          width: 588,
+                          width: 540,
                           fit: BoxFit.contain,
                           whiteThreshold: 200,
                         ),
@@ -183,16 +200,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     )
                     .fadeIn(duration: 600.ms),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
 
-                // Brand wordmark tagline
+                // Brand tagline — now uses AppTypography (Inter) consistently
                 Text(
                   'Find your forever',
-                  style: TextStyle(
-                    fontSize: 15,
+                  style: AppTypography.bodyLarge.copyWith(
+                    letterSpacing: 2.8,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: 2.5,
-                    color: accent.withValues(alpha: 0.7),
+                    color: AppColors.saffron.withValues(alpha: 0.9),
                   ),
                 )
                     .animate()
@@ -203,11 +219,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
                 // Loading indicator
                 SizedBox(
-                  width: 28,
-                  height: 28,
+                  width: 26,
+                  height: 26,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.saffron.withValues(alpha: 0.8),
+                    ),
                   ),
                 )
                     .animate(onPlay: (c) => c.repeat())
@@ -215,9 +233,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     .then()
                     .shimmer(
                       duration: 1200.ms,
-                      color: accent.withValues(alpha: 0.3),
+                      color: AppColors.rosePrimary.withValues(alpha: 0.3),
                     ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 52),
               ],
             ),
           ),
