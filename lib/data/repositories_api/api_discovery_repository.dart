@@ -82,6 +82,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? bodyType,
     String? maritalStatus,
     String? motherTongue,
+    bool verifiedOnly = false,
     int limit = 20,
     String? cursor,
   }) async {
@@ -101,6 +102,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (maritalStatus != null && maritalStatus.isNotEmpty) query['maritalStatus'] = maritalStatus;
     if (motherTongue != null && motherTongue.isNotEmpty) query['motherTongue'] = motherTongue;
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+    if (verifiedOnly) query['verifiedOnly'] = 'true';
 
     final body = await api.get('/discovery/explore', query: query);
     return _parseProfiles(body);
@@ -120,6 +122,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     String? bodyType,
     String? maritalStatus,
     String? motherTongue,
+    bool verifiedOnly = false,
     int limit = 30,
     String? cursor,
   }) async {
@@ -139,6 +142,7 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     if (maritalStatus != null && maritalStatus.isNotEmpty) query['maritalStatus'] = maritalStatus;
     if (motherTongue != null && motherTongue.isNotEmpty) query['motherTongue'] = motherTongue;
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+    if (verifiedOnly) query['verifiedOnly'] = 'true';
     final body = await api.get('/discovery/explore', query: query);
     return _parsePage(body);
   }

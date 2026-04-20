@@ -24,8 +24,10 @@ String? _genderPrefToDisplay(String? stored, AppMode mode, AppLocalizations l) {
   } else {
     switch (stored) {
       case 'Woman':
+      case 'Female':
         return l.lookingForBride;
       case 'Man':
+      case 'Male':
         return l.lookingForGroom;
     }
   }
@@ -337,6 +339,26 @@ class StepIdentity extends StatelessWidget {
                 formData.hometown = s.country.isNotEmpty
                     ? '$city, ${s.country}'
                     : city;
+                onChanged();
+              },
+            ),
+          ],
+
+          // ── Marital status (matrimony) ─────────────────────────────
+          if (mode.isMatrimony) ...[
+            const SizedBox(height: 28),
+            _SectionLabel(label: l.maritalStatus),
+            const SizedBox(height: 10),
+            _ChipSelector(
+              options: [
+                l.neverMarried,
+                l.divorced,
+                l.widowed,
+                l.awaitingDivorce,
+              ],
+              selected: formData.maritalStatus,
+              onSelected: (v) {
+                formData.maritalStatus = v;
                 onChanged();
               },
             ),

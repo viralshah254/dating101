@@ -18,6 +18,33 @@ import '../widgets/step_photos.dart';
 import '../widgets/step_details.dart';
 import '../widgets/creating_profile_loading_overlay.dart';
 import '../widgets/step_preferences.dart';
+import '../widgets/step_about_you.dart';
+import '../widgets/step_lifestyle.dart';
+import '../widgets/step_creating_for.dart';
+
+/// API / backend store `partnerPreferences.genderPreference` as `Male`/`Female` (and variants).
+/// The profile form uses `Man`/`Woman`/`Any` so chips and matching stay consistent.
+String? normalizeInterestedInFromApi(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final lower = raw.trim().toLowerCase();
+  if (lower == 'female' ||
+      lower == 'woman' ||
+      lower == 'bride' ||
+      lower == 'girl') {
+    return 'Woman';
+  }
+  if (lower == 'male' ||
+      lower == 'man' ||
+      lower == 'groom' ||
+      lower == 'boy') {
+    return 'Man';
+  }
+  if (lower == 'any' || lower == 'everyone') {
+    return 'Any';
+  }
+  if (raw == 'Woman' || raw == 'Man' || raw == 'Any') return raw;
+  return raw;
+}
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({
@@ -694,29 +721,32 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               (editing || d.confirmedAge18),
         ),
         _StepInfo(
-          analyticsKey: 'interests',
-          label: l.interestsAndHobbies,
-          widget: StepInterests(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
           analyticsKey: 'photos',
           label: l.profileStepPhotos,
           widget: StepPhotos(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
+        _StepInfo(
+          analyticsKey: 'interests',
+          label: l.interestsAndHobbies,
+          widget: StepInterests(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
       ];
       final datingSteps = [
         _StepInfo(
-          analyticsKey: 'dating_details',
-          label: '${l.modeDating} · ${l.profileStepDetails}',
-          widget: StepDetails(
-            mode: AppMode.dating,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
+          analyticsKey: 'dating_about',
+          label: '${l.modeDating} · About you',
+          widget: StepAboutYou(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'dating_lifestyle',
+          label: '${l.modeDating} · Lifestyle',
+          widget: StepLifestyle(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
@@ -734,6 +764,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       ];
       final matrimonySteps = [
         _StepInfo(
+          analyticsKey: 'matrimony_about',
+          label: '${l.modeMatrimony} · About you',
+          widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_background',
+          label: '${l.modeMatrimony} · Background',
+          widget: StepDetails(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.religion,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
           analyticsKey: 'matrimony_education',
           label: '${l.modeMatrimony} · ${l.profileStepEducation}',
           widget: StepEducation(formData: _formData, onChanged: onChanged),
@@ -748,12 +797,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           skippable: true,
         ),
         _StepInfo(
-          analyticsKey: 'matrimony_details',
-          label: '${l.modeMatrimony} · ${l.profileStepDetails}',
+          analyticsKey: 'matrimony_lifestyle',
+          label: '${l.modeMatrimony} · Lifestyle & Horoscope',
           widget: StepDetails(
             mode: AppMode.matrimony,
             formData: _formData,
             onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.lifestyle,
           ),
           hasMandatory: false,
           skippable: true,
@@ -776,7 +826,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       ];
     }
     if (mode.isMatrimony) {
+      // Matrimony flow: [Creating for (first time only)] → You → Photos → About you
+      //                 → Background → Education → Career → Lifestyle & Horoscope
+      //                 → Interests → Partner preferences
       return [
+        if (!editing)
+          _StepInfo(
+            analyticsKey: 'creating_for',
+            label: l.wizardStepCreatingFor,
+            widget: StepCreatingFor(formData: _formData, onChanged: onChanged),
+            hasMandatory: false,
+            skippable: true,
+          ),
         _StepInfo(
           analyticsKey: 'identity',
           label: editing ? l.editProfile : l.profileStepIdentity,
@@ -796,16 +857,28 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               (editing || d.confirmedAge18),
         ),
         _StepInfo(
-          analyticsKey: 'interests',
-          label: l.interestsAndHobbies,
-          widget: StepInterests(formData: _formData, onChanged: onChanged),
+          analyticsKey: 'photos',
+          label: l.profileStepPhotos,
+          widget: StepPhotos(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
-          analyticsKey: 'photos',
-          label: l.profileStepPhotos,
-          widget: StepPhotos(formData: _formData, onChanged: onChanged),
+          analyticsKey: 'matrimony_about',
+          label: 'About you',
+          widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_background',
+          label: 'Background',
+          widget: StepDetails(
+            mode: mode,
+            formData: _formData,
+            onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.religion,
+          ),
           hasMandatory: false,
           skippable: true,
         ),
@@ -824,13 +897,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           skippable: true,
         ),
         _StepInfo(
-          analyticsKey: 'matrimony_details',
-          label: l.profileStepDetails,
+          analyticsKey: 'matrimony_lifestyle',
+          label: 'Lifestyle & Horoscope',
           widget: StepDetails(
             mode: mode,
             formData: _formData,
             onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.lifestyle,
           ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'interests',
+          label: l.interestsAndHobbies,
+          widget: StepInterests(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
@@ -847,6 +928,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
       ];
     }
+    // Dating-only flow: You → Photos → About you → Lifestyle → Interests → Looking for
     return [
       _StepInfo(
         analyticsKey: 'identity',
@@ -867,13 +949,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             (editing || d.confirmedAge18),
       ),
       _StepInfo(
-        analyticsKey: 'interests',
-        label: l.interestsAndHobbies,
-        widget: StepInterests(formData: _formData, onChanged: onChanged),
-        hasMandatory: false,
-        skippable: true,
-      ),
-      _StepInfo(
         analyticsKey: 'photos',
         label: l.profileStepPhotos,
         widget: StepPhotos(formData: _formData, onChanged: onChanged),
@@ -881,13 +956,23 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         skippable: true,
       ),
       _StepInfo(
-        analyticsKey: 'dating_details',
-        label: l.profileStepDetails,
-        widget: StepDetails(
-          mode: mode,
-          formData: _formData,
-          onChanged: onChanged,
-        ),
+        analyticsKey: 'dating_about',
+        label: 'About you',
+        widget: StepAboutYou(formData: _formData, onChanged: onChanged),
+        hasMandatory: false,
+        skippable: true,
+      ),
+      _StepInfo(
+        analyticsKey: 'dating_lifestyle',
+        label: 'Lifestyle',
+        widget: StepLifestyle(formData: _formData, onChanged: onChanged),
+        hasMandatory: false,
+        skippable: true,
+      ),
+      _StepInfo(
+        analyticsKey: 'interests',
+        label: l.interestsAndHobbies,
+        widget: StepInterests(formData: _formData, onChanged: onChanged),
         hasMandatory: false,
         skippable: true,
       ),
@@ -1042,6 +1127,16 @@ class ProfileFormData {
   String? exercise;
   String? pets;
 
+  // Intent-first matrimony fields
+  /// Marriage readiness: "3_6" | "6_12" | "12_24" | "exploring"
+  String? readyInMonths;
+  /// Family involvement: "self_managed" | "family_assisted" | "joint_decision"
+  String? familyInvolvement;
+  /// Relocation: "same_city" | "same_country" | "flexible" | "abroad_ok"
+  String? relocationWillingness;
+  /// Non-negotiable deal-breakers
+  List<String> dealBreakers = [];
+
   // Dating extras
   String? datingIntent;
   String? interestedIn;
@@ -1049,6 +1144,10 @@ class ProfileFormData {
   // Bio / prompt
   String bio = '';
   String promptAnswer = '';
+
+  /// Matrimony "quick prompts" — short contextual answers shown on the profile.
+  /// Keys: 'myFamily', 'myValues', 'funFact'
+  Map<String, String>? matrimonyPrompts;
 
   // Photos (local file paths; first is profile pic)
   List<String> photos = [];
@@ -1153,6 +1252,10 @@ class ProfileFormData {
       workLocation = mat.workLocation;
       settledAbroad = mat.settledAbroad;
       willingToRelocate = mat.willingToRelocate;
+      readyInMonths = mat.readyInMonths;
+      familyInvolvement = mat.familyInvolvement;
+      relocationWillingness = mat.relocationWillingness;
+      dealBreakers = List<String>.from(mat.dealBreakers);
       aboutCareer = mat.aboutCareer;
       aboutEducation = mat.aboutEducation;
       final fam = mat.familyDetails;
@@ -1216,7 +1319,7 @@ class ProfileFormData {
 
     final prefs = p.partnerPreferences;
     if (prefs != null) {
-      interestedIn = prefs.genderPreference;
+      interestedIn = normalizeInterestedInFromApi(prefs.genderPreference);
       prefAgeMin = prefs.ageMin;
       prefAgeMax = prefs.ageMax;
       prefHeightMinCm = prefs.heightMinCm;
@@ -1436,6 +1539,10 @@ class ProfileFormData {
     if (workLocation != null) mat['workLocation'] = workLocation;
     if (settledAbroad != null) mat['settledAbroad'] = settledAbroad;
     if (willingToRelocate != null) mat['willingToRelocate'] = willingToRelocate;
+    if (readyInMonths != null) mat['readyInMonths'] = readyInMonths;
+    if (familyInvolvement != null) mat['familyInvolvement'] = familyInvolvement;
+    if (relocationWillingness != null) mat['relocationWillingness'] = relocationWillingness;
+    if (dealBreakers.isNotEmpty) mat['dealBreakers'] = dealBreakers;
     if (income != null) mat['incomeRange'] = {'minLabel': income};
     if (diet != null) mat['diet'] = diet;
     if (drinking != null) mat['drinking'] = drinking;
@@ -1481,6 +1588,12 @@ class ProfileFormData {
     }
     if (aboutCareer != null && aboutCareer!.isNotEmpty) {
       mat['aboutCareer'] = aboutCareer;
+    }
+
+    // Matrimony prompts (myFamily, myValues, funFact)
+    final prompts = matrimonyPrompts;
+    if (prompts != null && prompts.values.any((v) => v.isNotEmpty)) {
+      mat['matrimonyPrompts'] = prompts;
     }
 
     // Education entries — only include entries that have at least a degree

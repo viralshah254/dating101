@@ -919,6 +919,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.shield_outlined),
+                  tooltip: 'Meeting Safety',
+                  onPressed: () => context.push('/meeting-safety'),
+                ),
+                IconButton(
                   icon: const Icon(Icons.more_vert_rounded),
                   onPressed: () => _showMoreOptions(context, ref, otherUserId),
                 ),
@@ -929,6 +934,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       ),
       body: Column(
         children: [
+          // Match Progression Banner
+          _MatchProgressionBanner(threadId: widget.threadId),
           Expanded(
             child: Container(
               color: Theme.of(
@@ -1640,6 +1647,188 @@ class _TypingBarState extends ConsumerState<_TypingBar>
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Match Progression Banner ──────────────────────────────────────────────────
+
+class _MatchProgressionBanner extends ConsumerStatefulWidget {
+  const _MatchProgressionBanner({required this.threadId});
+  final String threadId;
+
+  @override
+  ConsumerState<_MatchProgressionBanner> createState() => _MatchProgressionBannerState();
+}
+
+class _MatchProgressionBannerState extends ConsumerState<_MatchProgressionBanner> {
+  bool _expanded = false;
+
+  static const _stageLabels = {
+    'matched': 'Matched',
+    'chatting': 'Chatting',
+    'call_scheduled': 'Call Planned',
+    'meeting_planned': 'Meeting Planned',
+    'exclusive': 'Exclusive',
+    'engaged': 'Engaged',
+  };
+
+  static const _stageIcons = {
+    'matched': Icons.favorite_rounded,
+    'chatting': Icons.chat_bubble_rounded,
+    'call_scheduled': Icons.phone_rounded,
+    'meeting_planned': Icons.people_alt_rounded,
+    'exclusive': Icons.lock_rounded,
+    'engaged': Icons.diamond_rounded,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final progression = ref.watch(matchProgressionProvider(widget.threadId));
+    final stages = allMatchStages;
+
+    return progression.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (currentStage) {
+        final stageIdx = stages.indexOf(currentStage);
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _stageIcons[currentStage] ?? Icons.favorite_rounded,
+                        size: 14,
+                        color: cs.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _stageLabels[currentStage] ?? currentStage,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: stages.isEmpty ? 0 : (stageIdx + 1) / stages.length,
+                            backgroundColor: cs.primary.withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                            minHeight: 4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                        size: 16,
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_expanded) ...[
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Update your journey stage',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: stages.map((stage) {
+                          final isActive = stage == currentStage;
+                          final idx = stages.indexOf(stage);
+                          final isPast = idx <= stageIdx;
+                          return GestureDetector(
+                            onTap: () async {
+                              try {
+                                final api = ref.read(apiClientProvider);
+                                await advanceMatchStage(api, widget.threadId, stage);
+                                ref.invalidate(matchProgressionProvider(widget.threadId));
+                                if (mounted) setState(() => _expanded = false);
+                              } catch (_) {}
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? cs.primary
+                                    : isPast
+                                        ? cs.primary.withValues(alpha: 0.12)
+                                        : cs.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isActive ? cs.primary : cs.outline.withValues(alpha: 0.3),
+                                  width: isActive ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _stageIcons[stage] ?? Icons.circle,
+                                    size: 12,
+                                    color: isActive
+                                        ? cs.onPrimary
+                                        : isPast
+                                            ? cs.primary
+                                            : cs.onSurface.withValues(alpha: 0.5),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _stageLabels[stage] ?? stage,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                                      color: isActive
+                                          ? cs.onPrimary
+                                          : isPast
+                                              ? cs.primary
+                                              : cs.onSurface.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const Divider(height: 1),
+            ],
+          ),
+        );
+      },
     );
   }
 }

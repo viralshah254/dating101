@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android release signing (see android/README_SIGNING.md)
+/android/key.properties
+/android/**/*.jks
+/android/**/*.keystore

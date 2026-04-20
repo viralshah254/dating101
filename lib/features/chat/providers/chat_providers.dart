@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../data/api/api_client.dart';
 import '../../../data/api/chat_websocket_client.dart';
 import '../../../domain/repositories/chat_repository.dart';
 
@@ -256,3 +257,29 @@ final focusModeProvider =
   return entries;
 });
 
+// ── Match Progression ─────────────────────────────────────────────────────────
+
+const _allMatchStages = [
+  'matched',
+  'chatting',
+  'call_scheduled',
+  'meeting_planned',
+  'exclusive',
+  'engaged',
+];
+
+/// Fetches the current match stage for a chat thread.
+final matchProgressionProvider = FutureProvider.autoDispose.family<String, String>((ref, threadId) async {
+  final api = ref.watch(apiClientProvider);
+  final res = await api.get('/progression/$threadId');
+  return (res['stage'] as String?) ?? 'matched';
+});
+
+/// Advances the match stage for a chat thread.
+Future<String> advanceMatchStage(ApiClient api, String threadId, String newStage) async {
+  final res = await api.patch('/progression/$threadId', body: {'stage': newStage});
+  return (res['stage'] as String?) ?? newStage;
+}
+
+/// Returns the ordered list of all match stages.
+List<String> get allMatchStages => List.unmodifiable(_allMatchStages);

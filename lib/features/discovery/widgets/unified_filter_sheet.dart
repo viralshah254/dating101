@@ -46,6 +46,7 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
   late int _heightMin;
   late int _heightMax;
   late SortOption _sort;
+  late bool _verifiedOnly;
 
   static const int _defaultAgeMin = 22;
   static const int _defaultAgeMax = 40;
@@ -68,6 +69,7 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
     _heightMin = p?.heightMinCm ?? _heightMinDefault;
     _heightMax = p?.heightMaxCm ?? _heightMaxDefault;
     _sort = widget.initialSort ?? ref.read(sortByProvider);
+    _verifiedOnly = p?.verifiedOnly ?? false;
   }
 
   bool get _isMatrimony => widget.mode.isMatrimony;
@@ -86,6 +88,7 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
         heightMinCm: _heightMin != _heightMinDefault ? _heightMin : null,
         heightMaxCm: _heightMax != _heightMaxDefault ? _heightMax : null,
         intentFilter: _intentFilter?.isNotEmpty == true ? _intentFilter : null,
+        verifiedOnly: _verifiedOnly,
       ),
       _sort,
     );
@@ -106,6 +109,7 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
       _heightMin = _heightMinDefault;
       _heightMax = _heightMaxDefault;
       _sort = SortOption.bestMatch;
+      _verifiedOnly = false;
     });
   }
 
@@ -143,6 +147,7 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
               heightMin: _heightMin,
               heightMax: _heightMax,
               sort: _sort,
+              verifiedOnly: _verifiedOnly,
               onAgeChanged: (min, max) => setState(() {
                 _ageMin = min;
                 _ageMax = max;
@@ -160,6 +165,7 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
                 _heightMax = max;
               }),
               onSortChanged: (s) => setState(() => _sort = s),
+              onVerifiedOnlyChanged: (v) => setState(() => _verifiedOnly = v),
               onReset: () => _reset(opts),
               onApply: _applyAndClose,
               brand: brand,
@@ -199,6 +205,7 @@ class _SheetContent extends StatelessWidget {
     required this.heightMin,
     required this.heightMax,
     required this.sort,
+    required this.verifiedOnly,
     required this.onAgeChanged,
     required this.onCityChanged,
     required this.onReligionChanged,
@@ -208,6 +215,7 @@ class _SheetContent extends StatelessWidget {
     required this.onMotherTongueChanged,
     required this.onHeightChanged,
     required this.onSortChanged,
+    required this.onVerifiedOnlyChanged,
     required this.onReset,
     required this.onApply,
     required this.brand,
@@ -230,6 +238,7 @@ class _SheetContent extends StatelessWidget {
   final int heightMin;
   final int heightMax;
   final SortOption sort;
+  final bool verifiedOnly;
   final void Function(int min, int max) onAgeChanged;
   final void Function(String?) onCityChanged;
   final void Function(String?) onReligionChanged;
@@ -240,6 +249,7 @@ class _SheetContent extends StatelessWidget {
   final void Function(String?)? onIntentFilterChanged;
   final void Function(int min, int max) onHeightChanged;
   final void Function(SortOption) onSortChanged;
+  final void Function(bool) onVerifiedOnlyChanged;
   final VoidCallback onReset;
   final VoidCallback onApply;
   final BrandTheme brand;
@@ -300,6 +310,15 @@ class _SheetContent extends StatelessWidget {
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
               children: [
+                // ── Verified only toggle ──────────────────────────
+                _VerifiedOnlyToggle(
+                  value: verifiedOnly,
+                  onChanged: onVerifiedOnlyChanged,
+                  onSurface: onSurface,
+                  cs: cs,
+                ),
+                const _Divider(),
+
                 // ── Sort row ──────────────────────────────────────
                 _SectionHeader(label: 'Sort by', onSurface: onSurface),
                 const SizedBox(height: 8),
@@ -834,6 +853,89 @@ class _Footer extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VerifiedOnlyToggle extends StatelessWidget {
+  const _VerifiedOnlyToggle({
+    required this.value,
+    required this.onChanged,
+    required this.onSurface,
+    required this.cs,
+  });
+
+  final bool value;
+  final void Function(bool) onChanged;
+  final Color onSurface;
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: value
+              ? const Color(0xFF1565C0).withValues(alpha: 0.1)
+              : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: value
+                ? const Color(0xFF1565C0).withValues(alpha: 0.5)
+                : onSurface.withValues(alpha: 0.1),
+            width: value ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: value
+                    ? const Color(0xFF1565C0).withValues(alpha: 0.12)
+                    : onSurface.withValues(alpha: 0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.verified_rounded,
+                size: 18,
+                color: value ? const Color(0xFF1565C0) : onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Verified profiles only',
+                    style: AppTypography.titleSmall.copyWith(
+                      color: onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Show only ID or photo verified profiles',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: onSurface.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: const Color(0xFF1565C0),
+            ),
+          ],
         ),
       ),
     );

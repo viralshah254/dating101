@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,20 +26,64 @@ const _kPaywallBoostNote = 'Profile boost available separately';
 const _kManageSubscriptionLabel = 'Manage subscription';
 const _kAllPlansInclude = 'All plans include:';
 
-/// Selected subscription plan for purchase.
+/// Selected billing period for purchase.
 enum PremiumPlan { monthly, quarterly, annual }
 
-extension PremiumPlanX on PremiumPlan {
-  String get productId {
+/// Selected tier for purchase.
+enum PaywallTier { silver, gold, platinum }
+
+extension PaywallTierX on PaywallTier {
+  String get label {
     switch (this) {
-      case PremiumPlan.monthly:
-        return IapProductIds.premiumMonthly;
-      case PremiumPlan.quarterly:
-        return IapProductIds.premiumQuarterly;
-      case PremiumPlan.annual:
-        return IapProductIds.premiumAnnual;
+      case PaywallTier.silver:
+        return 'Silver';
+      case PaywallTier.gold:
+        return 'Gold';
+      case PaywallTier.platinum:
+        return 'Platinum';
     }
   }
+
+  String get prefix {
+    switch (this) {
+      case PaywallTier.silver:
+        return 'silver';
+      case PaywallTier.gold:
+        return 'gold';
+      case PaywallTier.platinum:
+        return 'platinum';
+    }
+  }
+}
+
+extension PremiumPlanX on PremiumPlan {
+  /// Returns the gender-prefixed product ID (male_* or female_*).
+  /// Falls back to gender-neutral if [isFemale] is not yet known.
+  String productIdForTier(PaywallTier tier, {bool isFemale = false}) {
+    final genderPrefix = isFemale ? 'female' : 'male';
+    final tierPrefix = tier.prefix;
+    switch (this) {
+      case PremiumPlan.monthly:
+        return '${genderPrefix}_${tierPrefix}_monthly';
+      case PremiumPlan.quarterly:
+        return '${genderPrefix}_${tierPrefix}_quarterly';
+      case PremiumPlan.annual:
+        return '${genderPrefix}_${tierPrefix}_annual';
+    }
+  }
+
+  /// Gender-neutral SKU (`gold_monthly`, etc.) — use when only neutral IDs exist in the store.
+  String neutralProductId(PaywallTier tier) {
+    final suffix = switch (this) {
+      PremiumPlan.monthly => 'monthly',
+      PremiumPlan.quarterly => 'quarterly',
+      PremiumPlan.annual => 'annual',
+    };
+    return '${tier.prefix}_$suffix';
+  }
+
+  // Legacy: defaults to gold tier (matches old "premium" behaviour)
+  String get productId => productIdForTier(PaywallTier.gold);
 }
 
 class PaywallScreen extends ConsumerStatefulWidget {
@@ -50,12 +95,35 @@ class PaywallScreen extends ConsumerStatefulWidget {
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   PremiumPlan _selectedPlan = PremiumPlan.annual;
+  PaywallTier _selectedTier = PaywallTier.gold;
   bool _hasLoggedPaywallView = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(iapProductsProvider);
+    });
+  }
 
   Future<void> _onSubscribe(BuildContext context, WidgetRef ref) async {
     final platform = Platform.isIOS ? 'ios' : 'android';
     final products = await ref.read(iapProductsProvider.future);
-    final productId = _selectedPlan.productId;
+    final ent = ref.read(entitlementsProvider);
+    // Use gender-prefixed product IDs so stores serve the correct regional price.
+    // Then try the other gender prefix, then gender-neutral SKUs (gold_monthly, …).
+    String productId = _selectedPlan.productIdForTier(_selectedTier, isFemale: ent.isFemale);
+    if (!products.containsKey(productId)) {
+      final otherGender = _selectedPlan.productIdForTier(_selectedTier, isFemale: !ent.isFemale);
+      if (products.containsKey(otherGender)) {
+        productId = otherGender;
+      }
+    }
+    if (!products.containsKey(productId)) {
+      final neutralId = _selectedPlan.neutralProductId(_selectedTier);
+      if (products.containsKey(neutralId)) productId = neutralId;
+    }
     try {
       AnalyticsService.instance.log(AnalyticsEvent.paywallSubscribeStarted, {
         'plan': productId,
@@ -186,9 +254,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final productsAsync = ref.watch(iapProductsProvider);
 
     final products = productsAsync.valueOrNull ?? {};
-    final monthlyPrice = products[IapProductIds.premiumMonthly]?.price ?? '\$20.99';
-    final quarterlyPrice = products[IapProductIds.premiumQuarterly]?.price ?? '\$44.97';
-    final annualPrice = products[IapProductIds.premiumAnnual]?.price ?? '\$120';
+    // Resolve prices: gendered SKU → other gender → gender-neutral (gold_monthly, …).
+    String tierPrice(PaywallTier tier, PremiumPlan plan) {
+      final genderedId = plan.productIdForTier(tier, isFemale: ent.isFemale);
+      final otherGenderId = plan.productIdForTier(tier, isFemale: !ent.isFemale);
+      final neutralId = plan.neutralProductId(tier);
+      return products[genderedId]?.price ??
+          products[otherGenderId]?.price ??
+          products[neutralId]?.price ??
+          '—';
+    }
+
+    final monthlyPrice = tierPrice(_selectedTier, PremiumPlan.monthly);
+    final quarterlyPrice = tierPrice(_selectedTier, PremiumPlan.quarterly);
+    final annualPrice = tierPrice(_selectedTier, PremiumPlan.annual);
 
     final maleFeatures = [
       'Send messages & intros',
@@ -211,6 +290,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
     final features = ent.isFemale ? femaleFeatures : maleFeatures;
     final hasActiveSubscription = ref.watch(subscriptionStateProvider).valueOrNull?.isActive ?? false;
+    final showStoreHint = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android) &&
+        productsAsync.hasValue &&
+        products.isEmpty;
+    final loadingPrices = productsAsync.isLoading;
+
     if (!_hasLoggedPaywallView) {
       _hasLoggedPaywallView = true;
       AnalyticsService.instance.log(
@@ -325,7 +411,91 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               ),
             ],
 
+            // Female discount badge
+            if (ent.isFemale) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.rosePrimary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.female_rounded, size: 16, color: AppColors.rosePrimary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Women get up to 50% off — exclusive pricing',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.rosePrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (loadingPrices) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    l.loading,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (showStoreHint) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: accent.withValues(alpha: 0.22)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 20, color: accent),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l.paywallStorePricesHint,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 24),
+            // ── Tier Selector ───────────────────────────────────────────────
+            _TierSelector(
+              selected: _selectedTier,
+              onSelect: (t) => setState(() => _selectedTier = t),
+            ),
+            const SizedBox(height: 12),
             _SubscriptionPlanTile(
               title: 'Monthly',
               price: monthlyPrice,
@@ -532,6 +702,12 @@ class _SubscriptionPlanTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // Use ColorScheme, not AppTypography static colors — they track a global dark
+    // flag and can mismatch Theme brightness (e.g. near-white text on light cards).
+    final titleColor = isSelected ? cs.primary : cs.onSurface;
+    final priceLineColor = cs.onSurface.withValues(alpha: 0.68);
+    final trailingPriceColor = isSelected ? accent : cs.onSurface.withValues(alpha: 0.9);
+
     return AnimatedScale(
       scale: isSelected ? 1.02 : 1.0,
       duration: AppMotion.fast,
@@ -589,6 +765,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
                           title,
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.w600,
+                            color: titleColor,
                           ),
                         ),
                         if (savings != null && savings!.isNotEmpty) ...[
@@ -614,7 +791,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
                     Text(
                       '$price$period',
                       style: AppTypography.bodySmall.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                        color: priceLineColor,
                       ),
                     ),
                   ],
@@ -623,7 +800,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
               Text(
                 price,
                 style: AppTypography.titleMedium.copyWith(
-                  color: accent,
+                  color: trailingPriceColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -632,6 +809,97 @@ class _SubscriptionPlanTile extends StatelessWidget {
         ),
       ),
       ),
+    );
+  }
+}
+
+// ── Tier Selector Widget ──────────────────────────────────────────────────────
+
+class _TierSelector extends StatelessWidget {
+  const _TierSelector({required this.selected, required this.onSelect});
+  final PaywallTier selected;
+  final void Function(PaywallTier) onSelect;
+
+  static const _tierColors = {
+    PaywallTier.silver: Color(0xFF607D8B),
+    PaywallTier.gold: Color(0xFFF9A825),
+    PaywallTier.platinum: Color(0xFF6A1B9A),
+  };
+
+  static const _tierBenefits = {
+    PaywallTier.silver: 'Messages · Photos · More interests',
+    PaywallTier.gold: 'Silver + Who liked you · Travel mode · Contact',
+    PaywallTier.platinum: 'Gold + Priority · AI Review · Concierge',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Choose your plan',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: PaywallTier.values.map((tier) {
+            final isSelected = tier == selected;
+            final color = _tierColors[tier]!;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onSelect(tier),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? color : color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? color : color.withValues(alpha: 0.3),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        tier.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : color,
+                        ),
+                      ),
+                      if (isSelected) ...[
+                        const SizedBox(height: 3),
+                        Icon(Icons.check_circle_rounded, size: 14, color: Colors.white.withValues(alpha: 0.9)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        if (_tierBenefits[selected] != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _tierBenefits[selected]!,
+            style: TextStyle(
+              fontSize: 11,
+              color: cs.onSurface.withValues(alpha: 0.55),
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
     );
   }
 }

@@ -76,9 +76,8 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
     debugPrint('[Subscription] Fetching entitlements');
     final body = await api.get('/subscription/entitlements');
     final tierRaw = body['tier'] as String?;
-    final tier =
-        tierRaw == 'premium' ? SubscriptionTier.premium : SubscriptionTier.none;
-    final isPremium = tier == SubscriptionTier.premium;
+    final tier = parseTier(tierRaw);
+    final isPremium = tier.isAtLeastGold;
     return SubscriptionEntitlements(
       tier: tier,
       gender: body['gender'] as String? ?? 'unknown',
@@ -102,6 +101,7 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
       canSeeCompatBreakdown: body['canSeeCompatBreakdown'] as bool? ?? isPremium,
       canUseTravelMode: body['canUseTravelMode'] as bool? ?? isPremium,
       hasReadReceipts: body['hasReadReceipts'] as bool? ?? isPremium,
+      photosVisibleCount: (body['photosVisibleCount'] as num?)?.toInt() ?? (isPremium ? 999 : 1),
       raw: body,
     );
   }
@@ -142,9 +142,7 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
 
   static SubscriptionState _parse(Map<String, dynamic> j) {
     return SubscriptionState(
-      tier: (j['tier'] as String?) == 'premium'
-          ? SubscriptionTier.premium
-          : SubscriptionTier.none,
+      tier: parseTier(j['tier'] as String?),
       expiresAt: j['expiresAt'] != null
           ? DateTime.tryParse(j['expiresAt'] as String)
           : null,

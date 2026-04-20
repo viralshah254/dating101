@@ -1,5 +1,52 @@
 /// Subscription tier (for paywall).
-enum SubscriptionTier { none, premium }
+/// silver < gold < platinum. `premium` is a legacy alias for gold.
+enum SubscriptionTier { none, silver, gold, premium, platinum }
+
+extension SubscriptionTierExt on SubscriptionTier {
+  bool get isPaid => this != SubscriptionTier.none;
+
+  bool get isAtLeastSilver =>
+      this == SubscriptionTier.silver ||
+      this == SubscriptionTier.gold ||
+      this == SubscriptionTier.premium ||
+      this == SubscriptionTier.platinum;
+
+  bool get isAtLeastGold =>
+      this == SubscriptionTier.gold ||
+      this == SubscriptionTier.premium ||
+      this == SubscriptionTier.platinum;
+
+  bool get isAtLeastPlatinum => this == SubscriptionTier.platinum;
+
+  String get displayName {
+    switch (this) {
+      case SubscriptionTier.silver:
+        return 'Silver';
+      case SubscriptionTier.gold:
+      case SubscriptionTier.premium:
+        return 'Gold';
+      case SubscriptionTier.platinum:
+        return 'Platinum';
+      case SubscriptionTier.none:
+        return 'Free';
+    }
+  }
+}
+
+SubscriptionTier parseTier(String? raw) {
+  switch (raw?.toLowerCase()) {
+    case 'silver':
+      return SubscriptionTier.silver;
+    case 'gold':
+      return SubscriptionTier.gold;
+    case 'premium':
+      return SubscriptionTier.premium;
+    case 'platinum':
+      return SubscriptionTier.platinum;
+    default:
+      return SubscriptionTier.none;
+  }
+}
 
 /// Current subscription state.
 class SubscriptionState {
@@ -38,6 +85,7 @@ class SubscriptionEntitlements {
     this.canSeeCompatBreakdown = false,
     this.canUseTravelMode = false,
     this.hasReadReceipts = false,
+    this.photosVisibleCount = 1,
     this.raw = const {},
   });
   final SubscriptionTier tier;
@@ -67,6 +115,8 @@ class SubscriptionEntitlements {
   final bool canSeeCompatBreakdown;
   final bool canUseTravelMode;
   final bool hasReadReceipts;
+  /// Number of photos visible before blur/gate. 999 = all (silver+ or female). 1 = free male baseline.
+  final int photosVisibleCount;
   final Map<String, dynamic> raw;
 }
 

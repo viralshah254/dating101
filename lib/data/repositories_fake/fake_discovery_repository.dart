@@ -82,6 +82,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? bodyType,
     String? maritalStatus,
     String? motherTongue,
+    bool verifiedOnly = false,
     int limit = 20,
     String? cursor,
   }) async {
@@ -97,8 +98,9 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
         (bodyType != null && bodyType.isNotEmpty) ||
         (maritalStatus != null && maritalStatus.isNotEmpty) ||
         (motherTongue != null && motherTongue.isNotEmpty);
+    final List<ProfileSummary> raw;
     if (hasFilters) {
-      return search(
+      raw = await search(
         ageMin: ageMin,
         ageMax: ageMax,
         city: city,
@@ -109,8 +111,11 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
         limit: limit,
         cursor: cursor,
       );
+    } else {
+      raw = await getRecommended(mode: mode, limit: limit, cursor: cursor);
     }
-    return getRecommended(mode: mode, limit: limit, cursor: cursor);
+    if (!verifiedOnly) return raw;
+    return raw.where((s) => s.verified).toList();
   }
 
   @override
@@ -127,6 +132,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? bodyType,
     String? maritalStatus,
     String? motherTongue,
+    bool verifiedOnly = false,
     int limit = 30,
     String? cursor,
   }) async {
@@ -143,6 +149,7 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
       bodyType: bodyType,
       maritalStatus: maritalStatus,
       motherTongue: motherTongue,
+      verifiedOnly: verifiedOnly,
       limit: limit,
       cursor: cursor,
     );

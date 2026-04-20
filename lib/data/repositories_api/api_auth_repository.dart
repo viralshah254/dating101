@@ -164,12 +164,37 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   static String _connectionErrorMessage(Object e) {
+    if (_isConnectionRefused(e)) {
+      if (kDebugMode) {
+        debugPrint(
+          '[Auth] Connection refused → nothing listening on your API URL. '
+          'Start backend: cd dating-backend && npm run dev (expects PORT=8000 in .env). '
+          'Physical device: localhost is the phone — use '
+          '--dart-define=API_BASE_URL=http://<your-mac-LAN-ip>:8000',
+        );
+      }
+      return kDebugMode
+          ? 'Can\'t connect to the login server. Check the debug console for setup steps.'
+          : 'Cannot reach our servers right now. Please try again in a moment.';
+    }
     if (e is SocketException) {
       return 'No internet connection. Please check your network and try again.';
     }
-    if (e is TimeoutException || e.toString().contains('timeout')) {
+    if (e is TimeoutException || e.toString().toLowerCase().contains('timeout')) {
       return 'Request timed out. Please check your connection and try again.';
     }
     return 'Could not reach the server. Please check your internet and try again.';
+  }
+
+  /// True when the TCP handshake failed because nothing is listening (not "no Wi‑Fi").
+  static bool _isConnectionRefused(Object e) {
+    final s = e.toString();
+    if (s.contains('Connection refused')) return true;
+    if (e is SocketException) {
+      final os = e.osError;
+      if (os != null && os.errorCode == 61) return true; // ECONNREFUSED on macOS/iOS
+      return e.message.contains('Connection refused');
+    }
+    return false;
   }
 }

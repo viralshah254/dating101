@@ -13,6 +13,7 @@ class DiscoveryFilterParams {
     this.maritalStatus,
     this.motherTongue,
     this.intentFilter,
+    this.verifiedOnly = false,
   });
 
   final int? ageMin;
@@ -37,6 +38,9 @@ class DiscoveryFilterParams {
   /// e.g. "marriage", "serious", "casual", "friends_first".
   final String? intentFilter;
 
+  /// Only show profiles with verification score >= 0.5 or photoVerified.
+  final bool verifiedOnly;
+
   bool get hasFilters =>
       ageMin != null ||
       ageMax != null ||
@@ -49,7 +53,8 @@ class DiscoveryFilterParams {
       (bodyType != null && bodyType!.isNotEmpty) ||
       (maritalStatus != null && maritalStatus!.isNotEmpty) ||
       (motherTongue != null && motherTongue!.isNotEmpty) ||
-      (intentFilter != null && intentFilter!.isNotEmpty);
+      (intentFilter != null && intentFilter!.isNotEmpty) ||
+      verifiedOnly;
 
   DiscoveryFilterParams copyWith({
     int? ageMin,
@@ -64,6 +69,7 @@ class DiscoveryFilterParams {
     String? maritalStatus,
     String? motherTongue,
     String? intentFilter,
+    bool? verifiedOnly,
   }) {
     return DiscoveryFilterParams(
       ageMin: ageMin ?? this.ageMin,
@@ -78,6 +84,7 @@ class DiscoveryFilterParams {
       maritalStatus: maritalStatus ?? this.maritalStatus,
       motherTongue: motherTongue ?? this.motherTongue,
       intentFilter: intentFilter ?? this.intentFilter,
+      verifiedOnly: verifiedOnly ?? this.verifiedOnly,
     );
   }
 }

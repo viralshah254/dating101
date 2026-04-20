@@ -271,32 +271,17 @@ class _PhotoHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (profile.verified)
+          if (profile.verified || (profile.verificationScore ?? 0) >= 0.25)
             Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text(
-                      'Verified',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              top: 10,
+              left: 10,
+              child: _TrustBadge(profile: profile, accent: accent),
+            ),
+          if (profile.isNew)
+            Positioned(
+              top: 10,
+              right: 48,
+              child: _NewProfileBadge(),
             ),
           // Safety menu (3-dots) + optional photo count
           Positioned(
@@ -556,6 +541,95 @@ class _ManagedByChip extends StatelessWidget {
             ),
             overflow: TextOverflow.ellipsis,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NewProfileBadge extends StatelessWidget {
+  const _NewProfileBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF97316),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: const Text(
+        'NEW',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+/// Trust badge for match profile cards — shows score tier and verification flags.
+class _TrustBadge extends StatelessWidget {
+  const _TrustBadge({required this.profile, required this.accent});
+  final ProfileSummary profile;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = profile.verificationScore ?? (profile.verified ? 0.5 : 0.0);
+    final Color badgeColor;
+    final String label;
+    if (score >= 0.8) {
+      badgeColor = const Color(0xFF00C853);
+      label = 'Fully Verified';
+    } else if (score >= 0.5) {
+      badgeColor = const Color(0xFF1565C0);
+      label = 'Verified';
+    } else {
+      badgeColor = const Color(0xFFF57C00);
+      label = '${(score * 100).round()}% verified';
+    }
+
+    final flags = <String>[];
+    if (profile.photoVerified) flags.add('📸');
+    if (profile.idVerified) flags.add('🪪');
+    if (profile.linkedInVerified) flags.add('💼');
+    if (profile.educationVerified) flags.add('🎓');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: badgeColor.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (flags.isNotEmpty) ...[
+            const SizedBox(width: 4),
+            Text(flags.join(' '), style: const TextStyle(fontSize: 9)),
+          ],
         ],
       ),
     );

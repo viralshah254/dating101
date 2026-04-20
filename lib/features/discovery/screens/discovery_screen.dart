@@ -15,6 +15,7 @@ import '../../../domain/models/discovery_filter_params.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
+import '../../premium/services/paywall_trigger_service.dart';
 import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
@@ -391,6 +392,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Future<void> _onPass(ProfileSummary profile) async {
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    // Count profile view; may trigger swipe-limit paywall
+    if (mounted) await PaywallTriggerService.recordSwipe(context, ref);
     try {
       await ref.read(discoveryRepositoryProvider).sendFeedback(
             candidateId: profile.id,
@@ -425,6 +428,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
             );
+        // Prompt free users to upgrade when they get a mutual match
+        if (mounted) {
+          await PaywallTriggerService.maybeShow(context, ref, PaywallReason.matchAccepted);
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

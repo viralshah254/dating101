@@ -2,13 +2,17 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/premium_badge.dart';
 import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../features/moments/widgets/moment_viewer.dart';
+import '../../../features/premium/widgets/photo_gate_overlay.dart';
 import '../../../features/profile/widgets/voice_intro_player.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -173,7 +177,7 @@ class _DeepLookRow extends StatelessWidget {
 }
 
 /// Full-screen discovery card: photo-first, premium aesthetic.
-class DiscoverySwipeCard extends StatelessWidget {
+class DiscoverySwipeCard extends ConsumerWidget {
   const DiscoverySwipeCard({
     super.key,
     required this.profile,
@@ -196,10 +200,11 @@ class DiscoverySwipeCard extends StatelessWidget {
   final bool showManagedByChip;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
     final l = AppLocalizations.of(context)!;
+    final entitlements = ref.watch(entitlementsProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -218,6 +223,9 @@ class DiscoverySwipeCard extends StatelessWidget {
                         : []),
                 name: profile.name,
                 onTap: onTap,
+                photosVisibleCount: entitlements.photosVisibleCount,
+                isAccepted: profile.isAccepted ?? false,
+                onUpgradeNeeded: () => context.push('/premium?reason=photoLimit'),
               ),
               // Cinematic gradient — deep vignette, pure photo in top 60%
               Positioned.fill(
@@ -314,6 +322,20 @@ class DiscoverySwipeCard extends StatelessWidget {
                   left: 20,
                   bottom: 242,
                   child: VoiceIntroBadge(url: profile.voiceIntroUrl!),
+                ),
+              // Trust badge — top-left (only when not showing moment ring)
+              if (!profile.hasActiveMoment && (profile.verificationScore ?? 0) > 0)
+                Positioned(
+                  left: 14,
+                  top: 14,
+                  child: _TrustBadge(profile: profile),
+                ),
+              // "NEW" badge — top-right (24-hour new profile flag)
+              if (profile.isNew)
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: _NewProfileBadge(),
                 ),
               // Moment story ring (top-left)
               if (profile.hasActiveMoment)
@@ -459,11 +481,17 @@ class _HeroImageCarousel extends StatefulWidget {
     required this.imageUrls,
     required this.name,
     required this.onTap,
+    required this.photosVisibleCount,
+    required this.isAccepted,
+    required this.onUpgradeNeeded,
   });
 
   final List<String> imageUrls;
   final String name;
   final VoidCallback? onTap;
+  final int photosVisibleCount;
+  final bool isAccepted;
+  final VoidCallback onUpgradeNeeded;
 
   @override
   State<_HeroImageCarousel> createState() => _HeroImageCarouselState();
@@ -472,6 +500,8 @@ class _HeroImageCarousel extends StatefulWidget {
 class _HeroImageCarouselState extends State<_HeroImageCarousel> {
   late PageController _pageController;
   int _currentIndex = 0;
+  // Ad-unlocked photos for this session (0–2; photo 4+ always hard-gated)
+  int _adUnlockedCount = 0;
 
   @override
   void initState() {
@@ -510,7 +540,19 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
             controller: _pageController,
             itemCount: urls.length,
             onPageChanged: (i) => setState(() => _currentIndex = i),
-            itemBuilder: (_, i) => _HeroImage(imageUrl: urls[i], name: widget.name),
+            itemBuilder: (_, i) => GatedPhoto(
+              photoIndex: i,
+              photosVisibleCount: widget.photosVisibleCount,
+              adUnlockedCount: _adUnlockedCount,
+              isAccepted: widget.isAccepted,
+              onAdUnlock: () {
+                if (_adUnlockedCount < 2) {
+                  setState(() => _adUnlockedCount++);
+                }
+              },
+              onUpgradeNeeded: widget.onUpgradeNeeded,
+              child: _HeroImage(imageUrl: urls[i], name: widget.name),
+            ),
           ),
         // Tap zones for photo navigation
         if (urls.isNotEmpty)
@@ -669,6 +711,27 @@ class _OverlayInfo extends StatelessWidget {
               const SizedBox(width: 6),
               PremiumBadge(isPremium: true, compact: true),
             ],
+            if (p.requireVerifiedToContact) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Only verified users can contact',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1565C0).withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.shield_rounded, size: 11, color: Colors.white),
+                      SizedBox(width: 3),
+                      Text('Verified only', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
         // Tier 2: City · Occupation
@@ -722,6 +785,103 @@ class _OverlayInfo extends StatelessWidget {
       'friends_first' || 'friends first' => 'Friends first',
       _ => intent,
     };
+  }
+}
+
+/// Compact trust badge shown on the swipe card corner showing verification level.
+class _NewProfileBadge extends StatelessWidget {
+  const _NewProfileBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF97316), // warm orange accent
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: const Text(
+        'NEW',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustBadge extends StatelessWidget {
+  const _TrustBadge({required this.profile});
+  final ProfileSummary profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = profile.verificationScore ?? 0;
+    final pct = (score * 100).round();
+
+    // Determine tier color based on score
+    final Color badgeColor;
+    final String label;
+    if (score >= 0.8) {
+      badgeColor = const Color(0xFF00C853); // green
+      label = 'Verified';
+    } else if (score >= 0.5) {
+      badgeColor = const Color(0xFF1565C0); // blue
+      label = 'Verified';
+    } else if (score >= 0.25) {
+      badgeColor = const Color(0xFFF57C00); // amber
+      label = '${pct}% trusted';
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    // Show verification flags as tooltip/subtitle
+    final flags = <String>[];
+    if (profile.photoVerified) flags.add('📸');
+    if (profile.idVerified) flags.add('🪪');
+    if (profile.linkedInVerified) flags.add('💼');
+    if (profile.educationVerified) flags.add('🎓');
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+              if (flags.isNotEmpty) ...[
+                const SizedBox(width: 5),
+                Text(
+                  flags.join(' '),
+                  style: const TextStyle(fontSize: 10),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -19,6 +19,8 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
+import '../widgets/readiness_score_card.dart';
+import '../../family/screens/family_chat_access_screen.dart' show FamilyChatAccessScreen;
 
 final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
   debugPrint('[ProfileSettings] Fetching my profile...');
@@ -53,6 +55,9 @@ class ProfileSettingsScreen extends ConsumerWidget {
     final profilePhoto = profileAsync.whenOrNull(
       data: (p) => p?.photoUrls.isNotEmpty == true ? p!.photoUrls.first : null,
     );
+    final hiddenFromRecommended = profileAsync.whenOrNull(
+      data: (p) => p?.hiddenFromRecommended ?? false,
+    ) ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -100,7 +105,15 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onSurface: onSurface,
             primary: primary,
           ).fadeSlideIn(delay: 200.ms),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
+          const ReadinessScoreCard().fadeSlideIn(delay: 280.ms),
+          if (hiddenFromRecommended) ...[
+            const SizedBox(height: 12),
+            _HiddenFromRecommendedBanner().fadeSlideIn(delay: 310.ms),
+          ],
+          const SizedBox(height: 12),
+          _AiProfileReviewBanner().fadeSlideIn(delay: 320.ms),
+          const SizedBox(height: 16),
           _SectionHeader(title: l.shubhmilanMode, onSurface: onSurface)
               .animate().fadeIn(delay: AppMotion.stagger(0, stepMs: 80), duration: AppMotion.medium)
               .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
@@ -137,6 +150,42 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/referral'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.favorite_rounded),
+            title: Text(
+              'Success Stories',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Read and share wedding stories from our members',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/success-stories'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.shield_rounded),
+            title: Text(
+              'Meeting Safety Toolkit',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'SOS, location sharing & check-in timer for first meetings',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/meeting-safety'),
           ),
           if (flags.profileBoost)
             ListTile(
@@ -271,20 +320,58 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.family_restroom_rounded),
             title: Text(
-              'Invite a family member',
+              'Family Circle',
               style: AppTypography.bodyLarge.copyWith(
                 color: onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Let a parent or sibling view your shortlist and leave notes',
+              'Invite family members, set your mode, preview what they see',
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.7),
               ),
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/family-circle'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.toggle_on_outlined),
+            title: Text(
+              'Family mode',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Self, assisted, hidden-from-family, or joint decision',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/family-circle'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline_rounded),
+            title: Text(
+              'Chat privacy for family',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Control what family members can see in your conversations',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FamilyChatAccessScreen()),
+            ),
           ),
           const SizedBox(height: 24),
           _SectionHeader(title: l.accountAndData, onSurface: onSurface)
@@ -608,6 +695,7 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
       (privacy['profileVisibility'] as String?) ?? 'everyone';
   bool hideFromDiscovery = privacy['hideFromDiscovery'] == true;
   bool photosHidden = privacy['photosHidden'] == true;
+  bool requireVerifiedToContact = privacy['requireVerifiedToContact'] == true;
 
   if (!context.mounted) return;
   final l = AppLocalizations.of(context)!;
@@ -726,6 +814,22 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
                   value: photosHidden,
                   onChanged: (v) => setSheetState(() => photosHidden = v),
                 ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  secondary: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.verified_rounded, size: 18, color: Color(0xFF1565C0)),
+                  ),
+                  title: const Text('Only verified users can contact me'),
+                  subtitle: const Text('Unverified profiles cannot send you interest'),
+                  value: requireVerifiedToContact,
+                  onChanged: (v) => setSheetState(() => requireVerifiedToContact = v),
+                  activeColor: const Color(0xFF1565C0),
+                ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () async {
@@ -736,6 +840,7 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
                         'profileVisibility': profileVisibility,
                         'hideFromDiscovery': hideFromDiscovery,
                         'photosHidden': photosHidden,
+                        'requireVerifiedToContact': requireVerifiedToContact,
                       });
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1327,6 +1432,127 @@ class _SectionHeader extends StatelessWidget {
         style: AppTypography.labelLarge.copyWith(
           color: onSurface.withValues(alpha: 0.7),
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ── AI Profile Review Banner ──────────────────────────────────────────────────
+
+class _HiddenFromRecommendedBanner extends StatelessWidget {
+  const _HiddenFromRecommendedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.errorContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.visibility_off_outlined, color: cs.onErrorContainer, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hidden from Recommended',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: cs.onErrorContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your profile is not shown in the Recommended feed yet. '
+                  'Complete photo verification to restore visibility.',
+                  style: AppTypography.bodySmall.copyWith(color: cs.onErrorContainer),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () => context.push('/verification'),
+                  child: Text(
+                    'Verify to restore visibility →',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: cs.onErrorContainer,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiProfileReviewBanner extends StatelessWidget {
+  const _AiProfileReviewBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => context.push('/ai-profile-review'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF7B1FA2).withValues(alpha: 0.12),
+              const Color(0xFF1565C0).withValues(alpha: 0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF7B1FA2).withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7B1FA2).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.psychology_rounded, color: Color(0xFF7B1FA2), size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Profile Review',
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'See why you may be getting ignored and how to improve',
+                    style: AppTypography.caption.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: cs.onSurface.withValues(alpha: 0.4)),
+          ],
         ),
       ),
     );

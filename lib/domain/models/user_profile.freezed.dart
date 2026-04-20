@@ -57,6 +57,9 @@ mixin _$UserProfile {
   DateTime? get creationAt => throw _privateConstructorUsedError;
   String? get creationAddress => throw _privateConstructorUsedError;
 
+  /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+  bool get hiddenFromRecommended => throw _privateConstructorUsedError;
+
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -100,6 +103,7 @@ abstract class $UserProfileCopyWith<$Res> {
     double? creationLng,
     DateTime? creationAt,
     String? creationAddress,
+    bool hiddenFromRecommended,
   });
 
   $VerificationStatusCopyWith<$Res> get verificationStatus;
@@ -151,6 +155,7 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? creationLng = freezed,
     Object? creationAt = freezed,
     Object? creationAddress = freezed,
+    Object? hiddenFromRecommended = null,
   }) {
     return _then(
       _value.copyWith(
@@ -266,6 +271,10 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
                 ? _value.creationAddress
                 : creationAddress // ignore: cast_nullable_to_non_nullable
                       as String?,
+            hiddenFromRecommended: null == hiddenFromRecommended
+                ? _value.hiddenFromRecommended
+                : hiddenFromRecommended // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -368,6 +377,7 @@ abstract class _$$UserProfileImplCopyWith<$Res>
     double? creationLng,
     DateTime? creationAt,
     String? creationAddress,
+    bool hiddenFromRecommended,
   });
 
   @override
@@ -422,6 +432,7 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? creationLng = freezed,
     Object? creationAt = freezed,
     Object? creationAddress = freezed,
+    Object? hiddenFromRecommended = null,
   }) {
     return _then(
       _$UserProfileImpl(
@@ -537,6 +548,10 @@ class __$$UserProfileImplCopyWithImpl<$Res>
             ? _value.creationAddress
             : creationAddress // ignore: cast_nullable_to_non_nullable
                   as String?,
+        hiddenFromRecommended: null == hiddenFromRecommended
+            ? _value.hiddenFromRecommended
+            : hiddenFromRecommended // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -574,6 +589,7 @@ class _$UserProfileImpl extends _UserProfile {
     this.creationLng,
     this.creationAt,
     this.creationAddress,
+    this.hiddenFromRecommended = false,
   }) : _languagesSpoken = languagesSpoken,
        _photoUrls = photoUrls,
        _interests = interests,
@@ -678,9 +694,14 @@ class _$UserProfileImpl extends _UserProfile {
   @override
   final String? creationAddress;
 
+  /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+  @override
+  @JsonKey()
+  final bool hiddenFromRecommended;
+
   @override
   String toString() {
-    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
+    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress, hiddenFromRecommended: $hiddenFromRecommended)';
   }
 
   @override
@@ -746,7 +767,9 @@ class _$UserProfileImpl extends _UserProfile {
             (identical(other.creationAt, creationAt) ||
                 other.creationAt == creationAt) &&
             (identical(other.creationAddress, creationAddress) ||
-                other.creationAddress == creationAddress));
+                other.creationAddress == creationAddress) &&
+            (identical(other.hiddenFromRecommended, hiddenFromRecommended) ||
+                other.hiddenFromRecommended == hiddenFromRecommended));
   }
 
   @override
@@ -780,6 +803,7 @@ class _$UserProfileImpl extends _UserProfile {
     creationLng,
     creationAt,
     creationAddress,
+    hiddenFromRecommended,
   ]);
 
   /// Create a copy of UserProfile
@@ -821,6 +845,7 @@ abstract class _UserProfile extends UserProfile {
     final double? creationLng,
     final DateTime? creationAt,
     final String? creationAddress,
+    final bool hiddenFromRecommended,
   }) = _$UserProfileImpl;
   const _UserProfile._() : super._();
 
@@ -888,6 +913,10 @@ abstract class _UserProfile extends UserProfile {
   DateTime? get creationAt;
   @override
   String? get creationAddress;
+
+  /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+  @override
+  bool get hiddenFromRecommended;
 
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.

@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../features/premium/services/paywall_trigger_service.dart';
+import '../../../features/premium/widgets/photo_gate_overlay.dart';
 import '../widgets/voice_intro_player.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
@@ -1560,6 +1562,7 @@ class _DatingProfileContent extends ConsumerWidget {
                         _DatingPhotoGrid(
                           imageUrls: imageUrls,
                           onTap: (i) => _openPhotoGallery(context, imageUrls, i),
+                          isAccepted: profile.isAccepted ?? false,
                         ),
                       ],
 
@@ -1673,22 +1676,77 @@ class _QuickFactChip extends StatelessWidget {
 }
 
 /// Staggered photo grid for dating profile: first photo large, remaining smaller.
-class _DatingPhotoGrid extends StatelessWidget {
-  const _DatingPhotoGrid({required this.imageUrls, required this.onTap});
+/// Photos beyond the entitlement limit are blurred; ad-reveal for index 1 & 2,
+/// premium gate for index 3+.
+class _DatingPhotoGrid extends ConsumerStatefulWidget {
+  const _DatingPhotoGrid({
+    required this.imageUrls,
+    required this.onTap,
+    required this.isAccepted,
+  });
   final List<String> imageUrls;
   final void Function(int index) onTap;
+  final bool isAccepted;
+
+  @override
+  ConsumerState<_DatingPhotoGrid> createState() => _DatingPhotoGridState();
+}
+
+class _DatingPhotoGridState extends ConsumerState<_DatingPhotoGrid> {
+  int _adUnlockedCount = 0;
 
   @override
   Widget build(BuildContext context) {
-    final urls = imageUrls.skip(1).take(4).toList();
+    final entitlements = ref.watch(entitlementsProvider);
+    // imageUrls passed here start from index 1 (skip hero); adjust photoIndex accordingly.
+    final urls = widget.imageUrls.skip(1).take(4).toList();
     if (urls.isEmpty) return const SizedBox.shrink();
+
+    Widget gated(String url, int gridIdx, double height) {
+      // gridIdx is the index within urls (0-based); photoIndex in full array = gridIdx + 1
+      final photoIndex = gridIdx + 1;
+      return GatedPhoto(
+        photoIndex: photoIndex,
+        photosVisibleCount: entitlements.photosVisibleCount,
+        adUnlockedCount: _adUnlockedCount,
+        isAccepted: widget.isAccepted,
+        onAdUnlock: () {
+          if (_adUnlockedCount < 2) setState(() => _adUnlockedCount++);
+        },
+        onUpgradeNeeded: () => context.push('/premium?reason=photoLimit'),
+        child: GestureDetector(
+          onTap: () => widget.onTap(photoIndex),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              height: height,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                height: height,
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                height: height,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Icon(
+                  Icons.image_not_supported_outlined,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     if (urls.length <= 2) {
       return Row(
         children: [
           for (int i = 0; i < urls.length; i++) ...[
             if (i > 0) const SizedBox(width: 8),
-            Expanded(child: _gridTile(context, urls[i], i + 1, 180)),
+            Expanded(child: gated(urls[i], i, 180)),
           ],
         ],
       );
@@ -1697,9 +1755,9 @@ class _DatingPhotoGrid extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: _gridTile(context, urls[0], 1, 180)),
+            Expanded(child: gated(urls[0], 0, 180)),
             const SizedBox(width: 8),
-            Expanded(child: _gridTile(context, urls[1], 2, 180)),
+            Expanded(child: gated(urls[1], 1, 180)),
           ],
         ),
         const SizedBox(height: 8),
@@ -1707,7 +1765,7 @@ class _DatingPhotoGrid extends StatelessWidget {
           children: [
             for (int i = 2; i < urls.length; i++) ...[
               if (i > 2) const SizedBox(width: 8),
-              Expanded(child: _gridTile(context, urls[i], i + 1, 140)),
+              Expanded(child: gated(urls[i], i, 140)),
             ],
             if (urls.length == 3) ...[
               const SizedBox(width: 8),
@@ -1716,33 +1774,6 @@ class _DatingPhotoGrid extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _gridTile(BuildContext context, String url, int index, double height) {
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: CachedNetworkImage(
-          imageUrl: url,
-          height: height,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
-            height: height,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
-          errorWidget: (_, __, ___) => Container(
-            height: height,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Icon(
-              Icons.image_not_supported_outlined,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -2527,7 +2558,7 @@ Future<void> _datingFullProfileOnMessage(
   );
   if (!context.mounted || choice == null) return;
   if (choice == 'upgrade') {
-    context.push('/paywall');
+    await PaywallTriggerService.maybeShow(context, ref, PaywallReason.messagingBlocked);
     return;
   }
   if (choice == 'watch_ad') {

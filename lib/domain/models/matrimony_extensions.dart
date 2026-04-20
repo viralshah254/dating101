@@ -38,6 +38,14 @@ class MatrimonyExtensions with _$MatrimonyExtensions {
     HoroscopeDetails? horoscope,
     String? aboutEducation,
     List<EducationEntryDto>? educationEntries,
+    /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+    String? readyInMonths,
+    /// Family involvement in match: "self_managed" | "family_assisted" | "joint_decision"
+    String? familyInvolvement,
+    /// Relocation willingness: "same_city" | "same_country" | "flexible" | "abroad_ok"
+    String? relocationWillingness,
+    /// Non-negotiable deal-breakers (e.g. ["religion", "caste", "diet"])
+    @Default([]) List<String> dealBreakers,
   }) = _MatrimonyExtensions;
 }
 

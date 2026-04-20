@@ -27,6 +27,22 @@ mixin _$ProfileSummary {
   List<String>? get imageUrls => throw _privateConstructorUsedError;
   double? get distanceKm => throw _privateConstructorUsedError;
   bool get verified => throw _privateConstructorUsedError;
+
+  /// Trust score 0.0–1.0 derived from verification flags.
+  double? get verificationScore => throw _privateConstructorUsedError;
+  bool get idVerified => throw _privateConstructorUsedError;
+  bool get photoVerified => throw _privateConstructorUsedError;
+  bool get linkedInVerified => throw _privateConstructorUsedError;
+  bool get educationVerified => throw _privateConstructorUsedError;
+
+  /// Response rate 0.0–1.0 (interests replied / received, last 30 days).
+  double? get responseRate => throw _privateConstructorUsedError;
+
+  /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+  String? get readyInMonths => throw _privateConstructorUsedError;
+
+  /// Whether this user requires verified profiles to contact them.
+  bool get requireVerifiedToContact => throw _privateConstructorUsedError;
   String? get matchReason => throw _privateConstructorUsedError;
   String get bio => throw _privateConstructorUsedError;
   String? get promptAnswer => throw _privateConstructorUsedError;
@@ -73,6 +89,13 @@ mixin _$ProfileSummary {
   /// Server `Profile.lastActiveAt` (ISO); for last-seen when chat thread omits it.
   DateTime? get lastActiveAt => throw _privateConstructorUsedError;
 
+  /// True if the viewing user's interest was accepted by this profile.
+  /// Free male users bypass the photo gate on all photos when this is true.
+  bool? get isAccepted => throw _privateConstructorUsedError;
+
+  /// True if the profile was created within the last 24 hours.
+  bool get isNew => throw _privateConstructorUsedError;
+
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -96,6 +119,14 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     List<String>? imageUrls,
     double? distanceKm,
     bool verified,
+    double? verificationScore,
+    bool idVerified,
+    bool photoVerified,
+    bool linkedInVerified,
+    bool educationVerified,
+    double? responseRate,
+    String? readyInMonths,
+    bool requireVerifiedToContact,
     String? matchReason,
     String bio,
     String? promptAnswer,
@@ -124,6 +155,8 @@ abstract class $ProfileSummaryCopyWith<$Res> {
     String? momentImageUrl,
     String? voiceIntroUrl,
     DateTime? lastActiveAt,
+    bool? isAccepted,
+    bool isNew,
   });
 }
 
@@ -150,6 +183,14 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? imageUrls = freezed,
     Object? distanceKm = freezed,
     Object? verified = null,
+    Object? verificationScore = freezed,
+    Object? idVerified = null,
+    Object? photoVerified = null,
+    Object? linkedInVerified = null,
+    Object? educationVerified = null,
+    Object? responseRate = freezed,
+    Object? readyInMonths = freezed,
+    Object? requireVerifiedToContact = null,
     Object? matchReason = freezed,
     Object? bio = null,
     Object? promptAnswer = freezed,
@@ -178,6 +219,8 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
     Object? momentImageUrl = freezed,
     Object? voiceIntroUrl = freezed,
     Object? lastActiveAt = freezed,
+    Object? isAccepted = freezed,
+    Object? isNew = null,
   }) {
     return _then(
       _value.copyWith(
@@ -212,6 +255,38 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
             verified: null == verified
                 ? _value.verified
                 : verified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            verificationScore: freezed == verificationScore
+                ? _value.verificationScore
+                : verificationScore // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            idVerified: null == idVerified
+                ? _value.idVerified
+                : idVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            photoVerified: null == photoVerified
+                ? _value.photoVerified
+                : photoVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            linkedInVerified: null == linkedInVerified
+                ? _value.linkedInVerified
+                : linkedInVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            educationVerified: null == educationVerified
+                ? _value.educationVerified
+                : educationVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            responseRate: freezed == responseRate
+                ? _value.responseRate
+                : responseRate // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            readyInMonths: freezed == readyInMonths
+                ? _value.readyInMonths
+                : readyInMonths // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            requireVerifiedToContact: null == requireVerifiedToContact
+                ? _value.requireVerifiedToContact
+                : requireVerifiedToContact // ignore: cast_nullable_to_non_nullable
                       as bool,
             matchReason: freezed == matchReason
                 ? _value.matchReason
@@ -325,6 +400,14 @@ class _$ProfileSummaryCopyWithImpl<$Res, $Val extends ProfileSummary>
                 ? _value.lastActiveAt
                 : lastActiveAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            isAccepted: freezed == isAccepted
+                ? _value.isAccepted
+                : isAccepted // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            isNew: null == isNew
+                ? _value.isNew
+                : isNew // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -349,6 +432,14 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     List<String>? imageUrls,
     double? distanceKm,
     bool verified,
+    double? verificationScore,
+    bool idVerified,
+    bool photoVerified,
+    bool linkedInVerified,
+    bool educationVerified,
+    double? responseRate,
+    String? readyInMonths,
+    bool requireVerifiedToContact,
     String? matchReason,
     String bio,
     String? promptAnswer,
@@ -377,6 +468,8 @@ abstract class _$$ProfileSummaryImplCopyWith<$Res>
     String? momentImageUrl,
     String? voiceIntroUrl,
     DateTime? lastActiveAt,
+    bool? isAccepted,
+    bool isNew,
   });
 }
 
@@ -402,6 +495,14 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? imageUrls = freezed,
     Object? distanceKm = freezed,
     Object? verified = null,
+    Object? verificationScore = freezed,
+    Object? idVerified = null,
+    Object? photoVerified = null,
+    Object? linkedInVerified = null,
+    Object? educationVerified = null,
+    Object? responseRate = freezed,
+    Object? readyInMonths = freezed,
+    Object? requireVerifiedToContact = null,
     Object? matchReason = freezed,
     Object? bio = null,
     Object? promptAnswer = freezed,
@@ -430,6 +531,8 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
     Object? momentImageUrl = freezed,
     Object? voiceIntroUrl = freezed,
     Object? lastActiveAt = freezed,
+    Object? isAccepted = freezed,
+    Object? isNew = null,
   }) {
     return _then(
       _$ProfileSummaryImpl(
@@ -464,6 +567,38 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
         verified: null == verified
             ? _value.verified
             : verified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        verificationScore: freezed == verificationScore
+            ? _value.verificationScore
+            : verificationScore // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        idVerified: null == idVerified
+            ? _value.idVerified
+            : idVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        photoVerified: null == photoVerified
+            ? _value.photoVerified
+            : photoVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        linkedInVerified: null == linkedInVerified
+            ? _value.linkedInVerified
+            : linkedInVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        educationVerified: null == educationVerified
+            ? _value.educationVerified
+            : educationVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        responseRate: freezed == responseRate
+            ? _value.responseRate
+            : responseRate // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        readyInMonths: freezed == readyInMonths
+            ? _value.readyInMonths
+            : readyInMonths // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        requireVerifiedToContact: null == requireVerifiedToContact
+            ? _value.requireVerifiedToContact
+            : requireVerifiedToContact // ignore: cast_nullable_to_non_nullable
                   as bool,
         matchReason: freezed == matchReason
             ? _value.matchReason
@@ -577,6 +712,14 @@ class __$$ProfileSummaryImplCopyWithImpl<$Res>
             ? _value.lastActiveAt
             : lastActiveAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        isAccepted: freezed == isAccepted
+            ? _value.isAccepted
+            : isAccepted // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        isNew: null == isNew
+            ? _value.isNew
+            : isNew // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -594,6 +737,14 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     final List<String>? imageUrls,
     this.distanceKm,
     this.verified = false,
+    this.verificationScore,
+    this.idVerified = false,
+    this.photoVerified = false,
+    this.linkedInVerified = false,
+    this.educationVerified = false,
+    this.responseRate,
+    this.readyInMonths,
+    this.requireVerifiedToContact = false,
     this.matchReason,
     this.bio = '',
     this.promptAnswer,
@@ -622,6 +773,8 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     this.momentImageUrl,
     this.voiceIntroUrl,
     this.lastActiveAt,
+    this.isAccepted = false,
+    this.isNew = false,
   }) : _imageUrls = imageUrls,
        _interests = interests,
        _sharedInterests = sharedInterests,
@@ -657,6 +810,35 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
   @override
   @JsonKey()
   final bool verified;
+
+  /// Trust score 0.0–1.0 derived from verification flags.
+  @override
+  final double? verificationScore;
+  @override
+  @JsonKey()
+  final bool idVerified;
+  @override
+  @JsonKey()
+  final bool photoVerified;
+  @override
+  @JsonKey()
+  final bool linkedInVerified;
+  @override
+  @JsonKey()
+  final bool educationVerified;
+
+  /// Response rate 0.0–1.0 (interests replied / received, last 30 days).
+  @override
+  final double? responseRate;
+
+  /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+  @override
+  final String? readyInMonths;
+
+  /// Whether this user requires verified profiles to contact them.
+  @override
+  @JsonKey()
+  final bool requireVerifiedToContact;
   @override
   final String? matchReason;
   @override
@@ -764,9 +946,20 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
   @override
   final DateTime? lastActiveAt;
 
+  /// True if the viewing user's interest was accepted by this profile.
+  /// Free male users bypass the photo gate on all photos when this is true.
+  @override
+  @JsonKey()
+  final bool? isAccepted;
+
+  /// True if the profile was created within the last 24 hours.
+  @override
+  @JsonKey()
+  final bool isNew;
+
   @override
   String toString() {
-    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile, datingIntent: $datingIntent, hasActiveMoment: $hasActiveMoment, momentImageUrl: $momentImageUrl, voiceIntroUrl: $voiceIntroUrl, lastActiveAt: $lastActiveAt)';
+    return 'ProfileSummary(id: $id, name: $name, age: $age, city: $city, imageUrl: $imageUrl, imageUrls: $imageUrls, distanceKm: $distanceKm, verified: $verified, verificationScore: $verificationScore, idVerified: $idVerified, photoVerified: $photoVerified, linkedInVerified: $linkedInVerified, educationVerified: $educationVerified, responseRate: $responseRate, readyInMonths: $readyInMonths, requireVerifiedToContact: $requireVerifiedToContact, matchReason: $matchReason, bio: $bio, promptAnswer: $promptAnswer, interests: $interests, sharedInterests: $sharedInterests, motherTongue: $motherTongue, occupation: $occupation, heightCm: $heightCm, religion: $religion, community: $community, educationDegree: $educationDegree, maritalStatus: $maritalStatus, diet: $diet, incomeLabel: $incomeLabel, employer: $employer, familyType: $familyType, photoCount: $photoCount, isPremium: $isPremium, compatibilityScore: $compatibilityScore, compatibilityLabel: $compatibilityLabel, matchReasons: $matchReasons, breakdown: $breakdown, roleManagingProfile: $roleManagingProfile, datingIntent: $datingIntent, hasActiveMoment: $hasActiveMoment, momentImageUrl: $momentImageUrl, voiceIntroUrl: $voiceIntroUrl, lastActiveAt: $lastActiveAt, isAccepted: $isAccepted, isNew: $isNew)';
   }
 
   @override
@@ -788,6 +981,25 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
                 other.distanceKm == distanceKm) &&
             (identical(other.verified, verified) ||
                 other.verified == verified) &&
+            (identical(other.verificationScore, verificationScore) ||
+                other.verificationScore == verificationScore) &&
+            (identical(other.idVerified, idVerified) ||
+                other.idVerified == idVerified) &&
+            (identical(other.photoVerified, photoVerified) ||
+                other.photoVerified == photoVerified) &&
+            (identical(other.linkedInVerified, linkedInVerified) ||
+                other.linkedInVerified == linkedInVerified) &&
+            (identical(other.educationVerified, educationVerified) ||
+                other.educationVerified == educationVerified) &&
+            (identical(other.responseRate, responseRate) ||
+                other.responseRate == responseRate) &&
+            (identical(other.readyInMonths, readyInMonths) ||
+                other.readyInMonths == readyInMonths) &&
+            (identical(
+                  other.requireVerifiedToContact,
+                  requireVerifiedToContact,
+                ) ||
+                other.requireVerifiedToContact == requireVerifiedToContact) &&
             (identical(other.matchReason, matchReason) ||
                 other.matchReason == matchReason) &&
             (identical(other.bio, bio) || other.bio == bio) &&
@@ -849,7 +1061,10 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
             (identical(other.voiceIntroUrl, voiceIntroUrl) ||
                 other.voiceIntroUrl == voiceIntroUrl) &&
             (identical(other.lastActiveAt, lastActiveAt) ||
-                other.lastActiveAt == lastActiveAt));
+                other.lastActiveAt == lastActiveAt) &&
+            (identical(other.isAccepted, isAccepted) ||
+                other.isAccepted == isAccepted) &&
+            (identical(other.isNew, isNew) || other.isNew == isNew));
   }
 
   @override
@@ -863,6 +1078,14 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     const DeepCollectionEquality().hash(_imageUrls),
     distanceKm,
     verified,
+    verificationScore,
+    idVerified,
+    photoVerified,
+    linkedInVerified,
+    educationVerified,
+    responseRate,
+    readyInMonths,
+    requireVerifiedToContact,
     matchReason,
     bio,
     promptAnswer,
@@ -891,6 +1114,8 @@ class _$ProfileSummaryImpl implements _ProfileSummary {
     momentImageUrl,
     voiceIntroUrl,
     lastActiveAt,
+    isAccepted,
+    isNew,
   ]);
 
   /// Create a copy of ProfileSummary
@@ -915,6 +1140,14 @@ abstract class _ProfileSummary implements ProfileSummary {
     final List<String>? imageUrls,
     final double? distanceKm,
     final bool verified,
+    final double? verificationScore,
+    final bool idVerified,
+    final bool photoVerified,
+    final bool linkedInVerified,
+    final bool educationVerified,
+    final double? responseRate,
+    final String? readyInMonths,
+    final bool requireVerifiedToContact,
     final String? matchReason,
     final String bio,
     final String? promptAnswer,
@@ -943,6 +1176,8 @@ abstract class _ProfileSummary implements ProfileSummary {
     final String? momentImageUrl,
     final String? voiceIntroUrl,
     final DateTime? lastActiveAt,
+    final bool? isAccepted,
+    final bool isNew,
   }) = _$ProfileSummaryImpl;
 
   @override
@@ -963,6 +1198,30 @@ abstract class _ProfileSummary implements ProfileSummary {
   double? get distanceKm;
   @override
   bool get verified;
+
+  /// Trust score 0.0–1.0 derived from verification flags.
+  @override
+  double? get verificationScore;
+  @override
+  bool get idVerified;
+  @override
+  bool get photoVerified;
+  @override
+  bool get linkedInVerified;
+  @override
+  bool get educationVerified;
+
+  /// Response rate 0.0–1.0 (interests replied / received, last 30 days).
+  @override
+  double? get responseRate;
+
+  /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+  @override
+  String? get readyInMonths;
+
+  /// Whether this user requires verified profiles to contact them.
+  @override
+  bool get requireVerifiedToContact;
   @override
   String? get matchReason;
   @override
@@ -1035,6 +1294,15 @@ abstract class _ProfileSummary implements ProfileSummary {
   /// Server `Profile.lastActiveAt` (ISO); for last-seen when chat thread omits it.
   @override
   DateTime? get lastActiveAt;
+
+  /// True if the viewing user's interest was accepted by this profile.
+  /// Free male users bypass the photo gate on all photos when this is true.
+  @override
+  bool? get isAccepted;
+
+  /// True if the profile was created within the last 24 hours.
+  @override
+  bool get isNew;
 
   /// Create a copy of ProfileSummary
   /// with the given fields replaced by the non-null parameter values.

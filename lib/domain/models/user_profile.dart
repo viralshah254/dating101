@@ -49,6 +49,9 @@ class UserProfile with _$UserProfile {
     double? creationLng,
     DateTime? creationAt,
     String? creationAddress,
+
+    /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+    @Default(false) bool hiddenFromRecommended,
   }) = _UserProfile;
 
   /// For discovery cards: display location (city or city, country).

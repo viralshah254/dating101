@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../entitlements/entitlements.dart';
 import '../mode/app_mode.dart';
 import '../mode/mode_provider.dart';
 import '../feature_flags/feature_flags.dart';
@@ -12,6 +13,7 @@ import '../theme/app_tokens.dart';
 import '../theme/brand_theme.dart';
 import '../../data/repositories_api/api_profile_repository.dart';
 import '../../features/chat/providers/chat_providers.dart';
+import '../../features/premium/services/paywall_trigger_service.dart';
 import '../../features/requests/providers/requests_providers.dart';
 import '../../features/shortlist/providers/shortlist_providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -107,7 +109,16 @@ class RootShell extends ConsumerWidget {
                         index: i,
                         currentIndex: navigationShell.currentIndex,
                         badgeCount: badges[i],
-                        onTap: () => _onTap(i),
+                        onTap: () {
+                          // Likes tab (index 3 in dating mode) — trigger paywall for free males
+                          if (mode == AppMode.dating && i == 3) {
+                            final ent = ref.read(entitlementsProvider);
+                            if (!ent.canSeeWhoLikedYou) {
+                              PaywallTriggerService.maybeShow(context, ref, PaywallReason.likesTab);
+                            }
+                          }
+                          _onTap(i);
+                        },
                       ),
                   ],
                 ),

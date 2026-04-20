@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/entitlements/entitlements.dart';
+import 'features/premium/providers/iap_products_provider.dart';
 import 'core/locale/app_locale_provider.dart';
 import 'core/mode/app_mode.dart';
 import 'core/mode/mode_provider.dart';
@@ -14,6 +15,8 @@ import 'core/providers/repository_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/session/session_api_cache_invalidation.dart';
+import 'features/premium/services/paywall_trigger_service.dart';
+import 'features/verification/services/verification_nudge_service.dart';
 import 'l10n/app_localizations.dart';
 
 class ShubhmilanApp extends ConsumerStatefulWidget {
@@ -38,6 +41,8 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshSubscriptionAccess());
     WidgetsBinding.instance.addPostFrameCallback((_) => _initNotifications());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowStreakPaywall());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowVerificationNudge());
   }
 
   void _onTokenStorageChanged() {
@@ -70,6 +75,12 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     if (state == AppLifecycleState.resumed) {
       _refreshSubscriptionAccess();
       _touchChatPresenceAfterResume();
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.android)) {
+        ref.invalidate(iapProductsProvider);
+      }
+      _maybeShowVerificationNudge();
     }
   }
 
@@ -93,6 +104,25 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     final authRepo = ref.read(authRepositoryProvider);
     if (authRepo.currentUserId == null) return;
     ref.read(subscriptionAccessRefreshProvider)();
+  }
+
+  void _maybeShowVerificationNudge() {
+    final authRepo = ref.read(authRepositoryProvider);
+    if (authRepo.currentUserId == null || !mounted) return;
+    Future.delayed(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      VerificationNudgeService.maybeShow(context, ref);
+    });
+  }
+
+  void _maybeShowStreakPaywall() {
+    final authRepo = ref.read(authRepositoryProvider);
+    if (authRepo.currentUserId == null || !mounted) return;
+    // Delay slightly so the first screen is fully rendered before the paywall fires
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      PaywallTriggerService.maybeShowStreakPaywall(context, ref);
+    });
   }
 
   void _initNotifications() {

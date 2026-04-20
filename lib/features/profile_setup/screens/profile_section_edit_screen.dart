@@ -408,7 +408,8 @@ class _AboutSectionContent extends StatefulWidget {
 }
 
 class _AboutSectionContentState extends State<_AboutSectionContent> {
-  static const int _maxChars = 500;
+  // Keep in sync with kAboutMeMaxChars in step_details.dart
+  static const int _maxChars = 2000;
   late final TextEditingController _controller;
 
   @override
@@ -459,7 +460,8 @@ class _AboutSectionContentState extends State<_AboutSectionContent> {
           const SizedBox(height: 10),
           TextField(
             controller: _controller,
-            maxLines: 6,
+            maxLines: 12,
+            minLines: 5,
             maxLength: _maxChars,
             textInputAction: TextInputAction.newline,
             decoration: InputDecoration(

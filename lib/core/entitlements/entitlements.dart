@@ -28,6 +28,7 @@ class Entitlements {
     required this.dailyInterestLimit,
     required this.dailyMessageLimit,
     required this.dailyPriorityInterestLimit,
+    this.photosVisibleCount = 1,
   });
 
   final SubscriptionTier tier;
@@ -51,9 +52,17 @@ class Entitlements {
   final int dailyInterestLimit;
   final int dailyMessageLimit;
   final int dailyPriorityInterestLimit;
+  /// Number of photos visible before blur/gate. 999 = all (silver+ or female). 1 = free male baseline.
+  final int photosVisibleCount;
 
-  bool get isPremium => tier == SubscriptionTier.premium;
+  bool get isPremium => tier == SubscriptionTier.premium || tier.isAtLeastGold;
+  bool get isSilver => tier.isAtLeastSilver;
+  bool get isGold => tier.isAtLeastGold;
+  bool get isPlatinum => tier.isAtLeastPlatinum;
   bool get isFemale => gender == UserGender.female;
+
+  /// Gold+ users get LLM-powered AI profile review; free/silver get rule-based only.
+  bool get hasAiReview => tier.isAtLeastGold;
 
   bool get canSendPriorityInterestWithAd => !isPremium;
 
@@ -87,6 +96,7 @@ class Entitlements {
       dailyInterestLimit: entitlements.dailyInterestLimit,
       dailyMessageLimit: entitlements.dailyMessageLimit,
       dailyPriorityInterestLimit: entitlements.dailyPriorityInterestLimit,
+      photosVisibleCount: entitlements.photosVisibleCount,
     );
   }
 }
@@ -149,6 +159,7 @@ final entitlementsProvider = Provider<Entitlements>((ref) {
         dailyInterestLimit: 10,
         dailyMessageLimit: 0,
         dailyPriorityInterestLimit: 0,
+        photosVisibleCount: 1,
       );
 });
 

@@ -866,10 +866,10 @@ class _TabBarSectionState extends State<_TabBarSection> {
           ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
-        // isScrollable + fill keeps all tabs visible on narrow screens while
-        // still distributing them evenly — no label truncation.
+        // Scrollable tabs avoid label truncation on narrow screens / long locales.
+        // TabAlignment.fill is only allowed when isScrollable is false.
         isScrollable: true,
-        tabAlignment: TabAlignment.fill,
+        tabAlignment: TabAlignment.start,
         dividerColor: Colors.transparent,
         labelColor: cs.onPrimary,
         unselectedLabelColor: onSurface.withValues(alpha: 0.65),

@@ -18,6 +18,7 @@ import '../../features/profile_setup/screens/profile_setup_screen.dart';
 import '../../features/profile_setup/screens/profile_section_edit_screen.dart';
 import '../../features/profile/screens/full_profile_screen.dart';
 import '../../features/family/screens/family_circle_screen.dart';
+import '../../features/family/screens/handover_accept_screen.dart';
 import '../../features/profile/screens/blocked_users_screen.dart';
 import '../../features/profile/screens/profile_view_screen.dart';
 import '../../features/premium/screens/paywall_screen.dart';
@@ -25,6 +26,9 @@ import '../../features/verification/screens/verification_screen.dart';
 import '../../features/verification/screens/photo_verification_screen.dart';
 import '../../features/identity/screens/identity_onboarding_screen.dart';
 import '../../features/referral/screens/referral_screen.dart';
+import '../../features/profile/screens/ai_profile_review_screen.dart';
+import '../../features/stories/screens/success_stories_screen.dart';
+import '../../features/safety/screens/meeting_safety_screen.dart';
 import '../../features/chat/screens/chat_thread_screen.dart';
 import '../../features/requests/screens/requests_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
@@ -158,6 +162,13 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, s) => _buildPage(s, const FamilyCircleScreen()),
       ),
       GoRoute(
+        path: '/family/handover',
+        pageBuilder: (_, s) {
+          final token = s.uri.queryParameters['token'] ?? '';
+          return _buildPage(s, HandoverAcceptScreen(token: token));
+        },
+      ),
+      GoRoute(
         path: '/requests',
         pageBuilder: (_, s) => _buildPage(s, const RequestsScreen()),
       ),
@@ -170,6 +181,21 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) {
           final id = state.pathParameters['id'] ?? '';
           return _buildCardPage(state, FullProfileScreen(profileId: id));
+        },
+      ),
+      GoRoute(
+        path: '/ai-profile-review',
+        pageBuilder: (_, s) => _buildPage(s, const AiProfileReviewScreen()),
+      ),
+      GoRoute(
+        path: '/success-stories',
+        pageBuilder: (_, s) => _buildPage(s, const SuccessStoriesScreen()),
+      ),
+      GoRoute(
+        path: '/meeting-safety',
+        pageBuilder: (_, s) {
+          final matchName = s.uri.queryParameters['matchName'];
+          return _buildCardPage(s, MeetingSafetyScreen(matchName: matchName));
         },
       ),
       GoRoute(

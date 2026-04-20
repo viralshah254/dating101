@@ -291,6 +291,7 @@ class ApiProfileRepository implements ProfileRepository {
           ? DateTime.tryParse(j['creationAt'] as String)
           : null,
       creationAddress: j['creationAddress'] as String?,
+      hiddenFromRecommended: _safeBool(j['hiddenFromRecommended'], false),
     );
   }
 
@@ -552,6 +553,14 @@ class ApiProfileRepository implements ProfileRepository {
           ? (j['distanceKm'] as num).toDouble()
           : null,
       verified: _safeBool(j['verified'], false),
+      verificationScore: (j['verificationScore'] as num?)?.toDouble(),
+      idVerified: _safeBool(j['idVerified'], false),
+      photoVerified: _safeBool(j['photoVerified'], false),
+      linkedInVerified: _safeBool(j['linkedInVerified'], false),
+      educationVerified: _safeBool(j['educationVerified'], false),
+      responseRate: (j['responseRate'] as num?)?.toDouble(),
+      readyInMonths: j['readyInMonths'] as String?,
+      requireVerifiedToContact: _safeBool(j['requireVerifiedToContact'], false),
       matchReason: j['matchReason'] as String?,
       bio: (j['bio'] as String?) ?? '',
       promptAnswer: j['promptAnswer'] as String?,
@@ -576,6 +585,8 @@ class ApiProfileRepository implements ProfileRepository {
       breakdown: breakdown,
       roleManagingProfile: roleManagingProfile,
       lastActiveAt: parseApiDateTime(j['lastActiveAt'] as String?),
+      isAccepted: _safeBool(j['isAccepted'], false),
+      isNew: _safeBool(j['isNew'], false),
     );
   }
 
