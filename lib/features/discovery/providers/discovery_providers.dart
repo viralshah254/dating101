@@ -74,7 +74,13 @@ final discoveryFeedProvider = FutureProvider<List<ProfileSummary>>((
 
   // No overrides — share the paginated first page to avoid a duplicate HTTP call.
   final paginated = await ref.watch(recommendedPaginatedProvider.future);
-  return paginated.profiles;
+  if (paginated.profiles.isNotEmpty) {
+    return paginated.profiles;
+  }
+  // Belt-and-suspenders: if the shared paginated state is still empty, pull explore once
+  // (e.g. transient failure on the parallel recommended+explore first load).
+  debugPrint('[Discovery] Recommended feed empty; explore fallback for swipe stack');
+  return repo.getExplore(mode: mode, limit: 20);
 });
 
 /// Recommended list for current mode (dating discovery / matrimony matches).

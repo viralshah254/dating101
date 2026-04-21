@@ -57,6 +57,7 @@ class _StepCreatingForState extends State<StepCreatingFor> {
               child: GestureDetector(
                 onTap: () {
                   widget.formData.creatingFor = opt.value;
+                  widget.formData.applyGenderFromCreatingForRelationship(l);
                   widget.onChanged();
                   setState(() {});
                 },

@@ -3034,4 +3034,49 @@ class AppLocalizationsUr extends AppLocalizations {
   String yrs(Object age) {
     return '$age سال';
   }
+
+  @override
+  String get sentByParent => 'Sent by parent';
+
+  @override
+  String get sentByGuardian => 'Sent by guardian';
+
+  @override
+  String get sentBySibling => 'Sent by sibling';
+
+  @override
+  String get sentByFriend => 'Sent by friend';
+
+  @override
+  String managingProfileFor(String name) {
+    return 'Managing $name\'s profile';
+  }
+
+  @override
+  String get managingProfileStatus_pending => 'Waiting for handover';
+
+  @override
+  String get managingProfileStatus_active => 'Active';
+
+  @override
+  String get chatManagedByParent =>
+      'This profile is managed by a parent. You may be speaking with them.';
+
+  @override
+  String get chatManagedByGuardian =>
+      'This profile is managed by a guardian. You may be speaking with them.';
+
+  @override
+  String get chatManagedBySibling =>
+      'This profile is managed by a sibling. You may be speaking with them.';
+
+  @override
+  String get chatManagedByFriend =>
+      'This profile is managed by a friend. You may be speaking with them.';
+
+  @override
+  String get familyMemberActive => 'Parent is active';
+
+  @override
+  String get bothOnline => 'Online · Parent also active';
 }

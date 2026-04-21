@@ -292,6 +292,11 @@ class ApiProfileRepository implements ProfileRepository {
           : null,
       creationAddress: j['creationAddress'] as String?,
       hiddenFromRecommended: _safeBool(j['hiddenFromRecommended'], false),
+      verificationDeadlineAt: j['verificationDeadlineAt'] != null
+          ? DateTime.tryParse(j['verificationDeadlineAt'] as String)
+          : null,
+      subjectStatus: (j['subjectStatus'] as String?) ?? 'self',
+      familyMode: j['familyMode'] as String?,
     );
   }
 

@@ -33,6 +33,13 @@ final chatNavUnreadCountProvider = Provider.autoDispose<int>((ref) {
   );
 });
 
+/// Count of active (non-request) chat threads for the current mode.
+/// Used to enforce [maxActiveChats] limits for Silver users.
+final activeChatThreadCountProvider = Provider.autoDispose<int>((ref) {
+  final async = ref.watch(chatThreadsProvider);
+  return async.valueOrNull?.length ?? 0;
+});
+
 /// Other participant's read cursor for a thread (for ✓✓ on your messages). Updated from WS `thread_read` and on open.
 final threadPeerReadAtProvider = StateProvider.family<DateTime?, String>((ref, _) => null);
 

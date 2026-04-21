@@ -39,4 +39,20 @@ class FakeVerificationRepository implements VerificationRepository {
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
   }
+
+  @override
+  Future<LivenessSession> createLivenessSession() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const LivenessSession(
+      provider: 'persona',
+      sessionId: 'inq_fake_sandbox_000',
+      hostedUrl: 'https://verify.withpersona.com/verify?inquiry-id=inq_fake&session-token=fake',
+    );
+  }
+
+  @override
+  Future<LivenessResult> confirmLivenessSession(String sessionId, {String? provider}) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return const LivenessResult(verified: true, idVerified: true);
+  }
 }

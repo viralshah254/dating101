@@ -48,6 +48,29 @@ String _displayToGenderPref(String display, AppLocalizations l) {
   return display;
 }
 
+/// Gender chips for the profile subject. Son/brother → Man + Non-binary only;
+/// daughter/sister → Woman + Non-binary; everyone else gets the full list.
+/// Edit mode keeps all three so existing data can be corrected.
+List<String> _genderChipOptionsForCreatingFor(
+  String? creatingFor,
+  AppLocalizations l, {
+  required bool isEditing,
+}) {
+  if (isEditing) {
+    return [l.genderWoman, l.genderMan, l.genderNonBinary];
+  }
+  switch (creatingFor) {
+    case 'son':
+    case 'brother':
+      return [l.genderMan, l.genderNonBinary];
+    case 'daughter':
+    case 'sister':
+      return [l.genderWoman, l.genderNonBinary];
+    default:
+      return [l.genderWoman, l.genderMan, l.genderNonBinary];
+  }
+}
+
 /// When non-null, only that part of the identity step is shown (for section-only edit screens).
 enum StepIdentityOnlySection { basic, physical }
 
@@ -223,7 +246,11 @@ class StepIdentity extends StatelessWidget {
             child: Opacity(
               opacity: isEditing ? 0.6 : 1.0,
               child: _ChipSelector(
-                options: [l.genderWoman, l.genderMan, l.genderNonBinary],
+                options: _genderChipOptionsForCreatingFor(
+                  formData.creatingFor,
+                  l,
+                  isEditing: isEditing,
+                ),
                 selected: formData.gender,
                 onSelected: (v) {
                   formData.gender = v;
@@ -1205,19 +1232,7 @@ class _CreatingForSelector extends StatelessWidget {
         return GestureDetector(
           onTap: () {
             formData.creatingFor = opt.value;
-            // Auto-set gender + interested-in based on relationship
-            switch (opt.value) {
-              case 'son':
-              case 'brother':
-                formData.gender = l.genderMan;
-                formData.interestedIn = 'Woman';
-              case 'daughter':
-              case 'sister':
-                formData.gender = l.genderWoman;
-                formData.interestedIn = 'Man';
-              default:
-                break;
-            }
+            formData.applyGenderFromCreatingForRelationship(l);
             onChanged();
           },
           child: AnimatedContainer(

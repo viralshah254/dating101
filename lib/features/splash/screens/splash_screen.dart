@@ -75,7 +75,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           destination = '/';
         } else {
           debugPrint('[Splash] No profile found, routing to profile setup');
-          destination = '/mode-select';
+          destination = '/profile-for';
         }
       } catch (e) {
         if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {
@@ -88,7 +88,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               await ref.read(accountRepositoryProvider).reactivateAccount();
               if (!mounted) return;
               final profile = await profileRepo.getMyProfile();
-              destination = profile != null ? '/' : '/mode-select';
+              destination = profile != null ? '/' : '/profile-for';
             } catch (_) {
               await authRepo.signOut();
               destination = '/login';
@@ -107,7 +107,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           debugPrint(
             '[Splash] Error checking profile: $e — routing to setup',
           );
-          destination = '/mode-select';
+          destination = '/profile-for';
         }
       }
     }
@@ -203,18 +203,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 const SizedBox(height: 18),
 
                 // Brand tagline — now uses AppTypography (Inter) consistently
-                Text(
-                  'Find your forever',
-                  style: AppTypography.bodyLarge.copyWith(
-                    letterSpacing: 2.8,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.saffron.withValues(alpha: 0.9),
-                  ),
-                )
-                    .animate()
-                    .fadeIn(delay: 600.ms, duration: 500.ms)
-                    .slideY(begin: 0.1, end: 0),
-
+                
                 const Spacer(flex: 2),
 
                 // Loading indicator

@@ -6,22 +6,24 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/shell/root_shell.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../chat/providers/chat_providers.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
+import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../domain/models/shortlist_entry.dart';
 import '../../../domain/models/who_shortlisted_me_entry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
-import '../../matches/widgets/match_profile_card.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../providers/shortlist_providers.dart';
 
@@ -96,7 +98,7 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(recommendedPaginatedProvider);
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
@@ -109,8 +111,25 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       } else {
         showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'ALREADY_SENT') {
+        ref.invalidate(sentInteractionsProvider(mode));
+        ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+              (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
+            );
+        showSuccessToast(context, AppLocalizations.of(context)!.toastInterestSentTo(p.name));
+        return;
+      }
       showErrorToast(context, e.message);
     }
   }
@@ -151,8 +170,8 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
@@ -164,6 +183,15 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
       } else {
         showSuccessToast(context, l.toastInterestSentTo(p.name));
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       showErrorToast(context, e.message);
@@ -237,7 +265,10 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
+      // Deferred: heavy discovery pipeline runs in background.
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -248,6 +279,22 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
   }
 
   Future<void> _openChat(ProfileSummary p, {String? initialAdToken}) async {
+    // Enforce Silver active-chat limit (25 threads).
+    final ent = ref.read(entitlementsProvider);
+    if (ent.maxActiveChats > 0) {
+      final activeCount = ref.read(activeChatThreadCountProvider);
+      if (activeCount >= ent.maxActiveChats) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("You've reached your 25-chat limit. Upgrade to Gold for unlimited chats."),
+            action: SnackBarAction(label: 'Upgrade', onPressed: () => context.push('/premium')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
@@ -448,6 +495,10 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
     final async = ref.watch(shortlistProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final sentInterestIds =
+        ref.watch(sentInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
+    final optimisticInterestIds =
+        ref.watch(optimisticSentInterestProfileIdsProvider)[mode] ?? <String>{};
     final sentPriorityIds =
         ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ?? <String>{};
 
@@ -466,90 +517,38 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
             ref.invalidate(shortlistedIdsProvider);
           },
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             itemCount: entries.length,
             itemBuilder: (context, index) {
               final entry = entries[index];
               final p = entry.profile;
-              final cardHeight = (MediaQuery.sizeOf(context).height * 0.78)
-                  .clamp(380.0, 520.0);
+              final isMutualMatch = matchedIds.contains(p.id);
+              final isInterested = sentInterestIds.contains(p.id) ||
+                  optimisticInterestIds.contains(p.id);
+              final isPriorityInterested = sentPriorityIds.contains(p.id);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: entry.shortlistId != null
-                                  ? () =>
-                                        _showEditNoteDialog(context, ref, entry)
-                                  : null,
-                              child: Text(
-                                entry.note != null && entry.note!.isNotEmpty
-                                    ? entry.note!
-                                    : 'Add note (e.g. Family liked, Call next week)',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(
-                                        alpha:
-                                            entry.note != null &&
-                                                entry.note!.isNotEmpty
-                                            ? 0.7
-                                            : 0.5,
-                                      ),
-                                  fontStyle:
-                                      entry.note != null &&
-                                          entry.note!.isNotEmpty
-                                      ? FontStyle.italic
-                                      : FontStyle.normal,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          if (entry.shortlistId != null)
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              onPressed: () =>
-                                  _showEditNoteDialog(context, ref, entry),
-                              style: IconButton.styleFrom(
-                                padding: const EdgeInsets.all(4),
-                                minimumSize: const Size(36, 36),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: cardHeight,
-                      child: MatchProfileCard(
-                        profile: p,
-                        isShortlisted: true,
-                        isPriorityInterested: sentPriorityIds.contains(p.id),
-                        messageUnlockedByMatch: matchedIds.contains(p.id),
-                        onTap: () => context.push('/profile/${p.id}'),
-                        onLike: () => _onLike(p),
-                        onSuperLike: () => _onSuperLike(p),
-                        onShortlist: () async {
-                          await ref
-                              .read(shortlistRepositoryProvider)
-                              .removeFromShortlist(p.id);
-                          ref.invalidate(shortlistProvider);
-                          ref.invalidate(shortlistedIdsProvider);
-                        },
-                        onMessage: () => _onMessage(p),
-                        onUpgrade: () => context.push('/paywall'),
-                        onBlock: () => _onBlock(p),
-                        onReport: () => _onReport(p),
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _ShortlistProfileTile(
+                  entry: entry,
+                  isMutualMatch: isMutualMatch,
+                  isInterested: isInterested,
+                  isPriorityInterested: isPriorityInterested,
+                  onTap: () => context.push('/profile/${p.id}'),
+                  onLike: () => _onLike(p),
+                  onSuperLike: () => _onSuperLike(p),
+                  onMessage: () => _onMessage(p),
+                  onRemoveShortlist: () async {
+                    await ref
+                        .read(shortlistRepositoryProvider)
+                        .removeFromShortlist(p.id);
+                    ref.invalidate(shortlistProvider);
+                    ref.invalidate(shortlistedIdsProvider);
+                  },
+                  onEditNote: entry.shortlistId != null
+                      ? () => _showEditNoteDialog(context, ref, entry)
+                      : null,
+                  onBlock: () => _onBlock(p),
+                  onReport: () => _onReport(p),
                 ),
               ).staggeredItem(index);
             },
@@ -563,6 +562,429 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
         retryLabel: l.retry,
       ),
     );
+  }
+}
+
+// ── Compact shortlist profile tile ──────────────────────────────────────
+
+class _ShortlistProfileTile extends StatelessWidget {
+  const _ShortlistProfileTile({
+    required this.entry,
+    required this.isMutualMatch,
+    required this.isInterested,
+    required this.isPriorityInterested,
+    required this.onTap,
+    required this.onLike,
+    required this.onSuperLike,
+    required this.onMessage,
+    required this.onRemoveShortlist,
+    required this.onBlock,
+    required this.onReport,
+    this.onEditNote,
+  });
+
+  final ShortlistEntry entry;
+  final bool isMutualMatch;
+  final bool isInterested;
+  final bool isPriorityInterested;
+  final VoidCallback onTap;
+  final VoidCallback onLike;
+  final VoidCallback onSuperLike;
+  final VoidCallback onMessage;
+  final VoidCallback onRemoveShortlist;
+  final VoidCallback onBlock;
+  final VoidCallback onReport;
+  final VoidCallback? onEditNote;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = entry.profile;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final accent = Theme.of(context).colorScheme.secondary;
+    final surface = Theme.of(context).colorScheme.surface;
+    final hasNote = entry.note != null && entry.note!.isNotEmpty;
+
+    // Determine primary action state
+    final bool showMessage = isMutualMatch;
+    final bool interestSent = isInterested || isPriorityInterested;
+
+    // Verification badge color/label
+    final verScore = p.verificationScore ?? (p.verified ? 0.5 : 0.0);
+    Color? verColor;
+    String? verLabel;
+    if (verScore >= 0.8) {
+      verColor = const Color(0xFF00C853);
+      verLabel = 'Fully Verified';
+    } else if (verScore >= 0.5) {
+      verColor = const Color(0xFF1565C0);
+      verLabel = 'Verified';
+    } else if (p.verified) {
+      verColor = const Color(0xFFF57C00);
+      verLabel = '${(verScore * 100).round()}% verified';
+    }
+
+    return Material(
+      color: surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: onSurface.withValues(alpha: 0.07)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Photo thumbnail
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: p.imageUrl != null
+                          ? Image.network(
+                              p.imageUrl!,
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _TileAvatarPlaceholder(profile: p, accent: accent),
+                            )
+                          : _TileAvatarPlaceholder(profile: p, accent: accent),
+                    ),
+                    if (isMutualMatch)
+                      Positioned(
+                        bottom: -4,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: surface, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.favorite_rounded,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                // Centre info column
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${p.name}${p.age != null ? ', ${p.age}' : ''}',
+                              style: AppTypography.titleSmall.copyWith(
+                                color: onSurface,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isMutualMatch) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Match',
+                                style: AppTypography.caption.copyWith(
+                                  color: accent,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (p.city != null && p.city!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 12,
+                              color: onSurface.withValues(alpha: 0.45),
+                            ),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                p.city!,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: onSurface.withValues(alpha: 0.55),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (verLabel != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.verified_rounded,
+                              size: 12,
+                              color: verColor,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              verLabel,
+                              style: AppTypography.caption.copyWith(
+                                color: verColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (p.roleManagingProfile != null &&
+                          p.roleManagingProfile != ProfileRole.self) ...[
+                        const SizedBox(height: 4),
+                        _ShortlistManagedByChip(
+                          role: p.roleManagingProfile!,
+                          accent: accent,
+                          onSurface: onSurface,
+                        ),
+                      ],
+                      if (hasNote) ...[
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: onEditNote,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.edit_note_rounded,
+                                size: 12,
+                                color: onSurface.withValues(alpha: 0.4),
+                              ),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  entry.note!,
+                                  style: AppTypography.caption.copyWith(
+                                    color: onSurface.withValues(alpha: 0.55),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (!hasNote && onEditNote != null) ...[
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: onEditNote,
+                          child: Text(
+                            'Add note...',
+                            style: AppTypography.caption.copyWith(
+                              color: onSurface.withValues(alpha: 0.35),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Right action buttons
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Primary action: Message (match) or Interest
+                    _TileIconButton(
+                      icon: showMessage
+                          ? Icons.chat_bubble_outline_rounded
+                          : interestSent
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                      color: showMessage
+                          ? accent
+                          : interestSent
+                              ? accent
+                              : onSurface.withValues(alpha: 0.5),
+                      onTap: showMessage ? onMessage : (interestSent ? onSuperLike : onLike),
+                      tooltip: showMessage ? 'Message' : (interestSent ? 'Add Priority' : 'Express Interest'),
+                    ),
+                    const SizedBox(height: 4),
+                    // Star (remove from shortlist)
+                    _TileIconButton(
+                      icon: Icons.star_rounded,
+                      color: accent,
+                      onTap: onRemoveShortlist,
+                      tooltip: 'Remove from shortlist',
+                    ),
+                  ],
+                ),
+                // 3-dot menu
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: 20,
+                    color: onSurface.withValues(alpha: 0.4),
+                  ),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onSelected: (v) {
+                    if (v == 'note') onEditNote?.call();
+                    if (v == 'message') onMessage();
+                    if (v == 'block') onBlock();
+                    if (v == 'report') onReport();
+                  },
+                  itemBuilder: (_) => [
+                    if (onEditNote != null)
+                      const PopupMenuItem(
+                        value: 'note',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_note_rounded, size: 20),
+                            SizedBox(width: 12),
+                            Text('Edit note'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'message',
+                      child: Row(
+                        children: [
+                          Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                          SizedBox(width: 12),
+                          Text('Message'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'block',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.block,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Block'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'report',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.flag_outlined,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Report'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TileAvatarPlaceholder extends StatelessWidget {
+  const _TileAvatarPlaceholder({required this.profile, required this.accent});
+  final ProfileSummary profile;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.18),
+            accent.withValues(alpha: 0.08),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.person_rounded,
+          size: 36,
+          color: accent.withValues(alpha: 0.45),
+        ),
+      ),
+    );
+  }
+}
+
+class _TileIconButton extends StatelessWidget {
+  const _TileIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.tooltip,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(icon, size: 20, color: color),
+        ),
+      ),
+    );
+    if (tooltip != null) return Tooltip(message: tooltip!, child: child);
+    return child;
   }
 }
 
@@ -582,6 +1004,7 @@ class _ShortlistedYouTab extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(whoShortlistedMeProvider);
           ref.invalidate(whoShortlistedMeCountProvider);
+          ref.invalidate(navBadgesProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -602,6 +1025,7 @@ class _ShortlistedYouTab extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(whoShortlistedMeProvider);
         ref.invalidate(whoShortlistedMeCountProvider);
+        ref.invalidate(navBadgesProvider);
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -644,6 +1068,7 @@ class _ShortlistedYouTab extends ConsumerWidget {
           resetsAt: result.resetsAt,
         );
         ref.invalidate(whoShortlistedMeCountProvider);
+        ref.invalidate(navBadgesProvider);
       }
     } on ApiException catch (e) {
       if (!context.mounted) return;
@@ -897,25 +1322,35 @@ class _ShortlistedYouPremiumGate extends ConsumerWidget {
             ),
           ],
           if (lockedCount > 0) ...[
-            const SizedBox(height: 12),
-            if (canUnlockMore)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  '$remaining unlock${remaining == 1 ? '' : 's'} left this week',
-                  style: AppTypography.caption.copyWith(
-                    color: onSurface.withValues(alpha: 0.6),
+            () {
+              final stillLocked = (lockedCount - unlocked.length).clamp(0, lockedCount);
+              if (stillLocked == 0) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  if (canUnlockMore)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '$remaining unlock${remaining == 1 ? '' : 's'} left this week',
+                        style: AppTypography.caption.copyWith(
+                          color: onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ...List.generate(
+                    stillLocked,
+                    (_) => _ShortlistBlurredCard(
+                      onUnlock: canUnlockMore ? onUnlockOne : null,
+                      limitReached: !canUnlockMore,
+                      resetsAt: resetsAt,
+                    ),
                   ),
-                ),
-              ),
-            ...List.generate(
-              lockedCount,
-              (_) => _ShortlistBlurredCard(
-                onUnlock: canUnlockMore ? onUnlockOne : null,
-                limitReached: !canUnlockMore,
-                resetsAt: resetsAt,
-              ),
-            ),
+                ],
+              );
+            }(),
           ],
         ],
       ),
@@ -1143,6 +1578,54 @@ class _BlurredPreviewCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Compact managed-by indicator for shortlist tiles (mirrors the chip in match_profile_card.dart).
+class _ShortlistManagedByChip extends StatelessWidget {
+  const _ShortlistManagedByChip({
+    required this.role,
+    required this.accent,
+    required this.onSurface,
+  });
+
+  final ProfileRole role;
+  final Color accent;
+  final Color onSurface;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final String label;
+    switch (role) {
+      case ProfileRole.parent:
+        label = l.profileManagedByParent;
+      case ProfileRole.guardian:
+        label = l.profileManagedByGuardian;
+      case ProfileRole.sibling:
+        label = l.profileManagedBySibling;
+      case ProfileRole.friend:
+        label = l.profileManagedByFriend;
+      case ProfileRole.self:
+        return const SizedBox.shrink();
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.family_restroom, size: 11, color: accent.withValues(alpha: 0.8)),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(
+            label,
+            style: AppTypography.caption.copyWith(
+              color: accent.withValues(alpha: 0.9),
+              fontSize: 10,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

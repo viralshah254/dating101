@@ -77,31 +77,52 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
     final body = await api.get('/subscription/entitlements');
     final tierRaw = body['tier'] as String?;
     final tier = parseTier(tierRaw);
-    final isPremium = tier.isAtLeastGold;
+    final isSilver = tier.isAtLeastSilver;
+    final isGold = tier.isAtLeastGold;
+    final isPlatinum = tier.isAtLeastPlatinum;
     return SubscriptionEntitlements(
       tier: tier,
       gender: body['gender'] as String? ?? 'unknown',
       canExpressInterest: body['canExpressInterest'] as bool? ?? true,
       canShortlist: body['canShortlist'] as bool? ?? true,
       canViewFullProfile: body['canViewFullProfile'] as bool? ?? true,
-      canSendMessage: body['canSendMessage'] as bool? ?? false,
-      canSeeWhoLikedYou: body['canSeeWhoLikedYou'] as bool? ?? body['canSeeWhoLiked'] as bool? ?? false,
-      canSeeWhoShortlistedYou: body['canSeeWhoShortlistedYou'] as bool? ?? false,
-      dailyInterestLimit: body['dailyInterestLimit'] as int? ?? 10,
+      // Silver+: can initiate messages. Free users only reply in accepted threads
+      // (the isMatched bypass in UI already handles those).
+      canSendMessage: body['canSendMessage'] as bool? ?? isSilver,
+      // Silver+: see blurred thumbnails → full names. Gold+: see everything.
+      canSeeWhoLikedYou: body['canSeeWhoLikedYou'] as bool? ?? body['canSeeWhoLiked'] as bool? ?? isSilver,
+      // Gold+ only
+      canSeeWhoShortlistedYou: body['canSeeWhoShortlistedYou'] as bool? ?? isGold,
+      // Free = 10, Silver = 25, Gold+ = unlimited (9999 sentinel)
+      dailyInterestLimit: body['dailyInterestLimit'] as int? ?? (isGold ? 9999 : isSilver ? 25 : 10),
       dailyMessageLimit: body['dailyMessageLimit'] as int? ?? 0,
-      dailyPriorityInterestLimit: body['dailyPriorityInterestLimit'] as int? ?? (isPremium ? 10 : 0),
-      hasPriorityDiscovery: body['hasPriorityDiscovery'] as bool? ?? false,
-      canSuperlike: body['canSuperlike'] as bool? ?? false,
-      canSendMessageDirect: body['canSendMessageDirect'] as bool? ?? isPremium,
-      canSeeRequestsInbox: body['canSeeRequestsInbox'] as bool? ?? isPremium,
-      requiresAdPerRequestToView: body['requiresAdPerRequestToView'] as bool? ?? !isPremium,
-      canBoostProfile: body['canBoostProfile'] as bool? ?? isPremium,
-      canRequestContact: body['canRequestContact'] as bool? ?? isPremium,
-      canViewAllPhotos: body['canViewAllPhotos'] as bool? ?? isPremium,
-      canSeeCompatBreakdown: body['canSeeCompatBreakdown'] as bool? ?? isPremium,
-      canUseTravelMode: body['canUseTravelMode'] as bool? ?? isPremium,
-      hasReadReceipts: body['hasReadReceipts'] as bool? ?? isPremium,
-      photosVisibleCount: (body['photosVisibleCount'] as num?)?.toInt() ?? (isPremium ? 999 : 1),
+      // Free = 0 (ad), Silver = 1, Gold = 5, Platinum = 10
+      dailyPriorityInterestLimit: body['dailyPriorityInterestLimit'] as int? ??
+          (isPlatinum ? 10 : isGold ? 5 : isSilver ? 1 : 0),
+      // Gold+ only
+      hasPriorityDiscovery: body['hasPriorityDiscovery'] as bool? ?? isGold,
+      // Platinum only
+      canSuperlike: body['canSuperlike'] as bool? ?? isPlatinum,
+      // Silver: messages go as requests. Gold+: direct to inbox.
+      canSendMessageDirect: body['canSendMessageDirect'] as bool? ?? isGold,
+      // Silver+: can see requests inbox
+      canSeeRequestsInbox: body['canSeeRequestsInbox'] as bool? ?? isSilver,
+      // Silver+: no ad required to view a request
+      requiresAdPerRequestToView: body['requiresAdPerRequestToView'] as bool? ?? !isSilver,
+      // Platinum: included daily. Gold/Silver: available as add-on (purchased separately).
+      canBoostProfile: body['canBoostProfile'] as bool? ?? isPlatinum,
+      // Gold+ only
+      canRequestContact: body['canRequestContact'] as bool? ?? isGold,
+      // Silver+: all photos visible
+      canViewAllPhotos: body['canViewAllPhotos'] as bool? ?? isSilver,
+      // Gold+ only
+      canSeeCompatBreakdown: body['canSeeCompatBreakdown'] as bool? ?? isGold,
+      canUseTravelMode: body['canUseTravelMode'] as bool? ?? isGold,
+      hasReadReceipts: body['hasReadReceipts'] as bool? ?? isGold,
+      // Free = 1 photo (2-3 via ads). Silver+ = all photos.
+      photosVisibleCount: (body['photosVisibleCount'] as num?)?.toInt() ?? (isSilver ? 999 : 1),
+      // Max simultaneous active chat threads. 0 = unlimited. Silver = 25.
+      maxActiveChats: body['maxActiveChats'] as int? ?? (isGold ? 0 : isSilver ? 25 : 0),
       raw: body,
     );
   }

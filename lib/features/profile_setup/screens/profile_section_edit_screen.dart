@@ -14,6 +14,7 @@ import '../widgets/step_interests.dart';
 import '../widgets/step_photos.dart';
 import '../widgets/step_details.dart';
 import '../widgets/step_preferences.dart';
+import '../widgets/step_about_you.dart';
 import 'profile_setup_screen.dart';
 
 /// Section IDs used in route /profile-edit/:section
@@ -284,7 +285,6 @@ class _ProfileSectionEditScreenState
   }
 
   Widget _buildSectionContent(AppMode mode) {
-    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     switch (widget.sectionId) {
@@ -364,12 +364,15 @@ class _ProfileSectionEditScreenState
       case 'interests':
         return StepInterests(formData: _formData, onChanged: _onChanged);
       case 'about':
-        return _AboutSectionContent(
-          formData: _formData,
-          onChanged: _onChanged,
-          l: l,
-          onSurface: onSurface,
-        );
+        return mode.isMatrimony
+            ? StepAboutYouMatrimony(
+                formData: _formData,
+                onChanged: _onChanged,
+              )
+            : StepAboutYou(
+                formData: _formData,
+                onChanged: _onChanged,
+              );
       case 'preferences':
         return StepPreferences(
           mode: mode,

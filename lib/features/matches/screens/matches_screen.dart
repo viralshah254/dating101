@@ -30,6 +30,7 @@ import '../../../domain/models/discovery_filter_params.dart';
 import '../providers/matches_providers.dart';
 import '../widgets/daily_matches_popup.dart';
 import '../widgets/match_profile_card.dart';
+import '../../chat/providers/chat_providers.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
@@ -120,7 +121,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      AppColors.rosePrimary.withValues(alpha: 0.07),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
                       Theme.of(context).colorScheme.surface,
                     ],
                   ),
@@ -306,19 +307,24 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(recommendedPaginatedProvider);
-      ref.invalidate(matchesSearchProvider);
-      ref.invalidate(matchesNearbyProvider);
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
             );
         if (!mounted) return;
         _showMutualMatchCelebration(context, p, result.chatThreadId);
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -394,19 +400,24 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(recommendedPaginatedProvider);
-      ref.invalidate(matchesSearchProvider);
-      ref.invalidate(matchesNearbyProvider);
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
             );
         if (!mounted) return;
         _showMutualMatchCelebration(context, p, result.chatThreadId);
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -566,7 +577,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
+      // Deferred: heavy discovery pipeline runs in background.
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -579,6 +593,22 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   Future<void> _openChat(ProfileSummary p, {String? initialAdToken}) async {
     final l = AppLocalizations.of(context)!;
+    // Enforce Silver active-chat limit (25 threads).
+    final ent = ref.read(entitlementsProvider);
+    if (ent.maxActiveChats > 0) {
+      final activeCount = ref.read(activeChatThreadCountProvider);
+      if (activeCount >= ent.maxActiveChats) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("You've reached your 25-chat limit. Upgrade to Gold for unlimited chats."),
+            action: SnackBarAction(label: 'Upgrade', onPressed: () => context.push('/premium')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
@@ -944,12 +974,24 @@ class _RecommendedTab extends ConsumerWidget {
       skipLoadingOnReload: true,
       data: (state) {
         // Exclude matches and profiles we already sent interest/priority to (API + optimistic so full-profile tap is reflected).
-        final excluded = state.profiles
+        final strict = state.profiles
             .where((p) =>
                 !matchedIds.contains(p.id) &&
                 !excludedFromRecommended.contains(p.id))
             .toList();
-        final filtered = applySortOption(excluded, sort);
+        var filtered = applySortOption(strict, sort);
+        var usedRelaxedRecommended = false;
+        // API returned people but strict list is empty (e.g. already sent interest to everyone).
+        // Never show an empty Recommended tab — widen to lower-fit / broader pool.
+        if (filtered.isEmpty && state.profiles.isNotEmpty) {
+          final withoutMatches = state.profiles
+              .where((p) => !matchedIds.contains(p.id))
+              .toList();
+          filtered = withoutMatches.isEmpty
+              ? applySortOption(state.profiles, sort)
+              : applySortOption(withoutMatches, sort);
+          usedRelaxedRecommended = true;
+        }
         return _ProfileList(
           profiles: filtered,
           shortlistedIds: shortlistedIds,
@@ -968,7 +1010,8 @@ class _RecommendedTab extends ConsumerWidget {
           emptyBody: l.noRecommendationsYetBody,
           onReached20thProfile: filtered.length >= 20 ? onReached20thProfile : null,
           showReferralCards: filtered.length >= 10,
-          widenedSearchBanner: state.isWidenedSearch && filtered.isNotEmpty
+          widenedSearchBanner:
+              (state.isWidenedSearch || usedRelaxedRecommended) && filtered.isNotEmpty
               ? _WidenedSearchBanner(
                   title: l.searchWidenedTitle,
                   body: l.searchWidenedBody,

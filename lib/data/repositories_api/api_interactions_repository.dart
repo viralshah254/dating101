@@ -14,11 +14,15 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String? source,
     AppMode? mode,
     String? message,
+    String? adCompletionToken,
   }) async {
     final body = <String, dynamic>{'toUserId': toUserId};
     if (source != null && source.isNotEmpty) body['source'] = source;
     if (mode != null && mode.isSingleMode) body['mode'] = mode.name;
     if (message != null && message.isNotEmpty) body['message'] = message;
+    if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
+      body['adCompletionToken'] = adCompletionToken;
+    }
     final res = await api.post('/interactions/interest', body: body);
     return _parseResult(res);
   }
@@ -149,6 +153,22 @@ class ApiInteractionsRepository implements InteractionsRepository {
         .map((e) => e.toString().trim())
         .where((e) => e.isNotEmpty)
         .toList();
+  }
+
+  @override
+  Future<LikedYouUnlockResult> unlockOneLikedYou({
+    required String adCompletionToken,
+  }) async {
+    final res = await api.post('/interactions/liked-you/unlock-one', body: {
+      'adCompletionToken': adCompletionToken,
+    });
+    final interactionMap = res['interaction'] as Map<String, dynamic>? ?? {};
+    final profile = ApiProfileRepository.parseSummaryPublic(interactionMap);
+    return LikedYouUnlockResult(
+      interestId: interactionMap['interestId'] as String? ?? '',
+      profile: profile,
+      adsRemainingToday: res['adsRemainingToday'] as int? ?? 0,
+    );
   }
 
   static List<InteractionInboxItem> parseInboxList(List list, {required bool isReceived}) {

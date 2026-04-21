@@ -1063,5 +1063,18 @@
   "yourInviteCode": "আপনার ইনভাইট কোড",
   "yourName": "আপনার নাম",
   "yourProfile": "আপনার প্রোফাইল",
-  "yrs": "{age} বছর"
+  "yrs": "{age} বছর",
+  "sentByParent": "Sent by parent",
+  "sentByGuardian": "Sent by guardian",
+  "sentBySibling": "Sent by sibling",
+  "sentByFriend": "Sent by friend",
+  "managingProfileFor": "Managing {name}'s profile",
+  "managingProfileStatus_pending": "Waiting for handover",
+  "managingProfileStatus_active": "Active",
+  "chatManagedByParent": "This profile is managed by a parent. You may be speaking with them.",
+  "chatManagedByGuardian": "This profile is managed by a guardian. You may be speaking with them.",
+  "chatManagedBySibling": "This profile is managed by a sibling. You may be speaking with them.",
+  "chatManagedByFriend": "This profile is managed by a friend. You may be speaking with them.",
+  "familyMemberActive": "Parent is active",
+  "bothOnline": "Online · Parent also active"
 }

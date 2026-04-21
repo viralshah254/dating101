@@ -68,10 +68,12 @@ class SubscriptionEntitlements {
     this.canExpressInterest = true,
     this.canShortlist = true,
     this.canViewFullProfile = true,
+    // Silver+: can initiate messages. Free users can only reply inside
+    // acceptance-opened threads (the isMatched bypass in the UI handles this).
     this.canSendMessage = false,
     this.canSeeWhoLikedYou = false,
     this.canSeeWhoShortlistedYou = false,
-    this.dailyInterestLimit = 5,
+    this.dailyInterestLimit = 10,
     this.dailyMessageLimit = 0,
     this.dailyPriorityInterestLimit = 0,
     this.hasPriorityDiscovery = false,
@@ -86,6 +88,10 @@ class SubscriptionEntitlements {
     this.canUseTravelMode = false,
     this.hasReadReceipts = false,
     this.photosVisibleCount = 1,
+    // Max simultaneous active chat threads. 0 = unlimited (Gold+).
+    // Free = 0 but backend only opens threads on mutual acceptance.
+    // Silver = 25.
+    this.maxActiveChats = 0,
     this.raw = const {},
   });
   final SubscriptionTier tier;
@@ -93,30 +99,34 @@ class SubscriptionEntitlements {
   final bool canExpressInterest;
   final bool canShortlist;
   final bool canViewFullProfile;
+  /// True for Silver+. Free users can only reply inside acceptance-opened threads
+  /// (the isMatched bypass in UI handles those cases).
   final bool canSendMessage;
   final bool canSeeWhoLikedYou;
   final bool canSeeWhoShortlistedYou;
   final int dailyInterestLimit;
   final int dailyMessageLimit;
-  /// Premium: 10/day. Free: 0 (can use ad to send one).
+  /// Gold: 5/day. Silver: 1/day. Free: 0 (can use ad for one).
   final int dailyPriorityInterestLimit;
   final bool hasPriorityDiscovery;
   final bool canSuperlike;
-  /// If true, messages go to normal chat; if false, free user sends as message request (after ad).
+  /// If true, messages go straight to inbox; false = goes as a request (Silver behaviour).
   final bool canSendMessageDirect;
-  /// If true, user can see the requests (inbox) list. Premium only.
+  /// If true, user can see the requests inbox. Silver+.
   final bool canSeeRequestsInbox;
-  /// If true, user must watch ad per request before viewing/accepting (except e.g. phone).
+  /// If true, user must watch an ad per request before viewing/accepting.
   final bool requiresAdPerRequestToView;
-  /// Can purchase profile boost (1hr/day peak, show on top).
+  /// Can purchase profile boost (1 hr/day peak). Included for Platinum; add-on for others.
   final bool canBoostProfile;
   final bool canRequestContact;
   final bool canViewAllPhotos;
   final bool canSeeCompatBreakdown;
   final bool canUseTravelMode;
   final bool hasReadReceipts;
-  /// Number of photos visible before blur/gate. 999 = all (silver+ or female). 1 = free male baseline.
+  /// Number of photos visible before blur/gate. 999 = all (Silver+ or female). 1 = free male baseline.
   final int photosVisibleCount;
+  /// Max simultaneous active chat threads. 0 = unlimited. Silver = 25.
+  final int maxActiveChats;
   final Map<String, dynamic> raw;
 }
 

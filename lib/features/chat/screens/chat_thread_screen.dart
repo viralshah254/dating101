@@ -790,11 +790,22 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       }
     }
     final online = threadRow?.otherUserOnline ?? false;
+    final familyMemberOnline = threadRow?.familyMemberOnline ?? false;
     final lastActive =
         threadRow?.otherLastActiveAt ?? profile?.lastActiveAt;
+    final otherProfileManagedBy = threadRow?.otherProfileManagedBy;
+    final otherProfileSubjectStatus = threadRow?.otherProfileSubjectStatus;
     final headerPresence = _chatHeaderPresence(online: online, lastActive: lastActive);
-    final presenceLabel =
-        formatProfileLastSeenSubtitle(online: online, lastActive: lastActive);
+    final l10nLocal = AppLocalizations.of(context)!;
+    // Family-aware presence label
+    final String? presenceLabel;
+    if (online && familyMemberOnline) {
+      presenceLabel = l10nLocal.bothOnline;
+    } else if (!online && familyMemberOnline) {
+      presenceLabel = l10nLocal.familyMemberActive;
+    } else {
+      presenceLabel = formatProfileLastSeenSubtitle(online: online, lastActive: lastActive);
+    }
     final compatibilityScore = profile?.compatibilityScore;
     final scoreLabel = compatibilityScore != null
         ? '${(compatibilityScore * 100).round()}% match'
@@ -936,6 +947,12 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         children: [
           // Match Progression Banner
           _MatchProgressionBanner(threadId: widget.threadId),
+          // Managed-profile info banner (shown when the other person's profile is family-managed)
+          if (otherProfileManagedBy != null && otherProfileManagedBy.isNotEmpty)
+            _ManagedProfileChatBanner(
+              managedBy: otherProfileManagedBy,
+              subjectStatus: otherProfileSubjectStatus,
+            ),
           Expanded(
             child: Container(
               color: Theme.of(
@@ -1069,9 +1086,15 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                           currentUserId != null && m.senderId == currentUserId;
                       final outboundPending =
                           isMe && pendingSent.any((p) => p.id == m.id);
-                      final showDateSeparator =
-                          i == 0 ||
-                          !isSameLocalDay(m.sentAt, reversed[i - 1].sentAt);
+                      // With reverse:true, index 0 is the newest bubble (bottom). A blanket
+                      // `i == 0` separator always drew "Today" between two same-day messages.
+                      final showDateSeparator = i == 0
+                          ? reversed.length == 1 ||
+                              !isSameLocalDay(
+                                reversed[0].sentAt,
+                                reversed[1].sentAt,
+                              )
+                          : !isSameLocalDay(m.sentAt, reversed[i - 1].sentAt);
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1088,6 +1111,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
                                 peerReadAt: peerReadAt,
                                 otherUserOnline: online,
                                 otherLastActiveAt: lastActive,
+                                senderType: m.senderType,
                                 onRetryOutgoingFailed: isMe &&
                                         m.id.startsWith('failed-')
                                     ? () => unawaited(
@@ -1153,6 +1177,64 @@ _ChatHeaderPresence _chatHeaderPresence({
   return _ChatHeaderPresence.offline;
 }
 
+/// Dismissible info banner shown when the other chat participant's profile is managed by a family member.
+class _ManagedProfileChatBanner extends StatefulWidget {
+  const _ManagedProfileChatBanner({required this.managedBy, this.subjectStatus});
+  final String managedBy;
+  final String? subjectStatus;
+
+  @override
+  State<_ManagedProfileChatBanner> createState() => _ManagedProfileChatBannerState();
+}
+
+class _ManagedProfileChatBannerState extends State<_ManagedProfileChatBanner> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final String text;
+    switch (widget.managedBy) {
+      case 'parent':
+        text = l.chatManagedByParent;
+      case 'guardian':
+        text = l.chatManagedByGuardian;
+      case 'sibling':
+        text = l.chatManagedBySibling;
+      case 'friend':
+        text = l.chatManagedByFriend;
+      default:
+        text = l.chatManagedByParent;
+    }
+    return Material(
+      color: cs.secondaryContainer.withValues(alpha: 0.7),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(Icons.family_restroom, size: 16, color: cs.onSecondaryContainer),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: cs.onSecondaryContainer,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => setState(() => _dismissed = true),
+              child: Icon(Icons.close, size: 16, color: cs.onSecondaryContainer.withValues(alpha: 0.6)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DateSeparator extends StatelessWidget {
   const _DateSeparator({required this.sentAt});
   final DateTime sentAt;
@@ -1198,6 +1280,7 @@ class _MessageBubble extends StatelessWidget {
     this.otherUserOnline = false,
     this.otherLastActiveAt,
     this.onRetryOutgoingFailed,
+    this.senderType = 'owner',
   });
   final String messageId;
   final String text;
@@ -1213,6 +1296,8 @@ class _MessageBubble extends StatelessWidget {
   final DateTime? otherLastActiveAt;
   /// Tap to resend after a network failure (cloud icon).
   final VoidCallback? onRetryOutgoingFailed;
+  /// "owner" | "family_member" — when "family_member" and !isMe, show "Sent by parent" label.
+  final String senderType;
 
   static const Duration _recentlyActiveWindow = Duration(minutes: 10);
 
@@ -1379,6 +1464,35 @@ class _MessageBubble extends StatelessWidget {
       );
     }
 
+    // Show "Sent by parent/guardian/sibling/friend" label below inbound family-member messages.
+    final isFamilyMember = !isMe && senderType == 'family_member';
+    final l10n = isFamilyMember ? AppLocalizations.of(context) : null;
+    final familyLabel = isFamilyMember && l10n != null ? l10n.sentByParent : null;
+
+    if (isFamilyMember && familyLabel != null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            bubble,
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 4),
+              child: Text(
+                familyLabel,
+                style: AppTypography.caption.copyWith(
+                  color: onSurface.withValues(alpha: 0.5),
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: bubble,
@@ -1491,58 +1605,119 @@ class _TypingBarState extends ConsumerState<_TypingBar>
   }
 
   void _showEmojiPicker() {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.5,
-        decoration: BoxDecoration(
-          color: Theme.of(ctx).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+      builder: (ctx) {
+        final sheetH = MediaQuery.sizeOf(ctx).height * 0.58;
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+          child: Container(
+            height: sheetH,
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  ctx,
-                ).colorScheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: EmojiPicker(
-                textEditingController: _controller,
-                config: Config(
-                  height: 256,
-                  emojiViewConfig: EmojiViewConfig(
-                    emojiSizeMax: 28,
-                    backgroundColor: Theme.of(ctx).colorScheme.surface,
-                  ),
-                  categoryViewConfig: CategoryViewConfig(
-                    backgroundColor: Theme.of(ctx)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.3),
-                    indicatorColor: Theme.of(ctx).colorScheme.primary,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 8),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
+                // Composer stays visible above the emoji grid (same controller as main bar).
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 12, 8, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.keyboard_rounded, color: onSurface.withValues(alpha: 0.6)),
+                        tooltip: MaterialLocalizations.of(ctx).closeButtonTooltip,
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            hintText: l.chatMessageHint,
+                            filled: true,
+                            fillColor: onSurface.withValues(alpha: 0.06),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                          ),
+                          maxLines: 4,
+                          minLines: 1,
+                          textInputAction: TextInputAction.newline,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton.filled(
+                        icon: const Icon(Icons.send_rounded, size: 22),
+                        onPressed: () => _triggerSend(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: cs.primary,
+                          foregroundColor: cs.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return EmojiPicker(
+                        textEditingController: _controller,
+                        config: Config(
+                          height: constraints.maxHeight,
+                          emojiViewConfig: EmojiViewConfig(
+                            emojiSizeMax: 28,
+                            backgroundColor: Theme.of(ctx).colorScheme.surface,
+                          ),
+                          categoryViewConfig: CategoryViewConfig(
+                            backgroundColor: Theme.of(ctx)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.3),
+                            indicatorColor: Theme.of(ctx).colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

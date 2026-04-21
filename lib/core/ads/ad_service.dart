@@ -30,8 +30,12 @@ enum AdRewardReason {
   priorityInterest,
   /// User (premium or free) viewing/accepting a request — ad before view & respond.
   viewAndRespondToRequest,
-  /// Free user unlocking one visitor profile (Likes → Visitors). 2 per week.
+  /// Free user unlocking one visitor profile (Likes → Visitors).
   unlockVisitor,
+  /// Free user sending one extra express interest when their daily limit is hit.
+  extraInterest,
+  /// Free user unlocking one blurred liked-you profile in the Likes tab.
+  unlockLikedYou,
 }
 
 /// Service for loading and showing interstitial/rewarded ads.
@@ -43,6 +47,8 @@ class AdService {
       AdRewardReason.priorityInterest: null,
       AdRewardReason.viewAndRespondToRequest: null,
       AdRewardReason.unlockVisitor: null,
+      AdRewardReason.extraInterest: null,
+      AdRewardReason.unlockLikedYou: null,
     };
   }
 

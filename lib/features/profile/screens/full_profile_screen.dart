@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
 import '../../../features/premium/services/paywall_trigger_service.dart';
 import '../../../features/premium/widgets/photo_gate_overlay.dart';
 import '../widgets/voice_intro_player.dart';
@@ -560,11 +562,9 @@ class _FloatingActionBar extends ConsumerWidget {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profileId).toList(),
             );
@@ -579,6 +579,15 @@ class _FloatingActionBar extends ConsumerWidget {
           ),
         );
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!context.mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -589,6 +598,59 @@ class _FloatingActionBar extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
+        return;
+      }
+      if (e.code == 'DAILY_LIMIT') {
+        final budget = ref.read(adBudgetProvider).valueOrNull;
+        final decision = await showGateDecisionSheet(
+          context,
+          title: 'Daily interest limit reached',
+          message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
+          canWatchAd: true,
+          watchAdLabel: 'Watch ad — send 1 more interest',
+          adsRemaining: budget?.remaining,
+        );
+        if (!context.mounted || decision == null) return;
+        if (decision == GateDecision.upgrade) {
+          PaywallTriggerService.maybeShow(context, ref, PaywallReason.swipeLimit);
+          return;
+        }
+        if (decision == GateDecision.watchAd) {
+          final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.extraInterest);
+          if (!context.mounted) return;
+          if (!shown) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ad could not be loaded. Please try again.'), behavior: SnackBarBehavior.floating),
+            );
+            return;
+          }
+          final adToken = const Uuid().v4();
+          try {
+            final result = await ref.read(interactionsRepositoryProvider).expressInterest(
+                  profileId,
+                  source: 'profile',
+                  mode: mode,
+                  adCompletionToken: adToken,
+                );
+            if (!context.mounted) return;
+            ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+                  (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
+                );
+            ref.invalidate(sentInteractionsProvider(mode));
+            if (result.mutualMatch) {
+              _showMutualMatchCelebration(context, result.chatThreadId);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l.toastInterestSentTo(profileName)), behavior: SnackBarBehavior.floating),
+              );
+            }
+          } on ApiException catch (e2) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e2.message), behavior: SnackBarBehavior.floating),
+            );
+          }
+        }
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -645,11 +707,9 @@ class _FloatingActionBar extends ConsumerWidget {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profileId).toList(),
             );
@@ -664,6 +724,15 @@ class _FloatingActionBar extends ConsumerWidget {
           ),
         );
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!context.mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -935,6 +1004,22 @@ class _FloatingActionBar extends ConsumerWidget {
   }
 
   Future<void> _onMessage(BuildContext context, WidgetRef ref) async {
+    // Enforce Silver active-chat limit (25 threads).
+    final ent = ref.read(entitlementsProvider);
+    if (ent.maxActiveChats > 0) {
+      final activeCount = ref.read(activeChatThreadCountProvider);
+      if (activeCount >= ent.maxActiveChats) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("You've reached your 25-chat limit. Upgrade to Gold for unlimited chats."),
+            action: SnackBarAction(label: 'Upgrade', onPressed: () => context.push('/premium')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
@@ -2444,6 +2529,22 @@ Future<void> _datingFullProfileOpenChat(
   String profileId,
   String? initialAdToken,
 ) async {
+  // Enforce Silver active-chat limit (25 threads).
+  final ent = ref.read(entitlementsProvider);
+  if (ent.maxActiveChats > 0) {
+    final activeCount = ref.read(activeChatThreadCountProvider);
+    if (activeCount >= ent.maxActiveChats) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("You've reached your 25-chat limit. Upgrade to Gold for unlimited chats."),
+          action: SnackBarAction(label: 'Upgrade', onPressed: () => context.push('/premium')),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+  }
   final l = AppLocalizations.of(context)!;
   final navigator = Navigator.of(context);
   try {
@@ -2744,11 +2845,9 @@ class _DatingFloatingBar extends ConsumerWidget {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profileId).toList(),
             );
@@ -2769,6 +2868,15 @@ class _DatingFloatingBar extends ConsumerWidget {
           ),
         );
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2791,11 +2899,9 @@ class _DatingFloatingBar extends ConsumerWidget {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
           );
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profileId).toList(),
             );
@@ -2816,6 +2922,15 @@ class _DatingFloatingBar extends ConsumerWidget {
           ),
         );
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

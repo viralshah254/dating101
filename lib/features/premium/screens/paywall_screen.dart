@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
@@ -24,8 +26,6 @@ const _kPaywallFemaleAccess =
     'You already have free access to messaging, seeing likes, and contact requests.';
 const _kPaywallBoostNote = 'Profile boost available separately';
 const _kManageSubscriptionLabel = 'Manage subscription';
-const _kAllPlansInclude = 'All plans include:';
-
 /// Selected billing period for purchase.
 enum PremiumPlan { monthly, quarterly, annual }
 
@@ -269,26 +269,101 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final quarterlyPrice = tierPrice(_selectedTier, PremiumPlan.quarterly);
     final annualPrice = tierPrice(_selectedTier, PremiumPlan.annual);
 
-    final maleFeatures = [
-      'Send messages & intros',
-      'See who likes you',
-      'Request contact details',
-      'Unlimited express interests',
-      'Travel mode: explore other cities',
-      'Priority in discovery',
-      'Read receipts',
-      'View compatibility breakdown',
-    ];
+    final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
+    final isDating = mode == AppMode.dating;
 
-    final femaleFeatures = [
-      'Unlimited messaging',
-      'Travel mode: explore other cities',
-      'Profile boost',
-      'Priority in discovery',
-      'Read receipts',
-    ];
+    // ── Tier-keyed feature copy (max 5 bullets, mode-aware) ──────────────────
+    const maleMatrimony = {
+      PaywallTier.silver: [
+        'Chat with up to 25 matches (no cold messaging)',
+        'See exactly who liked your profile',
+        'All photos visible — no blur, no ads',
+        '25 daily express interests',
+        '1 priority interest per day',
+      ],
+      PaywallTier.gold: [
+        'Unlimited chats with all your matches',
+        'Request contact details directly',
+        'See who shortlisted you · Travel mode',
+        'Priority placement in discovery',
+        'AI profile review · Read receipts',
+      ],
+      PaywallTier.platinum: [
+        'Everything in Gold',
+        'Daily profile boost (1 hr peak window)',
+        'SuperLike — appear at the top of their feed',
+        '10 priority interests per day',
+      ],
+    };
 
-    final features = ent.isFemale ? femaleFeatures : maleFeatures;
+    const maleDating = {
+      PaywallTier.silver: [
+        'Message all your mutual matches (up to 25 active)',
+        'See who liked you before you swipe',
+        'All photos visible instantly',
+        '25 daily likes',
+        '1 priority like per day',
+      ],
+      PaywallTier.gold: [
+        'Unlimited matches & messages',
+        'See everyone who liked you',
+        'Priority placement in the feed · Travel mode',
+        'Read receipts & AI-powered match insights',
+      ],
+      PaywallTier.platinum: [
+        'Everything in Gold',
+        'Daily profile boost',
+        'SuperLike — stand out immediately',
+        '10 priority likes per day',
+      ],
+    };
+
+    const femaleMatrimony = {
+      PaywallTier.silver: [
+        'No ads to view interest requests',
+        'Compatibility breakdown for every profile',
+        '1 priority interest per day',
+        '25 daily express interests',
+      ],
+      PaywallTier.gold: [
+        'Travel mode — explore other cities',
+        'Priority placement in discovery',
+        'AI profile review · Read receipts',
+        '5 priority interests per day',
+      ],
+      PaywallTier.platinum: [
+        'Everything in Gold',
+        'Daily profile boost (1 hr peak window)',
+        'SuperLike — stand out immediately',
+        '10 priority interests per day',
+      ],
+    };
+
+    const femaleDating = {
+      PaywallTier.silver: [
+        'No ads to view match requests',
+        'Compatibility insights for every match',
+        '1 priority like per day',
+        '25 daily likes',
+      ],
+      PaywallTier.gold: [
+        'Travel mode — discover people in other cities',
+        'Priority placement in the feed',
+        'Read receipts & AI-powered match insights',
+        '5 priority likes per day',
+      ],
+      PaywallTier.platinum: [
+        'Everything in Gold',
+        'Daily profile boost',
+        'SuperLike — stand out immediately',
+        '10 priority likes per day',
+      ],
+    };
+
+    final tierFeatures = ent.isFemale
+        ? (isDating ? femaleDating : femaleMatrimony)
+        : (isDating ? maleDating : maleMatrimony);
+    final features = tierFeatures[_selectedTier] ?? [];
     final hasActiveSubscription = ref.watch(subscriptionStateProvider).valueOrNull?.isActive ?? false;
     final showStoreHint = !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -550,20 +625,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _kAllPlansInclude,
+                    '${_selectedTier.label} includes:',
                     style: AppTypography.labelLarge.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...features.take(5).indexed.map(
+                  ...features.indexed.map(
                     (entry) {
                       final (idx, f) = entry;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.check_circle, size: 18, color: accent),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: Icon(Icons.check_circle, size: 18, color: accent),
+                            ),
                             const SizedBox(width: 8),
                             Expanded(child: Text(f, style: AppTypography.bodySmall)),
                           ],
@@ -827,9 +906,14 @@ class _TierSelector extends StatelessWidget {
   };
 
   static const _tierBenefits = {
-    PaywallTier.silver: 'Messages · Photos · More interests',
-    PaywallTier.gold: 'Silver + Who liked you · Travel mode · Contact',
-    PaywallTier.platinum: 'Gold + Priority · AI Review · Concierge',
+    PaywallTier.silver: 'Chat · All photos · See who liked you',
+    PaywallTier.gold: 'Silver + Contact · Travel mode · AI review',
+    PaywallTier.platinum: 'Gold + Daily boost · SuperLike · 10 priority/day',
+  };
+
+  static const _tierBadge = {
+    PaywallTier.gold: 'Most Popular',
+    PaywallTier.platinum: 'Best Value',
   };
 
   @override
@@ -851,13 +935,13 @@ class _TierSelector extends StatelessWidget {
           children: PaywallTier.values.map((tier) {
             final isSelected = tier == selected;
             final color = _tierColors[tier]!;
+            final badge = _tierBadge[tier];
             return Expanded(
               child: GestureDetector(
                 onTap: () => onSelect(tier),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   margin: const EdgeInsets.symmetric(horizontal: 3),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color: isSelected ? color : color.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
@@ -867,19 +951,51 @@ class _TierSelector extends StatelessWidget {
                     ),
                   ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        tier.label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected ? Colors.white : color,
+                      // Badge strip (only for Gold / Platinum)
+                      if (badge != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : color.withValues(alpha: 0.18),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                          ),
+                          child: Text(
+                            badge,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? Colors.white : color,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        )
+                      else
+                        const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          children: [
+                            Text(
+                              tier.label,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected ? Colors.white : color,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(height: 3),
+                              Icon(Icons.check_circle_rounded, size: 14, color: Colors.white.withValues(alpha: 0.9)),
+                            ],
+                          ],
                         ),
                       ),
-                      if (isSelected) ...[
-                        const SizedBox(height: 3),
-                        Icon(Icons.check_circle_rounded, size: 14, color: Colors.white.withValues(alpha: 0.9)),
-                      ],
                     ],
                   ),
                 ),

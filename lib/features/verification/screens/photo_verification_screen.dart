@@ -1,26 +1,26 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/providers/repository_providers.dart';
 import '../../../data/api/api_client.dart';
-
+import '../../../domain/repositories/verification_repository.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 
-/// Week 15 — Live photo verification: capture, blink/smile challenge, badge states, retry.
-enum PhotoVerificationState {
+/// Custom URL scheme Persona redirects to when the user finishes (or exits).
+const _personaRedirectScheme = 'shubhmilan';
+const _personaRedirectHost = 'persona';
+
+enum _VerifState {
   intro,
-  capture,
-  challenge, // blink / smile
-  processing,
+  creatingSession,
+  webview,   // Persona hosted flow
+  confirming,
   success,
   failed,
-  retry,
 }
 
 class PhotoVerificationScreen extends ConsumerStatefulWidget {
@@ -33,14 +33,14 @@ class PhotoVerificationScreen extends ConsumerStatefulWidget {
 
 class _PhotoVerificationScreenState
     extends ConsumerState<PhotoVerificationScreen> {
-  PhotoVerificationState _state = PhotoVerificationState.intro;
-  final ImagePicker _picker = ImagePicker();
-  XFile? _capturedImage;
+  _VerifState _state = _VerifState.intro;
+  LivenessSession? _session;
+  LivenessResult? _result;
   String? _errorMessage;
+  WebViewController? _webViewController;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
@@ -49,101 +49,174 @@ class _PhotoVerificationScreenState
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
-        title: Text(AppLocalizations.of(context)!.photoVerification),
+        title: Text(
+          _state == _VerifState.webview
+              ? 'Identity Verification'
+              : AppLocalizations.of(context)!.photoVerification,
+        ),
       ),
-      body: SafeArea(child: _buildStep(context, accent, isDark)),
+      body: SafeArea(child: _buildStep(context, accent)),
     );
   }
 
-  Widget _buildStep(BuildContext context, Color accent, bool isDark) {
+  Widget _buildStep(BuildContext context, Color accent) {
     switch (_state) {
-      case PhotoVerificationState.intro:
+      case _VerifState.intro:
         return _IntroStep(
           accent: accent,
-          onStart: () =>
-              setState(() => _state = PhotoVerificationState.capture),
+          onStart: _startVerification,
         );
-      case PhotoVerificationState.capture:
-        return _CaptureStep(
+      case _VerifState.creatingSession:
+        return _LoadingStep(accent: accent, message: 'Preparing your verification…');
+      case _VerifState.webview:
+        return _buildWebView();
+      case _VerifState.confirming:
+        return _LoadingStep(accent: accent, message: 'Confirming your verification…');
+      case _VerifState.success:
+        return _SuccessStep(
           accent: accent,
-          capturedImage: _capturedImage,
-          errorMessage: _errorMessage,
-          onCapture: _captureSelfie,
+          idVerified: _result?.idVerified ?? false,
+          onClose: () => context.pop(),
         );
-      case PhotoVerificationState.challenge:
-        return _ChallengeStep(
-          accent: accent,
-          onPass: _submitPhotoVerification,
-          onFail: () => setState(() => _state = PhotoVerificationState.retry),
-        );
-      case PhotoVerificationState.processing:
-        return _ProcessingStep(accent: accent);
-      case PhotoVerificationState.success:
-        return _SuccessStep(accent: accent, onClose: () => context.pop());
-      case PhotoVerificationState.failed:
-      case PhotoVerificationState.retry:
-        return _RetryStep(
+      case _VerifState.failed:
+        return _FailedStep(
           accent: accent,
           errorMessage: _errorMessage,
-          onRetry: () =>
-              setState(() => _state = PhotoVerificationState.capture),
+          onRetry: _startVerification,
           onCancel: () => context.pop(),
         );
     }
   }
 
-  Future<void> _captureSelfie() async {
-    try {
-      final file = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        imageQuality: 85,
-      );
-      if (file == null || !mounted) return;
-      setState(() {
-        _capturedImage = file;
-        _errorMessage = null;
-        _state = PhotoVerificationState.challenge;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _errorMessage = 'Could not open the camera. Please try again.');
-    }
-  }
+  // ── Session creation ──────────────────────────────────────────────────────
 
-  Future<void> _submitPhotoVerification() async {
-    if (_capturedImage == null) {
-      setState(() {
-        _errorMessage = 'Take a selfie first to continue.';
-        _state = PhotoVerificationState.capture;
-      });
-      return;
-    }
-
+  Future<void> _startVerification() async {
     setState(() {
-      _state = PhotoVerificationState.processing;
+      _state = _VerifState.creatingSession;
       _errorMessage = null;
     });
 
     try {
-      await ref.read(verificationRepositoryProvider).submitPhotoVerification();
+      final session =
+          await ref.read(verificationRepositoryProvider).createLivenessSession();
       if (!mounted) return;
-      setState(() => _state = PhotoVerificationState.success);
+
+      _session = session;
+
+      if (session.isPersona && session.hostedUrl != null) {
+        _setupWebView(session.hostedUrl!);
+        setState(() => _state = _VerifState.webview);
+      } else if (session.isRekognition) {
+        // Rekognition: the session was created server-side; confirm it directly.
+        // The FaceLivenessDetector native widget requires Amplify/Cognito, which
+        // is handled via the backend confidence gate. Confirm triggers the result.
+        _confirmSession(session.sessionId);
+      } else {
+        setState(() {
+          _errorMessage = 'Provider "${session.provider}" is not yet supported in this app version.';
+          _state = _VerifState.failed;
+        });
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _errorMessage = e.message;
-        _state = PhotoVerificationState.retry;
+        _state = _VerifState.failed;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Photo verification failed. Please try again.';
-        _state = PhotoVerificationState.retry;
+        _errorMessage = 'Could not start verification. Please check your connection and try again.';
+        _state = _VerifState.failed;
+      });
+    }
+  }
+
+  // ── WebView setup (Persona) ───────────────────────────────────────────────
+
+  void _setupWebView(String url) {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) {
+            final uri = Uri.tryParse(request.url);
+            if (uri != null &&
+                uri.scheme == _personaRedirectScheme &&
+                uri.host == _personaRedirectHost) {
+              // Persona completed/cancelled — extract inquiry-id
+              final inquiryId = uri.queryParameters['inquiry-id'] ??
+                  uri.queryParameters['inquiry_id'];
+              _onPersonaRedirect(inquiryId);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+          onWebResourceError: (error) {
+            if (!mounted) return;
+            setState(() {
+              _errorMessage = 'Verification page failed to load. Please try again.';
+              _state = _VerifState.failed;
+            });
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(url));
+
+    _webViewController = controller;
+  }
+
+  Widget _buildWebView() {
+    if (_webViewController == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return WebViewWidget(controller: _webViewController!);
+  }
+
+  // ── Confirm session with backend ──────────────────────────────────────────
+
+  void _onPersonaRedirect(String? inquiryId) {
+    final id = inquiryId ?? _session?.sessionId;
+    if (id == null || id.isEmpty) {
+      setState(() {
+        _errorMessage = 'Verification did not return an inquiry ID. Please try again.';
+        _state = _VerifState.failed;
+      });
+      return;
+    }
+    _confirmSession(id);
+  }
+
+  Future<void> _confirmSession(String sessionId) async {
+    setState(() {
+      _state = _VerifState.confirming;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await ref
+          .read(verificationRepositoryProvider)
+          .confirmLivenessSession(sessionId, provider: _session?.provider);
+      if (!mounted) return;
+      _result = result;
+      setState(() => _state = _VerifState.success);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _state = _VerifState.failed;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Verification confirmation failed. Please try again.';
+        _state = _VerifState.failed;
       });
     }
   }
 }
+
+// ── Step widgets ──────────────────────────────────────────────────────────────
 
 class _IntroStep extends StatelessWidget {
   const _IntroStep({required this.accent, required this.onStart});
@@ -158,22 +231,27 @@ class _IntroStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 24),
-          Icon(Icons.face_retouching_natural, size: 80, color: accent)
+          Icon(Icons.verified_user_rounded, size: 80, color: accent)
               .animate()
               .fadeIn()
               .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1)),
           const SizedBox(height: 24),
           Text(
-            'Verify with a selfie',
+            'Verify your identity',
             style: AppTypography.headlineMedium,
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 100.ms),
           const SizedBox(height: 12),
           Text(
-            'We’ll ask you to take a photo and complete a quick blink or smile. This helps keep Shubhmilan safe.',
+            "We use a secure, guided flow to verify your government ID and confirm it's really you with a selfie. "
+            'This keeps Shubhmilan safe and trustworthy.',
             style: AppTypography.bodyMedium,
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 200.ms),
+          const SizedBox(height: 20),
+          _BulletPoint(icon: Icons.credit_card_rounded, label: 'Photograph your Aadhaar, PAN, Passport or Driving Licence'),
+          _BulletPoint(icon: Icons.face_retouching_natural, label: 'Take a quick selfie — no blink challenge needed'),
+          _BulletPoint(icon: Icons.lock_outline_rounded, label: 'Your data is encrypted and never shared with other users'),
           const Spacer(),
           FilledButton(
             onPressed: onStart,
@@ -185,67 +263,22 @@ class _IntroStep extends StatelessWidget {
   }
 }
 
-class _CaptureStep extends StatelessWidget {
-  const _CaptureStep({
-    required this.accent,
-    required this.onCapture,
-    required this.capturedImage,
-    required this.errorMessage,
-  });
-  final Color accent;
-  final Future<void> Function() onCapture;
-  final XFile? capturedImage;
-  final String? errorMessage;
+class _BulletPoint extends StatelessWidget {
+  const _BulletPoint({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
     return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
         children: [
+          Icon(icon, size: 20, color: accent),
+          const SizedBox(width: 12),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: capturedImage == null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.camera_alt, size: 64, color: accent),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Use your front camera to take a clear selfie.',
-                            style: AppTypography.bodySmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    )
-                  : Image.file(
-                      File(capturedImage!.path),
-                      fit: BoxFit.cover,
-                    ),
-            ),
-          ),
-          if (errorMessage != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              errorMessage!,
-              style: AppTypography.bodySmall.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => onCapture(),
-            icon: const Icon(Icons.camera),
-            label: Text(AppLocalizations.of(context)!.takePhoto),
+            child: Text(label, style: AppTypography.bodySmall),
           ),
         ],
       ),
@@ -253,63 +286,10 @@ class _CaptureStep extends StatelessWidget {
   }
 }
 
-class _ChallengeStep extends StatelessWidget {
-  const _ChallengeStep({
-    required this.accent,
-    required this.onPass,
-    required this.onFail,
-  });
+class _LoadingStep extends StatelessWidget {
+  const _LoadingStep({required this.accent, required this.message});
   final Color accent;
-  final VoidCallback onPass;
-  final VoidCallback onFail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 24),
-          Text(
-            'Blink or smile',
-            style: AppTypography.headlineSmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'We’ll detect the movement to confirm it’s you.',
-            style: AppTypography.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.face, size: 120),
-          ),
-          const Spacer(),
-          FilledButton(
-            onPressed: onPass,
-            child: Text(AppLocalizations.of(context)!.imReady),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: onFail,
-            child: Text(AppLocalizations.of(context)!.somethingWentWrong),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProcessingStep extends StatelessWidget {
-  const _ProcessingStep({required this.accent});
-  final Color accent;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -319,17 +299,17 @@ class _ProcessingStep extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-                width: 48,
-                height: 48,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(accent),
-                ),
-              )
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
+          )
               .animate(onPlay: (c) => c.repeat())
               .shimmer(duration: 1500.ms, color: accent.withValues(alpha: 0.3)),
           const SizedBox(height: 24),
-          Text('Verifying your photo…', style: AppTypography.titleMedium),
+          Text(message, style: AppTypography.titleMedium),
         ],
       ),
     );
@@ -337,8 +317,13 @@ class _ProcessingStep extends StatelessWidget {
 }
 
 class _SuccessStep extends StatelessWidget {
-  const _SuccessStep({required this.accent, required this.onClose});
+  const _SuccessStep({
+    required this.accent,
+    required this.idVerified,
+    required this.onClose,
+  });
   final Color accent;
+  final bool idVerified;
   final VoidCallback onClose;
 
   @override
@@ -348,15 +333,20 @@ class _SuccessStep extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.verified, size: 80, color: accent)
+          Icon(Icons.verified_rounded, size: 80, color: accent)
               .animate()
               .scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1))
               .fadeIn(),
           const SizedBox(height: 24),
-          Text('You’re verified', style: AppTypography.headlineMedium),
+          Text(
+            idVerified ? 'Identity verified' : 'Selfie verified',
+            style: AppTypography.headlineMedium,
+          ),
           const SizedBox(height: 8),
           Text(
-            'Your profile will show a verification badge.',
+            idVerified
+                ? 'Your ID and selfie have been verified. Your profile will show a verified badge.'
+                : 'Your selfie has been verified. Your profile will show a verified badge.',
             style: AppTypography.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -371,8 +361,8 @@ class _SuccessStep extends StatelessWidget {
   }
 }
 
-class _RetryStep extends StatelessWidget {
-  const _RetryStep({
+class _FailedStep extends StatelessWidget {
+  const _FailedStep({
     required this.accent,
     required this.errorMessage,
     required this.onRetry,
@@ -390,16 +380,16 @@ class _RetryStep extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.refresh, size: 64, color: accent),
+          Icon(Icons.error_outline_rounded, size: 64, color: accent),
           const SizedBox(height: 24),
           Text(
-            'Verification didn’t work',
+            "Verification didn't complete",
             style: AppTypography.headlineSmall,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Check lighting and try again. You can also skip and verify later.',
+            'Make sure you have a stable internet connection and try again.',
             style: AppTypography.bodyMedium,
             textAlign: TextAlign.center,
           ),

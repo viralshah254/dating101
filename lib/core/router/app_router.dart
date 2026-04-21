@@ -12,6 +12,7 @@ import '../../features/location/screens/location_required_screen.dart';
 import '../../features/auth/screens/language_select_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/mode_select/screens/mode_select_screen.dart';
+import '../../features/profile_for/screens/profile_for_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/screens/profile_wizard_screen.dart';
 import '../../features/profile_setup/screens/profile_setup_screen.dart';
@@ -47,6 +48,7 @@ const _publicPaths = [
   '/language-select',
   '/login',
   '/location-required',
+  '/profile-for',
   '/mode-select',
   '/onboarding',
 ];
@@ -78,7 +80,28 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       if (!isPublic && authRepo.currentUserId == null) {
         return '/login';
       }
-        final isShellRoute =
+
+      // Hard lock: if the verification deadline has passed and the user is
+      // not verified, force them to /verification.
+      const verificationPaths = ['/verification', '/photo-verification'];
+      final isVerifPath = verificationPaths.any((p) => loc == p || loc.startsWith('$p/'));
+      if (!isPublic && authRepo.currentUserId != null && !isVerifPath) {
+        try {
+          final profile = await ref.read(profileRepositoryProvider).getMyProfile();
+          if (profile != null) {
+            final vs = profile.verificationStatus;
+            final isVerified = vs.photoVerified || vs.score >= 0.5;
+            final deadline = profile.verificationDeadlineAt;
+            if (!isVerified && deadline != null && DateTime.now().toUtc().isAfter(deadline)) {
+              return '/verification';
+            }
+          }
+        } catch (_) {
+          // Don't block navigation on profile fetch errors.
+        }
+      }
+
+      final isShellRoute =
           loc == '/' ||
           loc.startsWith('/map') ||
           loc.startsWith('/chats') ||
@@ -108,6 +131,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/login', pageBuilder: (_, s) => _buildPage(s, const LoginScreen())),
+      GoRoute(
+        path: '/profile-for',
+        pageBuilder: (_, s) => _buildPage(s, const ProfileForScreen()),
+      ),
       GoRoute(
         path: '/mode-select',
         pageBuilder: (_, s) => _buildPage(s, const ModeSelectScreen()),
@@ -304,6 +331,10 @@ GoRouter createAppRouter() {
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/profile-for',
+        builder: (_, __) => const ProfileForScreen(),
+      ),
       GoRoute(
         path: '/mode-select',
         builder: (_, __) => const ModeSelectScreen(),

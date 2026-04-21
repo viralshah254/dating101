@@ -677,7 +677,12 @@ class _ActionBar extends StatelessWidget {
     bool primaryEnabled = true;
     Color primaryColor = accent;
 
-    if (isPriorityInterested) {
+    if (messageUnlockedByMatch) {
+      primaryLabel = l.ctaSendMessage;
+      primaryIcon = Icons.chat_bubble_outline_rounded;
+      primaryOnTap = onMessage;
+      primaryColor = accent;
+    } else if (isPriorityInterested) {
       primaryLabel = l.prioritySent;
       primaryIcon = Icons.check_circle_rounded;
       primaryOnTap = null;

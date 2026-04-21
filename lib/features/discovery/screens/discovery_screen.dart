@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:uuid/uuid.dart';
+
+import '../../../core/ads/ad_budget_provider.dart';
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
 import '../../../core/design/design.dart';
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -71,19 +78,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Container(
           decoration: BoxDecoration(
-            // Subtle rose ambient glow at the top of the discover screen
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: isDark
-                  ? [
-                      AppColors.roseDeep.withValues(alpha: 0.18),
-                      Theme.of(context).colorScheme.surface,
-                    ]
-                  : [
-                      AppColors.rosePrimary.withValues(alpha: 0.06),
-                      Theme.of(context).colorScheme.surface,
-                    ],
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: isDark ? 0.18 : 0.06),
+                Theme.of(context).colorScheme.surface,
+              ],
             ),
           ),
           child: AppBar(
@@ -421,9 +422,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
+      // Tier 1: immediate — badges, sent-list, and advance swipe deck.
       ref.invalidate(sentInteractionsProvider(mode));
       invalidateLikesScreenData(ref);
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
@@ -459,29 +460,140 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
         );
       }
-      ref.invalidate(discoveryFeedProvider);
       _advanceToNext();
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        ref.invalidate(discoveryFeedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'DAILY_LIMIT') {
+        await _handleDailyLimitWithAd(profile, mode: mode, message: null);
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
     }
   }
 
+  /// Called when express-interest hits the DAILY_LIMIT error.
+  /// Offers the user a chance to watch an ad to send 1 more interest.
+  Future<void> _handleDailyLimitWithAd(
+    ProfileSummary profile, {
+    required AppMode mode,
+    required String? message,
+  }) async {
+    final budget = ref.read(adBudgetProvider).valueOrNull;
+    final remaining = budget?.remaining ?? 0;
+    if (!mounted) return;
+    final decision = await showGateDecisionSheet(
+      context,
+      title: 'Daily interest limit reached',
+      message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad — send 1 more interest',
+      adsRemaining: remaining,
+    );
+    if (!mounted || decision == null) return;
+    if (decision == GateDecision.upgrade) {
+      PaywallTriggerService.maybeShow(context, ref, PaywallReason.swipeLimit);
+      return;
+    }
+    if (decision == GateDecision.watchAd) {
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.extraInterest);
+      if (!mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ad could not be loaded. Please try again.'), behavior: SnackBarBehavior.floating),
+        );
+        return;
+      }
+      final adToken = const Uuid().v4();
+      try {
+        final result = await ref
+            .read(interactionsRepositoryProvider)
+            .expressInterest(profile.id, source: 'discovery', mode: mode, message: message, adCompletionToken: adToken);
+        if (!mounted) return;
+        ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+              (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
+            );
+        ref.invalidate(sentInteractionsProvider(mode));
+        invalidateLikesScreenData(ref);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profile.name)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _advanceToNext();
+        if (result.mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
+
   Future<void> _onSuperLike(ProfileSummary profile) async {
+    final ent = ref.read(entitlementsProvider);
+    String? adToken;
+    if (ent.dailyPriorityInterestLimit == 0) {
+      // Free user: must watch an ad or upgrade.
+      final watchAd = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Priority Like'),
+          content: const Text('Watch a short ad to send a priority like, or upgrade to Silver for 1/day.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Upgrade')),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Watch Ad')),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (watchAd == null) return;
+      if (watchAd == false) {
+        PaywallTriggerService.maybeShow(context, ref, PaywallReason.swipeLimit);
+        return;
+      }
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.priorityInterest);
+      if (!mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ad could not be loaded. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      adToken = const Uuid().v4();
+    }
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressPriorityInterest(profile.id, source: 'discovery', mode: mode);
+          .expressPriorityInterest(profile.id, source: 'discovery', adCompletionToken: adToken, mode: mode);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
+      // Tier 1: immediate — badges, sent-list, and advance swipe deck.
       ref.invalidate(sentInteractionsProvider(mode));
       invalidateLikesScreenData(ref);
-      ref.invalidate(recommendedPaginatedProvider);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
@@ -512,8 +624,17 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
         );
       }
-      ref.invalidate(discoveryFeedProvider);
       _advanceToNext();
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        ref.invalidate(discoveryFeedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

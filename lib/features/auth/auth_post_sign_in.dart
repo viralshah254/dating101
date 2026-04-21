@@ -20,7 +20,7 @@ Future<void> navigateAfterAuthSuccess(
       await _showReferralSuccessDialog(context);
       if (!context.mounted) return;
     }
-    context.go('/mode-select');
+    context.go('/profile-for');
     return;
   }
 
@@ -30,7 +30,7 @@ Future<void> navigateAfterAuthSuccess(
     if (profile != null) {
       context.go('/');
     } else {
-      context.go('/mode-select');
+      context.go('/profile-for');
     }
   } catch (e) {
     if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {
@@ -43,7 +43,7 @@ Future<void> navigateAfterAuthSuccess(
           if (!context.mounted) return;
           final profile = await ref.read(profileRepositoryProvider).getMyProfile();
           if (!context.mounted) return;
-          context.go(profile != null ? '/' : '/mode-select');
+          context.go(profile != null ? '/' : '/profile-for');
         } catch (err) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -59,7 +59,7 @@ Future<void> navigateAfterAuthSuccess(
         if (context.mounted) context.go('/login');
       }
     } else {
-      if (context.mounted) context.go('/mode-select');
+      if (context.mounted) context.go('/profile-for');
     }
   }
 }

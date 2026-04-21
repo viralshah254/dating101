@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../providers/family_providers.dart';
@@ -37,7 +38,19 @@ class _HandoverAcceptScreenState extends ConsumerState<HandoverAcceptScreen> {
 
     try {
       final repo = ref.read(familyRepositoryProvider);
-      await repo.acceptHandover(widget.token);
+      final result = await repo.acceptHandover(widget.token);
+      // Save new credentials issued by the handover endpoint so the app
+      // immediately authenticates as the profile subject (not the managing parent).
+      final accessToken = result['accessToken'] as String?;
+      final refreshToken = result['refreshToken'] as String?;
+      final userId = result['userId'] as String?;
+      if (accessToken != null && refreshToken != null && userId != null) {
+        await ref.read(tokenStorageProvider).save(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          userId: userId,
+        );
+      }
       if (mounted) setState(() => _state = _State.success);
       // Give user a moment to see the success state before navigating
       await Future.delayed(const Duration(seconds: 2));

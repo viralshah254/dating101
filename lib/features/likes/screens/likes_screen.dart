@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
@@ -158,7 +158,7 @@ class _LikesAppBar extends StatelessWidget implements PreferredSizeWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.rosePrimary.withValues(alpha: 0.07),
+            cs.primary.withValues(alpha: 0.07),
             cs.surface,
           ],
         ),
@@ -253,9 +253,9 @@ class _LikedYouPremiumGate extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
     final unlocked = ref.watch(unlockedReceivedProvider);
-    final quota = ref.watch(inboxUnlocksQuotaProvider);
-    final remaining = quota?.remaining ?? initialRemaining;
-    final canUnlockMore = remaining > 0;
+    final dailyBudget = ref.watch(adBudgetProvider).valueOrNull;
+    final adsRemainingToday = dailyBudget?.remaining ?? 10;
+    final canUnlockMore = adsRemainingToday > 0;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -317,13 +317,28 @@ class _LikedYouPremiumGate extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () => _onUnlockOne(context, ref),
                   icon: const Icon(Icons.play_circle_outline, size: 20),
-                  label: Text(l.watchAdToUnlockOne(remaining)),
+                  label: const Text('Watch ad — reveal 1 profile'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$adsRemainingToday of 10 ads remaining today',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: onSurface.withValues(alpha: 0.55),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ] else ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Daily ad limit reached — upgrade or try again tomorrow.',
+                  style: AppTypography.labelSmall.copyWith(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ],
@@ -347,10 +362,23 @@ class _LikedYouPremiumGate extends ConsumerWidget {
 
   static Future<void> _onUnlockOne(BuildContext context, WidgetRef ref) async {
     final l = AppLocalizations.of(context)!;
+
+    // Check daily ad budget before showing the ad.
+    final budget = ref.read(adBudgetProvider).valueOrNull;
+    if (budget != null && budget.remaining <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Daily ad limit reached. Try again tomorrow or upgrade.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final shown = await loadAndShowInterstitialWithLoading(
       context,
       ref,
-      AdRewardReason.viewAndRespondToRequest,
+      AdRewardReason.unlockLikedYou,
     );
     if (!context.mounted) return;
     if (!shown) {
@@ -364,34 +392,39 @@ class _LikedYouPremiumGate extends ConsumerWidget {
     }
     final token = const Uuid().v4();
     try {
-      final result = await ref.read(interactionsRepositoryProvider).unlockOneReceivedInteraction(
+      final result = await ref.read(interactionsRepositoryProvider).unlockOneLikedYou(
             adCompletionToken: token,
           );
       if (!context.mounted) return;
-      if (result != null) {
-        ref.read(unlockedReceivedProvider.notifier).update((list) => [...list, result.item]);
-        ref.read(inboxUnlocksQuotaProvider.notifier).state = (
-          remaining: result.unlocksRemainingThisWeek,
-          resetsAt: result.resetsAt,
+      // Build a minimal InteractionInboxItem from the revealed profile and add to unlocked list.
+      final item = InteractionInboxItem(
+        interactionId: result.interestId,
+        otherUser: result.profile,
+        createdAt: DateTime.now(),
+      );
+      ref.read(unlockedReceivedProvider.notifier).update((list) => [...list, item]);
+      ref.invalidate(receivedInteractionsProvider);
+      invalidateLikesScreenData(ref);
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      if (e.code == 'DAILY_AD_BUDGET_REACHED') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Daily ad limit reached. Try again tomorrow or upgrade.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        ref.invalidate(receivedInteractionsProvider);
-        invalidateLikesScreenData(ref);
-      } else {
+        ref.invalidate(adBudgetProvider);
+        return;
+      }
+      if (e.code == 'NO_LIKED_YOU_PROFILES') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.likedYouNoRequestToUnlock),
             behavior: SnackBarBehavior.floating,
           ),
         );
-      }
-    } on ApiException catch (e) {
-      if (!context.mounted) return;
-      if (e.code == 'INBOX_UNLOCKS_LIMIT_REACHED') {
-        final resetsAtStr = e.details?['inboxUnlocksResetAt'] as String?;
-        ref.read(inboxUnlocksQuotaProvider.notifier).state = (
-          remaining: 0,
-          resetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
-        );
+        return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
@@ -422,9 +455,9 @@ class _VisitorsTab extends ConsumerWidget {
         }
         return _VisitorsBlurredListView(
           entries: entries,
-          isPremium: ent.isPremium,
+          isPremium: ent.isSilver,
           unlockedProfileIds: unlockedIds,
-          onTap: (entry) => _onVisitorTap(context, ref, entry, ent.isPremium, unlockedIds),
+          onTap: (entry) => _onVisitorTap(context, ref, entry, ent.isSilver, unlockedIds),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),

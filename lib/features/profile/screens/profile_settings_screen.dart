@@ -18,6 +18,7 @@ import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/user_profile.dart';
 import '../widgets/readiness_score_card.dart';
 import '../../family/screens/family_chat_access_screen.dart' show FamilyChatAccessScreen;
@@ -58,6 +59,17 @@ class ProfileSettingsScreen extends ConsumerWidget {
     final hiddenFromRecommended = profileAsync.whenOrNull(
       data: (p) => p?.hiddenFromRecommended ?? false,
     ) ?? false;
+    final roleManaging = profileAsync.whenOrNull(
+      data: (p) => p?.matrimonyExtensions?.roleManagingProfile,
+    );
+    final subjectStatus = profileAsync.whenOrNull(
+      data: (p) => p?.subjectStatus,
+    ) ?? 'self';
+    final familyMode = profileAsync.whenOrNull(
+      data: (p) => p?.familyMode,
+    );
+    final isManagingForOther = roleManaging != null && roleManaging != ProfileRole.self;
+    final managedProfileName = profileAsync.whenOrNull(data: (p) => p?.name);
 
     return Scaffold(
       appBar: AppBar(
@@ -107,6 +119,15 @@ class ProfileSettingsScreen extends ConsumerWidget {
           ).fadeSlideIn(delay: 200.ms),
           const SizedBox(height: 16),
           const ReadinessScoreCard().fadeSlideIn(delay: 280.ms),
+          if (isManagingForOther) ...[
+            const SizedBox(height: 12),
+            _ManagedProfileBanner(
+              role: roleManaging,
+              profileName: managedProfileName ?? '',
+              subjectStatus: subjectStatus,
+              familyMode: familyMode,
+            ).fadeSlideIn(delay: 305.ms),
+          ],
           if (hiddenFromRecommended) ...[
             const SizedBox(height: 12),
             _HiddenFromRecommendedBanner().fadeSlideIn(delay: 310.ms),
@@ -1439,6 +1460,78 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ── AI Profile Review Banner ──────────────────────────────────────────────────
+
+/// Persistent banner shown on the profile tab when the logged-in user is
+/// managing a profile on behalf of someone else (parent/guardian/sibling/friend).
+class _ManagedProfileBanner extends StatelessWidget {
+  const _ManagedProfileBanner({
+    required this.role,
+    required this.profileName,
+    required this.subjectStatus,
+    this.familyMode,
+  });
+
+  final ProfileRole role;
+  final String profileName;
+  final String subjectStatus;
+  final String? familyMode;
+
+  String _statusLabel(BuildContext context) {
+    // ignore: invalid_use_of_internal_member
+    final l = AppLocalizations.of(context)!;
+    // Accessing generated keys with underscores via dynamic map lookup to avoid analysis warnings.
+    if (subjectStatus == 'managed_active') {
+      final active = l.managingProfileStatus_active;
+      if (familyMode == 'joint') return 'Joint approval mode · $active';
+      if (familyMode == 'assisted') return 'Assisting · $active';
+      return active;
+    }
+    return l.managingProfileStatus_pending;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final accent = cs.secondary;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.family_restroom, color: accent, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.managingProfileFor(profileName),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _statusLabel(context),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _HiddenFromRecommendedBanner extends StatelessWidget {
   const _HiddenFromRecommendedBanner();

@@ -287,8 +287,9 @@ List<String> _communityOptionsForReligion(String? religion) {
   return _communityByReligion[religion] ?? ['Other'];
 }
 
-/// Mother tongue & languages: Indian languages + English + Other.
+/// Mother tongue & languages: Indian languages first, then major international languages.
 const _motherTongueAndLanguageOptions = [
+  // Indian scheduled + widely spoken
   'Hindi',
   'Bengali',
   'Telugu',
@@ -301,12 +302,109 @@ const _motherTongueAndLanguageOptions = [
   'Punjabi',
   'Odia',
   'Assamese',
+  'Maithili',
+  'Santali',
   'Kashmiri',
   'Sindhi',
+  'Dogri',
   'Konkani',
-  'Nepali',
+  'Manipuri',
+  'Bodo',
   'Sanskrit',
+  'Nepali',
+  // South / Southeast Asia
+  'Sinhala',
+  'Dhivehi',
+  'Dzongkha',
+  'Burmese',
+  'Thai',
+  'Lao',
+  'Khmer',
+  'Vietnamese',
+  'Indonesian',
+  'Malay',
+  'Tagalog',
+  'Javanese',
+  'Sundanese',
+  // East Asia
+  'Mandarin Chinese',
+  'Cantonese',
+  'Wu (Shanghainese)',
+  'Japanese',
+  'Korean',
+  'Mongolian',
+  'Tibetan',
+  // Central / West Asia
+  'Arabic',
+  'Persian (Farsi)',
+  'Dari',
+  'Pashto',
+  'Uzbek',
+  'Kazakh',
+  'Kyrgyz',
+  'Tajik',
+  'Turkmen',
+  'Turkish',
+  'Azerbaijani',
+  'Armenian',
+  'Georgian',
+  'Kurdish',
+  'Hebrew',
+  // Europe
   'English',
+  'French',
+  'Spanish',
+  'Portuguese',
+  'German',
+  'Russian',
+  'Italian',
+  'Dutch',
+  'Polish',
+  'Romanian',
+  'Greek',
+  'Czech',
+  'Slovak',
+  'Hungarian',
+  'Bulgarian',
+  'Croatian',
+  'Serbian',
+  'Bosnian',
+  'Slovenian',
+  'Albanian',
+  'Macedonian',
+  'Ukrainian',
+  'Belarusian',
+  'Lithuanian',
+  'Latvian',
+  'Estonian',
+  'Finnish',
+  'Swedish',
+  'Norwegian',
+  'Danish',
+  'Icelandic',
+  'Welsh',
+  'Irish',
+  'Catalan',
+  'Basque',
+  // Africa
+  'Swahili',
+  'Amharic',
+  'Yoruba',
+  'Igbo',
+  'Hausa',
+  'Zulu',
+  'Xhosa',
+  'Afrikaans',
+  'Shona',
+  'Somali',
+  'Tigrinya',
+  'Oromo',
+  // Americas
+  'Quechua',
+  'Guaraní',
+  'Nahuatl',
+  // Other
+  'Sign Language',
   'Other',
 ];
 
@@ -1212,6 +1310,9 @@ class _MultiSelectSearchFieldState extends State<_MultiSelectSearchField> {
       next.remove(option);
     } else {
       next.add(option);
+      // Clear search so user can immediately type the next language.
+      _searchCtrl.clear();
+      _query = '';
     }
     widget.onChanged(next.isEmpty ? null : next.join(', '));
     setState(() {});
@@ -1293,36 +1394,50 @@ class _MultiSelectSearchFieldState extends State<_MultiSelectSearchField> {
             }).toList(),
           ),
         ],
-        const SizedBox(height: 10),
-        Container(
-          constraints: const BoxConstraints(maxHeight: 220),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: _filtered.length,
-            itemBuilder: (context, i) {
-              final opt = _filtered[i];
-              final isSelected = selected.contains(opt);
-              return ListTile(
-                title: Text(
-                  opt,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        // Dropdown only shown while the user is actively searching so it never
+        // gets pushed below the visible area by the chip rows.
+        if (_query.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: _filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No languages match "$_query"',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _filtered.length,
+                    itemBuilder: (context, i) {
+                      final opt = _filtered[i];
+                      final isSelected = selected.contains(opt);
+                      return ListTile(
+                        title: Text(
+                          opt,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: onSurface,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, size: 20, color: accent)
+                            : null,
+                        onTap: () => _toggle(opt),
+                      );
+                    },
                   ),
-                ),
-                trailing: isSelected
-                    ? Icon(Icons.check_circle, size: 20, color: accent)
-                    : null,
-                onTap: () => _toggle(opt),
-              );
-            },
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1778,11 +1893,6 @@ class StepCareer extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-
-          // ── Marriage Intent card ─────────────────────────────────────
-          _MarriageIntentCard(formData: formData, onChanged: onChanged),
-
           const SizedBox(height: 40),
         ],
       ),
@@ -2296,6 +2406,54 @@ class _MatrimonyDetails extends StatelessWidget {
             ),
 
           const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Marriage Intent step ──────────────────────────────────────────────────
+
+/// Standalone wizard step: marriage timeline, family involvement, relocation.
+/// Shown before Education so intent is captured early.
+class StepMarriageIntent extends StatelessWidget {
+  const StepMarriageIntent({
+    super.key,
+    required this.formData,
+    required this.onChanged,
+  });
+
+  final ProfileFormData formData;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.marriageIntentSection,
+            style: AppTypography.displayLarge.copyWith(
+              color: onSurface,
+              fontSize: 32,
+              height: 1.15,
+            ),
+          ).animate().fadeIn(duration: 400.ms),
+          const SizedBox(height: 4),
+          Text(
+            l.marriageIntentSubtitle,
+            style: AppTypography.bodyMedium.copyWith(
+              color: onSurface.withValues(alpha: 0.6),
+            ),
+          ).animate().fadeIn(delay: 80.ms),
+          const SizedBox(height: 28),
+          _MarriageIntentCard(formData: formData, onChanged: onChanged),
         ],
       ),
     );

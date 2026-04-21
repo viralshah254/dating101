@@ -13,6 +13,9 @@ class ChatThreadSummary {
     this.otherParticipantLastReadAt,
     this.otherUserOnline = false,
     this.otherLastActiveAt,
+    this.otherProfileManagedBy,
+    this.otherProfileSubjectStatus,
+    this.familyMemberOnline = false,
   });
 
   /// Parses GET /chat/threads row. Kept on the model so constructor + parser stay in sync (avoids hot-reload / partial rebuild mismatches).
@@ -21,6 +24,8 @@ class ChatThreadSummary {
     final unreadCount = _coerceInt(unreadRaw);
     final onlineRaw = j['otherUserOnline'] ?? j['other_user_online'];
     final otherUserOnline = _coerceBool(onlineRaw);
+    final familyMemberOnlineRaw = j['familyMemberOnline'];
+    final familyMemberOnline = _coerceBool(familyMemberOnlineRaw);
     return ChatThreadSummary(
       id: _coerceString(j['id']) ?? '',
       otherUserId:
@@ -39,6 +44,9 @@ class ChatThreadSummary {
       ),
       otherUserOnline: otherUserOnline,
       otherLastActiveAt: _parseOptDateTime(j['otherLastActiveAt'] ?? j['other_last_active_at']),
+      otherProfileManagedBy: _coerceString(j['otherProfileManagedBy']),
+      otherProfileSubjectStatus: _coerceString(j['otherProfileSubjectStatus']),
+      familyMemberOnline: familyMemberOnline,
     );
   }
 
@@ -56,6 +64,12 @@ class ChatThreadSummary {
   final DateTime? otherParticipantLastReadAt;
   final bool otherUserOnline;
   final DateTime? otherLastActiveAt;
+  /// Role of the person managing the other profile (e.g. "parent", "guardian"), or null if self-managed.
+  final String? otherProfileManagedBy;
+  /// subjectStatus of the other profile ("self" | "managed_pending" | "managed_active").
+  final String? otherProfileSubjectStatus;
+  /// True if a family member with canSendMessages=true is currently online for the other user.
+  final bool familyMemberOnline;
 
   static String? _coerceString(dynamic v) {
     if (v == null) return null;
@@ -124,6 +138,8 @@ class ChatMessage {
     /// Monotonic send order for the current user's lines in this session; preserved on WS/HTTP
     /// merge so rapid sends and refetches cannot reorder vs pending bubbles.
     this.outboundSeq,
+    this.senderType = 'owner',
+    this.sentByFamilyMemberId,
   });
   final String id;
   final String senderId;
@@ -131,6 +147,10 @@ class ChatMessage {
   final DateTime sentAt;
   final bool isVoiceNote;
   final int? outboundSeq;
+  /// "owner" | "family_member" — derived from backend sentByFamilyMemberId.
+  final String senderType;
+  /// FamilyMember.id when senderType is "family_member".
+  final String? sentByFamilyMemberId;
 }
 
 /// How [sendMessage] reached the server. HTTP path does not push to the live stream — caller should refetch thread messages.

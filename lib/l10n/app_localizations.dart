@@ -5647,6 +5647,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{age} yrs'**
   String yrs(Object age);
+
+  /// No description provided for @sentByParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent by parent'**
+  String get sentByParent;
+
+  /// No description provided for @sentByGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent by guardian'**
+  String get sentByGuardian;
+
+  /// No description provided for @sentBySibling.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent by sibling'**
+  String get sentBySibling;
+
+  /// No description provided for @sentByFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent by friend'**
+  String get sentByFriend;
+
+  /// No description provided for @managingProfileFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Managing {name}\'s profile'**
+  String managingProfileFor(String name);
+
+  /// No description provided for @managingProfileStatus_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for handover'**
+  String get managingProfileStatus_pending;
+
+  /// No description provided for @managingProfileStatus_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get managingProfileStatus_active;
+
+  /// No description provided for @chatManagedByParent.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is managed by a parent. You may be speaking with them.'**
+  String get chatManagedByParent;
+
+  /// No description provided for @chatManagedByGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is managed by a guardian. You may be speaking with them.'**
+  String get chatManagedByGuardian;
+
+  /// No description provided for @chatManagedBySibling.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is managed by a sibling. You may be speaking with them.'**
+  String get chatManagedBySibling;
+
+  /// No description provided for @chatManagedByFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is managed by a friend. You may be speaking with them.'**
+  String get chatManagedByFriend;
+
+  /// No description provided for @familyMemberActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent is active'**
+  String get familyMemberActive;
+
+  /// No description provided for @bothOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online · Parent also active'**
+  String get bothOnline;
 }
 
 class _AppLocalizationsDelegate

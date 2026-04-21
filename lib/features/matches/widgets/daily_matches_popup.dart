@@ -60,9 +60,9 @@ class _DailyMatchesPopupState extends ConsumerState<DailyMatchesPopup> {
     final repo = ref.read(interactionsRepositoryProvider);
     final ids = _selectedIds.toList();
     try {
-      for (final id in ids) {
-        await repo.expressInterest(id, source: 'daily_matches', mode: mode);
-      }
+      final results = await Future.wait(
+        ids.map((id) => repo.expressInterest(id, source: 'daily_matches', mode: mode)),
+      );
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {
@@ -70,14 +70,19 @@ class _DailyMatchesPopupState extends ConsumerState<DailyMatchesPopup> {
               mode: {...(m[mode] ?? {}), ...ids},
             },
           );
-      ref.invalidate(recommendedPaginatedProvider);
-      ref.invalidate(matchesSearchProvider);
-      ref.invalidate(matchesNearbyProvider);
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(mutualMatchesProvider);
-      ref.invalidate(matchedUserIdsProvider);
       Navigator.of(context).pop();
       widget.onSent();
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final hasMutualMatch = results.any((r) => r.mutualMatch);
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (hasMutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -428,37 +433,57 @@ class _DailyMatchCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Guardian badge
+                  // Managed-by badge (role-specific, not hardcoded)
                   if (profile.roleManagingProfile != null &&
                       profile.roleManagingProfile != ProfileRole.self)
                     Positioned(
                       left: 6,
                       top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.people_outline_rounded,
-                              size: 11,
-                              color: Colors.white.withValues(alpha: 0.95),
+                      child: Builder(
+                        builder: (ctx) {
+                          final l = AppLocalizations.of(ctx)!;
+                          final role = profile.roleManagingProfile!;
+                          final String roleLabel;
+                          switch (role) {
+                            case ProfileRole.parent:
+                              roleLabel = l.profileManagedByParent;
+                            case ProfileRole.guardian:
+                              roleLabel = l.profileManagedByGuardian;
+                            case ProfileRole.sibling:
+                              roleLabel = l.profileManagedBySibling;
+                            case ProfileRole.friend:
+                              roleLabel = l.profileManagedByFriend;
+                            case ProfileRole.self:
+                              roleLabel = '';
+                          }
+                          if (roleLabel.isEmpty) return const SizedBox.shrink();
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            const SizedBox(width: 3),
-                            Text(
-                              'Guardian',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: Colors.white.withValues(alpha: 0.95),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.family_restroom,
+                                  size: 11,
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  roleLabel,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.95),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     ),
                 ],

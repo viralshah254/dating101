@@ -8,15 +8,20 @@ import '../theme/app_typography.dart';
 import '../analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import 'ad_service.dart';
+import 'ad_budget_provider.dart';
 
-/// Pops the route after the current frame so we never call [Navigator.pop] while
-/// the navigator is locked (e.g. right after an interstitial dismisses).
+/// Pops the ad-loading dialog after the current frame.
+///
+/// [showDialog] uses [useRootNavigator] = true by default, so the dialog lives
+/// on the ROOT navigator. We must match that by popping from the root navigator,
+/// not the nearest shell/nested one — otherwise the navigator is left locked and
+/// the `!_debugLocked` assertion fires.
 Future<void> _popAdLoadingDialog(BuildContext context) async {
   if (!context.mounted) return;
   final completer = Completer<void>();
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (context.mounted) {
-      Navigator.of(context).pop();
+      Navigator.of(context, rootNavigator: true).pop();
     }
     if (!completer.isCompleted) completer.complete();
   });
@@ -68,6 +73,8 @@ Future<bool> loadAndShowInterstitialWithLoading(
     analytics.log(AnalyticsEvent.adLoadResult, {'reason': reason.name, 'loaded': result});
     if (result) {
       analytics.log(AnalyticsEvent.adShown, {'reason': reason.name});
+      // Refresh the daily budget count so UI stays in sync after each ad watch.
+      ref.invalidate(adBudgetProvider);
     }
     if (context.mounted) await _popAdLoadingDialog(context);
     return result;

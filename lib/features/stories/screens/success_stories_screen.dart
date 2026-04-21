@@ -130,12 +130,12 @@ class _StoryCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.rosePrimary.withValues(alpha: 0.06),
+            cs.primary.withValues(alpha: 0.06),
             AppColors.gold.withValues(alpha: 0.04),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.rosePrimary.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -21,6 +21,7 @@ import '../widgets/step_preferences.dart';
 import '../widgets/step_about_you.dart';
 import '../widgets/step_lifestyle.dart';
 import '../widgets/step_creating_for.dart';
+import '../../profile_for/providers/creating_for_provider.dart';
 
 /// API / backend store `partnerPreferences.genderPreference` as `Male`/`Female` (and variants).
 /// The profile form uses `Man`/`Woman`/`Any` so chips and matching stay consistent.
@@ -76,6 +77,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   AppMode _bothPrimaryTrack = AppMode.dating;
   int _lastLoggedStep = -1;
 
+  /// Background upload started as soon as the user leaves the photos step.
+  /// Awaited at save time so photos are already uploaded (or close to it).
+  Future<void>? _photoUploadTask;
+
   late List<_StepInfo> _steps;
   static final _locationService = AppLocationService.instance;
 
@@ -95,6 +100,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final existing = await repo.getMyProfile();
     if (existing != null && mounted) {
       _formData.fillFrom(existing);
+    }
+    // Pre-seed creatingFor from the sign-up flow (ProfileForScreen) so the
+    // in-wizard StepCreatingFor is skipped when already answered.
+    if (!widget.isEditing && mounted) {
+      final answered = ref.read(creatingForAnsweredProvider);
+      if (answered) {
+        _formData.creatingFor = ref.read(creatingForProvider);
+        final l = AppLocalizations.of(context)!;
+        _formData.applyGenderFromCreatingForRelationship(l);
+      }
     }
     if (mounted) {
       setState(() {
@@ -162,6 +177,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         stepIndex: _currentStep + 1,
         totalSteps: _steps.length,
       );
+
+      // Kick off photo upload in the background as soon as the user leaves
+      // the photos step so it runs in parallel with the remaining steps.
+      if (step.analyticsKey == 'photos' &&
+          _photoUploadTask == null &&
+          _formData.photos.any((p) => !p.startsWith('http'))) {
+        debugPrint('[ProfileSetup] Starting background photo upload...');
+        _photoUploadTask = _doUploadPhotos();
+      }
+
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
@@ -394,20 +419,37 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
   }
 
-  /// Upload any local-file photos to S3, replacing paths with CDN URLs.
-  Future<void> _uploadPhotosIfNeeded() async {
+  /// Core upload logic: sends local-path photos to S3 and replaces them with CDN URLs.
+  /// Does NOT touch [_photoUploadTask] — call this from the task itself or after awaiting it.
+  Future<void> _doUploadPhotos() async {
     final hasLocal = _formData.photos.any((p) => !p.startsWith('http'));
     if (!hasLocal) return;
 
-    debugPrint(
-      '[ProfileSetup] Uploading ${_formData.photos.where((p) => !p.startsWith("http")).length} photo(s) to S3...',
-    );
+    final localCount = _formData.photos.where((p) => !p.startsWith('http')).length;
+    debugPrint('[ProfileSetup] Uploading $localCount photo(s) to S3...');
     final uploadService = ref.read(photoUploadServiceProvider);
     final uploaded = await uploadService.uploadAll(_formData.photos);
     _formData.photos
       ..clear()
       ..addAll(uploaded);
     debugPrint('[ProfileSetup] Photos uploaded: ${_formData.photos}');
+  }
+
+  /// Upload any local-file photos to S3, replacing paths with CDN URLs.
+  ///
+  /// If a background upload was already kicked off when the user left the photos
+  /// step, we await that task first (it may already be complete, making this
+  /// nearly instant) then do a final pass for any photos added/swapped afterwards.
+  Future<void> _uploadPhotosIfNeeded() async {
+    if (_photoUploadTask != null) {
+      debugPrint('[ProfileSetup] Awaiting background photo upload...');
+      await _photoUploadTask;
+      _photoUploadTask = null;
+      debugPrint('[ProfileSetup] Background upload awaited.');
+    }
+    // Catch any remaining local paths (e.g. user went back and swapped a photo
+    // after the background task had already started).
+    await _doUploadPhotos();
   }
 
   void _back() {
@@ -451,7 +493,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
     }
 
-    _steps = _buildSteps(signupPreference, l);
+    final creatingForAnswered = ref.watch(creatingForAnsweredProvider);
+    _steps = _buildSteps(signupPreference, l, creatingForAnswered: creatingForAnswered);
     if (_steps.isNotEmpty && _currentStep >= _steps.length) {
       _currentStep = _steps.length - 1;
     }
@@ -696,7 +739,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l) {
+  List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l, {bool creatingForAnswered = false}) {
     void onChanged() => setState(() {});
     final editing = widget.isEditing;
     if (mode.isBoth) {
@@ -740,8 +783,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           analyticsKey: 'dating_about',
           label: '${l.modeDating} · About you',
           widget: StepAboutYou(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
         ),
         _StepInfo(
           analyticsKey: 'dating_lifestyle',
@@ -767,8 +811,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           analyticsKey: 'matrimony_about',
           label: '${l.modeMatrimony} · About you',
           widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
         ),
         _StepInfo(
           analyticsKey: 'matrimony_background',
@@ -778,6 +823,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             formData: _formData,
             onChanged: onChanged,
             onlySection: StepDetailsOnlySection.religion,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_intent',
+          label: '${l.modeMatrimony} · ${l.marriageIntentSection}',
+          widget: StepMarriageIntent(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_preferences',
+          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
+          widget: StepPreferences(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
           ),
           hasMandatory: false,
           skippable: true,
@@ -808,17 +871,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hasMandatory: false,
           skippable: true,
         ),
-        _StepInfo(
-          analyticsKey: 'matrimony_preferences',
-          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
-          widget: StepPreferences(
-            mode: AppMode.matrimony,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
       ];
       return [
         ...shared,
@@ -830,7 +882,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       //                 → Background → Education → Career → Lifestyle & Horoscope
       //                 → Interests → Partner preferences
       return [
-        if (!editing)
+        if (!editing && !creatingForAnswered)
           _StepInfo(
             analyticsKey: 'creating_for',
             label: l.wizardStepCreatingFor,
@@ -867,8 +919,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           analyticsKey: 'matrimony_about',
           label: 'About you',
           widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
         ),
         _StepInfo(
           analyticsKey: 'matrimony_background',
@@ -878,6 +931,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             formData: _formData,
             onChanged: onChanged,
             onlySection: StepDetailsOnlySection.religion,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_intent',
+          label: l.marriageIntentSection,
+          widget: StepMarriageIntent(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_preferences',
+          label: l.profileStepPreferences,
+          widget: StepPreferences(
+            mode: mode,
+            formData: _formData,
+            onChanged: onChanged,
           ),
           hasMandatory: false,
           skippable: true,
@@ -915,17 +986,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hasMandatory: false,
           skippable: true,
         ),
-        _StepInfo(
-          analyticsKey: 'matrimony_preferences',
-          label: l.profileStepPreferences,
-          widget: StepPreferences(
-            mode: mode,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
       ];
     }
     // Dating-only flow: You → Photos → About you → Lifestyle → Interests → Looking for
@@ -959,8 +1019,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         analyticsKey: 'dating_about',
         label: 'About you',
         widget: StepAboutYou(formData: _formData, onChanged: onChanged),
-        hasMandatory: false,
-        skippable: true,
+        hasMandatory: true,
+        skippable: false,
+        isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
       ),
       _StepInfo(
         analyticsKey: 'dating_lifestyle',
@@ -1190,6 +1251,32 @@ class ProfileFormData {
 
   /// Preferred countries (multiple).
   List<String> preferredCountries = [];
+
+  /// When [creatingFor] is son, daughter, brother, or sister, the subject's gender
+  /// (and default matrimony "looking for") are implied. Used by identity chips and
+  /// after pre-seeding from [ProfileForScreen].
+  void applyGenderFromCreatingForRelationship(AppLocalizations l) {
+    switch (creatingFor) {
+      case 'son':
+      case 'brother':
+        gender = l.genderMan;
+        interestedIn = 'Woman';
+        familyInvolvement = 'family_assisted';
+        return;
+      case 'daughter':
+      case 'sister':
+        gender = l.genderWoman;
+        interestedIn = 'Man';
+        familyInvolvement = 'family_assisted';
+        return;
+      case 'relative':
+      case 'friend':
+        familyInvolvement = 'family_assisted';
+        return;
+      default:
+        return;
+    }
+  }
 
   /// Prefill from existing profile so edit / mode switch is seamless. Shared and mode-specific fields are mapped.
   void fillFrom(UserProfile? p) {

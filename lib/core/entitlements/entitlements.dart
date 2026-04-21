@@ -29,6 +29,8 @@ class Entitlements {
     required this.dailyMessageLimit,
     required this.dailyPriorityInterestLimit,
     this.photosVisibleCount = 1,
+    this.maxActiveChats = 0,
+    this.canSuperlike = false,
   });
 
   final SubscriptionTier tier;
@@ -36,6 +38,8 @@ class Entitlements {
   final bool canExpressInterest;
   final bool canShortlist;
   final bool canViewFullProfile;
+  /// True for Silver+. Free users can only reply inside acceptance-opened threads
+  /// (the isMatched bypass in UI handles those cases).
   final bool canSendMessage;
   final bool canSendMessageDirect;
   final bool canSeeWhoLikedYou;
@@ -52,8 +56,12 @@ class Entitlements {
   final int dailyInterestLimit;
   final int dailyMessageLimit;
   final int dailyPriorityInterestLimit;
-  /// Number of photos visible before blur/gate. 999 = all (silver+ or female). 1 = free male baseline.
+  /// Number of photos visible before blur/gate. 999 = all (Silver+ or female). 1 = free male baseline.
   final int photosVisibleCount;
+  /// Max simultaneous active chat threads. 0 = unlimited (Gold+). Silver = 25.
+  final int maxActiveChats;
+  /// Platinum only: can send a SuperLike (priority interest that appears at the top of the feed).
+  final bool canSuperlike;
 
   bool get isPremium => tier == SubscriptionTier.premium || tier.isAtLeastGold;
   bool get isSilver => tier.isAtLeastSilver;
@@ -67,8 +75,8 @@ class Entitlements {
   bool get canSendPriorityInterestWithAd => !isPremium;
 
   String get upgradeReason {
-    if (isFemale) return 'Upgrade for unlimited messaging and travel mode.';
-    return 'Upgrade to send messages, see who likes you, and more.';
+    if (isFemale) return 'Upgrade for travel mode, priority discovery, and AI review.';
+    return 'Upgrade to chat with more matches, see who likes you, and more.';
   }
 
   factory Entitlements.fromSubscriptionEntitlements(
@@ -97,6 +105,8 @@ class Entitlements {
       dailyMessageLimit: entitlements.dailyMessageLimit,
       dailyPriorityInterestLimit: entitlements.dailyPriorityInterestLimit,
       photosVisibleCount: entitlements.photosVisibleCount,
+      maxActiveChats: entitlements.maxActiveChats,
+      canSuperlike: entitlements.canSuperlike,
     );
   }
 }
@@ -160,6 +170,8 @@ final entitlementsProvider = Provider<Entitlements>((ref) {
         dailyMessageLimit: 0,
         dailyPriorityInterestLimit: 0,
         photosVisibleCount: 1,
+        maxActiveChats: 0,
+        canSuperlike: false,
       );
 });
 

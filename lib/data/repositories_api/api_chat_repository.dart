@@ -414,12 +414,17 @@ class ApiChatRepository implements ChatRepository {
     final sentAt = sentAtRaw is String
         ? (parseApiDateTime(sentAtRaw) ?? DateTime.now())
         : DateTime.now();
+    final sentByFamilyMemberId = j['sentByFamilyMemberId'] as String?;
+    final senderType = (j['senderType'] as String?) ??
+        (sentByFamilyMemberId != null ? 'family_member' : 'owner');
     return ChatMessage(
       id: j['id'] as String? ?? '',
       senderId: j['senderId'] as String? ?? j['sender_id'] as String? ?? '',
       text: j['text'] as String? ?? j['content'] as String? ?? '',
       sentAt: sentAt,
       isVoiceNote: j['isVoiceNote'] as bool? ?? j['is_voice_note'] as bool? ?? false,
+      senderType: senderType,
+      sentByFamilyMemberId: sentByFamilyMemberId,
     );
   }
 }
