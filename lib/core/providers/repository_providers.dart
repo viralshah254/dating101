@@ -74,7 +74,7 @@ import '../../domain/repositories/verification_repository.dart';
 
 const _apiEnvironment = String.fromEnvironment(
   'API_ENV',
-  defaultValue: 'localDev',
+  defaultValue: 'production',
 );
 const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
 

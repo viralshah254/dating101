@@ -14,8 +14,10 @@ class ApiConfig {
   final bool useFakeBackend;
 
   /// Production config.
+  /// Live API (EC2 / load balancer). When you add HTTPS + `api.shubhmilan.app`, point this to
+  /// `https://api.shubhmilan.app` and remove cleartext exceptions in iOS/Android.
   static const production = ApiConfig(
-    baseUrl: 'https://api.shubhmilan.app',
+    baseUrl: 'http://34.237.17.228',
     useFakeBackend: false,
   );
 
@@ -33,6 +35,6 @@ class ApiConfig {
   );
   
 
-  /// Fake/mock backend (default for now).
+  /// Fake/mock backend. Use `API_ENV=fake` in [repository_providers] to enable.
   static const fake = ApiConfig(useFakeBackend: true);
 }

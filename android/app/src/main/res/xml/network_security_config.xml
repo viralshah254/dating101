@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Allow cleartext to live API until HTTPS is enabled; remove or narrow after https://api.shubhmilan.app -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">34.237.17.228</domain>
+    </domain-config>
+</network-security-config>

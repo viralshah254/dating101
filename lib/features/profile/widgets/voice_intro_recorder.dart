@@ -9,10 +9,8 @@ import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 
 /// Full recording/playback widget for Voice Intro.
-/// Uses the `record` package for recording; caller gets back the audio file path.
-///
-/// Because `record` requires platform-level permissions, callers should request
-/// [Permission.microphone] before showing this widget.
+/// Currently simulates recording (no `record` / `just_audio` dependency). When
+/// you add those packages for real capture, request mic permission before use.
 ///
 /// The widget calls [onRecordingComplete] with the local file path when the
 /// user stops recording and confirms. Call [onUpload] to upload to storage.
