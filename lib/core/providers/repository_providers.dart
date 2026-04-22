@@ -7,6 +7,8 @@ import '../../core/location/app_location_service.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/api_config.dart';
+import '../../data/api/chat_websocket_client.dart';
+import '../../data/api/realtime_websocket_client.dart';
 import '../../data/api/token_storage.dart';
 import '../../data/services/photo_upload_service.dart';
 import '../../data/services/security_service.dart';
@@ -70,8 +72,34 @@ import '../../domain/repositories/verification_repository.dart';
 
 // ── Configuration ────────────────────────────────────────────────────────
 
-/// Change this to ApiConfig.localDev or ApiConfig.production to use real API.
-const _config = ApiConfig.localDev;
+const _apiEnvironment = String.fromEnvironment(
+  'API_ENV',
+  defaultValue: 'localDev',
+);
+const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
+
+ApiConfig _resolveApiConfig() {
+  if (_apiBaseUrlOverride.isNotEmpty) {
+    return ApiConfig(
+      baseUrl: _apiBaseUrlOverride,
+      useFakeBackend: false,
+    );
+  }
+  switch (_apiEnvironment) {
+    case 'production':
+      return ApiConfig.production;
+    case 'fake':
+      return ApiConfig.fake;
+    case 'localDev':
+    default:
+      return ApiConfig.localDev;
+  }
+}
+
+final _config = _resolveApiConfig();
+
+/// Exposed for pre-ProviderScope token warmup in main.dart.
+ApiConfig get resolvedApiConfig => _config;
 
 // ── Providers ────────────────────────────────────────────────────────────
 
@@ -139,9 +167,45 @@ final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
   return ApiSafetyRepository(api: ref.watch(apiClientProvider));
 });
 
+final chatWebSocketClientProvider = Provider<ChatWebSocketClient?>((ref) {
+  if (_config.useFakeBackend) return null;
+  final wsClient = ChatWebSocketClient(
+    wsBaseUrl: _config.baseUrl,
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
+  // Dispose WS connection when provider is destroyed (e.g. on logout via ref.invalidate)
+  ref.onDispose(wsClient.dispose);
+  // Also disconnect when user logs out (token cleared)
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  if (!tokenStorage.isLoggedIn) {
+    wsClient.dispose();
+    return null;
+  }
+  return wsClient;
+});
+
+/// Realtime RPC (Likes snapshot, etc.). Registered after chat WS plugin on server.
+final realtimeWebSocketClientProvider = Provider<RealtimeWebSocketClient?>((ref) {
+  if (_config.useFakeBackend) return null;
+  final client = RealtimeWebSocketClient(
+    wsBaseUrl: _config.baseUrl,
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
+  ref.onDispose(client.dispose);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  if (!tokenStorage.isLoggedIn) {
+    client.dispose();
+    return null;
+  }
+  return client;
+});
+
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   if (_config.useFakeBackend) return FakeChatRepository();
-  return ApiChatRepository(api: ref.watch(apiClientProvider));
+  return ApiChatRepository(
+    api: ref.watch(apiClientProvider),
+    wsClient: ref.watch(chatWebSocketClientProvider),
+  );
 });
 
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
@@ -211,7 +275,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   final profileRepo = ref.watch(profileRepositoryProvider);
   return FirebaseNotificationService(
     onRegisterToken: (token) => profileRepo.registerFcmToken(token),
-    onLogoutCallback: () => profileRepo.deleteFcmToken(),
+    // Do not call DELETE /profile/me/fcm-token on logout — keep server tokens for push delivery.
   );
 });
 
@@ -221,12 +285,29 @@ final adServiceProvider = Provider<AdService>((_) => AdService());
 /// One-shot: when read (e.g. from shell), registers FCM token with backend if user is logged in.
 final registerFcmTokenProvider = FutureProvider<void>((ref) async {
   final tokenStorage = ref.read(tokenStorageProvider);
-  if (!tokenStorage.isLoggedIn) return;
+  if (!tokenStorage.isLoggedIn) {
+    if (kDebugMode) debugPrint('[FCM] skip register: not logged in');
+    return;
+  }
   final service = ref.read(notificationServiceProvider);
   final token = await service.getToken();
-  if (token != null) {
+  if (token == null) {
+    if (kDebugMode) {
+      debugPrint(
+        '[FCM] skip register: no token (permission denied or FCM unavailable). '
+        'Backend will have no device to send pushes to.',
+      );
+    }
+    return;
+  }
+  try {
     await service.registerTokenWithBackend(token);
-    if (kDebugMode) debugPrint('[FCM] Token registered with backend');
+    if (kDebugMode) debugPrint('[FCM] Token registered with backend (POST /profile/me/fcm-token ok)');
+  } catch (e, st) {
+    if (kDebugMode) {
+      debugPrint('[FCM] registerTokenWithBackend failed: $e');
+      debugPrint('$st');
+    }
   }
 });
 

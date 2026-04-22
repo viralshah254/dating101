@@ -1,6 +1,6 @@
 # Backend: Security — Block, Report, Blocked list, Unblock
 
-Use this doc to implement the security/safety endpoints so the Saathi app can:
+Use this doc to implement the security/safety endpoints so the Shubhmilan app can:
 
 - Let users **block** or **report** others with a **reason**.
 - Show **blocked users** in Privacy & safety and allow **unblock**.

@@ -1,7 +1,7 @@
 import '../models/visitor_entry.dart';
 import '../models/visitor_unlock_result.dart';
 
-/// Profile visitors (who viewed my profile). Saathi §6a.
+/// Profile visitors (who viewed my profile). Backend spec §6a.
 abstract class VisitsRepository {
   /// Record that the current user viewed a profile.
   Future<void> recordVisit(

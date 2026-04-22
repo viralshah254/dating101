@@ -1,5 +1,6 @@
 import '../../core/mode/app_mode.dart';
 import '../../domain/models/interaction_models.dart';
+import '../../domain/models/profile_summary.dart';
 import '../../domain/repositories/interactions_repository.dart';
 import '../mappers/profile_mapper.dart';
 import 'fake_data.dart';
@@ -8,8 +9,10 @@ class FakeInteractionsRepository implements InteractionsRepository {
   @override
   Future<ExpressInterestResult> expressInterest(
     String toUserId, {
+    String? message,
     String? source,
     AppMode? mode,
+    String? adCompletionToken,
   }) async {
     await Future.delayed(const Duration(milliseconds: 80));
     return ExpressInterestResult(
@@ -157,5 +160,25 @@ class FakeInteractionsRepository implements InteractionsRepository {
       if (shared != null) 'I noticed you like $shared. What do you enjoy most about it?',
       'What does your ideal weekend look like?',
     ];
+  }
+
+  @override
+  Future<LikedYouUnlockResult> unlockOneLikedYou({
+    required String adCompletionToken,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    final fakeProfile = FakeData.allProfiles.values.firstOrNull;
+    return LikedYouUnlockResult(
+      interestId: 'liked_fake_${DateTime.now().millisecondsSinceEpoch}',
+      profile: fakeProfile != null
+          ? profileToSummary(fakeProfile)
+          : const ProfileSummary(
+              id: 'fake_liked_you',
+              name: 'Priya S.',
+              age: 26,
+              city: 'Mumbai',
+            ),
+      adsRemainingToday: 9,
+    );
   }
 }

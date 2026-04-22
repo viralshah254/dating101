@@ -48,6 +48,23 @@ class _StepPhotosState extends State<StepPhotos> {
     widget.onChanged();
   }
 
+  /// Replace a single slot (same flow as add, but keeps order / main photo index).
+  Future<void> _replacePhoto(int index) async {
+    if (index < 0 || index >= _photos.length) return;
+    HapticFeedback.lightImpact();
+    final picked = await _picker.pickImage(
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      source: ImageSource.gallery,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _photos[index] = picked.path;
+    });
+    widget.onChanged();
+  }
+
   void _removePhoto(int index) {
     HapticFeedback.lightImpact();
     setState(() {
@@ -75,7 +92,7 @@ class _StepPhotosState extends State<StepPhotos> {
     final subject = widget.formData.subjectName;
 
     final subtitle = forSelf
-        ? 'Add at least 2 photos. Clear face photos get 3x more responses.'
+        ? l.profileSetupPhotosHint
         : l.dynPhotosSubtitle(subject);
 
     return SingleChildScrollView(
@@ -101,7 +118,7 @@ class _StepPhotosState extends State<StepPhotos> {
           if (_photos.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              'Hold & drag to reorder. First photo is your profile picture.',
+              l.photosReorderHint,
               style: AppTypography.bodySmall.copyWith(
                 color: accent.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
@@ -129,7 +146,7 @@ class _StepPhotosState extends State<StepPhotos> {
                     Icon(Icons.auto_awesome, size: 18, color: accent),
                     const SizedBox(width: 8),
                     Text(
-                      'Photo tips',
+                      l.photoTipsLabel,
                       style: AppTypography.labelLarge.copyWith(
                         color: onSurface,
                         fontWeight: FontWeight.w600,
@@ -140,22 +157,22 @@ class _StepPhotosState extends State<StepPhotos> {
                 const SizedBox(height: 10),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Clear, well-lit face photo as main',
+                  text: l.photoTipClear,
                 ),
                 const SizedBox(height: 6),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Full-length photo shows personality',
+                  text: l.photoTipFullLength,
                 ),
                 const SizedBox(height: 6),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Avoid heavy filters or group shots',
+                  text: l.photoTipNoFilters,
                 ),
                 const SizedBox(height: 6),
                 _TipRow(
                   icon: Icons.check_circle_outline,
-                  text: 'Smile — it genuinely helps',
+                  text: l.photoTipSmile,
                 ),
               ],
             ),
@@ -181,15 +198,23 @@ class _StepPhotosState extends State<StepPhotos> {
           width: slotWidth,
           height: slotHeight,
           child: isFilled
-              ? _buildFilledSlot(i, accent, slotWidth, slotHeight)
+              ? _buildFilledSlot(context, i, accent, slotWidth, slotHeight)
               : _buildEmptySlot(i, accent, onSurface),
         );
       }),
     ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.04, end: 0);
   }
 
-  Widget _buildFilledSlot(int i, Color accent, double w, double h) {
-    return LongPressDraggable<int>(
+  Widget _buildFilledSlot(
+    BuildContext context,
+    int i,
+    Color accent,
+    double w,
+    double h,
+  ) {
+    final l = AppLocalizations.of(context)!;
+
+    final draggable = LongPressDraggable<int>(
       data: i,
       delay: const Duration(milliseconds: 150),
       onDragStarted: () => HapticFeedback.mediumImpact(),
@@ -217,28 +242,98 @@ class _StepPhotosState extends State<StepPhotos> {
           border: Border.all(color: accent.withValues(alpha: 0.3), width: 2),
         ),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          _PhotoCard(path: _photos[i], isPrimary: i == 0, accent: accent),
-          Positioned(
-            top: -6,
-            right: -6,
-            child: GestureDetector(
-              onTap: () => _removePhoto(i),
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: () => _replacePhoto(i),
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _PhotoCard(path: _photos[i], isPrimary: i == 0, accent: accent),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.65),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: Text(
+                    l.photoTapToChange,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              top: -6,
+              right: -6,
+              child: GestureDetector(
+                onTap: () => _removePhoto(i),
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+
+    // Wrap in DragTarget so filled slots can receive drops from OTHER filled
+    // slots — enabling full any-to-any photo reordering, not just into gaps.
+    return DragTarget<int>(
+      onWillAcceptWithDetails: (details) => details.data != i,
+      onAcceptWithDetails: (details) {
+        _onReorder(details.data, i);
+      },
+      builder: (context, candidateData, _) {
+        final isHovered = candidateData.isNotEmpty;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            draggable,
+            if (isHovered)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: accent,
+                        width: 2.5,
+                      ),
+                      color: accent.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 

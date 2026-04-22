@@ -56,43 +56,40 @@ const _recommendedPageSize = 30;
 const _explorePageSize = 30;
 
 /// Paginated Recommended feed: first page 30, then load more on scroll.
-class RecommendedPaginatedNotifier extends AutoDisposeAsyncNotifier<PaginatedFeedState> {
+class RecommendedPaginatedNotifier extends AsyncNotifier<PaginatedFeedState> {
   @override
   Future<PaginatedFeedState> build() async {
     final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
     final repo = ref.read(discoveryRepositoryProvider);
-    final page = await repo.getRecommendedPage(
-      mode: mode,
-      limit: _recommendedPageSize,
-      cursor: null,
-    );
-    if (page.profiles.isNotEmpty) {
+
+    // Fire recommended and explore in parallel so that when the backend returns
+    // zero recommendations the explore fallback is already in-flight — eliminating
+    // the sequential second round-trip that previously added full RTT latency.
+    final results = await Future.wait([
+      repo.getRecommendedPage(mode: mode, limit: _recommendedPageSize, cursor: null),
+      repo.getExplorePage(mode: mode, limit: _explorePageSize, cursor: null),
+    ]);
+    final recommended = results[0];
+    final explore = results[1];
+
+    if (recommended.profiles.isNotEmpty) {
       return PaginatedFeedState(
-        profiles: page.profiles,
-        nextCursor: page.nextCursor,
+        profiles: recommended.profiles,
+        nextCursor: recommended.nextCursor,
         isWidenedSearch: false,
       );
     }
-    debugPrint(
-      '[Matches] No recommendations; using explore as fallback (paginated).',
-    );
-    final fallback = await repo.getExplorePage(
-      mode: mode,
-      limit: _recommendedPageSize,
-      cursor: null,
-    );
+    debugPrint('[Matches] No recommendations; using explore as fallback (parallel).');
     return PaginatedFeedState(
-      profiles: fallback.profiles,
-      nextCursor: fallback.nextCursor,
-      isWidenedSearch: fallback.profiles.isNotEmpty,
+      profiles: explore.profiles,
+      nextCursor: explore.nextCursor,
+      isWidenedSearch: explore.profiles.isNotEmpty,
     );
   }
 
   Future<void> loadMore() async {
     final current = state.valueOrNull;
-    if (current == null ||
-        current.loadingMore ||
-        !current.hasMore) return;
+    if (current == null || current.loadingMore || !current.hasMore) return;
     state = AsyncValue.data(current.copyWith(loadingMore: true));
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
@@ -116,13 +113,13 @@ class RecommendedPaginatedNotifier extends AutoDisposeAsyncNotifier<PaginatedFee
 }
 
 final recommendedPaginatedProvider =
-    AsyncNotifierProvider.autoDispose<RecommendedPaginatedNotifier, PaginatedFeedState>(
+    AsyncNotifierProvider<RecommendedPaginatedNotifier, PaginatedFeedState>(
   RecommendedPaginatedNotifier.new,
 );
 
 /// Paginated Explore (Search) feed: first page 30, then load more on scroll.
 class ExplorePaginatedNotifier
-    extends AutoDisposeFamilyAsyncNotifier<PaginatedFeedState,
+    extends FamilyAsyncNotifier<PaginatedFeedState,
         ({AppMode mode, MatchesSearchFilters filters})> {
   @override
   Future<PaginatedFeedState> build(
@@ -137,7 +134,10 @@ class ExplorePaginatedNotifier
       religion: arg.filters.religion,
       education: arg.filters.education,
       heightMinCm: arg.filters.heightMinCm,
+      heightMaxCm: arg.filters.heightMaxCm,
       diet: arg.filters.diet,
+      maritalStatus: arg.filters.maritalStatus,
+      motherTongue: arg.filters.motherTongue,
       limit: _explorePageSize,
       cursor: null,
     );
@@ -151,9 +151,7 @@ class ExplorePaginatedNotifier
   /// Call with the same (mode, filters) used to watch the provider.
   Future<void> loadMore(({AppMode mode, MatchesSearchFilters filters}) arg) async {
     final current = state.valueOrNull;
-    if (current == null ||
-        current.loadingMore ||
-        !current.hasMore) return;
+    if (current == null || current.loadingMore || !current.hasMore) return;
     state = AsyncValue.data(current.copyWith(loadingMore: true));
     try {
       final repo = ref.read(discoveryRepositoryProvider);
@@ -165,7 +163,10 @@ class ExplorePaginatedNotifier
         religion: arg.filters.religion,
         education: arg.filters.education,
         heightMinCm: arg.filters.heightMinCm,
+        heightMaxCm: arg.filters.heightMaxCm,
         diet: arg.filters.diet,
+        maritalStatus: arg.filters.maritalStatus,
+        motherTongue: arg.filters.motherTongue,
         limit: _explorePageSize,
         cursor: current.nextCursor,
       );
@@ -183,7 +184,7 @@ class ExplorePaginatedNotifier
 }
 
 final explorePaginatedProvider =
-    AsyncNotifierProvider.autoDispose.family<
+    AsyncNotifierProvider.family<
         ExplorePaginatedNotifier,
         PaginatedFeedState,
         ({AppMode mode, MatchesSearchFilters filters})>(
@@ -200,36 +201,34 @@ final matchesRecommendedProvider =
       return results;
     });
 
-/// Recommendations with fallback: if recommended returns 0, call explore with no filters and show "We've widened the search" banner.
+/// Recommendations with fallback: if recommended returns 0, uses explore with no filters.
+/// Both requests are fired in parallel to eliminate sequential round-trip latency.
 final matchesRecommendedWithFallbackProvider =
     FutureProvider.autoDispose<DiscoveryFeedResult>((ref) async {
       final mode = ref.watch(appModeProvider) ?? AppMode.matrimony;
       final repo = ref.watch(discoveryRepositoryProvider);
-      final results = await repo.getRecommended(mode: mode, limit: 20);
-      if (results.isNotEmpty) {
-        return DiscoveryFeedResult(profiles: results);
+      final fetched = await Future.wait([
+        repo.getRecommended(mode: mode, limit: 20),
+        repo.getExplore(mode: mode, limit: 20),
+      ]);
+      final recommended = fetched[0];
+      final explore = fetched[1];
+      if (recommended.isNotEmpty) {
+        return DiscoveryFeedResult(profiles: recommended);
       }
-      debugPrint(
-        '[Matches] No recommendations (backend may have returned count-only); '
-        'using explore with no filters as fallback.',
-      );
-      final fallback = await repo.getExplore(mode: mode, limit: 20);
-      debugPrint('[Matches] Fallback explore returned ${fallback.length} profiles');
-      return DiscoveryFeedResult(
-        profiles: fallback,
-        isWidenedSearch: fallback.isNotEmpty,
-      );
+      debugPrint('[Matches] No recommendations; explore fallback returned ${explore.length} profiles.');
+      return DiscoveryFeedResult(profiles: explore, isWidenedSearch: explore.isNotEmpty);
     });
 
 /// Mutual matches (GET /matches). Used for Matches tab and to exclude from Explore.
 final mutualMatchesProvider =
-    FutureProvider.autoDispose<List<MutualMatchEntry>>((ref) async {
+    FutureProvider<List<MutualMatchEntry>>((ref) async {
       final repo = ref.watch(matchesRepositoryProvider);
       return repo.getMatches(page: 1, limit: 100);
     });
 
 /// Set of user IDs we are already matched with. Use to hide them from Explore.
-final matchedUserIdsProvider = FutureProvider.autoDispose<Set<String>>((
+final matchedUserIdsProvider = FutureProvider<Set<String>>((
   ref,
 ) async {
   final list = await ref.watch(mutualMatchesProvider.future);
@@ -254,7 +253,10 @@ final matchesExploreProvider = FutureProvider.autoDispose
         religion: args.filters.religion,
         education: args.filters.education,
         heightMinCm: args.filters.heightMinCm,
+        heightMaxCm: args.filters.heightMaxCm,
         diet: args.filters.diet,
+        maritalStatus: args.filters.maritalStatus,
+        motherTongue: args.filters.motherTongue,
         limit: 20,
       );
       debugPrint('[Matches] Explore got ${results.length} profiles');
@@ -280,7 +282,10 @@ final matchesExploreWithFallbackProvider = FutureProvider.autoDispose
             religion: f.religion,
             education: f.education,
             heightMinCm: f.heightMinCm,
+            heightMaxCm: f.heightMaxCm,
             diet: f.diet,
+            maritalStatus: f.maritalStatus,
+            motherTongue: f.motherTongue,
             limit: 20,
           );
 
@@ -289,94 +294,42 @@ final matchesExploreWithFallbackProvider = FutureProvider.autoDispose
 
       if (!_hasFilters(filters)) return DiscoveryFeedResult(profiles: first);
 
-      // Build relaxed filter sets (drop one non-strict dimension at a time). Build explicitly so we can clear a field to null.
+      // Build relaxed filter sets (drop one non-strict dimension at a time).
       final candidates = <MatchesSearchFilters>[];
+      if (filters.motherTongue != null && filters.motherTongue!.isNotEmpty) {
+        candidates.add(filters.copyWith(clearMotherTongue: true));
+      }
+      if (filters.maritalStatus != null &&
+          filters.maritalStatus!.isNotEmpty &&
+          opts.maritalStatus?.strict != true) {
+        candidates.add(filters.copyWith(clearMaritalStatus: true));
+      }
       if (filters.diet != null &&
           filters.diet!.isNotEmpty &&
           opts.diet?.strict != true) {
-        candidates.add(
-          MatchesSearchFilters(
-            ageMin: filters.ageMin,
-            ageMax: filters.ageMax,
-            city: filters.city,
-            religion: filters.religion,
-            education: filters.education,
-            heightMinCm: filters.heightMinCm,
-            diet: null,
-          ),
-        );
+        candidates.add(filters.copyWith(clearDiet: true));
       }
       if (filters.city != null &&
           filters.city!.isNotEmpty &&
           !opts.cities.strict) {
-        candidates.add(
-          MatchesSearchFilters(
-            ageMin: filters.ageMin,
-            ageMax: filters.ageMax,
-            city: null,
-            religion: filters.religion,
-            education: filters.education,
-            heightMinCm: filters.heightMinCm,
-            diet: filters.diet,
-          ),
-        );
+        candidates.add(filters.copyWith(clearCity: true));
       }
       if (filters.religion != null &&
           filters.religion!.isNotEmpty &&
           !opts.religions.strict) {
-        candidates.add(
-          MatchesSearchFilters(
-            ageMin: filters.ageMin,
-            ageMax: filters.ageMax,
-            city: filters.city,
-            religion: null,
-            education: filters.education,
-            heightMinCm: filters.heightMinCm,
-            diet: filters.diet,
-          ),
-        );
+        candidates.add(filters.copyWith(clearReligion: true));
       }
       if (filters.education != null &&
           filters.education!.isNotEmpty &&
           !opts.education.strict) {
-        candidates.add(
-          MatchesSearchFilters(
-            ageMin: filters.ageMin,
-            ageMax: filters.ageMax,
-            city: filters.city,
-            religion: filters.religion,
-            education: null,
-            heightMinCm: filters.heightMinCm,
-            diet: filters.diet,
-          ),
-        );
+        candidates.add(filters.copyWith(clearEducation: true));
       }
       if (filters.heightMinCm != null) {
-        candidates.add(
-          MatchesSearchFilters(
-            ageMin: filters.ageMin,
-            ageMax: filters.ageMax,
-            city: filters.city,
-            religion: filters.religion,
-            education: filters.education,
-            heightMinCm: null,
-            diet: filters.diet,
-          ),
-        );
+        candidates.add(filters.copyWith(clearHeight: true));
       }
       if ((filters.ageMin != null || filters.ageMax != null) &&
           !opts.age.strict) {
-        candidates.add(
-          MatchesSearchFilters(
-            ageMin: null,
-            ageMax: null,
-            city: filters.city,
-            religion: filters.religion,
-            education: filters.education,
-            heightMinCm: filters.heightMinCm,
-            diet: filters.diet,
-          ),
-        );
+        candidates.add(filters.copyWith(clearAge: true));
       }
       candidates.add(const MatchesSearchFilters()); // no filters
 
@@ -399,7 +352,10 @@ bool _hasFilters(MatchesSearchFilters f) =>
     (f.religion != null && f.religion!.isNotEmpty) ||
     (f.education != null && f.education!.isNotEmpty) ||
     f.heightMinCm != null ||
-    (f.diet != null && f.diet!.isNotEmpty);
+    f.heightMaxCm != null ||
+    (f.diet != null && f.diet!.isNotEmpty) ||
+    (f.maritalStatus != null && f.maritalStatus!.isNotEmpty) ||
+    (f.motherTongue != null && f.motherTongue!.isNotEmpty);
 
 final matchesSearchProvider = FutureProvider.autoDispose
     .family<List<ProfileSummary>, MatchesSearchFilters>((ref, filters) async {
@@ -427,7 +383,7 @@ final matchesNearbyProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
 });
 
 /// Visitor entries (with visitId) for Likes → Visitors tab. Free users see blurred name+age; unlock via ad (2/week) or premium.
-final visitorsEntriesProvider = FutureProvider.autoDispose<List<VisitorEntry>>((
+final visitorsEntriesProvider = FutureProvider<List<VisitorEntry>>((
   ref,
 ) async {
   final repo = ref.watch(visitsRepositoryProvider);
@@ -437,7 +393,7 @@ final visitorsEntriesProvider = FutureProvider.autoDispose<List<VisitorEntry>>((
 });
 
 /// Visitors (who viewed my profile). Uses GET /visits/received and marks as seen on load.
-final visitorsProvider = FutureProvider.autoDispose<List<ProfileSummary>>((
+final visitorsProvider = FutureProvider<List<ProfileSummary>>((
   ref,
 ) async {
   final result = await ref.watch(visitorsEntriesProvider.future);
@@ -466,6 +422,76 @@ final savedSearchesProvider = FutureProvider.autoDispose<List<SavedSearch>>((
   return repo.getSavedSearches();
 });
 
+/// Sort options applied client-side to the current page of fetched profiles.
+enum SortOption {
+  bestMatch,
+  recentlyActive,
+  youngestFirst,
+  oldestFirst,
+  nearest;
+
+  String get label {
+    switch (this) {
+      case SortOption.bestMatch:
+        return 'Best Match';
+      case SortOption.recentlyActive:
+        return 'Recently Active';
+      case SortOption.youngestFirst:
+        return 'Youngest First';
+      case SortOption.oldestFirst:
+        return 'Oldest First';
+      case SortOption.nearest:
+        return 'Nearest';
+    }
+  }
+}
+
+/// Global sort preference, applied in all feed tabs.
+final sortByProvider = StateProvider<SortOption>((ref) => SortOption.bestMatch);
+
+/// Apply [sort] to a list of profiles in-memory.
+List<ProfileSummary> applySortOption(
+  List<ProfileSummary> profiles,
+  SortOption sort,
+) {
+  final list = List<ProfileSummary>.from(profiles);
+  switch (sort) {
+    case SortOption.bestMatch:
+      list.sort(
+        (a, b) => (b.compatibilityScore ?? 0).compareTo(
+          a.compatibilityScore ?? 0,
+        ),
+      );
+    case SortOption.recentlyActive:
+      break; // backend already orders by lastActiveAt
+    case SortOption.youngestFirst:
+      list.sort((a, b) {
+        final ag = a.age, bg = b.age;
+        if (ag == null && bg == null) return 0;
+        if (ag == null) return 1;
+        if (bg == null) return -1;
+        return ag.compareTo(bg);
+      });
+    case SortOption.oldestFirst:
+      list.sort((a, b) {
+        final ag = a.age, bg = b.age;
+        if (ag == null && bg == null) return 0;
+        if (ag == null) return 1;
+        if (bg == null) return -1;
+        return bg.compareTo(ag);
+      });
+    case SortOption.nearest:
+      list.sort((a, b) {
+        final ad = a.distanceKm, bd = b.distanceKm;
+        if (ad == null && bd == null) return 0;
+        if (ad == null) return 1;
+        if (bd == null) return -1;
+        return ad.compareTo(bd);
+      });
+  }
+  return list;
+}
+
 class MatchesSearchFilters {
   const MatchesSearchFilters({
     this.ageMin,
@@ -474,7 +500,10 @@ class MatchesSearchFilters {
     this.religion,
     this.education,
     this.heightMinCm,
+    this.heightMaxCm,
     this.diet,
+    this.maritalStatus,
+    this.motherTongue,
   });
 
   final int? ageMin;
@@ -483,8 +512,12 @@ class MatchesSearchFilters {
   final String? religion;
   final String? education;
   final int? heightMinCm;
+  final int? heightMaxCm;
   final String? diet;
+  final String? maritalStatus;
+  final String? motherTongue;
 
+  /// [clearCity]/[clearReligion] etc. set the respective string field to null.
   MatchesSearchFilters copyWith({
     int? ageMin,
     int? ageMax,
@@ -492,16 +525,30 @@ class MatchesSearchFilters {
     String? religion,
     String? education,
     int? heightMinCm,
+    int? heightMaxCm,
     String? diet,
+    String? maritalStatus,
+    String? motherTongue,
+    bool clearCity = false,
+    bool clearReligion = false,
+    bool clearEducation = false,
+    bool clearDiet = false,
+    bool clearMaritalStatus = false,
+    bool clearMotherTongue = false,
+    bool clearHeight = false,
+    bool clearAge = false,
   }) {
     return MatchesSearchFilters(
-      ageMin: ageMin ?? this.ageMin,
-      ageMax: ageMax ?? this.ageMax,
-      city: city ?? this.city,
-      religion: religion ?? this.religion,
-      education: education ?? this.education,
-      heightMinCm: heightMinCm ?? this.heightMinCm,
-      diet: diet ?? this.diet,
+      ageMin: clearAge ? null : (ageMin ?? this.ageMin),
+      ageMax: clearAge ? null : (ageMax ?? this.ageMax),
+      city: clearCity ? null : (city ?? this.city),
+      religion: clearReligion ? null : (religion ?? this.religion),
+      education: clearEducation ? null : (education ?? this.education),
+      heightMinCm: clearHeight ? null : (heightMinCm ?? this.heightMinCm),
+      heightMaxCm: clearHeight ? null : (heightMaxCm ?? this.heightMaxCm),
+      diet: clearDiet ? null : (diet ?? this.diet),
+      maritalStatus: clearMaritalStatus ? null : (maritalStatus ?? this.maritalStatus),
+      motherTongue: clearMotherTongue ? null : (motherTongue ?? this.motherTongue),
     );
   }
 
@@ -515,11 +562,16 @@ class MatchesSearchFilters {
           religion == other.religion &&
           education == other.education &&
           heightMinCm == other.heightMinCm &&
-          diet == other.diet;
+          heightMaxCm == other.heightMaxCm &&
+          diet == other.diet &&
+          maritalStatus == other.maritalStatus &&
+          motherTongue == other.motherTongue;
 
   @override
-  int get hashCode =>
-      Object.hash(ageMin, ageMax, city, religion, education, heightMinCm, diet);
+  int get hashCode => Object.hash(
+        ageMin, ageMax, city, religion, education,
+        heightMinCm, heightMaxCm, diet, maritalStatus, motherTongue,
+      );
 
   /// Convert to map for saved-search API (only non-null fields).
   Map<String, dynamic> toMap() {
@@ -530,7 +582,10 @@ class MatchesSearchFilters {
     if (religion != null && religion!.isNotEmpty) m['religion'] = religion;
     if (education != null && education!.isNotEmpty) m['education'] = education;
     if (heightMinCm != null) m['heightMinCm'] = heightMinCm;
+    if (heightMaxCm != null) m['heightMaxCm'] = heightMaxCm;
     if (diet != null && diet!.isNotEmpty) m['diet'] = diet;
+    if (maritalStatus != null && maritalStatus!.isNotEmpty) m['maritalStatus'] = maritalStatus;
+    if (motherTongue != null && motherTongue!.isNotEmpty) m['motherTongue'] = motherTongue;
     return m;
   }
 
@@ -544,7 +599,10 @@ class MatchesSearchFilters {
       religion: m['religion'] as String?,
       education: m['education'] as String?,
       heightMinCm: m['heightMinCm'] as int?,
+      heightMaxCm: m['heightMaxCm'] as int?,
       diet: m['diet'] as String?,
+      maritalStatus: m['maritalStatus'] as String?,
+      motherTongue: m['motherTongue'] as String?,
     );
   }
 }

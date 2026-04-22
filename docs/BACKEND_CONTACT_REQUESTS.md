@@ -1,4 +1,4 @@
-# Saathi — Contact Requests: Backend Contract
+# Shubhmilan — Contact Requests: Backend Contract
 
 Backend behaviour for **requesting another user's contact** (phone), **accept/decline** by the recipient, and **notifications** on accept/decline. When accepted, the requester sees **View contacts** with Call and WhatsApp actions.
 

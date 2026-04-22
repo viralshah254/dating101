@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../locale/app_locale_provider.dart';
 import '../theme/app_typography.dart';
 import '../providers/repository_providers.dart';
-import 'package:saathi/l10n/app_localizations.dart';
+import 'package:shubhmilan/l10n/app_localizations.dart';
 
 /// Shows [content] with an optional "Translate" button. On tap, translates to the app locale and shows the result.
 class TranslatableText extends ConsumerStatefulWidget {

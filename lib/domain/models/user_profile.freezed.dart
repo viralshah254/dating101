@@ -57,6 +57,19 @@ mixin _$UserProfile {
   DateTime? get creationAt => throw _privateConstructorUsedError;
   String? get creationAddress => throw _privateConstructorUsedError;
 
+  /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+  bool get hiddenFromRecommended => throw _privateConstructorUsedError;
+
+  /// UTC deadline by which the user must verify (accountCreatedAt + 3 days).
+  /// Null once the user is verified.
+  DateTime? get verificationDeadlineAt => throw _privateConstructorUsedError;
+
+  /// "self" | "managed_pending" | "managed_active" — reflects whether a family member manages this profile.
+  String get subjectStatus => throw _privateConstructorUsedError;
+
+  /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
+  String? get familyMode => throw _privateConstructorUsedError;
+
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -100,6 +113,10 @@ abstract class $UserProfileCopyWith<$Res> {
     double? creationLng,
     DateTime? creationAt,
     String? creationAddress,
+    bool hiddenFromRecommended,
+    DateTime? verificationDeadlineAt,
+    String subjectStatus,
+    String? familyMode,
   });
 
   $VerificationStatusCopyWith<$Res> get verificationStatus;
@@ -151,6 +168,10 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? creationLng = freezed,
     Object? creationAt = freezed,
     Object? creationAddress = freezed,
+    Object? hiddenFromRecommended = null,
+    Object? verificationDeadlineAt = freezed,
+    Object? subjectStatus = null,
+    Object? familyMode = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -266,6 +287,22 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
                 ? _value.creationAddress
                 : creationAddress // ignore: cast_nullable_to_non_nullable
                       as String?,
+            hiddenFromRecommended: null == hiddenFromRecommended
+                ? _value.hiddenFromRecommended
+                : hiddenFromRecommended // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            verificationDeadlineAt: freezed == verificationDeadlineAt
+                ? _value.verificationDeadlineAt
+                : verificationDeadlineAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            subjectStatus: null == subjectStatus
+                ? _value.subjectStatus
+                : subjectStatus // ignore: cast_nullable_to_non_nullable
+                      as String,
+            familyMode: freezed == familyMode
+                ? _value.familyMode
+                : familyMode // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -368,6 +405,10 @@ abstract class _$$UserProfileImplCopyWith<$Res>
     double? creationLng,
     DateTime? creationAt,
     String? creationAddress,
+    bool hiddenFromRecommended,
+    DateTime? verificationDeadlineAt,
+    String subjectStatus,
+    String? familyMode,
   });
 
   @override
@@ -422,6 +463,10 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? creationLng = freezed,
     Object? creationAt = freezed,
     Object? creationAddress = freezed,
+    Object? hiddenFromRecommended = null,
+    Object? verificationDeadlineAt = freezed,
+    Object? subjectStatus = null,
+    Object? familyMode = freezed,
   }) {
     return _then(
       _$UserProfileImpl(
@@ -537,6 +582,22 @@ class __$$UserProfileImplCopyWithImpl<$Res>
             ? _value.creationAddress
             : creationAddress // ignore: cast_nullable_to_non_nullable
                   as String?,
+        hiddenFromRecommended: null == hiddenFromRecommended
+            ? _value.hiddenFromRecommended
+            : hiddenFromRecommended // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        verificationDeadlineAt: freezed == verificationDeadlineAt
+            ? _value.verificationDeadlineAt
+            : verificationDeadlineAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        subjectStatus: null == subjectStatus
+            ? _value.subjectStatus
+            : subjectStatus // ignore: cast_nullable_to_non_nullable
+                  as String,
+        familyMode: freezed == familyMode
+            ? _value.familyMode
+            : familyMode // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -574,6 +635,10 @@ class _$UserProfileImpl extends _UserProfile {
     this.creationLng,
     this.creationAt,
     this.creationAddress,
+    this.hiddenFromRecommended = false,
+    this.verificationDeadlineAt,
+    this.subjectStatus = 'self',
+    this.familyMode,
   }) : _languagesSpoken = languagesSpoken,
        _photoUrls = photoUrls,
        _interests = interests,
@@ -678,9 +743,28 @@ class _$UserProfileImpl extends _UserProfile {
   @override
   final String? creationAddress;
 
+  /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+  @override
+  @JsonKey()
+  final bool hiddenFromRecommended;
+
+  /// UTC deadline by which the user must verify (accountCreatedAt + 3 days).
+  /// Null once the user is verified.
+  @override
+  final DateTime? verificationDeadlineAt;
+
+  /// "self" | "managed_pending" | "managed_active" — reflects whether a family member manages this profile.
+  @override
+  @JsonKey()
+  final String subjectStatus;
+
+  /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
+  @override
+  final String? familyMode;
+
   @override
   String toString() {
-    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress)';
+    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress, hiddenFromRecommended: $hiddenFromRecommended, verificationDeadlineAt: $verificationDeadlineAt, subjectStatus: $subjectStatus, familyMode: $familyMode)';
   }
 
   @override
@@ -746,7 +830,15 @@ class _$UserProfileImpl extends _UserProfile {
             (identical(other.creationAt, creationAt) ||
                 other.creationAt == creationAt) &&
             (identical(other.creationAddress, creationAddress) ||
-                other.creationAddress == creationAddress));
+                other.creationAddress == creationAddress) &&
+            (identical(other.hiddenFromRecommended, hiddenFromRecommended) ||
+                other.hiddenFromRecommended == hiddenFromRecommended) &&
+            (identical(other.verificationDeadlineAt, verificationDeadlineAt) ||
+                other.verificationDeadlineAt == verificationDeadlineAt) &&
+            (identical(other.subjectStatus, subjectStatus) ||
+                other.subjectStatus == subjectStatus) &&
+            (identical(other.familyMode, familyMode) ||
+                other.familyMode == familyMode));
   }
 
   @override
@@ -780,6 +872,10 @@ class _$UserProfileImpl extends _UserProfile {
     creationLng,
     creationAt,
     creationAddress,
+    hiddenFromRecommended,
+    verificationDeadlineAt,
+    subjectStatus,
+    familyMode,
   ]);
 
   /// Create a copy of UserProfile
@@ -821,6 +917,10 @@ abstract class _UserProfile extends UserProfile {
     final double? creationLng,
     final DateTime? creationAt,
     final String? creationAddress,
+    final bool hiddenFromRecommended,
+    final DateTime? verificationDeadlineAt,
+    final String subjectStatus,
+    final String? familyMode,
   }) = _$UserProfileImpl;
   const _UserProfile._() : super._();
 
@@ -888,6 +988,23 @@ abstract class _UserProfile extends UserProfile {
   DateTime? get creationAt;
   @override
   String? get creationAddress;
+
+  /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+  @override
+  bool get hiddenFromRecommended;
+
+  /// UTC deadline by which the user must verify (accountCreatedAt + 3 days).
+  /// Null once the user is verified.
+  @override
+  DateTime? get verificationDeadlineAt;
+
+  /// "self" | "managed_pending" | "managed_active" — reflects whether a family member manages this profile.
+  @override
+  String get subjectStatus;
+
+  /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
+  @override
+  String? get familyMode;
 
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.

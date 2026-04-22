@@ -10,6 +10,7 @@ import '../../domain/models/partner_preferences.dart';
 import '../../domain/models/profile_summary.dart';
 import '../../domain/models/user_profile.dart';
 import '../../domain/models/verification_status.dart';
+import '../../core/datetime/app_time_format.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../api/api_client.dart';
 
@@ -133,12 +134,23 @@ class ApiProfileRepository implements ProfileRepository {
   static UserProfile _minimalProfileFromMap(Map<String, dynamic> j) {
     final photosHidden = _safeBool(j['photosHidden'], false);
     final canViewPhotos = j['canViewPhotos'] as bool?;
-    final rawUrls = _strList(
-      j['photoUrls'],
-    ).where((u) => !u.contains('/seed/')).toList();
-    final photoUrls = (photosHidden && canViewPhotos != true)
-        ? <String>[]
-        : rawUrls;
+    final List<String> photoUrls;
+    if (photosHidden && canViewPhotos != true) {
+      photoUrls = [];
+    } else {
+      final parsed = _parseImageUrls(j['photoUrls'] ?? j['imageUrls']);
+      final single = _sanitizeImageUrl(j['imageUrl'] as String?);
+      if (parsed != null && parsed.isNotEmpty) {
+        photoUrls = parsed;
+      } else if (single != null) {
+        photoUrls = [single];
+      } else {
+        photoUrls = _strList(j['photoUrls'])
+            .map(_sanitizeImageUrl)
+            .whereType<String>()
+            .toList();
+      }
+    }
     return UserProfile(
       id: (j['id'] as String?) ?? '',
       name: (j['name'] as String?) ?? 'Unknown',
@@ -210,13 +222,24 @@ class ApiProfileRepository implements ProfileRepository {
   static UserProfile _parseProfile(Map<String, dynamic> j) {
     final photosHidden = j['photosHidden'] as bool? ?? false;
     final canViewPhotos = j['canViewPhotos'] as bool?;
-    // When owner has hidden photos and viewer is not allowed, never expose photoUrls.
-    final rawUrls = _strList(
-      j['photoUrls'],
-    ).where((u) => !u.contains('/seed/')).toList();
-    final photoUrls = (photosHidden && canViewPhotos != true)
-        ? <String>[]
-        : rawUrls;
+    // Same resolution as profile summary: photoUrls | imageUrls | imageUrl (sanitized).
+    final List<String> photoUrls;
+    if (photosHidden && canViewPhotos != true) {
+      photoUrls = [];
+    } else {
+      final parsed = _parseImageUrls(j['photoUrls'] ?? j['imageUrls']);
+      final single = _sanitizeImageUrl(j['imageUrl'] as String?);
+      if (parsed != null && parsed.isNotEmpty) {
+        photoUrls = parsed;
+      } else if (single != null) {
+        photoUrls = [single];
+      } else {
+        photoUrls = _strList(j['photoUrls'])
+            .map(_sanitizeImageUrl)
+            .whereType<String>()
+            .toList();
+      }
+    }
 
     VerificationStatus verificationStatus = const VerificationStatus();
     if (j['verificationStatus'] is Map<String, dynamic>) {
@@ -259,7 +282,7 @@ class ApiProfileRepository implements ProfileRepository {
           ? _parsePreferences(j['partnerPreferences'] as Map<String, dynamic>)
           : null,
       lastActiveAt: j['lastActiveAt'] != null
-          ? DateTime.tryParse(j['lastActiveAt'] as String)
+          ? parseApiDateTime(j['lastActiveAt'] as String)
           : null,
       isPremium: _safeBool(j['isPremium'], false),
       creationLat: (j['creationLat'] as num?)?.toDouble(),
@@ -268,6 +291,12 @@ class ApiProfileRepository implements ProfileRepository {
           ? DateTime.tryParse(j['creationAt'] as String)
           : null,
       creationAddress: j['creationAddress'] as String?,
+      hiddenFromRecommended: _safeBool(j['hiddenFromRecommended'], false),
+      verificationDeadlineAt: j['verificationDeadlineAt'] != null
+          ? DateTime.tryParse(j['verificationDeadlineAt'] as String)
+          : null,
+      subjectStatus: (j['subjectStatus'] as String?) ?? 'self',
+      familyMode: j['familyMode'] as String?,
     );
   }
 
@@ -347,6 +376,12 @@ class ApiProfileRepository implements ProfileRepository {
       drinking: j['drinking'] as String?,
       smoking: j['smoking'] as String?,
       exercise: j['exercise'] as String?,
+      pets: j['pets'] as String?,
+      disability: j['disability'] as String?,
+      workLocation: j['workLocation'] as String?,
+      settledAbroad: j['settledAbroad'] as String?,
+      willingToRelocate: j['willingToRelocate'] as String?,
+      aboutCareer: j['aboutCareer'] as String?,
       aboutEducation: j['aboutEducation'] as String?,
       educationEntries: _parseEducationEntries(j['educationEntries']),
       horoscope: j['horoscope'] is Map
@@ -523,6 +558,14 @@ class ApiProfileRepository implements ProfileRepository {
           ? (j['distanceKm'] as num).toDouble()
           : null,
       verified: _safeBool(j['verified'], false),
+      verificationScore: (j['verificationScore'] as num?)?.toDouble(),
+      idVerified: _safeBool(j['idVerified'], false),
+      photoVerified: _safeBool(j['photoVerified'], false),
+      linkedInVerified: _safeBool(j['linkedInVerified'], false),
+      educationVerified: _safeBool(j['educationVerified'], false),
+      responseRate: (j['responseRate'] as num?)?.toDouble(),
+      readyInMonths: j['readyInMonths'] as String?,
+      requireVerifiedToContact: _safeBool(j['requireVerifiedToContact'], false),
       matchReason: j['matchReason'] as String?,
       bio: (j['bio'] as String?) ?? '',
       promptAnswer: j['promptAnswer'] as String?,
@@ -546,6 +589,9 @@ class ApiProfileRepository implements ProfileRepository {
       matchReasons: _strList(j['matchReasons']),
       breakdown: breakdown,
       roleManagingProfile: roleManagingProfile,
+      lastActiveAt: parseApiDateTime(j['lastActiveAt'] as String?),
+      isAccepted: _safeBool(j['isAccepted'], false),
+      isNew: _safeBool(j['isNew'], false),
     );
   }
 
@@ -626,6 +672,12 @@ class ApiProfileRepository implements ProfileRepository {
     if (m.drinking != null) 'drinking': m.drinking,
     if (m.smoking != null) 'smoking': m.smoking,
     if (m.exercise != null) 'exercise': m.exercise,
+    if (m.pets != null) 'pets': m.pets,
+    if (m.disability != null) 'disability': m.disability,
+    if (m.workLocation != null) 'workLocation': m.workLocation,
+    if (m.settledAbroad != null) 'settledAbroad': m.settledAbroad,
+    if (m.willingToRelocate != null) 'willingToRelocate': m.willingToRelocate,
+    if (m.aboutCareer != null) 'aboutCareer': m.aboutCareer,
     if (m.aboutEducation != null) 'aboutEducation': m.aboutEducation,
     if (m.educationEntries != null && m.educationEntries!.isNotEmpty)
       'educationEntries': m.educationEntries!
@@ -761,8 +813,18 @@ class ApiProfileRepository implements ProfileRepository {
     'mutualMatch': true,
     'profileVisited': true,
     'newMessage': true,
+    'morningReminder': true,
     'contactRequestAccepted': true,
     'contactRequestDeclined': false,
+    'interestReminderPrompt': true,
+    'interestReminderReceived': true,
+    'shortlistedYou': true,
+    'messageRequestReceived': true,
+    'messageRequestAccepted': true,
+    'messageRequestDeclined': false,
+    'photoViewRequestReceived': true,
+    'photoViewRequestAccepted': true,
+    'photoViewRequestDeclined': false,
   };
 
   @override
@@ -795,10 +857,33 @@ class ApiProfileRepository implements ProfileRepository {
 
   @override
   Future<void> deleteFcmToken() async {
+    // Intentionally no-op: do not DELETE /profile/me/fcm-token (keep tokens on server for push).
+  }
+
+  /// Aggregated nav-badge counts from a single backend call (`GET /profile/me/nav-counts`).
+  /// Returns a record with `requests`, `shortlist`, and `msgReq` so [navBadgesProvider]
+  /// can replace 4+ individual count GETs with one round-trip.
+  Future<({int requests, int shortlist, int msgReq})> getNavCounts({
+    required String mode,
+  }) async {
     try {
-      await api.delete('/profile/me/fcm-token');
-    } on ApiException catch (_) {
-      // Optional: backend may not implement DELETE; ignore so sign-out still completes
+      final body = await api.get(
+        '/profile/me/nav-counts',
+        query: {'mode': mode},
+      );
+      int safeInt(dynamic v) => (v is num) ? v.toInt() : 0;
+      final interactions = safeInt(body['requests']);
+      final contact      = safeInt(body['contactRequests']);
+      final photoView    = safeInt(body['photoView']);
+      final msgReq       = safeInt(body['messageRequests']);
+      return (
+        requests: interactions + contact + photoView,
+        shortlist: safeInt(body['shortlist']),
+        msgReq:   msgReq,
+      );
+    } catch (e) {
+      debugPrint('[NavCounts] Failed, falling back to zeros: $e');
+      return (requests: 0, shortlist: 0, msgReq: 0);
     }
   }
 

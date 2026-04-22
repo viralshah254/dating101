@@ -9,22 +9,31 @@ import '../api/api_client.dart';
 class ApiSubscriptionRepository implements SubscriptionRepository {
   ApiSubscriptionRepository({required this.api});
   final ApiClient api;
+  final StreamController<SubscriptionState> _stateController =
+      StreamController<SubscriptionState>.broadcast();
+
+  void _emitState(SubscriptionState state) {
+    if (!_stateController.isClosed) {
+      _stateController.add(state);
+    }
+  }
 
   @override
   Future<SubscriptionState> getSubscriptionState() async {
     final body = await api.get('/subscription/me');
-    return _parse(body);
+    final state = _parse(body);
+    _emitState(state);
+    return state;
   }
 
   @override
-  Stream<SubscriptionState> watchSubscriptionState() {
-    final controller = StreamController<SubscriptionState>();
-    getSubscriptionState().then((state) {
-      if (!controller.isClosed) controller.add(state);
-    }).catchError((e) {
-      if (!controller.isClosed) controller.addError(e);
-    });
-    return controller.stream;
+  Stream<SubscriptionState> watchSubscriptionState() async* {
+    try {
+      yield await getSubscriptionState();
+    } catch (e) {
+      yield* Stream<SubscriptionState>.error(e);
+    }
+    yield* _stateController.stream;
   }
 
   @override
@@ -39,7 +48,9 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
       'receiptOrToken': receiptOrToken,
       'planId': planId,
     });
-    return _parse(body);
+    final state = _parse(body);
+    _emitState(state);
+    return state;
   }
 
   @override
@@ -53,6 +64,7 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
         'receiptOrToken': receiptOrToken ?? '',
       });
       final state = _parse(body);
+      _emitState(state);
       return state.isActive;
     } catch (_) {
       return false;
@@ -63,21 +75,54 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
   Future<SubscriptionEntitlements> getEntitlements() async {
     debugPrint('[Subscription] Fetching entitlements');
     final body = await api.get('/subscription/entitlements');
-    final tier = body['tier'] as String?;
-    final isPremium = tier == 'premium';
+    final tierRaw = body['tier'] as String?;
+    final tier = parseTier(tierRaw);
+    final isSilver = tier.isAtLeastSilver;
+    final isGold = tier.isAtLeastGold;
+    final isPlatinum = tier.isAtLeastPlatinum;
     return SubscriptionEntitlements(
-      canSendMessage: body['canSendMessage'] as bool? ?? false,
-      canSeeWhoLikedYou: body['canSeeWhoLikedYou'] as bool? ?? body['canSeeWhoLiked'] as bool? ?? false,
-      canSeeWhoShortlistedYou: body['canSeeWhoShortlistedYou'] as bool? ?? false,
-      dailyInterestLimit: body['dailyInterestLimit'] as int? ?? 10,
+      tier: tier,
+      gender: body['gender'] as String? ?? 'unknown',
+      canExpressInterest: body['canExpressInterest'] as bool? ?? true,
+      canShortlist: body['canShortlist'] as bool? ?? true,
+      canViewFullProfile: body['canViewFullProfile'] as bool? ?? true,
+      // Silver+: can initiate messages. Free users only reply in accepted threads
+      // (the isMatched bypass in UI already handles those).
+      canSendMessage: body['canSendMessage'] as bool? ?? isSilver,
+      // Silver+: see blurred thumbnails → full names. Gold+: see everything.
+      canSeeWhoLikedYou: body['canSeeWhoLikedYou'] as bool? ?? body['canSeeWhoLiked'] as bool? ?? isSilver,
+      // Gold+ only
+      canSeeWhoShortlistedYou: body['canSeeWhoShortlistedYou'] as bool? ?? isGold,
+      // Free = 10, Silver = 25, Gold+ = unlimited (9999 sentinel)
+      dailyInterestLimit: body['dailyInterestLimit'] as int? ?? (isGold ? 9999 : isSilver ? 25 : 10),
       dailyMessageLimit: body['dailyMessageLimit'] as int? ?? 0,
-      dailyPriorityInterestLimit: body['dailyPriorityInterestLimit'] as int? ?? (isPremium ? 10 : 0),
-      hasPriorityDiscovery: body['hasPriorityDiscovery'] as bool? ?? false,
-      canSuperlike: body['canSuperlike'] as bool? ?? false,
-      canSendMessageDirect: body['canSendMessageDirect'] as bool? ?? isPremium,
-      canSeeRequestsInbox: body['canSeeRequestsInbox'] as bool? ?? isPremium,
-      requiresAdPerRequestToView: body['requiresAdPerRequestToView'] as bool? ?? isPremium,
-      canBoostProfile: body['canBoostProfile'] as bool? ?? isPremium,
+      // Free = 0 (ad), Silver = 1, Gold = 5, Platinum = 10
+      dailyPriorityInterestLimit: body['dailyPriorityInterestLimit'] as int? ??
+          (isPlatinum ? 10 : isGold ? 5 : isSilver ? 1 : 0),
+      // Gold+ only
+      hasPriorityDiscovery: body['hasPriorityDiscovery'] as bool? ?? isGold,
+      // Platinum only
+      canSuperlike: body['canSuperlike'] as bool? ?? isPlatinum,
+      // Silver: messages go as requests. Gold+: direct to inbox.
+      canSendMessageDirect: body['canSendMessageDirect'] as bool? ?? isGold,
+      // Silver+: can see requests inbox
+      canSeeRequestsInbox: body['canSeeRequestsInbox'] as bool? ?? isSilver,
+      // Silver+: no ad required to view a request
+      requiresAdPerRequestToView: body['requiresAdPerRequestToView'] as bool? ?? !isSilver,
+      // Platinum: included daily. Gold/Silver: available as add-on (purchased separately).
+      canBoostProfile: body['canBoostProfile'] as bool? ?? isPlatinum,
+      // Gold+ only
+      canRequestContact: body['canRequestContact'] as bool? ?? isGold,
+      // Silver+: all photos visible
+      canViewAllPhotos: body['canViewAllPhotos'] as bool? ?? isSilver,
+      // Gold+ only
+      canSeeCompatBreakdown: body['canSeeCompatBreakdown'] as bool? ?? isGold,
+      canUseTravelMode: body['canUseTravelMode'] as bool? ?? isGold,
+      hasReadReceipts: body['hasReadReceipts'] as bool? ?? isGold,
+      // Free = 1 photo (2-3 via ads). Silver+ = all photos.
+      photosVisibleCount: (body['photosVisibleCount'] as num?)?.toInt() ?? (isSilver ? 999 : 1),
+      // Max simultaneous active chat threads. 0 = unlimited. Silver = 25.
+      maxActiveChats: body['maxActiveChats'] as int? ?? (isGold ? 0 : isSilver ? 25 : 0),
       raw: body,
     );
   }
@@ -118,9 +163,7 @@ class ApiSubscriptionRepository implements SubscriptionRepository {
 
   static SubscriptionState _parse(Map<String, dynamic> j) {
     return SubscriptionState(
-      tier: (j['tier'] as String?) == 'premium'
-          ? SubscriptionTier.premium
-          : SubscriptionTier.none,
+      tier: parseTier(j['tier'] as String?),
       expiresAt: j['expiresAt'] != null
           ? DateTime.tryParse(j['expiresAt'] as String)
           : null,

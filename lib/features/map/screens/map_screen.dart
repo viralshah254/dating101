@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -200,7 +201,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.dvtechventures.saathi',
+                userAgentPackageName: 'com.dvtechventures.shubhmilan',
               ),
               CircleLayer(
                 circles: [
@@ -463,7 +464,7 @@ class _MapProfilePreviewSheet extends StatelessWidget {
                   ),
                   IconButton(icon: const Icon(Icons.close), onPressed: onClose),
                 ],
-              ),
+              ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.08, end: 0),
               if (pin.bio.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
@@ -471,20 +472,20 @@ class _MapProfilePreviewSheet extends StatelessWidget {
                   style: AppTypography.bodyMedium,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                ),
+                ).animate().fadeIn(delay: 80.ms, duration: 280.ms),
               ],
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: onViewFullProfile,
                 icon: const Icon(Icons.person_outline, size: 18),
                 label: Text(AppLocalizations.of(context)!.viewFullProfile),
-              ),
+              ).animate().fadeIn(delay: 130.ms, duration: 280.ms).slideY(begin: 0.06, end: 0),
               const SizedBox(height: 8),
               FilledButton.icon(
                 onPressed: onPrimaryCta,
                 icon: const Icon(Icons.workspace_premium, size: 18),
                 label: Text(AppLocalizations.of(context)!.upgrade),
-              ),
+              ).animate().fadeIn(delay: 180.ms, duration: 280.ms).slideY(begin: 0.06, end: 0),
               const SizedBox(height: 6),
               Text(
                 AppLocalizations.of(context)!.upgradeToPremiumSubtitle,
@@ -587,7 +588,7 @@ class _BlurredPin extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: accent, width: 2),
       ),
-      child: const Icon(Icons.person, color: Colors.white, size: 24),
+      child: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimary, size: 24),
     );
   }
 }
@@ -605,7 +606,7 @@ class _ProfilePin extends StatelessWidget {
       backgroundColor: accent,
       child: Text(
         label.isNotEmpty ? label[0].toUpperCase() : '?',
-        style: AppTypography.labelMedium.copyWith(color: Colors.white),
+        style: AppTypography.labelMedium.copyWith(color: Theme.of(context).colorScheme.onPrimary),
       ),
     );
   }
@@ -624,10 +625,10 @@ class _ClusterPin extends StatelessWidget {
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.9),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
+        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -637,7 +638,7 @@ class _ClusterPin extends StatelessWidget {
         child: Text(
           count > 99 ? '99+' : '$count',
           style: AppTypography.labelLarge.copyWith(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
             fontWeight: FontWeight.w700,
           ),
         ),

@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:uuid/uuid.dart';
+
+import '../../../core/ads/ad_budget_provider.dart';
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
 import '../../../core/design/design.dart';
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
@@ -14,13 +22,19 @@ import '../../../domain/models/discovery_filter_params.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
+import '../../premium/services/paywall_trigger_service.dart';
 import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
 import '../providers/discovery_providers.dart';
+import '../../chat/providers/chat_providers.dart';
+import '../../likes/providers/likes_screen_data_provider.dart';
+import '../../chat/widgets/focus_mode_banner.dart';
 import '../widgets/city_picker_sheet.dart';
+import '../widgets/discover_feed_loading_surface.dart';
 import '../widgets/discovery_card_stack.dart';
-import '../widgets/discovery_filters_sheet.dart';
+import '../widgets/like_note_sheet.dart';
+import '../widgets/unified_filter_sheet.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -43,44 +57,102 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final hasCityFilter = _effectiveCity(filterParams, travelCity)
         ?.isNotEmpty == true;
     final asyncProfiles = ref.watch(discoveryFeedProvider);
+    final loadingCue = ref.watch(discoveryLoadingCueProvider);
+
+    ref.listen<AsyncValue<List<ProfileSummary>>>(discoveryFeedProvider, (prev, next) {
+      next.whenOrNull(
+        data: (_) {
+          ref.read(discoveryLoadingCueProvider.notifier).state = DiscoveryLoadingCue.none;
+        },
+        error: (_, __) {
+          ref.read(discoveryLoadingCueProvider.notifier).state = DiscoveryLoadingCue.none;
+        },
+      );
+    });
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text(
-          l.discoverTitle,
-          style: AppTypography.titleLarge.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: isDark ? 0.18 : 0.06),
+                Theme.of(context).colorScheme.surface,
+              ],
+            ),
+          ),
+          child: AppBar(
+            centerTitle: true,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Colors.transparent,
+            title: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l.discoverTitle,
+                  style: AppTypography.titleLarge.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                if (hasCityFilter)
+                  Text(
+                    _effectiveCity(filterParams, travelCity) ?? '',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.rosePrimary.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.tune_rounded,
+                  size: 22,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                onPressed: () => _showFilters(context),
+              ),
+              IconButton(
+                icon: Icon(
+                  hasCityFilter ? Icons.flight_takeoff_rounded : Icons.location_on_rounded,
+                  size: 22,
+                  color: hasCityFilter
+                      ? AppColors.rosePrimary
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                onPressed: () => showCityPickerSheet(context, ref),
+              ),
+            ],
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.tune_rounded,
-              size: 22,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            onPressed: () => _showFilters(context),
-          ),
-          IconButton(
-            icon: Icon(
-              hasCityFilter ? Icons.flight_takeoff_rounded : Icons.location_on_rounded,
-              size: 22,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            onPressed: () => showCityPickerSheet(context, ref),
-          ),
-        ],
       ),
       body: asyncProfiles.when(
+        skipLoadingOnReload: true,
         data: (profiles) {
+          if (loadingCue != DiscoveryLoadingCue.none) {
+            final effectiveCity = _effectiveCity(filterParams, travelCity);
+            return _buildLoadingShell(
+              context,
+              ref,
+              mode,
+              accent,
+              l,
+              effectiveCity,
+              loadingCue,
+            );
+          }
           // When returning from profile after liking (e.g. watch-ad message flow), advance past this card.
           final advanceId = ref.watch(discoveryAdvancePastProfileIdProvider);
           if (advanceId != null &&
@@ -94,7 +166,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               }
             });
           }
-          final filterParams = ref.watch(discoveryFilterParamsProvider);
           final effectiveCity = _effectiveCity(filterParams, travelCity);
           return _buildBody(
             context,
@@ -106,9 +177,17 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             effectiveCity,
           );
         },
-        loading: () => loadingSpinner(context),
-        error: (_, __) => ErrorState(
-          message: l.errorGeneric,
+        loading: () => _buildLoadingShell(
+              context,
+              ref,
+              mode,
+              accent,
+              l,
+              _effectiveCity(filterParams, travelCity),
+              DiscoveryLoadingCue.initial,
+            ),
+        error: (e, _) => ErrorState(
+          error: e,
           onRetry: () => ref.invalidate(discoveryFeedProvider),
           retryLabel: l.retry,
         ),
@@ -120,6 +199,30 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final c = fp?.city;
     if (c != null && c.isNotEmpty) return c;
     return travelCity;
+  }
+
+  /// Discover chrome + themed loading (filters, city change, or first paint).
+  Widget _buildLoadingShell(
+    BuildContext context,
+    WidgetRef ref,
+    AppMode mode,
+    Color accent,
+    AppLocalizations l,
+    String? effectiveCity,
+    DiscoveryLoadingCue cue,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!_focusModeBannerDismissed)
+          _FocusModeBannerContainer(
+            onDismiss: () => setState(() => _focusModeBannerDismissed = true),
+          ),
+        Expanded(
+          child: DiscoverFeedLoadingSurface(cue: cue),
+        ),
+      ],
+    );
   }
 
   Widget _buildBody(
@@ -141,45 +244,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Minimal header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.dailyCuratedSet,
-                      style: AppTypography.caption.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    _CityChip(
-                      city: effectiveCity,
-                      onTap: () => showCityPickerSheet(context, ref),
-                      exploreLabel: l.exploreCity(effectiveCity ?? ''),
-                      changeCityLabel: l.changeCity,
-                    ),
-                  ],
-                ),
-              ),
-              if (effectiveCity != null && effectiveCity.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Icon(
-                    Icons.flight_takeoff_rounded,
-                    size: 18,
-                    color: accent.withValues(alpha: 0.8),
-                  ),
-                ),
-            ],
+        if (!_focusModeBannerDismissed)
+          _FocusModeBannerContainer(
+            onDismiss: () => setState(() => _focusModeBannerDismissed = true),
           ),
-        ),
         if (profiles.isEmpty)
           Expanded(
             child: EmptyState(
@@ -195,6 +263,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   : null,
               onCta: effectiveCity != null && effectiveCity.isNotEmpty
                   ? () {
+                      ref.read(discoveryLoadingCueProvider.notifier).state =
+                          DiscoveryLoadingCue.location;
                       ref.read(discoveryTravelCityProvider.notifier).state = null;
                       final fp = ref.read(discoveryFilterParamsProvider);
                       if (fp != null) {
@@ -225,17 +295,23 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   void _showFilters(BuildContext context) {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => DiscoveryFiltersSheet(
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => UnifiedFilterSheet(
+        mode: mode,
         initialParams: ref.read(discoveryFilterParamsProvider) ??
             (ref.read(discoveryTravelCityProvider) != null
-                ? DiscoveryFilterParams(
-                    city: ref.read(discoveryTravelCityProvider))
+                ? DiscoveryFilterParams(city: ref.read(discoveryTravelCityProvider))
                 : null),
-        onApply: (params) {
+        initialSort: ref.read(sortByProvider),
+        onApply: (params, sort) {
+          ref.read(discoveryLoadingCueProvider.notifier).state = DiscoveryLoadingCue.filters;
           ref.read(discoveryFilterParamsProvider.notifier).state = params;
+          ref.read(sortByProvider.notifier).state = sort;
           ref.invalidate(discoveryFeedProvider);
         },
       ),
@@ -298,6 +374,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   int _profileCount = 0;
+  bool _focusModeBannerDismissed = false;
 
   void _advanceToNext() {
     if (_currentPage < _profileCount - 1) {
@@ -316,6 +393,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Future<void> _onPass(ProfileSummary profile) async {
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    // Count profile view; may trigger swipe-limit paywall
+    if (mounted) await PaywallTriggerService.recordSwipe(context, ref);
     try {
       await ref.read(discoveryRepositoryProvider).sendFeedback(
             candidateId: profile.id,
@@ -331,20 +410,30 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Future<void> _onLike(ProfileSummary profile) async {
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    // Show "Like With a Note" sheet before sending — card has already animated out.
+    final noteResult = await showLikeNoteSheet(context, profile);
+    // If user dismissed the sheet entirely (back button), still send silently.
+    final message = noteResult?.message;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressInterest(profile.id, source: 'discovery', mode: mode);
+          .expressInterest(profile.id, source: 'discovery', mode: mode, message: message);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
+      // Tier 1: immediate — badges, sent-list, and advance swipe deck.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
+      invalidateLikesScreenData(ref);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
             );
+        // Prompt free users to upgrade when they get a mutual match
+        if (mounted) {
+          await PaywallTriggerService.maybeShow(context, ref, PaywallReason.matchAccepted);
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -371,28 +460,140 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
         );
       }
-      ref.invalidate(discoveryFeedProvider);
       _advanceToNext();
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        ref.invalidate(discoveryFeedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'DAILY_LIMIT') {
+        await _handleDailyLimitWithAd(profile, mode: mode, message: null);
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
     }
   }
 
+  /// Called when express-interest hits the DAILY_LIMIT error.
+  /// Offers the user a chance to watch an ad to send 1 more interest.
+  Future<void> _handleDailyLimitWithAd(
+    ProfileSummary profile, {
+    required AppMode mode,
+    required String? message,
+  }) async {
+    final budget = ref.read(adBudgetProvider).valueOrNull;
+    final remaining = budget?.remaining ?? 0;
+    if (!mounted) return;
+    final decision = await showGateDecisionSheet(
+      context,
+      title: 'Daily interest limit reached',
+      message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad — send 1 more interest',
+      adsRemaining: remaining,
+    );
+    if (!mounted || decision == null) return;
+    if (decision == GateDecision.upgrade) {
+      PaywallTriggerService.maybeShow(context, ref, PaywallReason.swipeLimit);
+      return;
+    }
+    if (decision == GateDecision.watchAd) {
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.extraInterest);
+      if (!mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ad could not be loaded. Please try again.'), behavior: SnackBarBehavior.floating),
+        );
+        return;
+      }
+      final adToken = const Uuid().v4();
+      try {
+        final result = await ref
+            .read(interactionsRepositoryProvider)
+            .expressInterest(profile.id, source: 'discovery', mode: mode, message: message, adCompletionToken: adToken);
+        if (!mounted) return;
+        ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
+              (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
+            );
+        ref.invalidate(sentInteractionsProvider(mode));
+        invalidateLikesScreenData(ref);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profile.name)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _advanceToNext();
+        if (result.mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
+
   Future<void> _onSuperLike(ProfileSummary profile) async {
+    final ent = ref.read(entitlementsProvider);
+    String? adToken;
+    if (ent.dailyPriorityInterestLimit == 0) {
+      // Free user: must watch an ad or upgrade.
+      final watchAd = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Priority Like'),
+          content: const Text('Watch a short ad to send a priority like, or upgrade to Silver for 1/day.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Upgrade')),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Watch Ad')),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (watchAd == null) return;
+      if (watchAd == false) {
+        PaywallTriggerService.maybeShow(context, ref, PaywallReason.swipeLimit);
+        return;
+      }
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.priorityInterest);
+      if (!mounted) return;
+      if (!shown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ad could not be loaded. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      adToken = const Uuid().v4();
+    }
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
-          .expressPriorityInterest(profile.id, source: 'discovery', mode: mode);
+          .expressPriorityInterest(profile.id, source: 'discovery', adCompletionToken: adToken, mode: mode);
       if (!mounted) return;
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), profile.id}},
           );
+      // Tier 1: immediate — badges, sent-list, and advance swipe deck.
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
+      invalidateLikesScreenData(ref);
       if (result.mutualMatch && result.chatThreadId != null) {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
@@ -423,8 +624,17 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
         );
       }
-      ref.invalidate(discoveryFeedProvider);
       _advanceToNext();
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        ref.invalidate(discoveryFeedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -450,7 +660,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
               child: Text(l.block),
             ),
           ],
@@ -492,7 +702,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             child: Text(AppLocalizations.of(context)!.report),
           ),
         ],
@@ -603,67 +813,48 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 }
 
-class _CityChip extends StatelessWidget {
-  const _CityChip({
-    required this.city,
-    required this.onTap,
-    required this.exploreLabel,
-    required this.changeCityLabel,
-  });
-  final String? city;
-  final VoidCallback onTap;
-  final String exploreLabel;
-  final String changeCityLabel;
+/// Watches [focusModeProvider] and renders [FocusModeBanner] for the first active
+/// Focus Mode entry. Silently hides itself if there are no active focus modes
+/// or the fetch fails.
+class _FocusModeBannerContainer extends ConsumerWidget {
+  const _FocusModeBannerContainer({required this.onDismiss});
+  final VoidCallback onDismiss;
 
   @override
-  Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accent.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.location_on_rounded, size: 18, color: accent),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    changeCityLabel,
-                    style: AppTypography.labelMedium.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (city != null && city!.isNotEmpty)
-                    Text(
-                      exploreLabel,
-                      style: AppTypography.caption.copyWith(
-                        color: onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncModes = ref.watch(focusModeProvider);
+
+    return asyncModes.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (modes) {
+        if (modes.isEmpty) return const SizedBox.shrink();
+        final mode = modes.first;
+        return FocusModeBanner(
+          otherPersonName: mode.otherPersonName,
+          daysConnected: mode.daysConnected,
+          messageCount: mode.messageCount,
+          threadId: mode.threadId,
+          showMeetNudge: mode.showMeetNudge,
+          onDismiss: onDismiss,
+          onFocusModeAccept: () {
+            // Navigate to the chat thread so user can keep the conversation going
+            context.push('/chat/${mode.threadId}');
+            onDismiss();
+          },
+          onOpenChat: () => context.push('/chat/${mode.threadId}'),
+          onMarkMet: () async {
+            try {
+              final api = ref.read(apiClientProvider);
+              await api.post('/focus-mode/threads/${mode.threadId}/met');
+            } catch (_) {
+              // Ignore — optimistic dismiss
+            }
+            ref.invalidate(focusModeProvider);
+            onDismiss();
+          },
+        );
+      },
     );
   }
 }
-

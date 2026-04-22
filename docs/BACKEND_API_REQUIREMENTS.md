@@ -1,4 +1,4 @@
-# Saathi — Backend API Requirements (Master Checklist)
+# Shubhmilan — Backend API Requirements (Master Checklist)
 
 This document is the **single source of truth** for which APIs the backend must build. Use it to plan sprints, track implementation, and ensure the frontend can integrate correctly.
 

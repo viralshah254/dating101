@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../l10n/app_localizations.dart';
-import '../theme/app_colors.dart';
+import '../feature_flags/feature_flags.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final eventsEnabled = ref.watch(isEventsEnabledProvider);
+    final items = _items(l, eventsEnabled);
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -31,54 +33,15 @@ class MainShell extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavItem(
-                  icon: Icons.explore_outlined,
-                  activeIcon: Icons.explore,
-                  label: l.navDiscover,
-                  index: 0,
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _onTap(0),
-                ),
-                _NavItem(
-                  icon: Icons.map_outlined,
-                  activeIcon: Icons.map,
-                  label: l.navMap,
-                  index: 1,
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _onTap(1),
-                ),
-                _NavItem(
-                  icon: Icons.chat_bubble_outline,
-                  activeIcon: Icons.chat_bubble,
-                  label: l.navChats,
-                  index: 2,
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _onTap(2),
-                ),
-                _NavItem(
-                  icon: Icons.people_outline,
-                  activeIcon: Icons.people,
-                  label: l.navCommunities,
-                  index: 3,
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _onTap(3),
-                ),
-                _NavItem(
-                  icon: Icons.event_outlined,
-                  activeIcon: Icons.event,
-                  label: l.navEvents,
-                  index: 4,
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _onTap(4),
-                ),
-                _NavItem(
-                  icon: Icons.person_outline,
-                  activeIcon: Icons.person,
-                  label: l.navProfile,
-                  index: 5,
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _onTap(5),
-                ),
+                for (var i = 0; i < items.length; i++)
+                  _NavItem(
+                    icon: items[i].icon,
+                    activeIcon: items[i].activeIcon,
+                    label: items[i].label,
+                    index: i,
+                    currentIndex: navigationShell.currentIndex,
+                    onTap: () => _onTap(items[i].branchIndex),
+                  ),
               ],
             ),
           ),
@@ -93,6 +56,32 @@ class MainShell extends StatelessWidget {
       initialLocation: index == navigationShell.currentIndex,
     );
   }
+
+  List<_MainShellItem> _items(AppLocalizations l, bool eventsEnabled) {
+    final base = <_MainShellItem>[
+      _MainShellItem(Icons.explore_outlined, Icons.explore, l.navDiscover, 0),
+      _MainShellItem(Icons.map_outlined, Icons.map, l.navMap, 1),
+      _MainShellItem(Icons.chat_bubble_outline, Icons.chat_bubble, l.navChats, 2),
+      _MainShellItem(Icons.person_outline, Icons.person, l.navProfile, 5),
+    ];
+    if (!eventsEnabled) return base;
+    return [
+      _MainShellItem(Icons.explore_outlined, Icons.explore, l.navDiscover, 0),
+      _MainShellItem(Icons.map_outlined, Icons.map, l.navMap, 1),
+      _MainShellItem(Icons.chat_bubble_outline, Icons.chat_bubble, l.navChats, 2),
+      _MainShellItem(Icons.people_outline, Icons.people, l.navCommunities, 3),
+      _MainShellItem(Icons.event_outlined, Icons.event, l.navEvents, 4),
+      _MainShellItem(Icons.person_outline, Icons.person, l.navProfile, 5),
+    ];
+  }
+}
+
+class _MainShellItem {
+  const _MainShellItem(this.icon, this.activeIcon, this.label, this.branchIndex);
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final int branchIndex;
 }
 
 class _NavItem extends StatelessWidget {
@@ -115,13 +104,10 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = index == currentIndex;
+    final theme = Theme.of(context);
     final color = isSelected
-        ? (Theme.of(context).brightness == Brightness.dark
-              ? AppColors.darkAccent
-              : AppColors.lightAccent)
-        : (Theme.of(context).brightness == Brightness.dark
-              ? AppColors.darkTextTertiary
-              : AppColors.lightTextTertiary);
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurface.withValues(alpha: 0.45);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

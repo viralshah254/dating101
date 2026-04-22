@@ -14,6 +14,7 @@ import '../widgets/step_interests.dart';
 import '../widgets/step_photos.dart';
 import '../widgets/step_details.dart';
 import '../widgets/step_preferences.dart';
+import '../widgets/step_about_you.dart';
 import 'profile_setup_screen.dart';
 
 /// Section IDs used in route /profile-edit/:section
@@ -106,11 +107,17 @@ class _ProfileSectionEditScreenState
     if (_isSaving) return;
     setState(() => _isSaving = true);
     try {
-      await _uploadPhotosIfNeeded();
       final repo = ref.read(profileRepositoryProvider);
-      final json = _formData.toFullJson();
       final existing = await repo.getMyProfile();
-      await repo.saveProfileJson(json, create: existing == null);
+      if (existing == null) {
+        final json = _formData.toFullJson();
+        final jsonForCreate = Map<String, dynamic>.from(json)
+          ..['photoUrls'] = [];
+        await repo.saveProfileJson(jsonForCreate, create: true);
+      }
+      await _uploadPhotosIfNeeded();
+      final json = _formData.toFullJson();
+      await repo.saveProfileJson(json, create: false);
       if (!mounted) return;
       context.pop();
     } catch (e) {
@@ -127,15 +134,17 @@ class _ProfileSectionEditScreenState
     }
   }
 
-  static String _profileSaveErrorMessage(Object e) {
+  String _profileSaveErrorMessage(Object e) {
+    final l = AppLocalizations.of(context);
     if (e is ApiException) {
       if (e.code == 'INTERNAL_ERROR' &&
           e.message.toLowerCase().contains('credentials')) {
-        return 'Profile saved. Photo upload is temporarily unavailable.';
+        return l?.profileSavePhotoUnavailable ??
+            'Profile saved. Photo upload is temporarily unavailable.';
       }
-      return 'Failed to save: ${e.message}';
+      return l?.profileSaveFailed(e.message) ?? 'Failed to save: ${e.message}';
     }
-    return 'Failed to save: $e';
+    return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
   }
 
   Future<void> _uploadPhotosIfNeeded() async {
@@ -276,7 +285,6 @@ class _ProfileSectionEditScreenState
   }
 
   Widget _buildSectionContent(AppMode mode) {
-    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     switch (widget.sectionId) {
@@ -356,12 +364,15 @@ class _ProfileSectionEditScreenState
       case 'interests':
         return StepInterests(formData: _formData, onChanged: _onChanged);
       case 'about':
-        return _AboutSectionContent(
-          formData: _formData,
-          onChanged: _onChanged,
-          l: l,
-          onSurface: onSurface,
-        );
+        return mode.isMatrimony
+            ? StepAboutYouMatrimony(
+                formData: _formData,
+                onChanged: _onChanged,
+              )
+            : StepAboutYou(
+                formData: _formData,
+                onChanged: _onChanged,
+              );
       case 'preferences':
         return StepPreferences(
           mode: mode,
@@ -400,7 +411,8 @@ class _AboutSectionContent extends StatefulWidget {
 }
 
 class _AboutSectionContentState extends State<_AboutSectionContent> {
-  static const int _maxChars = 500;
+  // Keep in sync with kAboutMeMaxChars in step_details.dart
+  static const int _maxChars = 2000;
   late final TextEditingController _controller;
 
   @override
@@ -451,7 +463,8 @@ class _AboutSectionContentState extends State<_AboutSectionContent> {
           const SizedBox(height: 10),
           TextField(
             controller: _controller,
-            maxLines: 6,
+            maxLines: 12,
+            minLines: 5,
             maxLength: _maxChars,
             textInputAction: TextInputAction.newline,
             decoration: InputDecoration(

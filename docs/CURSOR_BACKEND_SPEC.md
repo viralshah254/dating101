@@ -1,8 +1,8 @@
-# Saathi Backend — Cursor spec: connect frontend to this API
+# Shubhmilan Backend — Cursor spec: connect frontend to this API
 
-**Purpose:** Feed this document to Cursor when implementing or fixing the frontend connection to the Saathi backend. Use it to generate API client code, auth flow, discovery feed, profile screens, and error handling.
+**Purpose:** Feed this document to Cursor when implementing or fixing the frontend connection to the Shubhmilan backend. Use it to generate API client code, auth flow, discovery feed, profile screens, and error handling.
 
-**Backend repo context:** This is the Saathi dating/matrimony backend. Base URL: production `https://api.saathi.app`, local `http://localhost:3000`. All JSON; auth via `Authorization: Bearer <accessToken>` except for send-otp, verify-otp, refresh.
+**Backend repo context:** This is the Shubhmilan dating/matrimony backend. Base URL: production `https://api.shubhmilan.app`, local `http://localhost:3000`. All JSON; auth via `Authorization: Bearer <accessToken>` except for send-otp, verify-otp, refresh.
 
 ---
 
@@ -270,7 +270,7 @@ export interface Paginated<T> {
 
 When connecting the frontend to this backend:
 
-1. **Env:** Add `API_BASE_URL` (or framework equivalent) with value `http://localhost:3000` for dev and `https://api.saathi.app` for prod.
+1. **Env:** Add `API_BASE_URL` (or framework equivalent) with value `http://localhost:3000` for dev and `https://api.shubhmilan.app` for prod.
 2. **API client:** One function or module that builds URL from base + path, sets Content-Type and optional Authorization, sends JSON body, parses JSON, and on !res.ok throws/rejects with `{ status, code, message, details }`.
 3. **Auth storage:** Persist accessToken, refreshToken, userId (secure storage). On 401, call POST /auth/refresh with refreshToken; on success update accessToken and retry; on 401 from refresh, clear storage and redirect to login.
 4. **Login:** send-otp → verify-otp → store tokens + userId → GET /profile/me. If 404 PROFILE_NOT_FOUND → onboarding; else → home.
@@ -288,4 +288,4 @@ When connecting the frontend to this backend:
 - **[FRONTEND_INTEGRATION_GUIDE.md](./FRONTEND_INTEGRATION_GUIDE.md)** — Human-oriented integration guide.
 - **[MATCHING_AND_COMPATIBILITY.md](./MATCHING_AND_COMPATIBILITY.md)** — How recommended and compatibility scores are computed.
 
-Use this file as the single source for Cursor when generating or editing frontend code that talks to the Saathi backend.
+Use this file as the single source for Cursor when generating or editing frontend code that talks to the Shubhmilan backend.

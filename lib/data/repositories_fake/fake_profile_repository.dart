@@ -93,8 +93,9 @@ class FakeProfileRepository implements ProfileRepository {
     if (profile.name.isNotEmpty) score += 0.15;
     if (profile.aboutMe.isNotEmpty) score += 0.15;
     if (profile.photoUrls.length >= 2) score += 0.2;
-    if (profile.currentCity != null && profile.currentCity!.isNotEmpty)
+    if (profile.currentCity != null && profile.currentCity!.isNotEmpty) {
       score += 0.1;
+    }
     if (profile.age != null) score += 0.05;
     if (profile.interests.isNotEmpty) score += 0.1;
     if (profile.datingExtensions != null) score += 0.1;

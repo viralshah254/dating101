@@ -75,6 +75,8 @@ abstract class DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
+    bool verifiedOnly = false,
     int limit = 20,
     String? cursor,
   });
@@ -92,6 +94,8 @@ abstract class DiscoveryRepository {
     String? diet,
     String? bodyType,
     String? maritalStatus,
+    String? motherTongue,
+    bool verifiedOnly = false,
     int limit = 30,
     String? cursor,
   });

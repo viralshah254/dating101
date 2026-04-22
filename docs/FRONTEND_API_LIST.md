@@ -1,6 +1,6 @@
 # Shubhmilan Backend — Complete API List for Frontend
 
-Single source of truth for all public API endpoints. Base URL: `https://api.saathi.app` (local: `http://localhost:3000`). Auth = `Authorization: Bearer <accessToken>` unless marked "No".
+Single source of truth for all public API endpoints. Base URL: `https://api.shubhmilan.app` (local: `http://localhost:3000`). Auth = `Authorization: Bearer <accessToken>` unless marked "No".
 
 **Note:** The Flutter app uses **POST /account/delete** (not DELETE /account) for account deletion; backend may support either.
 

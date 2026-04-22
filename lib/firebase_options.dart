@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError('Web not supported. Use a mobile or desktop platform.');
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -21,20 +21,30 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBwbDG-JRKT_D4vONYpNKocMv4gi_moaqg',
+    appId: '1:450608436873:web:19043f88f8fc10812e1858',
+    messagingSenderId: '450608436873',
+    projectId: 'shubhmilan-app',
+    authDomain: 'shubhmilan-app.firebaseapp.com',
+    storageBucket: 'shubhmilan-app.firebasestorage.app',
+    measurementId: 'G-6N9DKEVVB0',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAir75Ia4KBUKRXpt_kvkPWemydHRbIyBw',
     appId: '1:1067844155109:android:1746f538ac45add7fa060c',
     messagingSenderId: '1067844155109',
-    projectId: 'saathi-2644b',
-    storageBucket: 'saathi-2644b.firebasestorage.app',
+    projectId: 'shubhmilan-app',
+    storageBucket: 'shubhmilan-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAW3f1H34EfhL3bkPhQ0_qYFiZiPJQ64G4',
     appId: '1:1067844155109:ios:971036ac32da087cfa060c',
     messagingSenderId: '1067844155109',
-    projectId: 'saathi-2644b',
-    storageBucket: 'saathi-2644b.firebasestorage.app',
-    iosBundleId: 'com.dvtechventures.saathi',
+    projectId: 'shubhmilan-app',
+    storageBucket: 'shubhmilan-app.firebasestorage.app',
+    iosBundleId: 'com.dvtechventures.shubhmilan',
   );
 }

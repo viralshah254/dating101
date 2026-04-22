@@ -1,5 +1,10 @@
 {
-  "dart.packageConfigFile": ".dart_tool/package_config.json",
+  "dart.flutterSdkPath": "/Users/v/Development/flutter",
+  "dart.env": {
+    "PATH": "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/v/Development/flutter/bin",
+    "LANG": "en_US.UTF-8",
+    "LC_ALL": "en_US.UTF-8"
+  },
   "dart.analysisServerFolding": true,
   "editor.formatOnSave": true,
   "[dart]": {

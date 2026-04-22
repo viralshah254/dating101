@@ -1,4 +1,4 @@
-# saathi Mega Spec — Implementation Status
+# Shubhmilan Mega Spec — Implementation Status
 
 This doc tracks progress against [saathi-Frontend-MegaSpec.md](/Users/v/Desktop/saathi-Frontend-MegaSpec.md). The app is being redesigned for **dual mode (Dating + Matrimony)** and **full i18n**.
 

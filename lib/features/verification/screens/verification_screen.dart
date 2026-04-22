@@ -1,11 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/repository_providers.dart';
@@ -64,16 +60,22 @@ class VerificationScreen extends ConsumerWidget {
                     ),
                   ).animate().fadeIn(delay: 80.ms),
                   const SizedBox(height: 32),
+                  // ID + selfie are verified together via Persona's guided flow.
+                  // Both tiles navigate to /photo-verification (which runs Persona).
+                  // After the flow completes, both idVerified and photoVerified are set.
                   _VerificationTile(
                     icon: Icons.badge_outlined,
                     title: AppLocalizations.of(context)!.idVerification,
-                    subtitle: AppLocalizations.of(
-                      context,
-                    )!.idVerificationSubtitle,
+                    subtitle: 'Verify your government ID and selfie in one step.',
                     status: vs.idVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
-                    onTap: () => _showIdUpload(context, ref),
+                    onTap: vs.idVerified
+                        ? null
+                        : () async {
+                            await context.push('/photo-verification');
+                            ref.invalidate(_myProfileForVerificationProvider);
+                          },
                     accent: accent,
                   ).animate().fadeIn(delay: 120.ms),
                   const SizedBox(height: 12),
@@ -84,7 +86,12 @@ class VerificationScreen extends ConsumerWidget {
                     status: vs.photoVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
-                    onTap: () => context.push('/photo-verification'),
+                    onTap: vs.photoVerified
+                        ? null
+                        : () async {
+                            await context.push('/photo-verification');
+                            ref.invalidate(_myProfileForVerificationProvider);
+                          },
                     accent: accent,
                   ).animate().fadeIn(delay: 160.ms),
                   const SizedBox(height: 12),
@@ -109,7 +116,6 @@ class VerificationScreen extends ConsumerWidget {
                         : VerificationTileStatus.pending,
                     onTap: () => _showEducationVerification(context, ref),
                     accent: accent,
-                    isComingSoon: !vs.educationVerified,
                   ).animate().fadeIn(delay: 240.ms),
                   const SizedBox(height: 32),
                   Text(
@@ -279,119 +285,7 @@ class VerificationScreen extends ConsumerWidget {
     degreeController.dispose();
   }
 
-  static void _showIdUpload(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                AppLocalizations.of(ctx)!.idVerification,
-                style: AppTypography.headlineSmall,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Upload a clear photo of your passport or driving licence. We\'ll compare it to your profile photo.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final navigator = Navigator.of(ctx);
-                  try {
-                    final picker = ImagePicker();
-                    final xfile = await picker.pickImage(
-                      source: ImageSource.gallery,
-                      imageQuality: 85,
-                    );
-                    if (xfile == null || !ctx.mounted) return;
-                    final bytes = await File(xfile.path).readAsBytes();
-                    final verificationRepo = ref.read(
-                      verificationRepositoryProvider,
-                    );
-                    final result = await verificationRepo.getIdUploadUrl();
-                    if (result.uploadUrl.isEmpty || result.key.isEmpty) {
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              AppLocalizations.of(ctx)!.uploadUrlNotAvailable,
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                      return;
-                    }
-                    final uploadResponse = await http.put(
-                      Uri.parse(result.uploadUrl),
-                      body: bytes,
-                      headers: {'Content-Type': 'image/jpeg'},
-                    );
-                    if (uploadResponse.statusCode < 200 ||
-                        uploadResponse.statusCode >= 300) {
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              AppLocalizations.of(
-                                ctx,
-                              )!.uploadFailed('${uploadResponse.statusCode}'),
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                      return;
-                    }
-                    await verificationRepo.submitIdVerification(result.key);
-                    ref.invalidate(_myProfileForVerificationProvider);
-                    navigator.pop();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            AppLocalizations.of(context)!.idSubmittedNotify,
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            AppLocalizations.of(ctx)!.uploadFailedError('$e'),
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.upload_file),
-                label: Text(AppLocalizations.of(ctx)!.chooseFile),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(AppLocalizations.of(ctx)!.cancel),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+
 }
 
 /// UI state for a single verification tile (not the domain VerificationStatus).
@@ -411,7 +305,7 @@ class _VerificationTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VerificationTileStatus status;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color accent;
   final bool isComingSoon;
 

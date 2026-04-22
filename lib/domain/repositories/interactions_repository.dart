@@ -1,15 +1,19 @@
 import '../../core/mode/app_mode.dart';
-import '../models/interaction_models.dart' show ExpressInterestResult, InteractionInboxItem, InboxUnlockResult;
+import '../models/interaction_models.dart' show ExpressInterestResult, InteractionInboxItem, InboxUnlockResult, LikedYouUnlockResult;
 
 /// Shubhmilan §5a: express interest, priority interest, requests inbox, respond, withdraw.
 /// Dating and matrimony likes/passes/super-likes are independent; pass [mode] so backend can scope.
 abstract class InteractionsRepository {
   /// Express interest in a user. If they already liked you, creates mutual match.
   /// [mode] scopes the action to dating or matrimony so they work independently.
+  /// [message] optional note shown to recipient ("Like With a Note" feature).
+  /// [adCompletionToken] if daily limit is hit, pass a watched-ad token to send 1 extra.
   Future<ExpressInterestResult> expressInterest(
     String toUserId, {
     String? source,
     AppMode? mode,
+    String? message,
+    String? adCompletionToken,
   });
 
   /// Express priority (boosted) interest. Rate-limited per day (premium: 10/day). Free: pass [adCompletionToken] after user watches ad to allow one send.
@@ -71,5 +75,12 @@ abstract class InteractionsRepository {
     required String toUserId,
     AppMode? mode,
     String context = 'mutual_match',
+  });
+
+  /// Free user watches an ad to reveal one blurred liked-you profile.
+  /// POST /interactions/liked-you/unlock-one.
+  /// Returns the revealed profile or throws on budget exhaustion / no more profiles.
+  Future<LikedYouUnlockResult> unlockOneLikedYou({
+    required String adCompletionToken,
   });
 }

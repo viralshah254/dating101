@@ -50,4 +50,25 @@ class ApiVerificationRepository implements VerificationRepository {
     if (documentKey != null) body['documentKey'] = documentKey;
     await api.post('/verification/education', body: body);
   }
+
+  @override
+  Future<LivenessSession> createLivenessSession() async {
+    final body = await api.post('/verification/liveness/session');
+    return LivenessSession(
+      provider: body['provider'] as String? ?? 'persona',
+      sessionId: body['sessionId'] as String? ?? '',
+      hostedUrl: body['hostedUrl'] as String?,
+    );
+  }
+
+  @override
+  Future<LivenessResult> confirmLivenessSession(String sessionId, {String? provider}) async {
+    final reqBody = <String, dynamic>{'sessionId': sessionId};
+    if (provider != null) reqBody['provider'] = provider;
+    final body = await api.post('/verification/liveness/confirm', body: reqBody);
+    return LivenessResult(
+      verified: body['verified'] as bool? ?? false,
+      idVerified: body['idVerified'] as bool? ?? false,
+    );
+  }
 }

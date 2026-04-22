@@ -1,4 +1,4 @@
-# Saathi — Endpoint Requirements (Counts, Priority Message, and Integration)
+# Shubhmilan — Endpoint Requirements (Counts, Priority Message, and Integration)
 
 This document specifies **API requirements** for the features that power nav badges, priority interest with message, and a seamless chat flow. Use it together with [new_endpoints.md](./new_endpoints.md) and [chat_endpoint.md](./chat_endpoint.md).
 

@@ -16,18 +16,21 @@ import '../../../core/daily_matches/daily_matches_provider.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../discovery/providers/discovery_providers.dart';
+import '../../discovery/widgets/unified_filter_sheet.dart';
 import '../../referral/widgets/referral_promo_banner.dart';
 import '../../requests/providers/requests_providers.dart';
 import '../../shortlist/providers/shortlist_providers.dart';
+import '../../../domain/models/discovery_filter_params.dart';
 import '../providers/matches_providers.dart';
 import '../widgets/daily_matches_popup.dart';
 import '../widgets/match_profile_card.dart';
+import '../../chat/providers/chat_providers.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
@@ -43,6 +46,21 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   MatchesSearchFilters _filters = const MatchesSearchFilters();
   int _activeFilterCount = 0;
+
+  // ── New-match in-app toast ───────────────────────────────────────────────
+  String? _newMatchName;
+  bool _showMatchToast = false;
+
+  // ignore: unused_element
+  void _showNewMatchToast(String name) {
+    setState(() {
+      _newMatchName = name;
+      _showMatchToast = true;
+    });
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showMatchToast = false);
+    });
+  }
 
   @override
   void initState() {
@@ -62,8 +80,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     if (_filters.city != null && _filters.city!.isNotEmpty) c++;
     if (_filters.religion != null && _filters.religion!.isNotEmpty) c++;
     if (_filters.education != null && _filters.education!.isNotEmpty) c++;
-    if (_filters.heightMinCm != null) c++;
+    if (_filters.heightMinCm != null || _filters.heightMaxCm != null) c++;
     if (_filters.diet != null && _filters.diet!.isNotEmpty) c++;
+    if (_filters.maritalStatus != null && _filters.maritalStatus!.isNotEmpty) c++;
+    if (_filters.motherTongue != null && _filters.motherTongue!.isNotEmpty) c++;
     setState(() => _activeFilterCount = c);
   }
 
@@ -81,7 +101,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       });
     }
 
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
@@ -91,7 +113,21 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
-            backgroundColor: Theme.of(context).colorScheme.surface,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
+                      Theme.of(context).colorScheme.surface,
+                    ],
+                  ),
+                ),
+              ),
+            ),
             title: Text(
               l.navDiscover,
               style: AppTypography.headlineSmall.copyWith(
@@ -162,6 +198,19 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           ],
         ),
       ),
+        ),
+        // In-app match toast — slides in from top
+        if (_showMatchToast && _newMatchName != null)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
+            child: _MatchToast(name: _newMatchName!)
+                .animate()
+                .slideY(begin: -1, end: 0, duration: AppMotion.medium, curve: AppMotion.reveal)
+                .fadeIn(duration: AppMotion.fast),
+          ),
+      ],
     );
   }
 
@@ -258,19 +307,24 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(recommendedPaginatedProvider);
-      ref.invalidate(matchesSearchProvider);
-      ref.invalidate(matchesNearbyProvider);
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
             );
         if (!mounted) return;
         _showMutualMatchCelebration(context, p, result.chatThreadId);
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -311,6 +365,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       // Free user: must choose Watch ad or Upgrade to Premium. If they go to paywall and back, show choice again.
       bool? watchAd = await _showWatchAdOrPremiumChoice(context);
       while (watchAd != null && watchAd == false) {
+        if (!mounted) return;
         await context.push('/paywall');
         if (!mounted) return;
         watchAd = await _showWatchAdOrPremiumChoice(context);
@@ -345,19 +400,24 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
       ref.read(optimisticSentInterestProfileIdsProvider.notifier).update(
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
-      ref.invalidate(recommendedPaginatedProvider);
-      ref.invalidate(matchesSearchProvider);
-      ref.invalidate(matchesNearbyProvider);
+      // Tier 1: immediate — badges and sent-list update.
       ref.invalidate(sentInteractionsProvider(mode));
       if (result.mutualMatch) {
-        ref.invalidate(mutualMatchesProvider);
-        ref.invalidate(matchedUserIdsProvider);
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != p.id).toList(),
             );
         if (!mounted) return;
         _showMutualMatchCelebration(context, p, result.chatThreadId);
       }
+      // Tier 2: deferred background — heavy discovery pipeline.
+      final mutualMatch = result.mutualMatch;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+        if (mutualMatch) {
+          ref.invalidate(mutualMatchesProvider);
+          ref.invalidate(matchedUserIdsProvider);
+        }
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -517,7 +577,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
             (m) => {...m, mode: {...(m[mode] ?? {}), p.id}},
           );
       ref.invalidate(sentInteractionsProvider(mode));
-      ref.invalidate(recommendedPaginatedProvider);
+      // Deferred: heavy discovery pipeline runs in background.
+      Future.delayed(const Duration(milliseconds: 400), () {
+        ref.invalidate(recommendedPaginatedProvider);
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'ALREADY_SENT') {
@@ -530,6 +593,22 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   Future<void> _openChat(ProfileSummary p, {String? initialAdToken}) async {
     final l = AppLocalizations.of(context)!;
+    // Enforce Silver active-chat limit (25 threads).
+    final ent = ref.read(entitlementsProvider);
+    if (ent.maxActiveChats > 0) {
+      final activeCount = ref.read(activeChatThreadCountProvider);
+      if (activeCount >= ent.maxActiveChats) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("You've reached your 25-chat limit. Upgrade to Gold for unlimited chats."),
+            action: SnackBarAction(label: 'Upgrade', onPressed: () => context.push('/premium')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
@@ -697,426 +776,103 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
   }
 
   void _showFilterSheet(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context)!;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.lightAccent;
-    final surface = Theme.of(context).colorScheme.surface;
-
-    final filterOptionsAsync = ref.read(filterOptionsProvider);
-
-    RangeValues ageRange = RangeValues(
-      (_filters.ageMin ?? 21).toDouble(),
-      (_filters.ageMax ?? 45).toDouble(),
-    );
-    String? city = _filters.city;
-    String? religion = _filters.religion;
-    String? education = _filters.education;
-
-    final opts = filterOptionsAsync.valueOrNull;
-    final ageMin = opts?.age.min ?? 18;
-    final ageMax = opts?.age.max ?? 60;
-    final defaultAgeMin = opts?.age.defaultMin ?? 21;
-    final defaultAgeMax = opts?.age.defaultMax ?? 45;
-    if (opts != null && _filters.ageMin == null && _filters.ageMax == null) {
-      ageRange = RangeValues(
-        defaultAgeMin.toDouble(),
-        defaultAgeMax.toDouble(),
-      );
-    }
-    final cities = opts?.cities.options.isNotEmpty == true
-        ? opts!.cities.options
-        : const ['London', 'Mumbai', 'Delhi', 'Dubai', 'New York', 'Bangalore'];
-    final religions = opts?.religions.options.isNotEmpty == true
-        ? opts!.religions.options
-        : const ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist'];
-    final educationOptions = opts?.education.options.isNotEmpty == true
-        ? opts!.education.options
-        : const [
-            "Bachelor's",
-            "Master's",
-            'Doctorate',
-            'Diploma',
-            'High School',
-          ];
-
+    final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Container(
-              decoration: BoxDecoration(
-                color: surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(ctx).size.height * 0.88,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          l.filters,
-                          style: AppTypography.headlineSmall.copyWith(
-                            color: onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            setSheetState(() {
-                              ageRange = RangeValues(
-                                defaultAgeMin.toDouble(),
-                                defaultAgeMax.toDouble(),
-                              );
-                              city = null;
-                              religion = null;
-                              education = null;
-                            });
-                          },
-                          child: Text(
-                            l.reset,
-                            style: TextStyle(
-                              color: accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: onSurface.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Consumer(
-                            builder: (ctx, ref, _) {
-                              final savedAsync = ref.watch(
-                                savedSearchesProvider,
-                              );
-                              return savedAsync.when(
-                                data: (list) {
-                                  if (list.isEmpty)
-                                    return const SizedBox.shrink();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _FilterSection(
-                                      label: l.savedSearches,
-                                      onSurface: onSurface,
-                                      child: Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: list.map((ss) {
-                                          return ActionChip(
-                                            avatar: ss.newMatchCount > 0
-                                                ? CircleAvatar(
-                                                    backgroundColor: accent,
-                                                    child: Text(
-                                                      '${ss.newMatchCount}',
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  )
-                                                : null,
-                                            label: Text(ss.displayName),
-                                            onPressed: () {
-                                              setState(() {
-                                                _filters =
-                                                    MatchesSearchFilters.fromMap(
-                                                      ss.filters,
-                                                    );
-                                                _updateFilterCount();
-                                              });
-                                              ref
-                                                  .read(
-                                                    discoveryRepositoryProvider,
-                                                  )
-                                                  .markSavedSearchViewed(ss.id);
-                                              ref.invalidate(
-                                                savedSearchesProvider,
-                                              );
-                                              _tabController.animateTo(2);
-                                              Navigator.pop(ctx);
-                                            },
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                loading: () => const SizedBox.shrink(),
-                                error: (_, __) => const SizedBox.shrink(),
-                              );
-                            },
-                          ),
-                          _FilterSection(
-                            label: l.ageRange,
-                            onSurface: onSurface,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${ageRange.start.round()}',
-                                      style: AppTypography.titleMedium.copyWith(
-                                        color: accent,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${ageRange.end.round()}',
-                                      style: AppTypography.titleMedium.copyWith(
-                                        color: accent,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                RangeSlider(
-                                  values: ageRange,
-                                  min: ageMin.toDouble(),
-                                  max: ageMax.toDouble(),
-                                  divisions: (ageMax - ageMin).clamp(1, 50),
-                                  activeColor: accent,
-                                  onChanged: (v) =>
-                                      setSheetState(() => ageRange = v),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _FilterSection(
-                            label: l.city,
-                            onSurface: onSurface,
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: cities
-                                  .map(
-                                    (c) => _ChoiceChipFilter(
-                                      label: c,
-                                      selected: city == c,
-                                      accent: accent,
-                                      onTap: () => setSheetState(
-                                        () => city = city == c ? null : c,
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _FilterSection(
-                            label: l.religion,
-                            onSurface: onSurface,
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: religions
-                                  .map(
-                                    (r) => _ChoiceChipFilter(
-                                      label: r,
-                                      selected: religion == r,
-                                      accent: accent,
-                                      onTap: () => setSheetState(
-                                        () =>
-                                            religion = religion == r ? null : r,
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _FilterSection(
-                            label: l.educationLevel,
-                            onSurface: onSurface,
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: educationOptions
-                                  .map(
-                                    (e) => _ChoiceChipFilter(
-                                      label: e,
-                                      selected: education == e,
-                                      accent: accent,
-                                      onTap: () => setSheetState(
-                                        () => education = education == e
-                                            ? null
-                                            : e,
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      12,
-                      20,
-                      12 + MediaQuery.of(ctx).padding.bottom,
-                    ),
-                    decoration: BoxDecoration(
-                      color: surface,
-                      border: Border(
-                        top: BorderSide(
-                          color: onSurface.withValues(alpha: 0.08),
-                        ),
-                      ),
-                    ),
-                    child: SafeArea(
-                      top: false,
-                      child: Row(
-                        children: [
-                          OutlinedButton(
-                            onPressed: () async {
-                              final filters = <String, dynamic>{
-                                'ageMin': ageRange.start.round(),
-                                'ageMax': ageRange.end.round(),
-                              };
-                              if (city != null && city!.isNotEmpty)
-                                filters['city'] = city!;
-                              if (religion != null && religion!.isNotEmpty)
-                                filters['religion'] = religion!;
-                              if (education != null && education!.isNotEmpty)
-                                filters['education'] = education!;
-                              try {
-                                await ref
-                                    .read(discoveryRepositoryProvider)
-                                    .createSavedSearch(filters);
-                                if (!ctx.mounted) return;
-                                ref.invalidate(savedSearchesProvider);
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(content: Text(l.searchSaved)),
-                                );
-                              } catch (_) {
-                                if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                      content: Text(l.couldNotSaveSearch),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: accent,
-                              side: BorderSide(color: accent),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Text(l.saveSearch),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () {
-                                setState(() {
-                                  final ageMinVal = ageRange.start.round();
-                                  final ageMaxVal = ageRange.end.round();
-                                  _filters = MatchesSearchFilters(
-                                    ageMin: ageMinVal == defaultAgeMin
-                                        ? null
-                                        : ageMinVal,
-                                    ageMax: ageMaxVal == defaultAgeMax
-                                        ? null
-                                        : ageMaxVal,
-                                    city: city,
-                                    religion: religion,
-                                    education: education,
-                                  );
-                                  _updateFilterCount();
-                                  if (_activeFilterCount > 0) {
-                                    _tabController.animateTo(
-                                      2,
-                                    ); // Switch to Explore tab
-                                  }
-                                });
-                                Navigator.pop(ctx);
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: accent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: Text(
-                                l.apply,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      builder: (ctx) => UnifiedFilterSheet(
+        mode: mode,
+        initialParams: DiscoveryFilterParams(
+          ageMin: _filters.ageMin,
+          ageMax: _filters.ageMax,
+          city: _filters.city,
+          religion: _filters.religion,
+          education: _filters.education,
+          diet: _filters.diet,
+          maritalStatus: _filters.maritalStatus,
+          motherTongue: _filters.motherTongue,
+          heightMinCm: _filters.heightMinCm,
+          heightMaxCm: _filters.heightMaxCm,
+        ),
+        initialSort: ref.read(sortByProvider),
+        onApply: (params, sort) {
+          setState(() {
+            _filters = MatchesSearchFilters(
+              ageMin: params.ageMin,
+              ageMax: params.ageMax,
+              city: params.city,
+              religion: params.religion,
+              education: params.education,
+              diet: params.diet,
+              maritalStatus: params.maritalStatus,
+              motherTongue: params.motherTongue,
+              heightMinCm: params.heightMinCm,
+              heightMaxCm: params.heightMaxCm,
             );
-          },
-        );
-      },
+            _updateFilterCount();
+          });
+          ref.read(sortByProvider.notifier).state = sort;
+          if (_activeFilterCount > 0) {
+            _tabController.animateTo(2); // Switch to Explore tab
+          }
+        },
+      ),
     );
   }
 }
 
 // ─── Tabs ───────────────────────────────────────────────────────────────
 
-class _TabBarSection extends StatelessWidget {
+class _TabBarSection extends StatefulWidget {
   const _TabBarSection({required this.controller, required this.accent});
   final TabController controller;
   final Color accent;
 
   @override
+  State<_TabBarSection> createState() => _TabBarSectionState();
+}
+
+class _TabBarSectionState extends State<_TabBarSection> {
+  // ignore: unused_field
+  double _indicatorPos = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.controller.index;
+    widget.controller.addListener(_onTabChange);
+  }
+
+  void _onTabChange() {
+    if (widget.controller.index != _currentIndex) {
+      setState(() {
+        _currentIndex = widget.controller.index;
+        _indicatorPos = _currentIndex.toDouble();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTabChange);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
+    final accent = widget.accent;
+    final tabLabels = [
+      l.matchesRecommended,
+      l.navVisitors,
+      l.matchesSearch,
+      l.navMatches,
+    ];
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -1127,7 +883,7 @@ class _TabBarSection extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(4),
       child: TabBar(
-        controller: controller,
+        controller: widget.controller,
         indicator: BoxDecoration(
           color: accent,
           borderRadius: BorderRadius.circular(AppTokens.radius12),
@@ -1140,20 +896,33 @@ class _TabBarSection extends StatelessWidget {
           ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
+        // Scrollable tabs avoid label truncation on narrow screens / long locales.
+        // TabAlignment.fill is only allowed when isScrollable is false.
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         dividerColor: Colors.transparent,
-        labelColor: Colors.white,
+        labelColor: cs.onPrimary,
         unselectedLabelColor: onSurface.withValues(alpha: 0.65),
         labelStyle: AppTypography.labelLarge.copyWith(
           fontWeight: FontWeight.w700,
-          fontSize: 13,
+          fontSize: 12,
         ),
-        unselectedLabelStyle: AppTypography.labelLarge.copyWith(fontSize: 13),
-        tabs: [
-          Tab(text: l.matchesRecommended, height: 42),
-          Tab(text: l.navVisitors, height: 42),
-          Tab(text: l.matchesSearch, height: 42),
-          Tab(text: l.navMatches, height: 42),
-        ],
+        unselectedLabelStyle: AppTypography.labelLarge.copyWith(fontSize: 12),
+        tabs: tabLabels
+            .asMap()
+            .entries
+            .map((e) => TweenAnimationBuilder<double>(
+                  tween: Tween<double>(
+                    begin: 1.0,
+                    end: widget.controller.index == e.key ? 1.03 : 1.0,
+                  ),
+                  duration: AppMotion.medium,
+                  curve: AppMotion.reveal,
+                  builder: (_, scale, child) =>
+                      Transform.scale(scale: scale, child: child),
+                  child: Tab(text: e.value, height: 42),
+                ))
+            .toList(),
       ),
     );
   }
@@ -1198,16 +967,31 @@ class _RecommendedTab extends ConsumerWidget {
         ref.watch(effectiveExcludedFromRecommendedIdsProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
+    final sort = ref.watch(sortByProvider);
     final async = ref.watch(recommendedPaginatedProvider);
     final notifier = ref.read(recommendedPaginatedProvider.notifier);
     return async.when(
+      skipLoadingOnReload: true,
       data: (state) {
         // Exclude matches and profiles we already sent interest/priority to (API + optimistic so full-profile tap is reflected).
-        final filtered = state.profiles
+        final strict = state.profiles
             .where((p) =>
                 !matchedIds.contains(p.id) &&
                 !excludedFromRecommended.contains(p.id))
             .toList();
+        var filtered = applySortOption(strict, sort);
+        var usedRelaxedRecommended = false;
+        // API returned people but strict list is empty (e.g. already sent interest to everyone).
+        // Never show an empty Recommended tab — widen to lower-fit / broader pool.
+        if (filtered.isEmpty && state.profiles.isNotEmpty) {
+          final withoutMatches = state.profiles
+              .where((p) => !matchedIds.contains(p.id))
+              .toList();
+          filtered = withoutMatches.isEmpty
+              ? applySortOption(state.profiles, sort)
+              : applySortOption(withoutMatches, sort);
+          usedRelaxedRecommended = true;
+        }
         return _ProfileList(
           profiles: filtered,
           shortlistedIds: shortlistedIds,
@@ -1226,7 +1010,8 @@ class _RecommendedTab extends ConsumerWidget {
           emptyBody: l.noRecommendationsYetBody,
           onReached20thProfile: filtered.length >= 20 ? onReached20thProfile : null,
           showReferralCards: filtered.length >= 10,
-          widenedSearchBanner: state.isWidenedSearch && filtered.isNotEmpty
+          widenedSearchBanner:
+              (state.isWidenedSearch || usedRelaxedRecommended) && filtered.isNotEmpty
               ? _WidenedSearchBanner(
                   title: l.searchWidenedTitle,
                   body: l.searchWidenedBody,
@@ -1238,8 +1023,8 @@ class _RecommendedTab extends ConsumerWidget {
         );
       },
       loading: () => const SkeletonCardList(),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(recommendedPaginatedProvider),
         retryLabel: l.retry,
       ),
@@ -1280,14 +1065,17 @@ class _VisitorsTab extends ConsumerWidget {
     final sentPriorityIds =
         ref.watch(sentPriorityInterestProfileIdsProvider(mode)).valueOrNull ??
         <String>{};
+    final sort = ref.watch(sortByProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final async = ref.watch(visitorsProvider);
     return async.when(
+      skipLoadingOnReload: true,
       data: (profiles) {
-        final filtered = profiles
+        final unfiltered = profiles
             .where((p) => !matchedIds.contains(p.id))
             .toList();
+        final filtered = applySortOption(unfiltered, sort);
         return _ProfileList(
           profiles: filtered,
           shortlistedIds: shortlistedIds,
@@ -1307,8 +1095,8 @@ class _VisitorsTab extends ConsumerWidget {
         );
       },
       loading: () => const SkeletonCardList(),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(visitorsProvider),
         retryLabel: l.retry,
       ),
@@ -1363,17 +1151,22 @@ class _ExploreTab extends ConsumerWidget {
         (filters.religion != null && filters.religion!.isNotEmpty) ||
         (filters.education != null && filters.education!.isNotEmpty) ||
         (filters.diet != null && filters.diet!.isNotEmpty) ||
-        filters.heightMinCm != null;
+        filters.heightMinCm != null ||
+        (filters.maritalStatus != null && filters.maritalStatus!.isNotEmpty) ||
+        (filters.motherTongue != null && filters.motherTongue!.isNotEmpty);
 
+    final sort = ref.watch(sortByProvider);
     final matchedIds =
         ref.watch(matchedUserIdsProvider).valueOrNull ?? <String>{};
     final async = ref.watch(explorePaginatedProvider(exploreArgs));
     final notifier = ref.read(explorePaginatedProvider(exploreArgs).notifier);
     return async.when(
+      skipLoadingOnReload: true,
       data: (state) {
-        final filtered = state.profiles
+        final unfiltered = state.profiles
             .where((p) => !matchedIds.contains(p.id))
             .toList();
+        final filtered = applySortOption(unfiltered, sort);
         return _ProfileList(
           profiles: filtered,
           shortlistedIds: shortlistedIds,
@@ -1404,8 +1197,8 @@ class _ExploreTab extends ConsumerWidget {
         );
       },
       loading: () => const SkeletonCardList(),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(explorePaginatedProvider(exploreArgs)),
         retryLabel: l.retry,
       ),
@@ -1432,6 +1225,7 @@ class _MatchesTab extends ConsumerWidget {
     final async = ref.watch(mutualMatchesProvider);
     final l = AppLocalizations.of(context)!;
     return async.when(
+      skipLoadingOnReload: true,
       data: (entries) {
         if (entries.isEmpty) {
           return EmptyState(
@@ -1441,7 +1235,7 @@ class _MatchesTab extends ConsumerWidget {
           );
         }
         final onSurface = Theme.of(context).colorScheme.onSurface;
-        final accent = AppColors.lightAccent;
+        final accent = Theme.of(context).colorScheme.primary;
         // Disable scrolling when list fits on screen (no overflow).
         const approximateItemHeight = 88.0;
         const verticalPadding = 36.0;
@@ -1603,8 +1397,8 @@ class _MatchesTab extends ConsumerWidget {
         );
       },
       loading: () => const SkeletonCardList(),
-      error: (_, __) => ErrorState(
-        message: l.errorGeneric,
+      error: (e, _) => ErrorState(
+        error: e,
         onRetry: () => ref.invalidate(mutualMatchesProvider),
         retryLabel: l.retry,
       ),
@@ -1622,7 +1416,7 @@ class _WidenedSearchBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = AppColors.lightAccent;
+    final accent = Theme.of(context).colorScheme.primary;
     return Material(
       color: accent.withValues(alpha: 0.12),
       child: SafeArea(
@@ -1776,7 +1570,7 @@ class _ProfileList extends StatelessWidget {
                 child: ReferralPromoBanner(
                   aspectRatio: 1.15,
                   borderRadius: 12,
-                ).animate().fadeIn(delay: (40 * index).ms).slideY(begin: 0.04, end: 0),
+                ).animate().fadeIn(delay: AppMotion.stagger(index), duration: AppMotion.medium).slideY(begin: 0.08, end: 0, curve: AppMotion.spring),
               ),
             );
           }
@@ -1809,7 +1603,7 @@ class _ProfileList extends StatelessWidget {
               onUpgrade: onUpgrade,
               onBlock: () => onBlock(p),
               onReport: () => onReport(p),
-            ).animate().fadeIn(delay: (40 * index).ms).slideY(begin: 0.04, end: 0),
+            ).animate(key: ValueKey(p.id)).fadeIn(delay: AppMotion.stagger(index), duration: AppMotion.medium).slideY(begin: 0.08, end: 0, curve: AppMotion.spring),
           ),
         );
         if (is20thProfile) {
@@ -1897,8 +1691,8 @@ class _FilterButton extends StatelessWidget {
                     ),
                     child: Text(
                       '$activeCount',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1907,82 +1701,6 @@ class _FilterButton extends StatelessWidget {
                 ],
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterSection extends StatelessWidget {
-  const _FilterSection({
-    required this.label,
-    required this.onSurface,
-    required this.child,
-  });
-  final String label;
-  final Color onSurface;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: onSurface.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: onSurface.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.labelLarge.copyWith(
-              color: onSurface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _ChoiceChipFilter extends StatelessWidget {
-  const _ChoiceChipFilter({
-    required this.label,
-    required this.selected,
-    required this.accent,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? accent : accent.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? accent : accent.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(
-            color: selected ? Colors.white : accent,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -2014,7 +1732,7 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final surface = Theme.of(context).colorScheme.surface;
-    final accent = AppColors.saffron;
+    final accent = Theme.of(context).colorScheme.primary;
     final width = MediaQuery.sizeOf(context).width;
     final dialogWidth = (width * 0.9).clamp(320.0, 420.0);
     final warmBg = Color.lerp(surface, accent, 0.03) ?? surface;
@@ -2130,7 +1848,7 @@ class _PriorityInterestDialogState extends State<_PriorityInterestDialog> {
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: accent,
-                    foregroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -2179,4 +1897,59 @@ class _ReferralPopupTriggerState extends State<_ReferralPopupTrigger> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Branded top-of-screen toast shown when a new mutual match is created.
+class _MatchToast extends StatelessWidget {
+  const _MatchToast({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.heartGradient,
+        borderRadius: BorderRadius.circular(AppTokens.radius16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.rosePrimary.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTokens.radius16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              const Icon(Icons.favorite_rounded, color: Colors.white, size: 22)
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.25, 1.25), duration: AppMotion.loop, curve: Curves.easeInOut),
+              const SizedBox(width: 12),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.95),
+                    ),
+                    children: [
+                      const TextSpan(text: "It's a match! "),
+                      TextSpan(
+                        text: name,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const TextSpan(text: ' liked you back.'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

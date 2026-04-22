@@ -1,4 +1,4 @@
-# Saathi Backend — Field Validation & Optionality Rules
+# Shubhmilan Backend — Field Validation & Optionality Rules
 
 Which fields are required vs optional when creating/updating a profile via
 `PUT /profile/me` and `PATCH /profile/me`.

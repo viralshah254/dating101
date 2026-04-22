@@ -48,7 +48,7 @@ This guide covers connecting the subscription flow to **Google Play** (Android),
 
 ### 2.4 Android app config
 
-- **Package name:** `com.dvtechventures.saathi` (from `android/app/build.gradle.kts`)
+- **Package name:** `com.dvtechventures.shubhmilan` (from `android/app/build.gradle.kts`)
 - **Min SDK:** Ensure ≥ 21 (in_app_purchase requirement)
 - No extra Gradle config needed; `in_app_purchase` adds billing automatically
 

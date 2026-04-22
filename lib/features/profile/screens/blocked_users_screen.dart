@@ -43,7 +43,7 @@ class BlockedUsersScreen extends ConsumerWidget {
                   Icon(
                     Icons.block_outlined,
                     size: 64,
-                    color: Colors.grey.shade400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
                   Text(

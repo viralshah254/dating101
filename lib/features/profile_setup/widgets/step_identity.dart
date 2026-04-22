@@ -24,8 +24,10 @@ String? _genderPrefToDisplay(String? stored, AppMode mode, AppLocalizations l) {
   } else {
     switch (stored) {
       case 'Woman':
+      case 'Female':
         return l.lookingForBride;
       case 'Man':
+      case 'Male':
         return l.lookingForGroom;
     }
   }
@@ -44,6 +46,29 @@ String _displayToGenderPref(String display, AppLocalizations l) {
     return 'Any';
   }
   return display;
+}
+
+/// Gender chips for the profile subject. Son/brother → Man + Non-binary only;
+/// daughter/sister → Woman + Non-binary; everyone else gets the full list.
+/// Edit mode keeps all three so existing data can be corrected.
+List<String> _genderChipOptionsForCreatingFor(
+  String? creatingFor,
+  AppLocalizations l, {
+  required bool isEditing,
+}) {
+  if (isEditing) {
+    return [l.genderWoman, l.genderMan, l.genderNonBinary];
+  }
+  switch (creatingFor) {
+    case 'son':
+    case 'brother':
+      return [l.genderMan, l.genderNonBinary];
+    case 'daughter':
+    case 'sister':
+      return [l.genderWoman, l.genderNonBinary];
+    default:
+      return [l.genderWoman, l.genderMan, l.genderNonBinary];
+  }
 }
 
 /// When non-null, only that part of the identity step is shown (for section-only edit screens).
@@ -93,7 +118,7 @@ class StepIdentity extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Update your physical attributes.',
+              l.physicalAttributesSubtitle,
               style: AppTypography.bodyMedium.copyWith(
                 color: onSurface.withValues(alpha: 0.6),
               ),
@@ -113,14 +138,14 @@ class StepIdentity extends StatelessWidget {
 
     final isBasicOnly = onlySection == StepIdentityOnlySection.basic;
     final title = isBasicOnly && isEditing
-        ? 'Your details'
+        ? l.identityStepTitle
         : (isEditing
-              ? 'Edit your profile'
+              ? l.identityEditTitle
               : (forSelf ? l.profileSetupTitle : l.dynSetupTitle(subject)));
     final subtitle = isBasicOnly && isEditing
-        ? 'Name and date of birth cannot be changed after setup.'
+        ? l.identityStepSubtitle
         : (isEditing
-              ? 'Update your details. Some fields cannot be changed.'
+              ? l.identityEditSubtitle
               : (forSelf
                     ? l.profileSetupSubtitle
                     : l.dynSetupSubtitle(subject)));
@@ -193,7 +218,7 @@ class StepIdentity extends StatelessWidget {
           if (isEditing) ...[
             const SizedBox(height: 4),
             Text(
-              'Name cannot be changed after setup',
+              l.nameLockedHint,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.4),
                 fontSize: 11,
@@ -221,7 +246,11 @@ class StepIdentity extends StatelessWidget {
             child: Opacity(
               opacity: isEditing ? 0.6 : 1.0,
               child: _ChipSelector(
-                options: [l.genderWoman, l.genderMan, l.genderNonBinary],
+                options: _genderChipOptionsForCreatingFor(
+                  formData.creatingFor,
+                  l,
+                  isEditing: isEditing,
+                ),
                 selected: formData.gender,
                 onSelected: (v) {
                   formData.gender = v;
@@ -282,7 +311,7 @@ class StepIdentity extends StatelessWidget {
           if (isEditing && formData.dateOfBirth != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Date of birth cannot be changed',
+              l.dobLockedHint,
               style: AppTypography.bodySmall.copyWith(
                 color: onSurface.withValues(alpha: 0.4),
                 fontSize: 11,
@@ -337,6 +366,26 @@ class StepIdentity extends StatelessWidget {
                 formData.hometown = s.country.isNotEmpty
                     ? '$city, ${s.country}'
                     : city;
+                onChanged();
+              },
+            ),
+          ],
+
+          // ── Marital status (matrimony) ─────────────────────────────
+          if (mode.isMatrimony) ...[
+            const SizedBox(height: 28),
+            _SectionLabel(label: l.maritalStatus),
+            const SizedBox(height: 10),
+            _ChipSelector(
+              options: [
+                l.neverMarried,
+                l.divorced,
+                l.widowed,
+                l.awaitingDivorce,
+              ],
+              selected: formData.maritalStatus,
+              onSelected: (v) {
+                formData.maritalStatus = v;
                 onChanged();
               },
             ),
@@ -608,6 +657,7 @@ class _HeightPickerState extends State<_HeightPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
     final hasValue = widget.value != null && widget.value!.isNotEmpty;
@@ -634,7 +684,7 @@ class _HeightPickerState extends State<_HeightPicker> {
               child: Text(
                 hasValue
                     ? '$_feet\' $_inches" — $_totalCm cm'
-                    : 'Tap to select height',
+                    : l.heightTapHint,
                 style: AppTypography.bodyLarge.copyWith(
                   color: hasValue
                       ? onSurface
@@ -1182,19 +1232,7 @@ class _CreatingForSelector extends StatelessWidget {
         return GestureDetector(
           onTap: () {
             formData.creatingFor = opt.value;
-            // Auto-set gender + interested-in based on relationship
-            switch (opt.value) {
-              case 'son':
-              case 'brother':
-                formData.gender = l.genderMan;
-                formData.interestedIn = 'Woman';
-              case 'daughter':
-              case 'sister':
-                formData.gender = l.genderWoman;
-                formData.interestedIn = 'Man';
-              default:
-                break;
-            }
+            formData.applyGenderFromCreatingForRelationship(l);
             onChanged();
           },
           child: AnimatedContainer(

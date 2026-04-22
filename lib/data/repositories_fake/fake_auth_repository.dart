@@ -2,8 +2,7 @@ import 'dart:async';
 
 import '../../domain/repositories/auth_repository.dart';
 
-/// Fake auth for development. Any 6-digit code succeeds.
-/// Simulates new vs returning user based on phone number.
+/// Fake auth for development. Any password with length ≥ 8 succeeds.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository() {
     _userIdController = StreamController<String?>.broadcast();
@@ -12,48 +11,60 @@ class FakeAuthRepository implements AuthRepository {
 
   String? _currentUserId;
   late final StreamController<String?> _userIdController;
-  bool _lastOtpIsNewUser = true;
 
   static const String _fakeUserId = 'me';
 
-  /// Phones ending in 0000 are treated as "returning" users for testing.
   static bool _isReturningUser(String phone) {
     return phone.trim().endsWith('0000');
   }
 
   @override
-  Future<SendOtpResult> sendOtp({
+  Future<AuthResult> signUpWithPassword({
     required String countryCode,
     required String phone,
+    required String password,
+    String? referralCode,
   }) async {
     await Future.delayed(const Duration(milliseconds: 400));
     if (phone.length < 7) {
-      return const SendOtpFailure('Please enter a valid phone number');
+      return const AuthFailure('Please enter a valid phone number');
     }
-    _lastOtpIsNewUser = !_isReturningUser(phone);
-    return const SendOtpSuccess(verificationId: 'fake-verification-id');
-  }
-
-  @override
-  Future<AuthResult> verifyOtp({
-    required String verificationId,
-    required String code,
-    String? referralCode,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (code.length != 4) {
-      return const AuthFailure('Please enter a 4-digit code');
+    if (password.length < 8) {
+      return const AuthFailure('Password must be at least 8 characters.');
+    }
+    if (phone.trim().endsWith('1111')) {
+      return const AuthFailure(
+        'An account with this phone number already exists. Sign in instead.',
+        code: 'ALREADY_EXISTS',
+      );
     }
     _currentUserId = _fakeUserId;
     _userIdController.add(_currentUserId);
-    final referralApplied = _lastOtpIsNewUser &&
-        referralCode != null &&
-        referralCode.trim().isNotEmpty;
+    final referralApplied = referralCode != null && referralCode.trim().isNotEmpty;
     return AuthSuccess(
       userId: _currentUserId,
-      isNewUser: _lastOtpIsNewUser,
+      isNewUser: true,
       referralApplied: referralApplied,
     );
+  }
+
+  @override
+  Future<AuthResult> signInWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (phone.length < 7) {
+      return const AuthFailure('Please enter a valid phone number');
+    }
+    if (password.length < 8) {
+      return const AuthFailure('Password must be at least 8 characters.');
+    }
+    _currentUserId = _fakeUserId;
+    _userIdController.add(_currentUserId);
+    final isNewUser = !_isReturningUser(phone);
+    return AuthSuccess(userId: _currentUserId, isNewUser: isNewUser);
   }
 
   @override

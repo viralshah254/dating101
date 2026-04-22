@@ -1,3 +1,4 @@
+import '../../core/mode/app_mode.dart';
 import '../../domain/models/city_option.dart';
 import '../../domain/models/country_option.dart';
 import '../../domain/repositories/location_repository.dart';
@@ -7,11 +8,17 @@ class ApiLocationRepository implements LocationRepository {
   ApiLocationRepository({required this.api});
   final ApiClient api;
 
+  static String? _discoverModeQuery(AppMode? mode) {
+    if (mode == null) return null;
+    return mode.isMatrimony ? 'matrimony' : 'dating';
+  }
+
   @override
   Future<List<CityOption>> getNearbyCities({
     required double lat,
     required double lng,
     int limit = 10,
+    AppMode? forDiscoveryMode,
   }) async {
     final query = <String, String>{
       'nearby': 'true',
@@ -19,6 +26,11 @@ class ApiLocationRepository implements LocationRepository {
       'lat': '$lat',
       'lng': '$lng',
     };
+    final dm = _discoverModeQuery(forDiscoveryMode);
+    if (dm != null) {
+      query['discoverCounts'] = 'true';
+      query['mode'] = dm;
+    }
     final body = await api.get('/location/cities', query: query);
     final list = body['cities'] as List? ?? [];
     return list
@@ -36,10 +48,19 @@ class ApiLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<List<CityOption>> getCitiesByCountry(String countryCode) async {
+  Future<List<CityOption>> getCitiesByCountry(
+    String countryCode, {
+    AppMode? forDiscoveryMode,
+  }) async {
+    final query = <String, String>{'countryCode': countryCode};
+    final dm = _discoverModeQuery(forDiscoveryMode);
+    if (dm != null) {
+      query['discoverCounts'] = 'true';
+      query['mode'] = dm;
+    }
     final body = await api.get(
       '/location/cities',
-      query: {'countryCode': countryCode},
+      query: query,
     );
     final list = body['cities'] as List? ?? [];
     return list

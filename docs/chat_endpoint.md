@@ -8,7 +8,7 @@ Backend specification for **chat threads and messages**. Dating and matrimony us
 
 | Item | Value |
 |------|--------|
-| **Base URL** | `https://api.saathi.app` (use `http://localhost:3000` for local dev) |
+| **Base URL** | `https://api.shubhmilan.app` (use `http://localhost:3000` for local dev) |
 | **Content-Type** | `application/json` for all request and response bodies |
 | **Authorization** | `Authorization: Bearer <accessToken>` for all chat endpoints |
 

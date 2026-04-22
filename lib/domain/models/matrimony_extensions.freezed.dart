@@ -36,10 +36,28 @@ mixin _$MatrimonyExtensions {
   String? get drinking => throw _privateConstructorUsedError;
   String? get smoking => throw _privateConstructorUsedError;
   String? get exercise => throw _privateConstructorUsedError;
+  String? get pets => throw _privateConstructorUsedError;
+  String? get disability => throw _privateConstructorUsedError;
+  String? get workLocation => throw _privateConstructorUsedError;
+  String? get settledAbroad => throw _privateConstructorUsedError;
+  String? get willingToRelocate => throw _privateConstructorUsedError;
+  String? get aboutCareer => throw _privateConstructorUsedError;
   HoroscopeDetails? get horoscope => throw _privateConstructorUsedError;
   String? get aboutEducation => throw _privateConstructorUsedError;
   List<EducationEntryDto>? get educationEntries =>
       throw _privateConstructorUsedError;
+
+  /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+  String? get readyInMonths => throw _privateConstructorUsedError;
+
+  /// Family involvement in match: "self_managed" | "family_assisted" | "joint_decision"
+  String? get familyInvolvement => throw _privateConstructorUsedError;
+
+  /// Relocation willingness: "same_city" | "same_country" | "flexible" | "abroad_ok"
+  String? get relocationWillingness => throw _privateConstructorUsedError;
+
+  /// Non-negotiable deal-breakers (e.g. ["religion", "caste", "diet"])
+  List<String> get dealBreakers => throw _privateConstructorUsedError;
 
   /// Create a copy of MatrimonyExtensions
   /// with the given fields replaced by the non-null parameter values.
@@ -75,9 +93,19 @@ abstract class $MatrimonyExtensionsCopyWith<$Res> {
     String? drinking,
     String? smoking,
     String? exercise,
+    String? pets,
+    String? disability,
+    String? workLocation,
+    String? settledAbroad,
+    String? willingToRelocate,
+    String? aboutCareer,
     HoroscopeDetails? horoscope,
     String? aboutEducation,
     List<EducationEntryDto>? educationEntries,
+    String? readyInMonths,
+    String? familyInvolvement,
+    String? relocationWillingness,
+    List<String> dealBreakers,
   });
 
   $IncomeRangeCopyWith<$Res>? get incomeRange;
@@ -119,9 +147,19 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
     Object? drinking = freezed,
     Object? smoking = freezed,
     Object? exercise = freezed,
+    Object? pets = freezed,
+    Object? disability = freezed,
+    Object? workLocation = freezed,
+    Object? settledAbroad = freezed,
+    Object? willingToRelocate = freezed,
+    Object? aboutCareer = freezed,
     Object? horoscope = freezed,
     Object? aboutEducation = freezed,
     Object? educationEntries = freezed,
+    Object? readyInMonths = freezed,
+    Object? familyInvolvement = freezed,
+    Object? relocationWillingness = freezed,
+    Object? dealBreakers = null,
   }) {
     return _then(
       _value.copyWith(
@@ -201,6 +239,30 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
                 ? _value.exercise
                 : exercise // ignore: cast_nullable_to_non_nullable
                       as String?,
+            pets: freezed == pets
+                ? _value.pets
+                : pets // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            disability: freezed == disability
+                ? _value.disability
+                : disability // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            workLocation: freezed == workLocation
+                ? _value.workLocation
+                : workLocation // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            settledAbroad: freezed == settledAbroad
+                ? _value.settledAbroad
+                : settledAbroad // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            willingToRelocate: freezed == willingToRelocate
+                ? _value.willingToRelocate
+                : willingToRelocate // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            aboutCareer: freezed == aboutCareer
+                ? _value.aboutCareer
+                : aboutCareer // ignore: cast_nullable_to_non_nullable
+                      as String?,
             horoscope: freezed == horoscope
                 ? _value.horoscope
                 : horoscope // ignore: cast_nullable_to_non_nullable
@@ -213,6 +275,22 @@ class _$MatrimonyExtensionsCopyWithImpl<$Res, $Val extends MatrimonyExtensions>
                 ? _value.educationEntries
                 : educationEntries // ignore: cast_nullable_to_non_nullable
                       as List<EducationEntryDto>?,
+            readyInMonths: freezed == readyInMonths
+                ? _value.readyInMonths
+                : readyInMonths // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            familyInvolvement: freezed == familyInvolvement
+                ? _value.familyInvolvement
+                : familyInvolvement // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            relocationWillingness: freezed == relocationWillingness
+                ? _value.relocationWillingness
+                : relocationWillingness // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            dealBreakers: null == dealBreakers
+                ? _value.dealBreakers
+                : dealBreakers // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
           )
           as $Val,
     );
@@ -290,9 +368,19 @@ abstract class _$$MatrimonyExtensionsImplCopyWith<$Res>
     String? drinking,
     String? smoking,
     String? exercise,
+    String? pets,
+    String? disability,
+    String? workLocation,
+    String? settledAbroad,
+    String? willingToRelocate,
+    String? aboutCareer,
     HoroscopeDetails? horoscope,
     String? aboutEducation,
     List<EducationEntryDto>? educationEntries,
+    String? readyInMonths,
+    String? familyInvolvement,
+    String? relocationWillingness,
+    List<String> dealBreakers,
   });
 
   @override
@@ -336,9 +424,19 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
     Object? drinking = freezed,
     Object? smoking = freezed,
     Object? exercise = freezed,
+    Object? pets = freezed,
+    Object? disability = freezed,
+    Object? workLocation = freezed,
+    Object? settledAbroad = freezed,
+    Object? willingToRelocate = freezed,
+    Object? aboutCareer = freezed,
     Object? horoscope = freezed,
     Object? aboutEducation = freezed,
     Object? educationEntries = freezed,
+    Object? readyInMonths = freezed,
+    Object? familyInvolvement = freezed,
+    Object? relocationWillingness = freezed,
+    Object? dealBreakers = null,
   }) {
     return _then(
       _$MatrimonyExtensionsImpl(
@@ -418,6 +516,30 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
             ? _value.exercise
             : exercise // ignore: cast_nullable_to_non_nullable
                   as String?,
+        pets: freezed == pets
+            ? _value.pets
+            : pets // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        disability: freezed == disability
+            ? _value.disability
+            : disability // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        workLocation: freezed == workLocation
+            ? _value.workLocation
+            : workLocation // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        settledAbroad: freezed == settledAbroad
+            ? _value.settledAbroad
+            : settledAbroad // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        willingToRelocate: freezed == willingToRelocate
+            ? _value.willingToRelocate
+            : willingToRelocate // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        aboutCareer: freezed == aboutCareer
+            ? _value.aboutCareer
+            : aboutCareer // ignore: cast_nullable_to_non_nullable
+                  as String?,
         horoscope: freezed == horoscope
             ? _value.horoscope
             : horoscope // ignore: cast_nullable_to_non_nullable
@@ -430,6 +552,22 @@ class __$$MatrimonyExtensionsImplCopyWithImpl<$Res>
             ? _value._educationEntries
             : educationEntries // ignore: cast_nullable_to_non_nullable
                   as List<EducationEntryDto>?,
+        readyInMonths: freezed == readyInMonths
+            ? _value.readyInMonths
+            : readyInMonths // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        familyInvolvement: freezed == familyInvolvement
+            ? _value.familyInvolvement
+            : familyInvolvement // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        relocationWillingness: freezed == relocationWillingness
+            ? _value.relocationWillingness
+            : relocationWillingness // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        dealBreakers: null == dealBreakers
+            ? _value._dealBreakers
+            : dealBreakers // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
       ),
     );
   }
@@ -458,10 +596,21 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     this.drinking,
     this.smoking,
     this.exercise,
+    this.pets,
+    this.disability,
+    this.workLocation,
+    this.settledAbroad,
+    this.willingToRelocate,
+    this.aboutCareer,
     this.horoscope,
     this.aboutEducation,
     final List<EducationEntryDto>? educationEntries,
-  }) : _educationEntries = educationEntries;
+    this.readyInMonths,
+    this.familyInvolvement,
+    this.relocationWillingness,
+    final List<String> dealBreakers = const [],
+  }) : _educationEntries = educationEntries,
+       _dealBreakers = dealBreakers;
 
   @override
   @JsonKey()
@@ -503,6 +652,18 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
   @override
   final String? exercise;
   @override
+  final String? pets;
+  @override
+  final String? disability;
+  @override
+  final String? workLocation;
+  @override
+  final String? settledAbroad;
+  @override
+  final String? willingToRelocate;
+  @override
+  final String? aboutCareer;
+  @override
   final HoroscopeDetails? horoscope;
   @override
   final String? aboutEducation;
@@ -517,9 +678,33 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     return EqualUnmodifiableListView(value);
   }
 
+  /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+  @override
+  final String? readyInMonths;
+
+  /// Family involvement in match: "self_managed" | "family_assisted" | "joint_decision"
+  @override
+  final String? familyInvolvement;
+
+  /// Relocation willingness: "same_city" | "same_country" | "flexible" | "abroad_ok"
+  @override
+  final String? relocationWillingness;
+
+  /// Non-negotiable deal-breakers (e.g. ["religion", "caste", "diet"])
+  final List<String> _dealBreakers;
+
+  /// Non-negotiable deal-breakers (e.g. ["religion", "caste", "diet"])
+  @override
+  @JsonKey()
+  List<String> get dealBreakers {
+    if (_dealBreakers is EqualUnmodifiableListView) return _dealBreakers;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_dealBreakers);
+  }
+
   @override
   String toString() {
-    return 'MatrimonyExtensions(roleManagingProfile: $roleManagingProfile, religion: $religion, casteOrCommunity: $casteOrCommunity, motherTongue: $motherTongue, maritalStatus: $maritalStatus, heightCm: $heightCm, bodyType: $bodyType, complexion: $complexion, educationDegree: $educationDegree, educationInstitution: $educationInstitution, occupation: $occupation, employer: $employer, industry: $industry, incomeRange: $incomeRange, familyDetails: $familyDetails, diet: $diet, drinking: $drinking, smoking: $smoking, exercise: $exercise, horoscope: $horoscope, aboutEducation: $aboutEducation, educationEntries: $educationEntries)';
+    return 'MatrimonyExtensions(roleManagingProfile: $roleManagingProfile, religion: $religion, casteOrCommunity: $casteOrCommunity, motherTongue: $motherTongue, maritalStatus: $maritalStatus, heightCm: $heightCm, bodyType: $bodyType, complexion: $complexion, educationDegree: $educationDegree, educationInstitution: $educationInstitution, occupation: $occupation, employer: $employer, industry: $industry, incomeRange: $incomeRange, familyDetails: $familyDetails, diet: $diet, drinking: $drinking, smoking: $smoking, exercise: $exercise, pets: $pets, disability: $disability, workLocation: $workLocation, settledAbroad: $settledAbroad, willingToRelocate: $willingToRelocate, aboutCareer: $aboutCareer, horoscope: $horoscope, aboutEducation: $aboutEducation, educationEntries: $educationEntries, readyInMonths: $readyInMonths, familyInvolvement: $familyInvolvement, relocationWillingness: $relocationWillingness, dealBreakers: $dealBreakers)';
   }
 
   @override
@@ -563,6 +748,17 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
             (identical(other.smoking, smoking) || other.smoking == smoking) &&
             (identical(other.exercise, exercise) ||
                 other.exercise == exercise) &&
+            (identical(other.pets, pets) || other.pets == pets) &&
+            (identical(other.disability, disability) ||
+                other.disability == disability) &&
+            (identical(other.workLocation, workLocation) ||
+                other.workLocation == workLocation) &&
+            (identical(other.settledAbroad, settledAbroad) ||
+                other.settledAbroad == settledAbroad) &&
+            (identical(other.willingToRelocate, willingToRelocate) ||
+                other.willingToRelocate == willingToRelocate) &&
+            (identical(other.aboutCareer, aboutCareer) ||
+                other.aboutCareer == aboutCareer) &&
             (identical(other.horoscope, horoscope) ||
                 other.horoscope == horoscope) &&
             (identical(other.aboutEducation, aboutEducation) ||
@@ -570,6 +766,16 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
             const DeepCollectionEquality().equals(
               other._educationEntries,
               _educationEntries,
+            ) &&
+            (identical(other.readyInMonths, readyInMonths) ||
+                other.readyInMonths == readyInMonths) &&
+            (identical(other.familyInvolvement, familyInvolvement) ||
+                other.familyInvolvement == familyInvolvement) &&
+            (identical(other.relocationWillingness, relocationWillingness) ||
+                other.relocationWillingness == relocationWillingness) &&
+            const DeepCollectionEquality().equals(
+              other._dealBreakers,
+              _dealBreakers,
             ));
   }
 
@@ -595,9 +801,19 @@ class _$MatrimonyExtensionsImpl implements _MatrimonyExtensions {
     drinking,
     smoking,
     exercise,
+    pets,
+    disability,
+    workLocation,
+    settledAbroad,
+    willingToRelocate,
+    aboutCareer,
     horoscope,
     aboutEducation,
     const DeepCollectionEquality().hash(_educationEntries),
+    readyInMonths,
+    familyInvolvement,
+    relocationWillingness,
+    const DeepCollectionEquality().hash(_dealBreakers),
   ]);
 
   /// Create a copy of MatrimonyExtensions
@@ -633,9 +849,19 @@ abstract class _MatrimonyExtensions implements MatrimonyExtensions {
     final String? drinking,
     final String? smoking,
     final String? exercise,
+    final String? pets,
+    final String? disability,
+    final String? workLocation,
+    final String? settledAbroad,
+    final String? willingToRelocate,
+    final String? aboutCareer,
     final HoroscopeDetails? horoscope,
     final String? aboutEducation,
     final List<EducationEntryDto>? educationEntries,
+    final String? readyInMonths,
+    final String? familyInvolvement,
+    final String? relocationWillingness,
+    final List<String> dealBreakers,
   }) = _$MatrimonyExtensionsImpl;
 
   @override
@@ -677,11 +903,39 @@ abstract class _MatrimonyExtensions implements MatrimonyExtensions {
   @override
   String? get exercise;
   @override
+  String? get pets;
+  @override
+  String? get disability;
+  @override
+  String? get workLocation;
+  @override
+  String? get settledAbroad;
+  @override
+  String? get willingToRelocate;
+  @override
+  String? get aboutCareer;
+  @override
   HoroscopeDetails? get horoscope;
   @override
   String? get aboutEducation;
   @override
   List<EducationEntryDto>? get educationEntries;
+
+  /// Marriage readiness timeline: "3_6" | "6_12" | "12_24" | "exploring"
+  @override
+  String? get readyInMonths;
+
+  /// Family involvement in match: "self_managed" | "family_assisted" | "joint_decision"
+  @override
+  String? get familyInvolvement;
+
+  /// Relocation willingness: "same_city" | "same_country" | "flexible" | "abroad_ok"
+  @override
+  String? get relocationWillingness;
+
+  /// Non-negotiable deal-breakers (e.g. ["religion", "caste", "diet"])
+  @override
+  List<String> get dealBreakers;
 
   /// Create a copy of MatrimonyExtensions
   /// with the given fields replaced by the non-null parameter values.

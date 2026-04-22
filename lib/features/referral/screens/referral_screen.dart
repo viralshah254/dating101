@@ -33,8 +33,8 @@ class ReferralScreen extends ConsumerWidget {
       body: referralAsync.when(
         data: (info) => _ReferralBody(info: info, accent: accent, ref: ref),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => ErrorState(
-          message: AppLocalizations.of(context)!.errorGeneric,
+        error: (e, _) => ErrorState(
+          error: e,
           onRetry: () => ref.invalidate(_referralProvider),
           retryLabel: AppLocalizations.of(context)!.retry,
         ),

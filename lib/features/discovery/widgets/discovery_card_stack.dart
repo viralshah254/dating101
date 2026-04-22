@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_motion.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../l10n/app_localizations.dart';
 import 'discovery_swipe_card.dart';
@@ -45,11 +46,11 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
     super.initState();
     _scaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: AppMotion.medium,
     );
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
-      curve: Curves.easeOutCubic,
+      curve: AppMotion.spring,
     );
   }
 
@@ -80,12 +81,11 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
       clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
-        // Back cards — next 2 profiles, scaled down and offset
         if (index + 2 < profiles.length)
           _StackedCard(
             profile: profiles[index + 2],
-            scale: 0.88,
-            offsetY: 24,
+            scale: 0.91,
+            offsetY: 18,
             onTapProfile: widget.onTapProfile,
             onBlock: widget.onBlock,
             onReport: widget.onReport,
@@ -94,8 +94,8 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
         if (index + 1 < profiles.length)
           _StackedCard(
             profile: profiles[index + 1],
-            scale: 0.92,
-            offsetY: 12,
+            scale: 0.95,
+            offsetY: 10,
             onTapProfile: widget.onTapProfile,
             onBlock: widget.onBlock,
             onReport: widget.onReport,
@@ -106,7 +106,7 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
           animation: _scaleAnimation,
           builder: (context, child) {
             final t = index > 0 ? _scaleAnimation.value : 1.0;
-            final scale = 0.92 + 0.08 * t;
+            final scale = 0.95 + 0.05 * t;
             return Transform.scale(
               scale: scale,
               alignment: Alignment.center,
@@ -114,12 +114,14 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
             );
           },
           child: DiscoverySwipeableCard(
+            key: ValueKey(profiles[index].id),
             likeLabel: l.discoverLike,
             passLabel: l.discoverPass,
             superLikeLabel: l.discoverSuperLike,
             onPass: () => widget.onPass(profiles[index]),
             onLike: () => widget.onLike(profiles[index]),
             onSuperLike: () => widget.onSuperLike(profiles[index]),
+            deepLookContent: DeepLookLayer(profile: profiles[index]),
             child: DiscoverySwipeCard(
               profile: profiles[index],
               onTap: () => widget.onTapProfile(profiles[index]),
@@ -165,18 +167,15 @@ class _StackedCard extends StatelessWidget {
           scale: scale,
           alignment: Alignment.center,
           child: IgnorePointer(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: DiscoverySwipeCard(
-                profile: profile,
-                onTap: () => onTapProfile(profile),
-                onPass: () {},
-                onLike: () {},
-                onSuperLike: () {},
-                onBlock: () => onBlock(profile),
-                onReport: () => onReport(profile),
-                showManagedByChip: showManagedByChip,
-              ),
+            child: DiscoverySwipeCard(
+              profile: profile,
+              onTap: () => onTapProfile(profile),
+              onPass: () {},
+              onLike: () {},
+              onSuperLike: () {},
+              onBlock: () => onBlock(profile),
+              onReport: () => onReport(profile),
+              showManagedByChip: showManagedByChip,
             ),
           ),
         ),

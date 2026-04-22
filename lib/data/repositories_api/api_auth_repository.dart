@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -6,7 +7,7 @@ import '../../domain/repositories/auth_repository.dart';
 import '../api/api_client.dart';
 import '../api/token_storage.dart';
 
-/// Auth repository backed by the real Saathi API.
+/// Auth repository backed by the production backend API.
 class ApiAuthRepository implements AuthRepository {
   ApiAuthRepository({required this.api, required this.tokenStorage}) {
     _authStateController = StreamController<String?>.broadcast();
@@ -23,65 +24,74 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Stream<String?> get authStateChanges => _authStateController.stream;
 
-  @override
-  Future<SendOtpResult> sendOtp({
-    required String countryCode,
-    required String phone,
-  }) async {
-    debugPrint('[Auth] sendOtp → $countryCode $phone');
-    try {
-      final body = await api.postNoAuth('/auth/send-otp', body: {
-        'countryCode': countryCode,
-        'phone': phone,
-      });
-      debugPrint('[Auth] sendOtp ✓ verificationId=${body['verificationId']}');
-      return SendOtpSuccess(
-        verificationId: body['verificationId'] as String,
-        expiresInSeconds: body['expiresInSeconds'] as int? ?? 300,
-      );
-    } on ApiException catch (e) {
-      debugPrint('[Auth] sendOtp ✗ ${e.code}: ${e.message}');
-      return SendOtpFailure(e.message, code: e.code);
-    } catch (e) {
-      debugPrint('[Auth] sendOtp ✗ Connection error: $e');
-      return SendOtpFailure('Connection error: $e');
-    }
+  Future<AuthResult> _saveTokensFromBody(Map<String, dynamic> body) async {
+    final userId = body['userId'] as String;
+    final isNewUser = body['isNewUser'] as bool? ?? false;
+    final referralApplied = body['referralApplied'] as bool? ?? false;
+    await tokenStorage.save(
+      accessToken: body['accessToken'] as String,
+      refreshToken: body['refreshToken'] as String,
+      userId: userId,
+      isNewUser: isNewUser,
+    );
+    _authStateController.add(userId);
+    return AuthSuccess(
+      userId: userId,
+      isNewUser: isNewUser,
+      referralApplied: referralApplied,
+    );
   }
 
   @override
-  Future<AuthResult> verifyOtp({
-    required String verificationId,
-    required String code,
+  Future<AuthResult> signUpWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
     String? referralCode,
   }) async {
-    debugPrint('[Auth] verifyOtp → vid=$verificationId, code=$code, referralCode=${referralCode != null ? "***" : null}');
+    debugPrint('[Auth] signUpWithPassword → $countryCode $phone');
     try {
       final requestBody = <String, dynamic>{
-        'verificationId': verificationId,
-        'code': code,
+        'countryCode': countryCode,
+        'phone': phone,
+        'password': password,
       };
       if (referralCode != null && referralCode.trim().isNotEmpty) {
         requestBody['referralCode'] = referralCode.trim();
       }
-      final body = await api.postNoAuth('/auth/verify-otp', body: requestBody);
-      final userId = body['userId'] as String;
-      final isNewUser = body['isNewUser'] as bool? ?? false;
-      final referralApplied = body['referralApplied'] as bool? ?? false;
-      debugPrint('[Auth] verifyOtp ✓ userId=$userId, isNewUser=$isNewUser, referralApplied=$referralApplied');
-      await tokenStorage.save(
-        accessToken: body['accessToken'] as String,
-        refreshToken: body['refreshToken'] as String,
-        userId: userId,
-        isNewUser: isNewUser,
-      );
-      _authStateController.add(userId);
-      return AuthSuccess(userId: userId, isNewUser: isNewUser, referralApplied: referralApplied);
+      final body = await api.postNoAuth('/auth/register', body: requestBody);
+      debugPrint('[Auth] signUpWithPassword ✓ userId=${body['userId']}');
+      return _saveTokensFromBody(body);
     } on ApiException catch (e) {
-      debugPrint('[Auth] verifyOtp ✗ ${e.code}: ${e.message}');
-      return AuthFailure(e.message, code: e.code);
+      debugPrint('[Auth] signUpWithPassword ✗ ${e.code}: ${e.message}');
+      return AuthFailure(_userFriendlyMessage(e), code: e.code);
     } catch (e) {
-      debugPrint('[Auth] verifyOtp ✗ Connection error: $e');
-      return AuthFailure('Connection error: $e');
+      debugPrint('[Auth] signUpWithPassword ✗ Connection error: $e');
+      return AuthFailure(_connectionErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<AuthResult> signInWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
+  }) async {
+    debugPrint('[Auth] signInWithPassword → $countryCode $phone');
+    try {
+      final body = await api.postNoAuth('/auth/login', body: {
+        'countryCode': countryCode,
+        'phone': phone,
+        'password': password,
+      });
+      debugPrint('[Auth] signInWithPassword ✓ userId=${body['userId']}');
+      return _saveTokensFromBody(body);
+    } on ApiException catch (e) {
+      debugPrint('[Auth] signInWithPassword ✗ ${e.code}: ${e.message}');
+      return AuthFailure(_userFriendlyMessage(e), code: e.code);
+    } catch (e) {
+      debugPrint('[Auth] signInWithPassword ✗ Connection error: $e');
+      return AuthFailure(_connectionErrorMessage(e));
     }
   }
 
@@ -99,10 +109,92 @@ class ApiAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     debugPrint('[Auth] signOut');
     try {
-      await api.post('/auth/sign-out');
+      await api.post('/auth/sign-out', body: {
+        if (tokenStorage.refreshToken != null) 'refreshToken': tokenStorage.refreshToken,
+      });
     } catch (_) {}
     await tokenStorage.clear();
     _authStateController.add(null);
     debugPrint('[Auth] signOut ✓ cleared tokens');
+  }
+
+  static String _userFriendlyMessage(ApiException e) {
+    // Prefer HTTP semantics when the server doesn’t return a structured code.
+    if (e.statusCode == 404) {
+      return 'We can’t reach the service right now. Check your connection and try again.';
+    }
+    if (e.statusCode == 503 || e.statusCode == 502) {
+      return 'We’re temporarily unavailable. Please try again in a few minutes.';
+    }
+
+    switch (e.code) {
+      case 'RATE_LIMITED':
+        return 'Too many attempts. Please wait a few minutes and try again.';
+      case 'INVALID_CODE':
+      case 'EXPIRED_OTP':
+      case 'NOT_FOUND':
+        return 'Code expired or invalid. Please try again.';
+      case 'SEND_FAILED':
+        return 'Could not send SMS. Please try again shortly.';
+      case 'INVALID_PHONE':
+      case 'INVALID_REQUEST':
+      case 'VALIDATION_ERROR':
+        return 'Invalid phone number or password. Please check and try again.';
+      case 'ALREADY_EXISTS':
+        return 'An account with this phone number already exists. Sign in instead.';
+      case 'INVALID_CREDENTIALS':
+        return 'Invalid phone number or password.';
+      case 'SERVER_ERROR':
+      case 'INTERNAL_ERROR':
+        return 'Something went wrong on our end. Please try again.';
+      case 'UNKNOWN':
+        if (e.statusCode >= 500) {
+          return 'Something went wrong on our end. Please try again.';
+        }
+        if (e.statusCode >= 400) {
+          return 'Something went wrong. Please try again.';
+        }
+        return e.message;
+      default:
+        if (e.statusCode >= 500) {
+          return 'Something went wrong on our end. Please try again.';
+        }
+        return e.message;
+    }
+  }
+
+  static String _connectionErrorMessage(Object e) {
+    if (_isConnectionRefused(e)) {
+      if (kDebugMode) {
+        debugPrint(
+          '[Auth] Connection refused → nothing listening on your API URL. '
+          'Start backend: cd dating-backend && npm run dev (expects PORT=8000 in .env). '
+          'Physical device: localhost is the phone — use '
+          '--dart-define=API_BASE_URL=http://<your-mac-LAN-ip>:8000',
+        );
+      }
+      return kDebugMode
+          ? 'Can\'t connect to the login server. Check the debug console for setup steps.'
+          : 'Cannot reach our servers right now. Please try again in a moment.';
+    }
+    if (e is SocketException) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+    if (e is TimeoutException || e.toString().toLowerCase().contains('timeout')) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
+    return 'Could not reach the server. Please check your internet and try again.';
+  }
+
+  /// True when the TCP handshake failed because nothing is listening (not "no Wi‑Fi").
+  static bool _isConnectionRefused(Object e) {
+    final s = e.toString();
+    if (s.contains('Connection refused')) return true;
+    if (e is SocketException) {
+      final os = e.osError;
+      if (os != null && os.errorCode == 61) return true; // ECONNREFUSED on macOS/iOS
+      return e.message.contains('Connection refused');
+    }
+    return false;
   }
 }

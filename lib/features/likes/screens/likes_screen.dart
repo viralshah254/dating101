@@ -6,10 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
@@ -21,54 +24,114 @@ import '../../../domain/models/visitor_entry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
 import '../../requests/providers/requests_providers.dart';
+import '../providers/likes_screen_data_provider.dart';
 
 /// Dating: Likes tab — Liked you | Visitors | You liked. Replaces Communities in nav.
 class LikesScreen extends ConsumerWidget {
   const LikesScreen({super.key});
 
+  static int _tabIndexFromQuery(String? tab) {
+    switch (tab) {
+      case 'visitors':
+        return 1;
+      case 'you_liked':
+        return 2;
+      case 'liked_you':
+      default:
+        return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
-    final receivedAsync = ref.watch(receivedInteractionsProvider);
-    final visitorsEntriesAsync = ref.watch(visitorsEntriesProvider);
-    final sentAsync = ref.watch(sentInteractionsProvider(mode));
+    final bundle = ref.watch(likesScreenDataProvider);
+    final tabRaw = _tabIndexFromQuery(GoRouterState.of(context).uri.queryParameters['tab']);
+    final tabIndex = tabRaw < 0 ? 0 : (tabRaw > 2 ? 2 : tabRaw);
 
-    final receivedCount = receivedAsync.valueOrNull?.length ?? 0;
-    final visitorsCount = visitorsEntriesAsync.valueOrNull?.length ?? 0;
-    final sentCount = sentAsync.valueOrNull?.length ?? 0;
-
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            l.navLikes,
-            style: AppTypography.headlineSmall.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          bottom: TabBar(
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            isScrollable: true,
+    return bundle.when(
+      loading: () => DefaultTabController(
+        length: 3,
+        initialIndex: tabIndex,
+        child: Scaffold(
+          appBar: _LikesAppBar(
+            title: l.navLikes,
             tabs: [
-              Tab(text: _tabLabel(l.likesTabLikedYou, receivedCount)),
-              Tab(text: _tabLabel(l.likesTabVisitors, visitorsCount)),
-              Tab(text: _tabLabel(l.likesTabYouLiked, sentCount)),
+              Tab(text: _tabLabel(l.likesTabLikedYou, 0)),
+              Tab(text: _tabLabel(l.likesTabVisitors, 0)),
+              Tab(text: _tabLabel(l.likesTabYouLiked, 0)),
             ],
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _LikedYouTab(asyncItems: receivedAsync),
-            _VisitorsTab(asyncEntries: visitorsEntriesAsync),
-            _YouLikedTab(asyncItems: sentAsync),
-          ],
+          body: const SkeletonCardList(itemCount: 5, itemHeight: 100),
         ),
       ),
+      error: (e, _) => DefaultTabController(
+        length: 3,
+        initialIndex: tabIndex,
+        child: Scaffold(
+          appBar: AppBar(title: Text(l.navLikes)),
+          body: ErrorState(
+            message: e.toString(),
+            onRetry: () => ref.invalidate(likesScreenDataProvider),
+            retryLabel: l.retry,
+          ),
+        ),
+      ),
+      data: (data) {
+        final receivedAsync = data.receivedError != null &&
+                data.receivedError!.code == 'PREMIUM_REQUIRED'
+            ? AsyncValue<List<InteractionInboxItem>>.error(
+                data.receivedError!,
+                StackTrace.current,
+              )
+            : AsyncValue<List<InteractionInboxItem>>.data(data.receivedItems);
+        final visitorsAsync = AsyncValue<List<VisitorEntry>>.data(data.visitorEntries);
+        final sentAsync = AsyncValue<List<InteractionInboxItem>>.data(data.sentItems);
+
+        return DefaultTabController(
+          length: 3,
+          initialIndex: tabIndex,
+          child: Scaffold(
+            appBar: _LikesAppBar(
+              title: l.navLikes,
+              tabs: [
+                Tab(text: _tabLabel(l.likesTabLikedYou, data.likedYouCount)),
+                Tab(text: _tabLabel(l.likesTabVisitors, data.visitorsCount)),
+                Tab(text: _tabLabel(l.likesTabYouLiked, data.youLikedCount)),
+              ],
+            ),
+            body: TabBarView(
+              children: [
+                _LikedYouTab(
+                  asyncItems: receivedAsync,
+                  onRetry: () => ref.invalidate(likesScreenDataProvider),
+                  onRefreshAfterInteraction: () {
+                    ref.invalidate(receivedInteractionsProvider);
+                    invalidateLikesScreenData(ref);
+                  },
+                ),
+                _VisitorsTab(
+                  asyncEntries: visitorsAsync,
+                  onRetry: () => ref.invalidate(likesScreenDataProvider),
+                ),
+                _YouLikedTab(
+                  asyncItems: sentAsync,
+                  mode: mode,
+                  onInvalidate: () {
+                    ref.invalidate(sentInteractionsProvider(mode));
+                    invalidateLikesScreenData(ref);
+                  },
+                  onRetry: () {
+                    ref.invalidate(sentInteractionsProvider(mode));
+                    invalidateLikesScreenData(ref);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -77,9 +140,62 @@ class LikesScreen extends ConsumerWidget {
   }
 }
 
+/// AppBar with a subtle rose ambient gradient and brand-colored TabBar.
+class _LikesAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _LikesAppBar({required this.title, required this.tabs});
+  final String title;
+  final List<Widget> tabs;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 48);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            cs.primary.withValues(alpha: 0.07),
+            cs.surface,
+          ],
+        ),
+      ),
+      child: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: Text(
+          title,
+          style: AppTypography.headlineSmall.copyWith(
+            color: cs.onSurface,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        bottom: TabBar(
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurface.withValues(alpha: 0.6),
+          indicatorColor: cs.primary,
+          isScrollable: true,
+          tabs: tabs,
+        ),
+      ),
+    );
+  }
+}
+
 class _LikedYouTab extends ConsumerWidget {
-  const _LikedYouTab({required this.asyncItems});
+  const _LikedYouTab({
+    required this.asyncItems,
+    this.onRetry,
+    this.onRefreshAfterInteraction,
+  });
   final AsyncValue<List<InteractionInboxItem>> asyncItems;
+  final VoidCallback? onRetry;
+  /// After reminder / list actions that change server state.
+  final VoidCallback? onRefreshAfterInteraction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -109,13 +225,13 @@ class _LikedYouTab extends ConsumerWidget {
         }
         return _ProfileListView(
           items: items,
-          onInvalidate: null,
+          onInvalidate: onRefreshAfterInteraction,
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorState(
         message: e.toString(),
-        onRetry: () => ref.invalidate(receivedInteractionsProvider),
+        onRetry: onRetry ?? () => ref.invalidate(receivedInteractionsProvider),
         retryLabel: l.retry,
       ),
     );
@@ -137,9 +253,9 @@ class _LikedYouPremiumGate extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
     final unlocked = ref.watch(unlockedReceivedProvider);
-    final quota = ref.watch(inboxUnlocksQuotaProvider);
-    final remaining = quota?.remaining ?? initialRemaining;
-    final canUnlockMore = remaining > 0;
+    final dailyBudget = ref.watch(adBudgetProvider).valueOrNull;
+    final adsRemainingToday = dailyBudget?.remaining ?? 10;
+    final canUnlockMore = adsRemainingToday > 0;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -201,13 +317,28 @@ class _LikedYouPremiumGate extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () => _onUnlockOne(context, ref),
                   icon: const Icon(Icons.play_circle_outline, size: 20),
-                  label: Text(l.watchAdToUnlockOne(remaining)),
+                  label: const Text('Watch ad — reveal 1 profile'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$adsRemainingToday of 10 ads remaining today',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: onSurface.withValues(alpha: 0.55),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ] else ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Daily ad limit reached — upgrade or try again tomorrow.',
+                  style: AppTypography.labelSmall.copyWith(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ],
@@ -231,10 +362,23 @@ class _LikedYouPremiumGate extends ConsumerWidget {
 
   static Future<void> _onUnlockOne(BuildContext context, WidgetRef ref) async {
     final l = AppLocalizations.of(context)!;
+
+    // Check daily ad budget before showing the ad.
+    final budget = ref.read(adBudgetProvider).valueOrNull;
+    if (budget != null && budget.remaining <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Daily ad limit reached. Try again tomorrow or upgrade.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final shown = await loadAndShowInterstitialWithLoading(
       context,
       ref,
-      AdRewardReason.viewAndRespondToRequest,
+      AdRewardReason.unlockLikedYou,
     );
     if (!context.mounted) return;
     if (!shown) {
@@ -248,33 +392,39 @@ class _LikedYouPremiumGate extends ConsumerWidget {
     }
     final token = const Uuid().v4();
     try {
-      final result = await ref.read(interactionsRepositoryProvider).unlockOneReceivedInteraction(
+      final result = await ref.read(interactionsRepositoryProvider).unlockOneLikedYou(
             adCompletionToken: token,
           );
       if (!context.mounted) return;
-      if (result != null) {
-        ref.read(unlockedReceivedProvider.notifier).update((list) => [...list, result.item]);
-        ref.read(inboxUnlocksQuotaProvider.notifier).state = (
-          remaining: result.unlocksRemainingThisWeek,
-          resetsAt: result.resetsAt,
+      // Build a minimal InteractionInboxItem from the revealed profile and add to unlocked list.
+      final item = InteractionInboxItem(
+        interactionId: result.interestId,
+        otherUser: result.profile,
+        createdAt: DateTime.now(),
+      );
+      ref.read(unlockedReceivedProvider.notifier).update((list) => [...list, item]);
+      ref.invalidate(receivedInteractionsProvider);
+      invalidateLikesScreenData(ref);
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      if (e.code == 'DAILY_AD_BUDGET_REACHED') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Daily ad limit reached. Try again tomorrow or upgrade.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        ref.invalidate(receivedInteractionsProvider);
-      } else {
+        ref.invalidate(adBudgetProvider);
+        return;
+      }
+      if (e.code == 'NO_LIKED_YOU_PROFILES') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.likedYouNoRequestToUnlock),
             behavior: SnackBarBehavior.floating,
           ),
         );
-      }
-    } on ApiException catch (e) {
-      if (!context.mounted) return;
-      if (e.code == 'INBOX_UNLOCKS_LIMIT_REACHED') {
-        final resetsAtStr = e.details?['inboxUnlocksResetAt'] as String?;
-        ref.read(inboxUnlocksQuotaProvider.notifier).state = (
-          remaining: 0,
-          resetsAt: resetsAtStr != null ? DateTime.tryParse(resetsAtStr) : null,
-        );
+        return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
@@ -284,8 +434,9 @@ class _LikedYouPremiumGate extends ConsumerWidget {
 }
 
 class _VisitorsTab extends ConsumerWidget {
-  const _VisitorsTab({required this.asyncEntries});
+  const _VisitorsTab({required this.asyncEntries, this.onRetry});
   final AsyncValue<List<VisitorEntry>> asyncEntries;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -304,15 +455,15 @@ class _VisitorsTab extends ConsumerWidget {
         }
         return _VisitorsBlurredListView(
           entries: entries,
-          isPremium: ent.isPremium,
+          isPremium: ent.isSilver,
           unlockedProfileIds: unlockedIds,
-          onTap: (entry) => _onVisitorTap(context, ref, entry, ent.isPremium, unlockedIds),
+          onTap: (entry) => _onVisitorTap(context, ref, entry, ent.isSilver, unlockedIds),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => _VisitorsErrorState(
         error: e,
-        onRetry: () => ref.invalidate(visitorsEntriesProvider),
+        onRetry: onRetry ?? () => ref.invalidate(visitorsEntriesProvider),
         l: l,
       ),
     );
@@ -335,60 +486,21 @@ class _VisitorsTab extends ConsumerWidget {
     final remaining = quota?.remaining ?? 2;
     final canUnlockByAd = remaining > 0;
 
-    final choice = await showModalBottomSheet<String?>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l.visitorUnlockTitle,
-                style: AppTypography.titleMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                canUnlockByAd
-                    ? l.visitorUnlockWatchAd(remaining)
-                    : l.visitorUnlockLimitReached,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (canUnlockByAd)
-                FilledButton.icon(
-                  onPressed: () => Navigator.of(ctx).pop('watch_ad'),
-                  icon: const Icon(Icons.play_circle_outline, size: 22),
-                  label: Text(l.watchAdToUnlock),
-                ),
-              if (canUnlockByAd) const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => Navigator.of(ctx).pop('upgrade'),
-                icon: const Icon(Icons.workspace_premium_outlined, size: 22),
-                label: Text(l.visitorUnlockUpgrade),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(null),
-                child: Text(l.cancel),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final choice = await showGateDecisionSheet(
+      context,
+      title: l.visitorUnlockTitle,
+      message: canUnlockByAd
+          ? l.visitorUnlockWatchAd(remaining)
+          : l.visitorUnlockLimitReached,
+      canWatchAd: canUnlockByAd,
+      watchAdLabel: l.watchAdToUnlock,
     );
     if (!context.mounted || choice == null) return;
-    if (choice == 'upgrade') {
+    if (choice == GateDecision.upgrade) {
       context.push('/paywall');
       return;
     }
-    if (choice == 'watch_ad') {
+    if (choice == GateDecision.watchAd) {
       final shown = await loadAndShowInterstitialWithLoading(
         context,
         ref,
@@ -418,6 +530,7 @@ class _VisitorsTab extends ConsumerWidget {
             resetsAt: result.resetsAt,
           );
           ref.invalidate(visitorsEntriesProvider);
+          invalidateLikesScreenData(ref);
           context.push('/profile/${result.visitor.id}');
         }
       } on ApiException catch (e) {
@@ -480,7 +593,7 @@ class _VisitorsBlurredListView extends StatelessWidget {
           entry: entry,
           showUnblurred: showUnblurred,
           onTap: () => onTap(entry),
-        );
+        ).staggeredItem(index);
       },
     );
   }
@@ -605,8 +718,16 @@ class _VisitorsBlurredTile extends StatelessWidget {
 }
 
 class _YouLikedTab extends ConsumerWidget {
-  const _YouLikedTab({required this.asyncItems});
+  const _YouLikedTab({
+    required this.asyncItems,
+    required this.mode,
+    this.onInvalidate,
+    this.onRetry,
+  });
   final AsyncValue<List<InteractionInboxItem>> asyncItems;
+  final AppMode mode;
+  final VoidCallback? onInvalidate;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -620,17 +741,22 @@ class _YouLikedTab extends ConsumerWidget {
             body: l.likesEmptyYouLikedBody,
           );
         }
-        return _ProfileListView(items: items, onInvalidate: () {
-          final mode = ref.read(appModeProvider) ?? AppMode.dating;
-          ref.invalidate(sentInteractionsProvider(mode));
-        });
+        return _ProfileListView(
+          items: items,
+          onInvalidate: onInvalidate ??
+              () {
+                ref.invalidate(sentInteractionsProvider(mode));
+              },
+        );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) {
-        final mode = ref.read(appModeProvider) ?? AppMode.dating;
         return ErrorState(
           message: e.toString(),
-          onRetry: () => ref.invalidate(sentInteractionsProvider(mode)),
+          onRetry: onRetry ??
+              () {
+                ref.invalidate(sentInteractionsProvider(mode));
+              },
           retryLabel: l.retry,
         );
       },
@@ -653,7 +779,7 @@ class _ProfileListView extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return _LikesProfileTile(item: item, onInvalidate: onInvalidate);
+        return _LikesProfileTile(item: item, onInvalidate: onInvalidate).staggeredItem(index);
       },
     );
   }

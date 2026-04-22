@@ -9,6 +9,7 @@ import '../../../core/location/app_location_service.dart';
 import '../../../core/location/location_service_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
@@ -74,11 +75,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           destination = '/';
         } else {
           debugPrint('[Splash] No profile found, routing to profile setup');
-          destination = '/mode-select';
+          destination = '/profile-for';
         }
       } catch (e) {
         if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {
           debugPrint('[Splash] Account deactivated, showing reactivate prompt');
+          if (!mounted) return;
           final reactivate = await _showReactivatePrompt(context);
           if (!mounted) return;
           if (reactivate == true) {
@@ -86,7 +88,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               await ref.read(accountRepositoryProvider).reactivateAccount();
               if (!mounted) return;
               final profile = await profileRepo.getMyProfile();
-              destination = profile != null ? '/' : '/mode-select';
+              destination = profile != null ? '/' : '/profile-for';
             } catch (_) {
               await authRepo.signOut();
               destination = '/login';
@@ -103,9 +105,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           destination = '/login';
         } else {
           debugPrint(
-            '[Splash] Error checking profile: $e — defaulting to home',
+            '[Splash] Error checking profile: $e — routing to setup',
           );
-          destination = '/';
+          destination = '/profile-for';
         }
       }
     }
@@ -123,60 +125,110 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = Theme.of(context).colorScheme.primary;
-    final bg = isDark ? AppColors.darkBackground : Colors.white;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(flex: 2),
-            Center(
-              child: SizedBox(
-                width: 392, // 280 * 1.4
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: LogoWithTransparentWhite(
-                      assetPath: 'assets/images/shubhmilan_logo.png',
-                      width: 588, // 420 * 1.4
-                      fit: BoxFit.contain,
-                      whiteThreshold: 200,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Splash gradient background — the token that was defined but never used
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: isDark
+                  ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.roseDeep,
+                        AppColors.darkBackground,
+                      ],
+                      stops: [0.0, 0.7],
+                    )
+                  : AppColors.splashGradient,
+            ),
+          ),
+
+          // Soft radial glow centered behind logo — enhanced with contrast
+          Positioned(
+            top: size.height * 0.22,
+            left: size.width * 0.05,
+            right: size.width * 0.05,
+            height: size.height * 0.5,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.22),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                  radius: 0.75,
+                ),
+              ),
+            ).animate().fadeIn(delay: 300.ms, duration: 900.ms),
+          ),
+
+          SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 2),
+
+                // Logo — cinematic scale + blur clear
+                Center(
+                  child: SizedBox(
+                    width: 360,
+                    child: ClipRect(
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: LogoWithTransparentWhite(
+                          assetPath: 'assets/images/shubhmilan_logo.png',
+                          width: 540,
+                          fit: BoxFit.contain,
+                          whiteThreshold: 200,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            )
-                .animate()
-                .scale(
-                  begin: const Offset(0.7, 0.7),
-                  end: const Offset(1, 1),
-                  duration: 900.ms,
-                  curve: Curves.easeOutBack,
                 )
-                .fadeIn(duration: 500.ms),
-            const Spacer(flex: 2),
-            SizedBox(
-              width: 32,
-              height: 32,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(accent),
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat())
-                .fadeIn(delay: 700.ms)
-                .then()
-                .shimmer(
-                  duration: 1200.ms,
-                  color: accent.withValues(alpha: 0.3),
-                ),
-            const SizedBox(height: 48),
-          ],
-        ),
+                    .animate()
+                    .scale(
+                      begin: const Offset(0.72, 0.72),
+                      end: const Offset(1, 1),
+                      duration: 1000.ms,
+                      curve: Curves.easeOutBack,
+                    )
+                    .fadeIn(duration: 600.ms),
+
+                const SizedBox(height: 18),
+
+                // Brand tagline — now uses AppTypography (Inter) consistently
+                
+                const Spacer(flex: 2),
+
+                // Loading indicator
+                SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.saffron.withValues(alpha: 0.8),
+                    ),
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat())
+                    .fadeIn(delay: 900.ms)
+                    .then()
+                    .shimmer(
+                      duration: 1200.ms,
+                      color: AppColors.rosePrimary.withValues(alpha: 0.3),
+                    ),
+                const SizedBox(height: 52),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

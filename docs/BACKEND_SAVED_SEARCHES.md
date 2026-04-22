@@ -1,4 +1,4 @@
-# Saathi — Saved Searches (Matrimony): Backend Contract
+# Shubhmilan — Saved Searches (Matrimony): Backend Contract
 
 Backend behaviour for **saving current filters as a named search** and **notifications when new profiles match** a saved search. Frontend can show "Save search" and "Search: Software, Bangalore, 28–35" and subscribe to alerts when backend supports it.
 

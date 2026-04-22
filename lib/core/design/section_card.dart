@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_typography.dart';
+import '../theme/app_tokens.dart';
+import '../theme/brand_theme.dart';
 
 /// Card for grouping content into sections (e.g. settings groups, list headers).
-/// Uses theme surface, 20px radius, and optional leading icon/title.
+/// Uses theme surface, subtle border from BrandTheme, and refined shadow.
 class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
@@ -12,7 +13,7 @@ class SectionCard extends StatelessWidget {
     this.leadingIcon,
     required this.child,
     this.padding,
-    this.borderRadius = 20,
+    this.borderRadius = AppTokens.radius20,
   });
 
   final String? title;
@@ -24,23 +25,20 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    final surface = Theme.of(context).colorScheme.surface;
+    final theme = Theme.of(context);
+    final brand = theme.extension<BrandTheme>();
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(16),
+      padding: padding ?? const EdgeInsets.all(AppTokens.space16),
       decoration: BoxDecoration(
-        color: surface,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: onSurface.withValues(alpha: 0.06)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: brand?.cardBorder ?? theme.colorScheme.onSurface.withValues(alpha: 0.06),
+        ),
+        boxShadow: AppTokens.shadowSubtle(isDark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,20 +49,24 @@ class SectionCard extends StatelessWidget {
               children: [
                 if (leading != null) leading!,
                 if (leadingIcon != null) ...[
-                  Icon(leadingIcon, size: 20, color: onSurface.withValues(alpha: 0.8)),
-                  const SizedBox(width: 10),
+                  Icon(
+                    leadingIcon,
+                    size: AppTokens.iconMD,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: AppTokens.space10),
                 ],
                 if (title != null)
                   Text(
                     title!,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: onSurface,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppTokens.space14),
           ],
           child,
         ],

@@ -1,10 +1,32 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/repository_providers.dart';
 import '../theme/app_typography.dart';
+import '../analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import 'ad_service.dart';
+import 'ad_budget_provider.dart';
+
+/// Pops the ad-loading dialog after the current frame.
+///
+/// [showDialog] uses [useRootNavigator] = true by default, so the dialog lives
+/// on the ROOT navigator. We must match that by popping from the root navigator,
+/// not the nearest shell/nested one — otherwise the navigator is left locked and
+/// the `!_debugLocked` assertion fires.
+Future<void> _popAdLoadingDialog(BuildContext context) async {
+  if (!context.mounted) return;
+  final completer = Completer<void>();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    if (!completer.isCompleted) completer.complete();
+  });
+  await completer.future;
+}
 
 /// Shows a non-dismissible "Loading ad…" dialog, runs [loadAndShowInterstitial],
 /// then pops the dialog. Use whenever the user taps "Watch ad" so they see
@@ -15,6 +37,8 @@ Future<bool> loadAndShowInterstitialWithLoading(
   AdRewardReason reason,
 ) async {
   final l = AppLocalizations.of(context)!;
+  final analytics = AnalyticsService.instance;
+  analytics.log(AnalyticsEvent.adLoadStarted, {'reason': reason.name});
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -46,10 +70,17 @@ Future<bool> loadAndShowInterstitialWithLoading(
   );
   try {
     final result = await ref.read(adServiceProvider).loadAndShowInterstitial(reason);
-    if (context.mounted) Navigator.of(context).pop();
+    analytics.log(AnalyticsEvent.adLoadResult, {'reason': reason.name, 'loaded': result});
+    if (result) {
+      analytics.log(AnalyticsEvent.adShown, {'reason': reason.name});
+      // Refresh the daily budget count so UI stays in sync after each ad watch.
+      ref.invalidate(adBudgetProvider);
+    }
+    if (context.mounted) await _popAdLoadingDialog(context);
     return result;
   } catch (_) {
-    if (context.mounted) Navigator.of(context).pop();
+    analytics.log(AnalyticsEvent.adLoadResult, {'reason': reason.name, 'loaded': false});
+    if (context.mounted) await _popAdLoadingDialog(context);
     return false;
   }
 }

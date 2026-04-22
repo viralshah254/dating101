@@ -13,10 +13,16 @@ class ApiInteractionsRepository implements InteractionsRepository {
     String toUserId, {
     String? source,
     AppMode? mode,
+    String? message,
+    String? adCompletionToken,
   }) async {
     final body = <String, dynamic>{'toUserId': toUserId};
     if (source != null && source.isNotEmpty) body['source'] = source;
     if (mode != null && mode.isSingleMode) body['mode'] = mode.name;
+    if (message != null && message.isNotEmpty) body['message'] = message;
+    if (adCompletionToken != null && adCompletionToken.isNotEmpty) {
+      body['adCompletionToken'] = adCompletionToken;
+    }
     final res = await api.post('/interactions/interest', body: body);
     return _parseResult(res);
   }
@@ -56,7 +62,7 @@ class ApiInteractionsRepository implements InteractionsRepository {
     };
     if (mode != null && mode.isSingleMode) query['mode'] = mode.name;
     final body = await api.get('/interactions/received', query: query);
-    return _parseInboxList(body['interactions'] as List? ?? [], isReceived: true);
+    return parseInboxList(body['interactions'] as List? ?? [], isReceived: true);
   }
 
   @override
@@ -69,7 +75,7 @@ class ApiInteractionsRepository implements InteractionsRepository {
     );
     final list = body['interactions'] as List? ?? (body['interaction'] != null ? [body['interaction']] : null);
     if (list == null || list.isEmpty) return null;
-    final parsed = _parseInboxList(list, isReceived: true);
+    final parsed = parseInboxList(list, isReceived: true);
     if (parsed.isEmpty) return null;
     final remaining = body['unlocksRemainingThisWeek'] as int? ?? 0;
     final resetsAtStr = body['resetsAt'] as String?;
@@ -102,7 +108,7 @@ class ApiInteractionsRepository implements InteractionsRepository {
     };
     if (mode != null && mode.isSingleMode) query['mode'] = mode.name;
     final body = await api.get('/interactions/sent', query: query);
-    return _parseInboxList(body['interactions'] as List? ?? [], isReceived: false);
+    return parseInboxList(body['interactions'] as List? ?? [], isReceived: false);
   }
 
   @override
@@ -149,7 +155,23 @@ class ApiInteractionsRepository implements InteractionsRepository {
         .toList();
   }
 
-  List<InteractionInboxItem> _parseInboxList(List list, {required bool isReceived}) {
+  @override
+  Future<LikedYouUnlockResult> unlockOneLikedYou({
+    required String adCompletionToken,
+  }) async {
+    final res = await api.post('/interactions/liked-you/unlock-one', body: {
+      'adCompletionToken': adCompletionToken,
+    });
+    final interactionMap = res['interaction'] as Map<String, dynamic>? ?? {};
+    final profile = ApiProfileRepository.parseSummaryPublic(interactionMap);
+    return LikedYouUnlockResult(
+      interestId: interactionMap['interestId'] as String? ?? '',
+      profile: profile,
+      adsRemainingToday: res['adsRemainingToday'] as int? ?? 0,
+    );
+  }
+
+  static List<InteractionInboxItem> parseInboxList(List list, {required bool isReceived}) {
     return list.map((e) {
       final map = e as Map<String, dynamic>;
       final userKey = isReceived ? 'fromUser' : 'toUser';

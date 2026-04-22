@@ -73,8 +73,6 @@ const _incomePrefOptionsUSD = [
   '\$200k–\$500k',
   '\$500k+',
 ];
-const _cityModeOptions = ['Any', 'Same as me', 'Preferred'];
-
 /// Height range for partner preference (cm). Min 140, max 200.
 const _heightMinCm = 140;
 const _heightMaxCm = 200;
@@ -104,8 +102,9 @@ class StepPreferences extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (mode.isDating)
+    if (mode.isDating) {
       return _DatingPreferences(formData: formData, onChanged: onChanged);
+    }
     return _MatrimonyPreferences(formData: formData, onChanged: onChanged);
   }
 }
@@ -126,6 +125,15 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
   double _distance = 50;
 
   @override
+  void initState() {
+    super.initState();
+    final min = widget.formData.prefAgeMin ?? 22;
+    final max = widget.formData.prefAgeMax ?? 35;
+    _ageRange = RangeValues(min.toDouble(), max.toDouble());
+    _distance = (widget.formData.prefDistanceMaxKm ?? 50).toDouble();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
@@ -138,7 +146,7 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your\npreferences',
+            l.prefsStepTitle,
             style: AppTypography.displayLarge.copyWith(
               color: onSurface,
               fontSize: 32,
@@ -147,7 +155,7 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 8),
           Text(
-            'We\'ll use these to show you relevant people. You can always refine later.',
+            l.prefsStepSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
@@ -168,7 +176,12 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
                 '${_ageRange.end.toInt()}',
               ),
               activeColor: accent,
-              onChanged: (v) => setState(() => _ageRange = v),
+              onChanged: (v) {
+                setState(() => _ageRange = v);
+                widget.formData.prefAgeMin = v.start.toInt();
+                widget.formData.prefAgeMax = v.end.toInt();
+                widget.onChanged();
+              },
             ),
           ),
           const SizedBox(height: 16),
@@ -184,7 +197,11 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
               divisions: 39,
               label: '${_distance.toInt()} km',
               activeColor: accent,
-              onChanged: (v) => setState(() => _distance = v),
+              onChanged: (v) {
+                setState(() => _distance = v);
+                widget.formData.prefDistanceMaxKm = v.toInt();
+                widget.onChanged();
+              },
             ),
           ),
           const SizedBox(height: 16),
@@ -197,7 +214,7 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
               children: [
                 const SizedBox(height: 8),
                 Text(
-                  'Answer a prompt so matches have something to talk about.',
+                  l.promptFieldHint,
                   style: AppTypography.bodySmall.copyWith(
                     color: onSurface.withValues(alpha: 0.6),
                   ),
@@ -205,7 +222,7 @@ class _DatingPreferencesState extends State<_DatingPreferences> {
                 const SizedBox(height: 12),
                 _SmartMultiline(
                   value: widget.formData.promptAnswer,
-                  hint: 'e.g. Best way to spend a Sunday? Chai and a book...',
+                  hint: l.promptFieldPlaceholder,
                   onChanged: (v) {
                     widget.formData.promptAnswer = v;
                     widget.onChanged();
@@ -344,10 +361,10 @@ class _MatrimonyPreferencesState extends State<_MatrimonyPreferences> {
     final subject = widget.formData.subjectName;
 
     final pageTitle = forSelf
-        ? 'Partner\npreferences'
+        ? l.partnerPrefsStepTitle
         : l.dynPrefsTitle(subject);
     final pageSubtitle = forSelf
-        ? 'Help us find the right match. You can refine these anytime.'
+        ? l.partnerPrefsStepSubtitle
         : l.dynPrefsSubtitle(subject);
 
     return SingleChildScrollView(
@@ -651,7 +668,7 @@ class _MatrimonyPreferencesState extends State<_MatrimonyPreferences> {
               children: [
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: _cityModeValue(widget.formData.prefCityMode),
+                  initialValue: widget.formData.prefCityMode ?? 'any',
                   isExpanded: true,
                   decoration: InputDecoration(
                     filled: true,
@@ -666,16 +683,25 @@ class _MatrimonyPreferencesState extends State<_MatrimonyPreferences> {
                       vertical: 12,
                     ),
                   ),
-                  items: _cityModeOptions
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'any',
+                      child: Text(l.anyOption),
+                    ),
+                    DropdownMenuItem(
+                      value: 'same_as_me',
+                      child: Text(l.sameAsMe),
+                    ),
+                    DropdownMenuItem(
+                      value: 'preferred',
+                      child: Text(l.preferredLabel),
+                    ),
+                  ],
                   onChanged: (v) {
-                    widget.formData.prefCityMode = v?.toLowerCase().replaceAll(
-                      ' ',
-                      '_',
-                    );
-                    if (widget.formData.prefCityMode != 'preferred')
+                    widget.formData.prefCityMode = v;
+                    if (widget.formData.prefCityMode != 'preferred') {
                       widget.formData.preferredCities = [];
+                    }
                     widget.onChanged();
                     setState(() {});
                   },
@@ -701,20 +727,6 @@ class _MatrimonyPreferencesState extends State<_MatrimonyPreferences> {
         ],
       ),
     );
-  }
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────
-
-String _cityModeValue(String? mode) {
-  if (mode == null) return 'Any';
-  switch (mode) {
-    case 'same_as_me':
-      return 'Same as me';
-    case 'preferred':
-      return 'Preferred';
-    default:
-      return 'Any';
   }
 }
 
@@ -775,7 +787,7 @@ class _PrefDropdownCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Strict',
+                        l.strictLabel,
                         style: AppTypography.labelSmall.copyWith(
                           color: strict
                               ? Theme.of(context).colorScheme.primary

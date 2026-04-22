@@ -1,6 +1,6 @@
-# Saathi — New & Required Endpoints (Backend Reference)
+# Shubhmilan — New & Required Endpoints (Backend Reference)
 
-This document lists **all endpoints** the Saathi frontend expects the backend to implement. Use it as the single reference for building or updating APIs. For detailed request/response shapes and flows, see the linked spec docs.
+This document lists **all endpoints** the Shubhmilan frontend expects the backend to implement. Use it as the single reference for building or updating APIs. For detailed request/response shapes and flows, see the linked spec docs.
 
 **Related docs:**  
 [BACKEND_API_AUTH_AND_PROFILE.md](./BACKEND_API_AUTH_AND_PROFILE.md) · [BACKEND_INTERACTIONS_AND_VISITORS.md](./BACKEND_INTERACTIONS_AND_VISITORS.md) · [BACKEND_FILTER_OPTIONS_AND_PREFERENCES.md](./BACKEND_FILTER_OPTIONS_AND_PREFERENCES.md) · [BACKEND_API_REQUIREMENTS.md](./BACKEND_API_REQUIREMENTS.md)

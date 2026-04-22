@@ -1,4 +1,4 @@
-# Saathi — Photo Visibility & Request to View Pictures: Backend Contract
+# Shubhmilan — Photo Visibility & Request to View Pictures: Backend Contract
 
 Backend behaviour for **hiding profile photos** (all or some) and **request-to-view-pictures**: a viewer requests access to see another user’s photos; the profile owner receives the request and can **Accept** or **Decline**. When accepted, the requester can see the full photos on that profile.
 

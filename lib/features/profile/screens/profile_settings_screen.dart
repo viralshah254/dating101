@@ -3,21 +3,25 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/entitlements/entitlements.dart';
 import '../../../core/feature_flags/feature_flags.dart';
 import '../../../core/locale/language_picker_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/user_profile.dart';
-import '../../../domain/repositories/subscription_repository.dart';
+import '../widgets/readiness_score_card.dart';
+import '../../family/screens/family_chat_access_screen.dart' show FamilyChatAccessScreen;
 
 final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
   debugPrint('[ProfileSettings] Fetching my profile...');
@@ -34,10 +38,6 @@ final _myProfileProvider = FutureProvider<UserProfile?>((ref) async {
   }
 });
 
-final _subscriptionStateProvider = FutureProvider<SubscriptionState>((ref) async {
-  return ref.watch(subscriptionRepositoryProvider).getSubscriptionState();
-});
-
 /// Profile & Settings — user's own profile and app settings.
 class ProfileSettingsScreen extends ConsumerWidget {
   const ProfileSettingsScreen({super.key});
@@ -50,11 +50,26 @@ class ProfileSettingsScreen extends ConsumerWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final primary = Theme.of(context).colorScheme.primary;
     final profileAsync = ref.watch(_myProfileProvider);
+    final notifUnread = ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
 
     final profileName = profileAsync.whenOrNull(data: (p) => p?.name);
     final profilePhoto = profileAsync.whenOrNull(
       data: (p) => p?.photoUrls.isNotEmpty == true ? p!.photoUrls.first : null,
     );
+    final hiddenFromRecommended = profileAsync.whenOrNull(
+      data: (p) => p?.hiddenFromRecommended ?? false,
+    ) ?? false;
+    final roleManaging = profileAsync.whenOrNull(
+      data: (p) => p?.matrimonyExtensions?.roleManagingProfile,
+    );
+    final subjectStatus = profileAsync.whenOrNull(
+      data: (p) => p?.subjectStatus,
+    ) ?? 'self';
+    final familyMode = profileAsync.whenOrNull(
+      data: (p) => p?.familyMode,
+    );
+    final isManagingForOther = roleManaging != null && roleManaging != ProfileRole.self;
+    final managedProfileName = profileAsync.whenOrNull(data: (p) => p?.name);
 
     return Scaffold(
       appBar: AppBar(
@@ -96,14 +111,33 @@ class ProfileSettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
+          ).fadeSlideIn(delay: 100.ms),
           const SizedBox(height: 24),
           _SubscriptionCard(
             onSurface: onSurface,
             primary: primary,
-          ),
-          const SizedBox(height: 32),
-          _SectionHeader(title: l.saathiMode, onSurface: onSurface),
+          ).fadeSlideIn(delay: 200.ms),
+          const SizedBox(height: 16),
+          const ReadinessScoreCard().fadeSlideIn(delay: 280.ms),
+          if (isManagingForOther) ...[
+            const SizedBox(height: 12),
+            _ManagedProfileBanner(
+              role: roleManaging,
+              profileName: managedProfileName ?? '',
+              subjectStatus: subjectStatus,
+              familyMode: familyMode,
+            ).fadeSlideIn(delay: 305.ms),
+          ],
+          if (hiddenFromRecommended) ...[
+            const SizedBox(height: 12),
+            _HiddenFromRecommendedBanner().fadeSlideIn(delay: 310.ms),
+          ],
+          const SizedBox(height: 12),
+          _AiProfileReviewBanner().fadeSlideIn(delay: 320.ms),
+          const SizedBox(height: 16),
+          _SectionHeader(title: l.shubhmilanMode, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(0, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           _ModeSwitchTile(
             currentMode: mode,
             preference: ref.watch(modePreferenceProvider).valueOrNull,
@@ -117,7 +151,9 @@ class ProfileSettingsScreen extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: l.account, onSurface: onSurface),
+          _SectionHeader(title: l.account, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(1, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           ListTile(
             leading: const Icon(Icons.people_outline),
             title: Text(
@@ -135,6 +171,42 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/referral'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.favorite_rounded),
+            title: Text(
+              'Success Stories',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Read and share wedding stories from our members',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/success-stories'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.shield_rounded),
+            title: Text(
+              'Meeting Safety Toolkit',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'SOS, location sharing & check-in timer for first meetings',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/meeting-safety'),
           ),
           if (flags.profileBoost)
             ListTile(
@@ -182,7 +254,34 @@ class ProfileSettingsScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (notifUnread > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        notifUnread > 99 ? '99+' : '$notifUnread',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                Icon(
+                  Icons.chevron_right,
+                  color: onSurface.withValues(alpha: 0.45),
+                ),
+              ],
+            ),
             onTap: () => context.push('/notifications'),
             onLongPress: () => _showNotificationSettings(context, ref),
           ),
@@ -216,8 +315,89 @@ class ProfileSettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => showLanguagePickerSheet(context, ref),
           ),
+          ListTile(
+            leading: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
+            title: Text(
+              l.signOut,
+              style: AppTypography.bodyLarge.copyWith(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              l.signOutSubtitle,
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _signOutAndGoLogin(context, ref),
+          ),
           const SizedBox(height: 24),
-          _SectionHeader(title: l.accountAndData, onSurface: onSurface),
+          // ── Family Circle ──────────────────────────────────────────
+          _SectionHeader(title: 'Family Circle', onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(2, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
+          ListTile(
+            leading: const Icon(Icons.family_restroom_rounded),
+            title: Text(
+              'Family Circle',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Invite family members, set your mode, preview what they see',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/family-circle'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.toggle_on_outlined),
+            title: Text(
+              'Family mode',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Self, assisted, hidden-from-family, or joint decision',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/family-circle'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline_rounded),
+            title: Text(
+              'Chat privacy for family',
+              style: AppTypography.bodyLarge.copyWith(
+                color: onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Control what family members can see in your conversations',
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FamilyChatAccessScreen()),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _SectionHeader(title: l.accountAndData, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(3, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: Text(
@@ -276,7 +456,9 @@ class ProfileSettingsScreen extends ConsumerWidget {
             onTap: () => _showDeleteAccountConfirm(context, ref),
           ),
           const SizedBox(height: 24),
-          _SectionHeader(title: l.support, onSurface: onSurface),
+          _SectionHeader(title: l.support, onSurface: onSurface)
+              .animate().fadeIn(delay: AppMotion.stagger(3, stepMs: 80), duration: AppMotion.medium)
+              .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: Text(
@@ -289,7 +471,7 @@ class ProfileSettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSupportUrl(
               context,
-              Uri.parse('https://desilink.app/help'),
+              Uri.parse('https://shubhmilan.app/help'),
             ),
           ),
           ListTile(
@@ -304,22 +486,8 @@ class ProfileSettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSupportUrl(
               context,
-              Uri.parse('https://desilink.app/terms'),
+              Uri.parse('https://shubhmilan.app/terms'),
             ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () async {
-              await ref.read(notificationServiceProvider).onLogout();
-              try {
-                await ref.read(profileRepositoryProvider).deleteFcmToken();
-              } catch (_) {}
-              final authRepo = ref.read(authRepositoryProvider);
-              await authRepo.signOut();
-              if (context.mounted) context.go('/login');
-            },
-            icon: const Icon(Icons.logout, size: 20),
-            label: Text(l.signOut),
           ),
         ],
       ),
@@ -345,6 +513,12 @@ class ProfileSettingsScreen extends ConsumerWidget {
   }
 }
 
+Future<void> _signOutAndGoLogin(BuildContext context, WidgetRef ref) async {
+  await ref.read(notificationServiceProvider).onLogout();
+  await ref.read(authRepositoryProvider).signOut();
+  if (context.mounted) context.go('/login');
+}
+
 Future<void> _openSupportUrl(BuildContext context, Uri uri) async {
   final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (ok || !context.mounted) return;
@@ -365,8 +539,18 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
     'mutualMatch': true,
     'profileVisited': true,
     'newMessage': true,
+    'morningReminder': true,
     'contactRequestAccepted': true,
     'contactRequestDeclined': false,
+    'interestReminderPrompt': true,
+    'interestReminderReceived': true,
+    'shortlistedYou': true,
+    'messageRequestReceived': true,
+    'messageRequestAccepted': true,
+    'messageRequestDeclined': false,
+    'photoViewRequestReceived': true,
+    'photoViewRequestAccepted': true,
+    'photoViewRequestDeclined': false,
   };
   Map<String, bool> prefs = Map.from(defaultPrefs);
   try {
@@ -395,8 +579,18 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
           'mutualMatch': 'Mutual match',
           'profileVisited': 'Profile visited',
           'newMessage': 'New message',
+          'morningReminder': 'Morning reminder',
           'contactRequestAccepted': 'Contact request accepted',
           'contactRequestDeclined': 'Contact request declined',
+          'interestReminderPrompt': 'Interest reminder (prompt)',
+          'interestReminderReceived': 'Interest reminder received',
+          'shortlistedYou': 'Shortlisted you',
+          'messageRequestReceived': 'Message requests',
+          'messageRequestAccepted': 'Message request accepted',
+          'messageRequestDeclined': 'Message request declined',
+          'photoViewRequestReceived': 'Photo view requests',
+          'photoViewRequestAccepted': 'Photo view accepted',
+          'photoViewRequestDeclined': 'Photo view declined',
         };
         return SafeArea(
           child: Padding(
@@ -410,7 +604,7 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
+                      color: Theme.of(ctx).colorScheme.outline.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -459,7 +653,7 @@ void _showNotificationSettings(BuildContext context, WidgetRef ref) async {
                     'Test push (debug)',
                     style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey,
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -522,6 +716,7 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
       (privacy['profileVisibility'] as String?) ?? 'everyone';
   bool hideFromDiscovery = privacy['hideFromDiscovery'] == true;
   bool photosHidden = privacy['photosHidden'] == true;
+  bool requireVerifiedToContact = privacy['requireVerifiedToContact'] == true;
 
   if (!context.mounted) return;
   final l = AppLocalizations.of(context)!;
@@ -546,7 +741,7 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
+                      color: Theme.of(ctx).colorScheme.outline.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -640,6 +835,22 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
                   value: photosHidden,
                   onChanged: (v) => setSheetState(() => photosHidden = v),
                 ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  secondary: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.verified_rounded, size: 18, color: Color(0xFF1565C0)),
+                  ),
+                  title: const Text('Only verified users can contact me'),
+                  subtitle: const Text('Unverified profiles cannot send you interest'),
+                  value: requireVerifiedToContact,
+                  onChanged: (v) => setSheetState(() => requireVerifiedToContact = v),
+                  activeColor: const Color(0xFF1565C0),
+                ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () async {
@@ -650,6 +861,7 @@ void _showPrivacySettings(BuildContext context, WidgetRef ref) async {
                         'profileVisibility': profileVisibility,
                         'hideFromDiscovery': hideFromDiscovery,
                         'photosHidden': photosHidden,
+                        'requireVerifiedToContact': requireVerifiedToContact,
                       });
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -818,19 +1030,21 @@ class _DeactivateConfirmDialogState extends State<_DeactivateConfirmDialog> {
                   try {
                     await widget.ref.read(accountRepositoryProvider).deactivateAccount();
                     if (!mounted) return;
+                    // ignore: use_build_context_synchronously
                     Navigator.pop(context);
-                    await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
                     await widget.ref.read(authRepositoryProvider).signOut();
-                    if (mounted) context.go('/login');
-                  } catch (_) {
                     if (!mounted) return;
-                    setState(() => _loading = false);
+                    // ignore: use_build_context_synchronously
+                    context.go('/login');
+                  } catch (_) {
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(l.deactivationFailed),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
+                    setState(() => _loading = false);
                   }
                 },
           child: _loading
@@ -930,19 +1144,21 @@ class _DeleteAccountConfirmDialogState extends State<_DeleteAccountConfirmDialog
                           confirmation: _confirmationWord,
                         );
                         if (!mounted) return;
+                        // ignore: use_build_context_synchronously
                         Navigator.pop(context);
-                        await widget.ref.read(profileRepositoryProvider).deleteFcmToken();
                         await widget.ref.read(authRepositoryProvider).signOut();
-                        if (mounted) context.go('/login');
-                      } catch (_) {
                         if (!mounted) return;
-                        setState(() => _loading = false);
+                        // ignore: use_build_context_synchronously
+                        context.go('/login');
+                      } catch (_) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(l.deleteFailed),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
+                        setState(() => _loading = false);
                       }
                     }),
           style: FilledButton.styleFrom(backgroundColor: errorColor),
@@ -998,14 +1214,18 @@ class _ModeSwitchTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isDating ? AppColors.saffron : AppColors.indiaGreen)
+                  color: (isDating
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.secondary)
                       .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   isDating ? Icons.favorite_rounded : Icons.diversity_3_rounded,
                   size: 24,
-                  color: isDating ? AppColors.saffron : AppColors.indiaGreen,
+                  color: isDating
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.secondary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -1056,7 +1276,7 @@ class _SubscriptionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    final subscriptionAsync = ref.watch(_subscriptionStateProvider);
+    final subscriptionAsync = ref.watch(subscriptionStateProvider);
 
     return subscriptionAsync.when(
       loading: () => _buildCard(
@@ -1072,6 +1292,7 @@ class _SubscriptionCard extends ConsumerWidget {
         title: l.subscription,
         subtitle: null,
         trailing: const Icon(Icons.chevron_right),
+        isActiveSubscription: false,
       ),
       error: (_, __) => _buildCard(
         context,
@@ -1082,6 +1303,7 @@ class _SubscriptionCard extends ConsumerWidget {
         title: l.subscription,
         subtitle: l.upgradeToPremiumSubtitle,
         trailing: const Icon(Icons.chevron_right),
+        isActiveSubscription: false,
       ),
       data: (state) {
         final isActive = state.isActive && state.expiresAt != null;
@@ -1107,6 +1329,7 @@ class _SubscriptionCard extends ConsumerWidget {
                   )
                 : null,
             trailing: const Icon(Icons.chevron_right),
+            isActiveSubscription: true,
           );
         }
         return _buildCard(
@@ -1118,6 +1341,7 @@ class _SubscriptionCard extends ConsumerWidget {
           title: l.upgrade,
           subtitle: l.upgradeToPremiumSubtitle,
           trailing: const Icon(Icons.chevron_right),
+          isActiveSubscription: false,
         );
       },
     );
@@ -1133,6 +1357,7 @@ class _SubscriptionCard extends ConsumerWidget {
     String? subtitle,
     TextStyle? subtitleStyle,
     required Widget trailing,
+    required bool isActiveSubscription,
   }) {
     final defaultSubtitleStyle = AppTypography.bodySmall.copyWith(
       color: onSurface.withValues(alpha: 0.7),
@@ -1141,8 +1366,15 @@ class _SubscriptionCard extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
+          if (isActiveSubscription) {
+            final opened = await _openManageSubscription(context);
+            if (!context.mounted) return;
+            if (opened) return;
+          }
           await context.push('/paywall');
-          if (context.mounted) ref.invalidate(_subscriptionStateProvider);
+          if (context.mounted) {
+            ref.read(subscriptionAccessRefreshProvider)();
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -1184,6 +1416,27 @@ class _SubscriptionCard extends ConsumerWidget {
       ),
     );
   }
+
+  static Future<bool> _openManageSubscription(BuildContext context) async {
+    if (!Platform.isAndroid) return false;
+    final uri = Uri.parse(
+      'https://play.google.com/store/account/subscriptions?package=com.dvtechventures.shubhmilan',
+    );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.purchaseFailed(
+              'Could not open Google Play subscriptions.',
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return opened;
+  }
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -1200,6 +1453,199 @@ class _SectionHeader extends StatelessWidget {
         style: AppTypography.labelLarge.copyWith(
           color: onSurface.withValues(alpha: 0.7),
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ── AI Profile Review Banner ──────────────────────────────────────────────────
+
+/// Persistent banner shown on the profile tab when the logged-in user is
+/// managing a profile on behalf of someone else (parent/guardian/sibling/friend).
+class _ManagedProfileBanner extends StatelessWidget {
+  const _ManagedProfileBanner({
+    required this.role,
+    required this.profileName,
+    required this.subjectStatus,
+    this.familyMode,
+  });
+
+  final ProfileRole role;
+  final String profileName;
+  final String subjectStatus;
+  final String? familyMode;
+
+  String _statusLabel(BuildContext context) {
+    // ignore: invalid_use_of_internal_member
+    final l = AppLocalizations.of(context)!;
+    // Accessing generated keys with underscores via dynamic map lookup to avoid analysis warnings.
+    if (subjectStatus == 'managed_active') {
+      final active = l.managingProfileStatus_active;
+      if (familyMode == 'joint') return 'Joint approval mode · $active';
+      if (familyMode == 'assisted') return 'Assisting · $active';
+      return active;
+    }
+    return l.managingProfileStatus_pending;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final accent = cs.secondary;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.family_restroom, color: accent, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.managingProfileFor(profileName),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _statusLabel(context),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HiddenFromRecommendedBanner extends StatelessWidget {
+  const _HiddenFromRecommendedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.errorContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.visibility_off_outlined, color: cs.onErrorContainer, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hidden from Recommended',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: cs.onErrorContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your profile is not shown in the Recommended feed yet. '
+                  'Complete photo verification to restore visibility.',
+                  style: AppTypography.bodySmall.copyWith(color: cs.onErrorContainer),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () => context.push('/verification'),
+                  child: Text(
+                    'Verify to restore visibility →',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: cs.onErrorContainer,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiProfileReviewBanner extends StatelessWidget {
+  const _AiProfileReviewBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => context.push('/ai-profile-review'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF7B1FA2).withValues(alpha: 0.12),
+              const Color(0xFF1565C0).withValues(alpha: 0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF7B1FA2).withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7B1FA2).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.psychology_rounded, color: Color(0xFF7B1FA2), size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Profile Review',
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'See why you may be getting ignored and how to improve',
+                    style: AppTypography.caption.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: cs.onSurface.withValues(alpha: 0.4)),
+          ],
         ),
       ),
     );

@@ -1,14 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../core/astrology/nakshatra_calculator.dart';
 import '../../../core/location/place_search_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/university/university_search_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../screens/profile_setup_screen.dart';
+
+/// About Me bio limits (aligned with discovery “strong bio” heuristics).
+const int kAboutMeMaxChars = 2000;
+const int kAboutMeMinRecommendedChars = 50;
 
 const _degreeOptions = [
   'High School',
@@ -281,8 +287,9 @@ List<String> _communityOptionsForReligion(String? religion) {
   return _communityByReligion[religion] ?? ['Other'];
 }
 
-/// Mother tongue & languages: Indian languages + English + Other.
+/// Mother tongue & languages: Indian languages first, then major international languages.
 const _motherTongueAndLanguageOptions = [
+  // Indian scheduled + widely spoken
   'Hindi',
   'Bengali',
   'Telugu',
@@ -295,12 +302,109 @@ const _motherTongueAndLanguageOptions = [
   'Punjabi',
   'Odia',
   'Assamese',
+  'Maithili',
+  'Santali',
   'Kashmiri',
   'Sindhi',
+  'Dogri',
   'Konkani',
-  'Nepali',
+  'Manipuri',
+  'Bodo',
   'Sanskrit',
+  'Nepali',
+  // South / Southeast Asia
+  'Sinhala',
+  'Dhivehi',
+  'Dzongkha',
+  'Burmese',
+  'Thai',
+  'Lao',
+  'Khmer',
+  'Vietnamese',
+  'Indonesian',
+  'Malay',
+  'Tagalog',
+  'Javanese',
+  'Sundanese',
+  // East Asia
+  'Mandarin Chinese',
+  'Cantonese',
+  'Wu (Shanghainese)',
+  'Japanese',
+  'Korean',
+  'Mongolian',
+  'Tibetan',
+  // Central / West Asia
+  'Arabic',
+  'Persian (Farsi)',
+  'Dari',
+  'Pashto',
+  'Uzbek',
+  'Kazakh',
+  'Kyrgyz',
+  'Tajik',
+  'Turkmen',
+  'Turkish',
+  'Azerbaijani',
+  'Armenian',
+  'Georgian',
+  'Kurdish',
+  'Hebrew',
+  // Europe
   'English',
+  'French',
+  'Spanish',
+  'Portuguese',
+  'German',
+  'Russian',
+  'Italian',
+  'Dutch',
+  'Polish',
+  'Romanian',
+  'Greek',
+  'Czech',
+  'Slovak',
+  'Hungarian',
+  'Bulgarian',
+  'Croatian',
+  'Serbian',
+  'Bosnian',
+  'Slovenian',
+  'Albanian',
+  'Macedonian',
+  'Ukrainian',
+  'Belarusian',
+  'Lithuanian',
+  'Latvian',
+  'Estonian',
+  'Finnish',
+  'Swedish',
+  'Norwegian',
+  'Danish',
+  'Icelandic',
+  'Welsh',
+  'Irish',
+  'Catalan',
+  'Basque',
+  // Africa
+  'Swahili',
+  'Amharic',
+  'Yoruba',
+  'Igbo',
+  'Hausa',
+  'Zulu',
+  'Xhosa',
+  'Afrikaans',
+  'Shona',
+  'Somali',
+  'Tigrinya',
+  'Oromo',
+  // Americas
+  'Quechua',
+  'Guaraní',
+  'Nahuatl',
+  // Other
+  'Sign Language',
   'Other',
 ];
 
@@ -437,19 +541,24 @@ String? _countryToGradingSystem(String? country) {
       c == 'england' ||
       c == 'scotland' ||
       c == 'wales' ||
-      c == 'northern ireland')
+      c == 'northern ireland') {
     return 'UK';
+  }
   if (c == 'united states' ||
       c == 'united states of america' ||
       c == 'usa' ||
-      c == 'us')
+      c == 'us') {
     return 'US';
+  }
   if (c == 'india') return 'India';
   return 'Other';
 }
 
 /// When non-null, only that part of the details step is shown (for section-only edit screens). Matrimony only.
 enum StepDetailsOnlySection { religion, lifestyle, family, horoscope }
+
+/// For dating: which portion of DatingDetails to show in isolation.
+enum DatingDetailsOnlySection { aboutAndIntent, lifestyle }
 
 class StepDetails extends StatelessWidget {
   const StepDetails({
@@ -458,6 +567,7 @@ class StepDetails extends StatelessWidget {
     required this.formData,
     required this.onChanged,
     this.onlySection,
+    this.datingOnlySection,
   });
 
   final AppMode mode;
@@ -467,10 +577,18 @@ class StepDetails extends StatelessWidget {
   /// When set (matrimony only), only that section is shown.
   final StepDetailsOnlySection? onlySection;
 
+  /// When set (dating only), only that sub-section of the dating details is shown.
+  final DatingDetailsOnlySection? datingOnlySection;
+
   @override
   Widget build(BuildContext context) {
-    if (mode.isDating)
-      return _DatingDetails(formData: formData, onChanged: onChanged);
+    if (mode.isDating) {
+      return _DatingDetails(
+        formData: formData,
+        onChanged: onChanged,
+        datingOnlySection: datingOnlySection,
+      );
+    }
     return _MatrimonyDetails(
       formData: formData,
       onChanged: onChanged,
@@ -1192,6 +1310,9 @@ class _MultiSelectSearchFieldState extends State<_MultiSelectSearchField> {
       next.remove(option);
     } else {
       next.add(option);
+      // Clear search so user can immediately type the next language.
+      _searchCtrl.clear();
+      _query = '';
     }
     widget.onChanged(next.isEmpty ? null : next.join(', '));
     setState(() {});
@@ -1273,36 +1394,50 @@ class _MultiSelectSearchFieldState extends State<_MultiSelectSearchField> {
             }).toList(),
           ),
         ],
-        const SizedBox(height: 10),
-        Container(
-          constraints: const BoxConstraints(maxHeight: 220),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: _filtered.length,
-            itemBuilder: (context, i) {
-              final opt = _filtered[i];
-              final isSelected = selected.contains(opt);
-              return ListTile(
-                title: Text(
-                  opt,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        // Dropdown only shown while the user is actively searching so it never
+        // gets pushed below the visible area by the chip rows.
+        if (_query.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: _filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No languages match "$_query"',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _filtered.length,
+                    itemBuilder: (context, i) {
+                      final opt = _filtered[i];
+                      final isSelected = selected.contains(opt);
+                      return ListTile(
+                        title: Text(
+                          opt,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: onSurface,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, size: 20, color: accent)
+                            : null,
+                        onTap: () => _toggle(opt),
+                      );
+                    },
                   ),
-                ),
-                trailing: isSelected
-                    ? Icon(Icons.check_circle, size: 20, color: accent)
-                    : null,
-                onTap: () => _toggle(opt),
-              );
-            },
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1660,7 +1795,7 @@ class StepCareer extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 4),
           Text(
-            'Your work and where you\'re based.',
+            l.careerStepSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
@@ -1673,7 +1808,7 @@ class StepCareer extends StatelessWidget {
               _SearchableSelectField(
                 label: l.matrimonyOccupationQuestion,
                 value: formData.occupation,
-                hint: 'Search or type occupation',
+                hint: l.searchOccupationHint,
                 options: _occupationOptions,
                 onChanged: (v) {
                   formData.occupation = v;
@@ -1745,32 +1880,6 @@ class StepCareer extends StatelessWidget {
                   onChanged();
                 },
               ),
-              const SizedBox(height: 16),
-              _SectionLabel(label: l.settledAbroadQuestion),
-              const SizedBox(height: 8),
-              _ChipRow(
-                options: [
-                  l.settledAbroadYes,
-                  l.settledAbroadNo,
-                  l.settledAbroadPlanning,
-                ],
-                selected: formData.settledAbroad,
-                onSelected: (v) {
-                  formData.settledAbroad = v;
-                  onChanged();
-                },
-              ),
-              const SizedBox(height: 16),
-              _SectionLabel(label: l.willingToRelocate),
-              const SizedBox(height: 8),
-              _ChipRow(
-                options: [l.relocateYes, l.relocateNo, l.relocateMaybe],
-                selected: formData.willingToRelocate,
-                onSelected: (v) {
-                  formData.willingToRelocate = v;
-                  onChanged();
-                },
-              ),
               const SizedBox(height: 20),
               _SectionLabel(label: l.aboutCareer),
               const SizedBox(height: 8),
@@ -1794,14 +1903,28 @@ class StepCareer extends StatelessWidget {
 // ── Dating Details ──────────────────────────────────────────────────────
 
 class _DatingDetails extends StatelessWidget {
-  const _DatingDetails({required this.formData, required this.onChanged});
+  const _DatingDetails({
+    required this.formData,
+    required this.onChanged,
+    this.datingOnlySection,
+  });
   final ProfileFormData formData;
   final VoidCallback onChanged;
+  final DatingDetailsOnlySection? datingOnlySection;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    // Lifestyle-only mode: used by the new dedicated StepLifestyle step
+    if (datingOnlySection == DatingDetailsOnlySection.lifestyle) {
+      return SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+        child: _LifestyleSection(formData: formData, onChanged: onChanged),
+      );
+    }
 
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -1810,7 +1933,7 @@ class _DatingDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'About you',
+            l.aboutYouSectionTitle,
             style: AppTypography.displayLarge.copyWith(
               color: onSurface,
               fontSize: 32,
@@ -1819,10 +1942,24 @@ class _DatingDetails extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 4),
           Text(
-            'Help others know what you\'re about. All fields are optional — fill what you like.',
+            l.aboutYouSectionSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
+          ),
+          const SizedBox(height: 28),
+
+          _SectionLabel(label: l.aboutMeSection),
+          const SizedBox(height: 8),
+          _MultilineField(
+            value: formData.bio,
+            hint: l.aboutMeHint,
+            maxLength: kAboutMeMaxChars,
+            minRecommended: kAboutMeMinRecommendedChars,
+            onChanged: (v) {
+              formData.bio = v;
+              onChanged();
+            },
           ),
           const SizedBox(height: 28),
 
@@ -1874,10 +2011,10 @@ class _MatrimonyDetails extends StatelessWidget {
     final subject = formData.subjectName;
 
     final pageTitle = forSelf
-        ? 'Background\n& details'
+        ? l.backgroundAndDetailsTitle
         : l.dynDetailsTitle(subject);
     final pageSubtitle = forSelf
-        ? 'These help us find compatible matches. Fill what you can — skip the rest.'
+        ? l.backgroundAndDetailsSubtitle
         : l.dynDetailsSubtitle(subject);
 
     final showReligion =
@@ -1905,12 +2042,28 @@ class _MatrimonyDetails extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 4),
           Text(
-            onlySection != null ? _sectionSubtitle(onlySection!) : pageSubtitle,
+            onlySection != null ? _sectionSubtitle(onlySection!, l) : pageSubtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 28),
+
+          if (onlySection == null) ...[
+            _SectionLabel(label: l.aboutMeSection),
+            const SizedBox(height: 8),
+            _MultilineField(
+              value: formData.bio,
+              hint: l.aboutMeHint,
+              maxLength: kAboutMeMaxChars,
+              minRecommended: kAboutMeMinRecommendedChars,
+              onChanged: (v) {
+                formData.bio = v;
+                onChanged();
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
 
           // Religion & Community (Indians-only: dropdowns + multi-select languages)
           if (showReligion)
@@ -1952,7 +2105,7 @@ class _MatrimonyDetails extends StatelessWidget {
                       _SearchableSelectField(
                         label: l.matrimonyMotherTongueQuestion,
                         value: formData.motherTongue,
-                        hint: 'Select mother tongue',
+                        hint: l.selectMotherTongueHint,
                         options: _motherTongueAndLanguageOptions,
                         onChanged: (v) {
                           formData.motherTongue = v;
@@ -1967,22 +2120,6 @@ class _MatrimonyDetails extends StatelessWidget {
                         hint: l.languagesHint,
                         onChanged: (v) {
                           formData.languagesSpoken = v;
-                          onChanged();
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      _SectionLabel(label: l.maritalStatus),
-                      const SizedBox(height: 10),
-                      _ChipRow(
-                        options: [
-                          l.neverMarried,
-                          l.divorced,
-                          l.widowed,
-                          l.awaitingDivorce,
-                        ],
-                        selected: formData.maritalStatus,
-                        onSelected: (v) {
-                          formData.maritalStatus = v;
                           onChanged();
                         },
                       ),
@@ -2025,7 +2162,7 @@ class _MatrimonyDetails extends StatelessWidget {
                       _SearchableSelectField(
                         label: l.matrimonyMotherTongueQuestion,
                         value: formData.motherTongue,
-                        hint: 'Select mother tongue',
+                        hint: l.selectMotherTongueHint,
                         options: _motherTongueAndLanguageOptions,
                         onChanged: (v) {
                           formData.motherTongue = v;
@@ -2040,22 +2177,6 @@ class _MatrimonyDetails extends StatelessWidget {
                         hint: l.languagesHint,
                         onChanged: (v) {
                           formData.languagesSpoken = v;
-                          onChanged();
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      _SectionLabel(label: l.maritalStatus),
-                      const SizedBox(height: 10),
-                      _ChipRow(
-                        options: [
-                          l.neverMarried,
-                          l.divorced,
-                          l.widowed,
-                          l.awaitingDivorce,
-                        ],
-                        selected: formData.maritalStatus,
-                        onSelected: (v) {
-                          formData.maritalStatus = v;
                           onChanged();
                         },
                       ),
@@ -2127,7 +2248,7 @@ class _MatrimonyDetails extends StatelessWidget {
                 _SearchableSelectField(
                   label: l.motherAgeQuestion,
                   value: formData.motherAge,
-                  hint: 'e.g. 45 or select Deceased',
+                  hint: l.motherAgeHint,
                   options: _parentAgeOptions,
                   onChanged: (v) {
                     formData.motherAge = v;
@@ -2138,7 +2259,7 @@ class _MatrimonyDetails extends StatelessWidget {
                 _SearchableSelectField(
                   label: l.fatherAgeQuestion,
                   value: formData.fatherAge,
-                  hint: 'e.g. 50 or select Deceased',
+                  hint: l.fatherAgeHint,
                   options: _parentAgeOptions,
                   onChanged: (v) {
                     formData.fatherAge = v;
@@ -2249,44 +2370,7 @@ class _MatrimonyDetails extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-                _DropdownField(
-                  label: l.nakshatraQuestion,
-                  value: formData.nakshatra,
-                  items: const [
-                    'Ashwini',
-                    'Bharani',
-                    'Krittika',
-                    'Rohini',
-                    'Mrigashira',
-                    'Ardra',
-                    'Punarvasu',
-                    'Pushya',
-                    'Ashlesha',
-                    'Magha',
-                    'Purva Phalguni',
-                    'Uttara Phalguni',
-                    'Hasta',
-                    'Chitra',
-                    'Swati',
-                    'Vishakha',
-                    'Anuradha',
-                    'Jyeshtha',
-                    'Moola',
-                    'Purva Ashadha',
-                    'Uttara Ashadha',
-                    'Shravana',
-                    'Dhanishta',
-                    'Shatabhisha',
-                    'Purva Bhadrapada',
-                    'Uttara Bhadrapada',
-                    'Revati',
-                    'Don\'t know',
-                  ],
-                  onChanged: (v) {
-                    formData.nakshatra = v;
-                    onChanged();
-                  },
-                ),
+                _NakshatraField(formData: formData, onChanged: onChanged),
                 const SizedBox(height: 16),
                 _SearchableSelectField(
                   label: l.gotraQuestion,
@@ -2328,12 +2412,301 @@ class _MatrimonyDetails extends StatelessWidget {
   }
 }
 
+// ── Marriage Intent step ──────────────────────────────────────────────────
+
+/// Standalone wizard step: marriage timeline, family involvement, relocation.
+/// Shown before Education so intent is captured early.
+class StepMarriageIntent extends StatelessWidget {
+  const StepMarriageIntent({
+    super.key,
+    required this.formData,
+    required this.onChanged,
+  });
+
+  final ProfileFormData formData;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.marriageIntentSection,
+            style: AppTypography.displayLarge.copyWith(
+              color: onSurface,
+              fontSize: 32,
+              height: 1.15,
+            ),
+          ).animate().fadeIn(duration: 400.ms),
+          const SizedBox(height: 4),
+          Text(
+            l.marriageIntentSubtitle,
+            style: AppTypography.bodyMedium.copyWith(
+              color: onSurface.withValues(alpha: 0.6),
+            ),
+          ).animate().fadeIn(delay: 80.ms),
+          const SizedBox(height: 28),
+          _MarriageIntentCard(formData: formData, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Marriage Intent card ─────────────────────────────────────────────────
+
+class _MarriageIntentCard extends StatelessWidget {
+  const _MarriageIntentCard({required this.formData, required this.onChanged});
+  final ProfileFormData formData;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return _DetailCard(
+      icon: Icons.favorite_border_outlined,
+      title: l.marriageIntentSection,
+      children: [
+        Text(
+          l.marriageIntentSubtitle,
+          style: AppTypography.bodySmall.copyWith(
+            color: onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Marriage Timeline
+        _SectionLabel(label: l.marriageTimelineQuestion),
+        const SizedBox(height: 4),
+        Text(
+          l.marriageTimelineSubtitle,
+          style: AppTypography.bodySmall.copyWith(
+            color: onSurface.withValues(alpha: 0.55),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _ChipRow(
+          options: [
+            l.marriageTimeline3to6,
+            l.marriageTimeline6to12,
+            l.marriageTimeline1to2years,
+            l.marriageTimelineExploring,
+          ],
+          selected: _readyInMonthsLabel(formData.readyInMonths),
+          onSelected: (v) {
+            formData.readyInMonths = _readyInMonthsValue(v);
+            onChanged();
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Family Involvement
+        _SectionLabel(label: l.familyInvolvementQuestion),
+        const SizedBox(height: 8),
+        _ChipRow(
+          options: [
+            l.familyInvolvementSelfManaged,
+            l.familyInvolvementFamilyAssisted,
+            l.familyInvolvementJointDecision,
+          ],
+          selected: _familyInvolvementLabel(formData.familyInvolvement),
+          onSelected: (v) {
+            formData.familyInvolvement = _familyInvolvementValue(v);
+            onChanged();
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Relocation preference
+        _SectionLabel(label: l.relocationWillingnessQuestion),
+        const SizedBox(height: 8),
+        _ChipRow(
+          options: [
+            l.relocationSameCity,
+            l.relocationSameCountry,
+            l.relocationFlexible,
+            l.relocationAbroadOk,
+          ],
+          selected: _relocationWillingnessLabel(formData.relocationWillingness, l),
+          onSelected: (v) {
+            formData.relocationWillingness = _relocationWillingnessValue(v, l);
+            onChanged();
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Willing to relocate (yes/no/maybe toggle)
+        _SectionLabel(label: l.willingToRelocate),
+        const SizedBox(height: 8),
+        _ChipRow(
+          options: [l.relocateYes, l.relocateNo, l.relocateMaybe],
+          selected: formData.willingToRelocate,
+          onSelected: (v) {
+            formData.willingToRelocate = v;
+            onChanged();
+          },
+        ),
+
+        // Living abroad
+        const SizedBox(height: 20),
+        _SectionLabel(label: l.settledAbroadQuestion),
+        const SizedBox(height: 8),
+        _ChipRow(
+          options: [l.settledAbroadYes, l.settledAbroadNo, l.settledAbroadPlanning],
+          selected: formData.settledAbroad,
+          onSelected: (v) {
+            formData.settledAbroad = v;
+            onChanged();
+          },
+        ),
+      ],
+    );
+  }
+}
+
+String? _relocationWillingnessLabel(String? value, AppLocalizations l) {
+  if (value == null) return null;
+  switch (value) {
+    case 'same_city':
+      return l.relocationSameCity;
+    case 'same_country':
+      return l.relocationSameCountry;
+    case 'flexible':
+      return l.relocationFlexible;
+    case 'abroad_ok':
+      return l.relocationAbroadOk;
+    default:
+      return value;
+  }
+}
+
+String? _relocationWillingnessValue(String label, AppLocalizations l) {
+  if (label == l.relocationSameCity) return 'same_city';
+  if (label == l.relocationSameCountry) return 'same_country';
+  if (label == l.relocationFlexible) return 'flexible';
+  if (label == l.relocationAbroadOk) return 'abroad_ok';
+  return label;
+}
+
+// ── Nakshatra picker with DOB auto-suggest ───────────────────────────────
+
+class _NakshatraField extends StatefulWidget {
+  const _NakshatraField({required this.formData, required this.onChanged});
+  final ProfileFormData formData;
+  final VoidCallback onChanged;
+
+  @override
+  State<_NakshatraField> createState() => _NakshatraFieldState();
+}
+
+class _NakshatraFieldState extends State<_NakshatraField> {
+  bool _autoSuggested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tryAutoFill();
+  }
+
+  void _tryAutoFill() {
+    final dob = widget.formData.dateOfBirth;
+    final current = widget.formData.nakshatra;
+    if (dob != null && (current == null || current == "Don't know")) {
+      final suggested = nakshatraFromDob(dob);
+      if (suggested != null) {
+        widget.formData.nakshatra = suggested;
+        _autoSuggested = true;
+        widget.onChanged();
+      }
+    }
+  }
+
+  static const List<String> _items = [
+    'Ashwini',
+    'Bharani',
+    'Krittika',
+    'Rohini',
+    'Mrigashira',
+    'Ardra',
+    'Punarvasu',
+    'Pushya',
+    'Ashlesha',
+    'Magha',
+    'Purva Phalguni',
+    'Uttara Phalguni',
+    'Hasta',
+    'Chitra',
+    'Swati',
+    'Vishakha',
+    'Anuradha',
+    'Jyeshtha',
+    'Moola',
+    'Purva Ashadha',
+    'Uttara Ashadha',
+    'Shravana',
+    'Dhanishta',
+    'Shatabhisha',
+    'Purva Bhadrapada',
+    'Uttara Bhadrapada',
+    'Revati',
+    "Don't know",
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final accent = Theme.of(context).colorScheme.primary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DropdownField(
+          label: l.nakshatraQuestion,
+          value: widget.formData.nakshatra,
+          items: _items,
+          onChanged: (v) {
+            setState(() => _autoSuggested = false);
+            widget.formData.nakshatra = v;
+            widget.onChanged();
+          },
+        ),
+        if (_autoSuggested) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, size: 13, color: accent.withValues(alpha: 0.7)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  'Auto-suggested from your date of birth — tap to change.',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: 11,
+                    color: accent.withValues(alpha: 0.8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 String _sectionTitle(StepDetailsOnlySection section, AppLocalizations l) {
   switch (section) {
     case StepDetailsOnlySection.religion:
       return l.backgroundTitle;
     case StepDetailsOnlySection.lifestyle:
-      return 'Lifestyle & habits';
+      return l.lifestyleAndHabitsLabel;
     case StepDetailsOnlySection.family:
       return l.profileBuilderFamily;
     case StepDetailsOnlySection.horoscope:
@@ -2341,20 +2714,60 @@ String _sectionTitle(StepDetailsOnlySection section, AppLocalizations l) {
   }
 }
 
-String _sectionSubtitle(StepDetailsOnlySection section) {
+String _sectionSubtitle(StepDetailsOnlySection section, AppLocalizations l) {
   switch (section) {
     case StepDetailsOnlySection.religion:
-      return 'Update your religion and community.';
+      return l.religionCommunityEditHint;
     case StepDetailsOnlySection.lifestyle:
-      return 'Diet, drinking, smoking and more.';
+      return l.lifestyleEditHint;
     case StepDetailsOnlySection.family:
-      return 'Update your family details.';
+      return l.familyEditHint;
     case StepDetailsOnlySection.horoscope:
-      return 'Update your horoscope details.';
+      return l.horoscopeEditHint;
   }
 }
 
 // ── Shared building blocks ──────────────────────────────────────────────
+
+// ── Intent-field helpers ─────────────────────────────────────────────────
+
+String? _readyInMonthsLabel(String? value) {
+  return switch (value) {
+    '3_6' => '3–6 months',
+    '6_12' => '6–12 months',
+    '12_24' => '1–2 years',
+    'exploring' => 'Still exploring',
+    _ => null,
+  };
+}
+
+String? _readyInMonthsValue(String? label) {
+  return switch (label) {
+    '3–6 months' => '3_6',
+    '6–12 months' => '6_12',
+    '1–2 years' => '12_24',
+    'Still exploring' => 'exploring',
+    _ => null,
+  };
+}
+
+String? _familyInvolvementLabel(String? value) {
+  return switch (value) {
+    'self_managed' => 'Self-managed',
+    'family_assisted' => 'Family-assisted',
+    'joint_decision' => 'Joint decision',
+    _ => null,
+  };
+}
+
+String? _familyInvolvementValue(String? label) {
+  return switch (label) {
+    'Self-managed' => 'self_managed',
+    'Family-assisted' => 'family_assisted',
+    'Joint decision' => 'joint_decision',
+    _ => null,
+  };
+}
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.label});
@@ -2447,8 +2860,9 @@ class _TimeOfBirthField extends StatelessWidget {
       final pm = (m.group(3) ?? '').toUpperCase() == 'PM';
       if (pm && h < 12) h += 12;
       if (!pm && h == 12) h = 0;
-      if (h >= 0 && h <= 23 && min >= 0 && min <= 59)
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
         return TimeOfDay(hour: h, minute: min);
+      }
     }
     // Try "11:30" (24h or 12h)
     final simple = RegExp(r'^(\d{1,2}):(\d{2})$');
@@ -2456,8 +2870,9 @@ class _TimeOfBirthField extends StatelessWidget {
     if (m2 != null) {
       var h = int.tryParse(m2.group(1) ?? '') ?? 0;
       final min = int.tryParse(m2.group(2) ?? '') ?? 0;
-      if (h >= 0 && h <= 23 && min >= 0 && min <= 59)
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
         return TimeOfDay(hour: h, minute: min);
+      }
     }
     return null;
   }
@@ -2742,11 +3157,17 @@ class _MultilineField extends StatefulWidget {
     required this.value,
     required this.hint,
     required this.onChanged,
+    this.maxLength,
+    this.minRecommended,
   });
 
   final String value;
   final String hint;
   final ValueChanged<String> onChanged;
+  /// When set, shows `current / max` and optional minimum guidance below the field.
+  final int? maxLength;
+  /// Soft minimum for UX (field may still be left empty when optional).
+  final int? minRecommended;
 
   @override
   State<_MultilineField> createState() => _MultilineFieldState();
@@ -2755,15 +3176,25 @@ class _MultilineField extends StatefulWidget {
 class _MultilineFieldState extends State<_MultilineField> {
   late final TextEditingController _ctrl;
 
+  void _onTextChanged() => setState(() {});
+
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(text: widget.value);
+    if (widget.maxLength != null) {
+      _ctrl.addListener(_onTextChanged);
+    }
   }
 
   @override
   void didUpdateWidget(_MultilineField old) {
     super.didUpdateWidget(old);
+    if (old.maxLength == null && widget.maxLength != null) {
+      _ctrl.addListener(_onTextChanged);
+    } else if (old.maxLength != null && widget.maxLength == null) {
+      _ctrl.removeListener(_onTextChanged);
+    }
     if (old.value != widget.value && widget.value != _ctrl.text) {
       _ctrl.text = widget.value;
     }
@@ -2771,25 +3202,75 @@ class _MultilineFieldState extends State<_MultilineField> {
 
   @override
   void dispose() {
+    if (widget.maxLength != null) {
+      _ctrl.removeListener(_onTextChanged);
+    }
     _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: _ctrl,
-      maxLines: 4,
-      textInputAction: TextInputAction.newline,
-      keyboardType: TextInputType.multiline,
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.all(16),
-      ),
-      onChanged: widget.onChanged,
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
+    final onSurface = theme.colorScheme.onSurface;
+    final l = AppLocalizations.of(context)!;
+    final max = widget.maxLength;
+    final min = widget.minRecommended;
+    final len = _ctrl.text.length;
+    final belowMin = min != null && len > 0 && len < min;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _ctrl,
+          maxLines: 4,
+          maxLength: max,
+          maxLengthEnforcement: max != null
+              ? MaxLengthEnforcement.enforced
+              : MaxLengthEnforcement.none,
+          textInputAction: TextInputAction.newline,
+          keyboardType: TextInputType.multiline,
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainerHighest,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.all(16),
+            counterText: '',
+          ),
+          onChanged: widget.onChanged,
+        ),
+        if (max != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (min != null)
+                Expanded(
+                  child: Text(
+                    l.aboutMeMinRecommended(min),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: belowMin
+                          ? accent.withValues(alpha: 0.95)
+                          : onSurface.withValues(alpha: 0.45),
+                      fontWeight: belowMin ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              Text(
+                l.aboutMeCharCount(len, max),
+                style: AppTypography.bodySmall.copyWith(
+                  color: onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

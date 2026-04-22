@@ -1,3 +1,10 @@
+/// A single selectable option with a live user count from the backend.
+class FilterOption {
+  const FilterOption({required this.value, required this.count});
+  final String value;
+  final int count;
+}
+
 /// Options and defaults for Explore tab filters (GET /discovery/filter-options).
 class FilterOptions {
   const FilterOptions({
@@ -8,6 +15,7 @@ class FilterOptions {
     this.height,
     this.diet,
     this.maritalStatus,
+    this.motherTongue,
   });
 
   final FilterAgeRange age;
@@ -17,6 +25,7 @@ class FilterOptions {
   final FilterHeightRange? height;
   final FilterDimension? diet;
   final FilterDimension? maritalStatus;
+  final FilterDimension? motherTongue;
 }
 
 class FilterAgeRange {
@@ -40,9 +49,12 @@ class FilterDimension {
     required this.strict,
     this.defaultSelected,
   });
-  final List<String> options;
+  final List<FilterOption> options;
   final bool strict;
   final String? defaultSelected;
+
+  /// Returns option values as plain strings (for backward-compatible code).
+  List<String> get optionValues => options.map((o) => o.value).toList();
 }
 
 class FilterHeightRange {

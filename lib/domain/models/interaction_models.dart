@@ -90,6 +90,18 @@ class InboxUnlockResult {
   final DateTime? resetsAt;
 }
 
+/// Result of unlocking one blurred liked-you profile after watching an ad.
+class LikedYouUnlockResult {
+  const LikedYouUnlockResult({
+    required this.interestId,
+    required this.profile,
+    required this.adsRemainingToday,
+  });
+  final String interestId;
+  final ProfileSummary profile;
+  final int adsRemainingToday;
+}
+
 /// Result of expressing interest or priority interest (Shubhmilan interactions API).
 class ExpressInterestResult {
   const ExpressInterestResult({

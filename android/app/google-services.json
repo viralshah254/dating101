@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "1067844155109",
-    "project_id": "saathi-2644b",
-    "storage_bucket": "saathi-2644b.firebasestorage.app"
+    "project_number": "450608436873",
+    "project_id": "shubhmilan-app",
+    "storage_bucket": "shubhmilan-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1067844155109:android:1746f538ac45add7fa060c",
+        "mobilesdk_app_id": "1:450608436873:android:1df30374446f22712e1858",
         "android_client_info": {
-          "package_name": "com.dvtechventures.saathi"
+          "package_name": "com.dvtechventures.shubhmilan"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAir75Ia4KBUKRXpt_kvkPWemydHRbIyBw"
+          "current_key": "AIzaSyBr7zS0DgVIDVNTQIVMyiYbJjDFB3yvvJc"
         }
       ],
       "services": {

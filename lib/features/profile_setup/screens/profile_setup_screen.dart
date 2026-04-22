@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/api/api_client.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/app_localizations.dart';
@@ -14,7 +16,36 @@ import '../widgets/step_identity.dart';
 import '../widgets/step_interests.dart';
 import '../widgets/step_photos.dart';
 import '../widgets/step_details.dart';
+import '../widgets/creating_profile_loading_overlay.dart';
 import '../widgets/step_preferences.dart';
+import '../widgets/step_about_you.dart';
+import '../widgets/step_lifestyle.dart';
+import '../widgets/step_creating_for.dart';
+import '../../profile_for/providers/creating_for_provider.dart';
+
+/// API / backend store `partnerPreferences.genderPreference` as `Male`/`Female` (and variants).
+/// The profile form uses `Man`/`Woman`/`Any` so chips and matching stay consistent.
+String? normalizeInterestedInFromApi(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final lower = raw.trim().toLowerCase();
+  if (lower == 'female' ||
+      lower == 'woman' ||
+      lower == 'bride' ||
+      lower == 'girl') {
+    return 'Woman';
+  }
+  if (lower == 'male' ||
+      lower == 'man' ||
+      lower == 'groom' ||
+      lower == 'boy') {
+    return 'Man';
+  }
+  if (lower == 'any' || lower == 'everyone') {
+    return 'Any';
+  }
+  if (raw == 'Woman' || raw == 'Man' || raw == 'Any') return raw;
+  return raw;
+}
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({
@@ -42,6 +73,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   bool _isCompleting = false;
   bool _isLoading = true;
   int? _pendingInitialStep;
+  bool _selectedBothPrimaryTrack = false;
+  AppMode _bothPrimaryTrack = AppMode.dating;
+  int _lastLoggedStep = -1;
+
+  /// Background upload started as soon as the user leaves the photos step.
+  /// Awaited at save time so photos are already uploaded (or close to it).
+  Future<void>? _photoUploadTask;
 
   late List<_StepInfo> _steps;
   static final _locationService = AppLocationService.instance;
@@ -58,25 +96,62 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   /// If user has an existing profile, prefills the form for seamless edit / mode switch.
   Future<void> _ensureLocationAndProceed() async {
     if (!mounted) return;
-    final access = await _locationService.checkAccess();
-    if (access != LocationAccess.granted) {
-      if (!mounted) return;
-      context.go(
-        '/location-required?then=${Uri.encodeComponent('/profile-setup')}',
-      );
-      return;
-    }
     final repo = ref.read(profileRepositoryProvider);
     final existing = await repo.getMyProfile();
     if (existing != null && mounted) {
       _formData.fillFrom(existing);
+    }
+    // Pre-seed creatingFor from the sign-up flow (ProfileForScreen) so the
+    // in-wizard StepCreatingFor is skipped when already answered.
+    if (!widget.isEditing && mounted) {
+      final answered = ref.read(creatingForAnsweredProvider);
+      if (answered) {
+        _formData.creatingFor = ref.read(creatingForProvider);
+        final l = AppLocalizations.of(context)!;
+        _formData.applyGenderFromCreatingForRelationship(l);
+      }
     }
     if (mounted) {
       setState(() {
         _isLoading = false;
         _pendingInitialStep = widget.initialStep;
       });
+      _maybeSelectBothPrimaryTrack();
     }
+  }
+
+  Future<void> _maybeSelectBothPrimaryTrack() async {
+    final effectiveMode = ref.read(appModeProvider) ?? AppMode.dating;
+    final modePreference = ref.read(modePreferenceProvider).valueOrNull;
+    final signupPreference = modePreference ?? effectiveMode;
+    if (widget.isEditing || !signupPreference.isBoth || _selectedBothPrimaryTrack) {
+      return;
+    }
+    final l = AppLocalizations.of(context)!;
+    final chosen = await showDialog<AppMode>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.bothTrackDialogTitle),
+        content: Text(l.bothTrackDialogBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(AppMode.dating),
+            child: Text(l.modeDating),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(AppMode.matrimony),
+            child: Text(l.modeMatrimony),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    final primaryTrack = chosen ?? AppMode.dating;
+    await ref.read(appModeProvider.notifier).setCurrentView(primaryTrack);
+    setState(() {
+      _bothPrimaryTrack = primaryTrack;
+      _selectedBothPrimaryTrack = true;
+    });
   }
 
   @override
@@ -95,12 +170,51 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   Future<void> _next() async {
     FocusScope.of(context).unfocus();
     if (_currentStep < _steps.length - 1) {
+      final step = _steps[_currentStep];
+      AnalyticsService.instance.logOnboardingStepCompleted(
+        mode: (ref.read(modePreferenceProvider).valueOrNull ?? ref.read(appModeProvider) ?? AppMode.dating).name,
+        stepId: step.analyticsKey,
+        stepIndex: _currentStep + 1,
+        totalSteps: _steps.length,
+      );
+
+      // Kick off photo upload in the background as soon as the user leaves
+      // the photos step so it runs in parallel with the remaining steps.
+      if (step.analyticsKey == 'photos' &&
+          _photoUploadTask == null &&
+          _formData.photos.any((p) => !p.startsWith('http'))) {
+        debugPrint('[ProfileSetup] Starting background photo upload...');
+        _photoUploadTask = _doUploadPhotos();
+      }
+
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
       );
       setState(() => _currentStep++);
     } else {
+      if (!widget.isEditing && !_passesMinimumProfileQuality()) {
+        AnalyticsService.instance.logOnboardingQualityBlocked(
+          mode: (ref.read(modePreferenceProvider).valueOrNull ?? ref.read(appModeProvider) ?? AppMode.dating).name,
+          photoCount: _formData.photos.length,
+          interestsCount: _formData.selectedInterests.length,
+          bioLength: _formData.bio.trim().length,
+        );
+        final effectiveMode = ref.read(modePreferenceProvider).valueOrNull ??
+            ref.read(appModeProvider) ??
+            AppMode.dating;
+        final l10n = AppLocalizations.of(context)!;
+        final gateMsg = effectiveMode.isMatrimony
+            ? l10n.qualityGateMatrimony
+            : l10n.qualityGateDating;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(gateMsg),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       setState(() => _isCompleting = true);
 
       if (widget.isEditing) {
@@ -158,18 +272,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
 
       try {
-        await _uploadPhotosIfNeeded();
         final repo = ref.read(profileRepositoryProvider);
-        final json = _formData.toFullJson();
-        debugPrint('[ProfileSetup] First-time setup payload: $json');
         final existing = await repo.getMyProfile();
-        await repo.saveProfileJson(json, create: existing == null);
-        debugPrint(
-          '[ProfileSetup] Profile saved ✓ (${existing == null ? 'create' : 'update'})',
-        );
+        if (existing == null) {
+          final json = _formData.toFullJson();
+          final jsonForCreate = Map<String, dynamic>.from(json)
+            ..['photoUrls'] = [];
+          debugPrint('[ProfileSetup] First-time setup: creating profile...');
+          await repo.saveProfileJson(jsonForCreate, create: true);
+          debugPrint('[ProfileSetup] Profile created ✓');
+        }
+        await _uploadPhotosIfNeeded();
+        final json = _formData.toFullJson();
+        await repo.saveProfileJson(json, create: false);
+        debugPrint('[ProfileSetup] Profile saved ✓');
       } catch (e) {
         debugPrint('[ProfileSetup] Error saving profile: $e');
         if (mounted) {
+          setState(() => _isCompleting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_profileSaveErrorMessage(e)),
@@ -177,11 +297,47 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             ),
           );
         }
+        return;
       }
 
       if (!mounted) return;
+      final activeMode =
+          ref.read(modePreferenceProvider).valueOrNull ??
+          ref.read(appModeProvider) ??
+          AppMode.dating;
+      AnalyticsService.instance.logOnboardingCompleted(
+        mode: activeMode.name,
+        totalSteps: _steps.length,
+        profileCompletionPercent: _profileCompletionPercent(),
+      );
       context.go('/');
     }
+  }
+
+  bool _passesMinimumProfileQuality() {
+    final mode = ref.read(modePreferenceProvider).valueOrNull ??
+        ref.read(appModeProvider) ??
+        AppMode.dating;
+
+    final hasPhotos = _formData.photos.length >= 2;
+    final hasInterests = _formData.selectedInterests.length >= 3;
+    final hasBio = _formData.bio.trim().length >= 20;
+
+    if (mode.isMatrimony) {
+      return hasPhotos && hasBio;
+    }
+    return hasPhotos && hasInterests && hasBio;
+  }
+
+  int _profileCompletionPercent() {
+    var score = 0;
+    if (ProfileFormData.isNameValid(_formData.name)) score += 20;
+    if (_formData.dateOfBirth != null) score += 10;
+    if (_formData.photos.length >= 2) score += 25;
+    if (_formData.selectedInterests.length >= 3) score += 20;
+    if (_formData.bio.trim().length >= 20) score += 15;
+    if (_formData.prefAgeMin != null && _formData.prefAgeMax != null) score += 10;
+    return score.clamp(0, 100);
   }
 
   void _skip() {
@@ -203,14 +359,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await _uploadPhotosIfNeeded();
       final repo = ref.read(profileRepositoryProvider);
-      final json = _formData.toFullJson();
-      debugPrint(
-        '[ProfileSetup] Save & continue (step ${_currentStep + 1})...',
-      );
       final existing = await repo.getMyProfile();
-      await repo.saveProfileJson(json, create: existing == null);
+      if (existing == null) {
+        final json = _formData.toFullJson();
+        final jsonForCreate = Map<String, dynamic>.from(json)
+          ..['photoUrls'] = [];
+        await repo.saveProfileJson(jsonForCreate, create: true);
+      }
+      await _uploadPhotosIfNeeded();
+      final json = _formData.toFullJson();
+      await repo.saveProfileJson(json, create: false);
       debugPrint('[ProfileSetup] Saved ✓');
     } catch (e) {
       debugPrint('[ProfileSetup] Save error: $e');
@@ -247,31 +406,50 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   /// User-friendly message for save/upload errors (e.g. photo upload credentials).
-  static String _profileSaveErrorMessage(Object e) {
+  String _profileSaveErrorMessage(Object e) {
+    final l = AppLocalizations.of(context);
     if (e is ApiException) {
       if (e.code == 'INTERNAL_ERROR' &&
           e.message.toLowerCase().contains('credentials')) {
-        return 'Profile saved. Photo upload is temporarily unavailable—please try adding photos later from profile settings.';
+        return l?.profileSavePhotoUnavailable ??
+            'Profile saved. Photo upload is temporarily unavailable.';
       }
-      return 'Failed to save: ${e.message}';
+      return l?.profileSaveFailed(e.message) ?? 'Failed to save: ${e.message}';
     }
-    return 'Failed to save: $e';
+    return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
   }
 
-  /// Upload any local-file photos to S3, replacing paths with CDN URLs.
-  Future<void> _uploadPhotosIfNeeded() async {
+  /// Core upload logic: sends local-path photos to S3 and replaces them with CDN URLs.
+  /// Does NOT touch [_photoUploadTask] — call this from the task itself or after awaiting it.
+  Future<void> _doUploadPhotos() async {
     final hasLocal = _formData.photos.any((p) => !p.startsWith('http'));
     if (!hasLocal) return;
 
-    debugPrint(
-      '[ProfileSetup] Uploading ${_formData.photos.where((p) => !p.startsWith("http")).length} photo(s) to S3...',
-    );
+    final localCount = _formData.photos.where((p) => !p.startsWith('http')).length;
+    debugPrint('[ProfileSetup] Uploading $localCount photo(s) to S3...');
     final uploadService = ref.read(photoUploadServiceProvider);
     final uploaded = await uploadService.uploadAll(_formData.photos);
     _formData.photos
       ..clear()
       ..addAll(uploaded);
     debugPrint('[ProfileSetup] Photos uploaded: ${_formData.photos}');
+  }
+
+  /// Upload any local-file photos to S3, replacing paths with CDN URLs.
+  ///
+  /// If a background upload was already kicked off when the user left the photos
+  /// step, we await that task first (it may already be complete, making this
+  /// nearly instant) then do a final pass for any photos added/swapped afterwards.
+  Future<void> _uploadPhotosIfNeeded() async {
+    if (_photoUploadTask != null) {
+      debugPrint('[ProfileSetup] Awaiting background photo upload...');
+      await _photoUploadTask;
+      _photoUploadTask = null;
+      debugPrint('[ProfileSetup] Background upload awaited.');
+    }
+    // Catch any remaining local paths (e.g. user went back and swapped a photo
+    // after the background task had already started).
+    await _doUploadPhotos();
   }
 
   void _back() {
@@ -315,7 +493,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
     }
 
-    _steps = _buildSteps(signupPreference, l);
+    final creatingForAnswered = ref.watch(creatingForAnsweredProvider);
+    _steps = _buildSteps(signupPreference, l, creatingForAnswered: creatingForAnswered);
     if (_steps.isNotEmpty && _currentStep >= _steps.length) {
       _currentStep = _steps.length - 1;
     }
@@ -332,10 +511,22 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (_currentStep >= _steps.length) _currentStep = _steps.length - 1;
     final progress = (_currentStep + 1) / _steps.length;
     final currentStep = _steps[_currentStep];
+    if (_lastLoggedStep != _currentStep) {
+      _lastLoggedStep = _currentStep;
+      AnalyticsService.instance.logOnboardingStepViewed(
+        mode: signupPreference.name,
+        stepId: currentStep.analyticsKey,
+        stepIndex: _currentStep + 1,
+        totalSteps: _steps.length,
+      );
+    }
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
@@ -343,6 +534,19 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.rosePrimary.withValues(alpha: 0.12),
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
           leading: IconButton(
             onPressed: _currentStep > 0 ? _back : () => context.pop(),
             icon: const Icon(Icons.arrow_back_ios_new, size: 20),
@@ -454,12 +658,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                             : (_canProceed ? _next : null),
                         child: widget.isEditing
                             ? (_isSaving
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 22,
                                       height: 22,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: Theme.of(context).colorScheme.onPrimary,
                                       ),
                                     )
                                   : Row(
@@ -485,15 +689,26 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                                         ],
                                       ],
                                     ))
-                            : Text(
-                                _currentStep < _steps.length - 1
-                                    ? l.next
-                                    : l.getStarted,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            : _isCompleting
+                                ? SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                    ),
+                                  )
+                                : Text(
+                                    _currentStep < _steps.length - 1
+                                        ? l.next
+                                        : l.getStarted,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                       ),
                     ),
                     if (!widget.isEditing &&
@@ -517,19 +732,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ),
         ),
       ),
+        ),
+        if (_isCompleting && !widget.isEditing)
+          const Positioned.fill(child: CreatingProfileLoadingOverlay()),
+      ],
     );
   }
 
-  List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l) {
+  List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l, {bool creatingForAnswered = false}) {
     void onChanged() => setState(() {});
     final editing = widget.isEditing;
     if (mode.isBoth) {
-      // Shared-first flow for users who selected "both", then mode-specific sections.
-      return [
+      final runDatingFirst = _bothPrimaryTrack.isDating;
+      final shared = [
         _StepInfo(
+          analyticsKey: 'identity',
           label: editing ? l.editProfile : l.profileStepIdentity,
           widget: StepIdentity(
-            mode: AppMode.matrimony,
+            mode: _bothPrimaryTrack,
             formData: _formData,
             onChanged: onChanged,
             isEditing: editing,
@@ -544,60 +764,38 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               (editing || d.confirmedAge18),
         ),
         _StepInfo(
-          label: l.interestsAndHobbies,
-          widget: StepInterests(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
+          analyticsKey: 'photos',
           label: l.profileStepPhotos,
           widget: StepPhotos(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepEducation}',
-          widget: StepEducation(formData: _formData, onChanged: onChanged),
+          analyticsKey: 'interests',
+          label: l.interestsAndHobbies,
+          widget: StepInterests(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+      ];
+      final datingSteps = [
+        _StepInfo(
+          analyticsKey: 'dating_about',
+          label: '${l.modeDating} · About you',
+          widget: StepAboutYou(formData: _formData, onChanged: onChanged),
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
+        ),
+        _StepInfo(
+          analyticsKey: 'dating_lifestyle',
+          label: '${l.modeDating} · Lifestyle',
+          widget: StepLifestyle(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepCareer}',
-          widget: StepCareer(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepDetails}',
-          widget: StepDetails(
-            mode: AppMode.matrimony,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
-          widget: StepPreferences(
-            mode: AppMode.matrimony,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: '${l.modeDating} · ${l.profileStepDetails}',
-          widget: StepDetails(
-            mode: AppMode.dating,
-            formData: _formData,
-            onChanged: onChanged,
-          ),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
+          analyticsKey: 'dating_preferences',
           label: '${l.modeDating} · ${l.profileStepPreferences}',
           widget: StepPreferences(
             mode: AppMode.dating,
@@ -608,10 +806,92 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           skippable: true,
         ),
       ];
+      final matrimonySteps = [
+        _StepInfo(
+          analyticsKey: 'matrimony_about',
+          label: '${l.modeMatrimony} · About you',
+          widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_background',
+          label: '${l.modeMatrimony} · Background',
+          widget: StepDetails(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.religion,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_intent',
+          label: '${l.modeMatrimony} · ${l.marriageIntentSection}',
+          widget: StepMarriageIntent(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_preferences',
+          label: '${l.modeMatrimony} · ${l.profileStepPreferences}',
+          widget: StepPreferences(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_education',
+          label: '${l.modeMatrimony} · ${l.profileStepEducation}',
+          widget: StepEducation(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_career',
+          label: '${l.modeMatrimony} · ${l.profileStepCareer}',
+          widget: StepCareer(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_lifestyle',
+          label: '${l.modeMatrimony} · Lifestyle & Horoscope',
+          widget: StepDetails(
+            mode: AppMode.matrimony,
+            formData: _formData,
+            onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.lifestyle,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+      ];
+      return [
+        ...shared,
+        ...(runDatingFirst ? datingSteps : matrimonySteps),
+      ];
     }
     if (mode.isMatrimony) {
+      // Matrimony flow: [Creating for (first time only)] → You → Photos → About you
+      //                 → Background → Education → Career → Lifestyle & Horoscope
+      //                 → Interests → Partner preferences
       return [
+        if (!editing && !creatingForAnswered)
+          _StepInfo(
+            analyticsKey: 'creating_for',
+            label: l.wizardStepCreatingFor,
+            widget: StepCreatingFor(formData: _formData, onChanged: onChanged),
+            hasMandatory: false,
+            skippable: true,
+          ),
         _StepInfo(
+          analyticsKey: 'identity',
           label: editing ? l.editProfile : l.profileStepIdentity,
           widget: StepIdentity(
             mode: mode,
@@ -629,40 +909,41 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               (editing || d.confirmedAge18),
         ),
         _StepInfo(
-          label: l.interestsAndHobbies,
-          widget: StepInterests(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
+          analyticsKey: 'photos',
           label: l.profileStepPhotos,
           widget: StepPhotos(formData: _formData, onChanged: onChanged),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
-          label: l.profileStepEducation,
-          widget: StepEducation(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
+          analyticsKey: 'matrimony_about',
+          label: 'About you',
+          widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
+          hasMandatory: true,
+          skippable: false,
+          isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
         ),
         _StepInfo(
-          label: l.profileStepCareer,
-          widget: StepCareer(formData: _formData, onChanged: onChanged),
-          hasMandatory: false,
-          skippable: true,
-        ),
-        _StepInfo(
-          label: l.profileStepDetails,
+          analyticsKey: 'matrimony_background',
+          label: 'Background',
           widget: StepDetails(
             mode: mode,
             formData: _formData,
             onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.religion,
           ),
           hasMandatory: false,
           skippable: true,
         ),
         _StepInfo(
+          analyticsKey: 'matrimony_intent',
+          label: l.marriageIntentSection,
+          widget: StepMarriageIntent(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_preferences',
           label: l.profileStepPreferences,
           widget: StepPreferences(
             mode: mode,
@@ -672,10 +953,45 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hasMandatory: false,
           skippable: true,
         ),
+        _StepInfo(
+          analyticsKey: 'matrimony_education',
+          label: l.profileStepEducation,
+          widget: StepEducation(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_career',
+          label: l.profileStepCareer,
+          widget: StepCareer(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'matrimony_lifestyle',
+          label: 'Lifestyle & Horoscope',
+          widget: StepDetails(
+            mode: mode,
+            formData: _formData,
+            onChanged: onChanged,
+            onlySection: StepDetailsOnlySection.lifestyle,
+          ),
+          hasMandatory: false,
+          skippable: true,
+        ),
+        _StepInfo(
+          analyticsKey: 'interests',
+          label: l.interestsAndHobbies,
+          widget: StepInterests(formData: _formData, onChanged: onChanged),
+          hasMandatory: false,
+          skippable: true,
+        ),
       ];
     }
+    // Dating-only flow: You → Photos → About you → Lifestyle → Interests → Looking for
     return [
       _StepInfo(
+        analyticsKey: 'identity',
         label: editing ? l.editProfile : l.profileStepIdentity,
         widget: StepIdentity(
           mode: mode,
@@ -693,28 +1009,36 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             (editing || d.confirmedAge18),
       ),
       _StepInfo(
-        label: l.interestsAndHobbies,
-        widget: StepInterests(formData: _formData, onChanged: onChanged),
-        hasMandatory: false,
-        skippable: true,
-      ),
-      _StepInfo(
+        analyticsKey: 'photos',
         label: l.profileStepPhotos,
         widget: StepPhotos(formData: _formData, onChanged: onChanged),
         hasMandatory: false,
         skippable: true,
       ),
       _StepInfo(
-        label: l.profileStepDetails,
-        widget: StepDetails(
-          mode: mode,
-          formData: _formData,
-          onChanged: onChanged,
-        ),
+        analyticsKey: 'dating_about',
+        label: 'About you',
+        widget: StepAboutYou(formData: _formData, onChanged: onChanged),
+        hasMandatory: true,
+        skippable: false,
+        isMandatorySatisfied: (d) => d.bio.trim().length >= 20,
+      ),
+      _StepInfo(
+        analyticsKey: 'dating_lifestyle',
+        label: 'Lifestyle',
+        widget: StepLifestyle(formData: _formData, onChanged: onChanged),
         hasMandatory: false,
         skippable: true,
       ),
       _StepInfo(
+        analyticsKey: 'interests',
+        label: l.interestsAndHobbies,
+        widget: StepInterests(formData: _formData, onChanged: onChanged),
+        hasMandatory: false,
+        skippable: true,
+      ),
+      _StepInfo(
+        analyticsKey: 'dating_preferences',
         label: l.profileStepPreferences,
         widget: StepPreferences(
           mode: mode,
@@ -730,6 +1054,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
 class _StepInfo {
   const _StepInfo({
+    required this.analyticsKey,
     required this.label,
     required this.widget,
     this.hasMandatory = false,
@@ -737,6 +1062,7 @@ class _StepInfo {
     bool Function(ProfileFormData)? isMandatorySatisfied,
   }) : _isMandatorySatisfied = isMandatorySatisfied;
 
+  final String analyticsKey;
   final String label;
   final Widget widget;
   final bool hasMandatory;
@@ -783,7 +1109,7 @@ class ProfileFormData {
   String name = '';
   String? gender;
   DateTime? dateOfBirth;
-  bool confirmedAge18 = false;
+  bool confirmedAge18 = true; // date picker enforces 18+ dates; pre-tick for better UX
   String location = '';
   String hometown = '';
 
@@ -862,6 +1188,16 @@ class ProfileFormData {
   String? exercise;
   String? pets;
 
+  // Intent-first matrimony fields
+  /// Marriage readiness: "3_6" | "6_12" | "12_24" | "exploring"
+  String? readyInMonths;
+  /// Family involvement: "self_managed" | "family_assisted" | "joint_decision"
+  String? familyInvolvement;
+  /// Relocation: "same_city" | "same_country" | "flexible" | "abroad_ok"
+  String? relocationWillingness;
+  /// Non-negotiable deal-breakers
+  List<String> dealBreakers = [];
+
   // Dating extras
   String? datingIntent;
   String? interestedIn;
@@ -869,6 +1205,10 @@ class ProfileFormData {
   // Bio / prompt
   String bio = '';
   String promptAnswer = '';
+
+  /// Matrimony "quick prompts" — short contextual answers shown on the profile.
+  /// Keys: 'myFamily', 'myValues', 'funFact'
+  Map<String, String>? matrimonyPrompts;
 
   // Photos (local file paths; first is profile pic)
   List<String> photos = [];
@@ -881,6 +1221,7 @@ class ProfileFormData {
   int? prefAgeMax;
   int? prefHeightMinCm;
   int? prefHeightMaxCm;
+  int? prefDistanceMaxKm;
   List<String> preferredBodyTypes = [];
   bool prefBodyTypeStrict = false;
   String? prefReligion;
@@ -910,6 +1251,32 @@ class ProfileFormData {
 
   /// Preferred countries (multiple).
   List<String> preferredCountries = [];
+
+  /// When [creatingFor] is son, daughter, brother, or sister, the subject's gender
+  /// (and default matrimony "looking for") are implied. Used by identity chips and
+  /// after pre-seeding from [ProfileForScreen].
+  void applyGenderFromCreatingForRelationship(AppLocalizations l) {
+    switch (creatingFor) {
+      case 'son':
+      case 'brother':
+        gender = l.genderMan;
+        interestedIn = 'Woman';
+        familyInvolvement = 'family_assisted';
+        return;
+      case 'daughter':
+      case 'sister':
+        gender = l.genderWoman;
+        interestedIn = 'Man';
+        familyInvolvement = 'family_assisted';
+        return;
+      case 'relative':
+      case 'friend':
+        familyInvolvement = 'family_assisted';
+        return;
+      default:
+        return;
+    }
+  }
 
   /// Prefill from existing profile so edit / mode switch is seamless. Shared and mode-specific fields are mapped.
   void fillFrom(UserProfile? p) {
@@ -967,6 +1334,16 @@ class ProfileFormData {
       drinking = mat.drinking;
       smoking = mat.smoking;
       exercise = mat.exercise;
+      pets = mat.pets;
+      disability = mat.disability;
+      workLocation = mat.workLocation;
+      settledAbroad = mat.settledAbroad;
+      willingToRelocate = mat.willingToRelocate;
+      readyInMonths = mat.readyInMonths;
+      familyInvolvement = mat.familyInvolvement;
+      relocationWillingness = mat.relocationWillingness;
+      dealBreakers = List<String>.from(mat.dealBreakers);
+      aboutCareer = mat.aboutCareer;
       aboutEducation = mat.aboutEducation;
       final fam = mat.familyDetails;
       if (fam != null) {
@@ -1029,11 +1406,12 @@ class ProfileFormData {
 
     final prefs = p.partnerPreferences;
     if (prefs != null) {
-      interestedIn = prefs.genderPreference;
+      interestedIn = normalizeInterestedInFromApi(prefs.genderPreference);
       prefAgeMin = prefs.ageMin;
       prefAgeMax = prefs.ageMax;
       prefHeightMinCm = prefs.heightMinCm;
       prefHeightMaxCm = prefs.heightMaxCm;
+      prefDistanceMaxKm = prefs.distanceMaxKm?.round();
       if (prefs.preferredBodyTypes != null &&
           prefs.preferredBodyTypes!.isNotEmpty) {
         preferredBodyTypes = List<String>.from(prefs.preferredBodyTypes!);
@@ -1248,6 +1626,10 @@ class ProfileFormData {
     if (workLocation != null) mat['workLocation'] = workLocation;
     if (settledAbroad != null) mat['settledAbroad'] = settledAbroad;
     if (willingToRelocate != null) mat['willingToRelocate'] = willingToRelocate;
+    if (readyInMonths != null) mat['readyInMonths'] = readyInMonths;
+    if (familyInvolvement != null) mat['familyInvolvement'] = familyInvolvement;
+    if (relocationWillingness != null) mat['relocationWillingness'] = relocationWillingness;
+    if (dealBreakers.isNotEmpty) mat['dealBreakers'] = dealBreakers;
     if (income != null) mat['incomeRange'] = {'minLabel': income};
     if (diet != null) mat['diet'] = diet;
     if (drinking != null) mat['drinking'] = drinking;
@@ -1295,6 +1677,12 @@ class ProfileFormData {
       mat['aboutCareer'] = aboutCareer;
     }
 
+    // Matrimony prompts (myFamily, myValues, funFact)
+    final prompts = matrimonyPrompts;
+    if (prompts != null && prompts.values.any((v) => v.isNotEmpty)) {
+      mat['matrimonyPrompts'] = prompts;
+    }
+
     // Education entries — only include entries that have at least a degree
     final validEntries = educationEntries
         .map(
@@ -1335,6 +1723,7 @@ class ProfileFormData {
     if (prefAgeMax != null) pref['ageMax'] = prefAgeMax;
     if (prefHeightMinCm != null) pref['heightMinCm'] = prefHeightMinCm;
     if (prefHeightMaxCm != null) pref['heightMaxCm'] = prefHeightMaxCm;
+    if (prefDistanceMaxKm != null) pref['distanceMaxKm'] = prefDistanceMaxKm;
     if (preferredBodyTypes.isNotEmpty) {
       pref['preferredBodyTypes'] = preferredBodyTypes;
     }

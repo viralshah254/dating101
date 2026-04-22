@@ -1,13 +1,13 @@
-# Admin Panel Web Dashboard — Specification for Saathi (Dating & Matrimony)
+# Admin Panel Web Dashboard — Specification for Shubhmilan (Dating & Matrimony)
 
-This document is the **single source of truth for building the Saathi admin web dashboard**. It is intended to be fed to Cursor (or another builder) to implement a full-featured admin panel for managing the dating and matrimony platform.
+This document is the **single source of truth for building the Shubhmilan admin web dashboard**. It is intended to be fed to Cursor (or another builder) to implement a full-featured admin panel for managing the dating and matrimony platform.
 
 ---
 
 ## 1. Platform context
 
-- **Product:** Saathi — dating and matrimony app (modes: **dating**, **matrimony**).
-- **App:** Flutter (mobile); backend API at `https://api.saathi.app` (dev: `http://localhost:3000`).
+- **Product:** Shubhmilan — dating and matrimony app (modes: **dating**, **matrimony**).
+- **App:** Flutter (mobile); backend API at `https://api.shubhmilan.app` (dev: `http://localhost:3000`).
 - **Auth:** Phone OTP only; tokens: `accessToken`, `refreshToken`, `userId`.
 - **Key docs in this repo:**  
   `BACKEND_API_REFERENCE.md`, `BACKEND_SECURITY_BLOCK_REPORT.md`, `BACKEND_VERIFICATION.md`, `BACKEND_CONTACT_REQUESTS.md`, `BACKEND_CROSS_CUTTING.md`, `BACKEND_CHAT_INTEGRATION.md`, `BACKEND_MATCHES_AND_VISITORS.md`, `BACKEND_REQUESTS_SHORTLIST_FAMILY.md`.
@@ -214,7 +214,7 @@ Build the following sections (tabs or sidebar). Use the admin API above; if an e
 - **UI:** Tailwind CSS + a component library (e.g. shadcn/ui, DaisyUI, or MUI) for tables, forms, modals, and layout.
 - **State:** React Query or SWR for server state; minimal global state.
 - **Auth:** Admin login page; store admin JWT (httpOnly cookie or memory + refresh). Send `Authorization: Bearer <adminToken>` on every request to the backend.
-- **API base URL:** Same backend as the app (e.g. `https://api.saathi.app`); admin routes under `/admin/*`.
+- **API base URL:** Same backend as the app (e.g. `https://api.shubhmilan.app`); admin routes under `/admin/*`.
 - **Tables:** Server-side pagination and filters; use the query params defined in §3.
 
 ---
@@ -224,7 +224,7 @@ Build the following sections (tabs or sidebar). Use the admin API above; if an e
 - **Admin-only:** All `/admin/*` endpoints must require a valid admin token and reject non-admin users (403).
 - **RBAC (optional):** Roles such as `support` (view users, view reports), `moderator` (review reports, approve verifications, warn/suspend), `admin` (full access, payments, config). Enforce in backend and optionally hide UI actions by role.
 - **Audit:** Log admin actions (who, what, when) for reports, verifications, suspensions, and payment-related changes.
-- **No exposure of admin dashboard to app users;** use a separate subdomain (e.g. `admin.saathi.app`) and do not link from the mobile app.
+- **No exposure of admin dashboard to app users;** use a separate subdomain (e.g. `admin.shubhmilan.app`) and do not link from the mobile app.
 
 ---
 
@@ -268,7 +268,7 @@ Suggested layout for the admin dashboard repo (or a folder in the same monorepo)
 
 ```
 admin-dashboard/
-  .env.local          # NEXT_PUBLIC_API_URL=https://api.saathi.app, etc.
+  .env.local          # NEXT_PUBLIC_API_URL=https://api.shubhmilan.app, etc.
   package.json
   src/
     app/              # or pages/ for Next.js

@@ -56,7 +56,15 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Stream<List<ChatMessage>> watchMessages(String threadId) async* {
+  Future<ChatOlderMessagesPage> loadOlderChatMessages(
+    String threadId, {
+    required String viewerUserId,
+  }) async {
+    return const ChatOlderMessagesPage(messages: [], nextOlderCursor: null);
+  }
+
+  @override
+  Stream<List<ChatMessage>> watchMessages(String threadId, {String? viewerUserId}) async* {
     await Future.delayed(const Duration(milliseconds: 50));
     final list =
         _threads[threadId] ??
@@ -91,10 +99,12 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> sendMessage(
+  Future<ChatSendTransport> sendMessage(
     String threadId,
     String text, {
     String? adCompletionToken,
+    String? outgoingTempId,
+    bool forceHttp = false,
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
     final list = _threads[threadId] ?? [];
@@ -107,11 +117,18 @@ class FakeChatRepository implements ChatRepository {
       ),
     );
     _threads[threadId] = list;
+    return ChatSendTransport.http;
   }
 
   @override
   Future<void> markThreadRead(String threadId) async {
     await Future.delayed(const Duration(milliseconds: 20));
+  }
+
+  @override
+  Future<DateTime?> getPeerLastReadAt(String threadId) async {
+    await Future.delayed(const Duration(milliseconds: 20));
+    return DateTime.now().subtract(const Duration(minutes: 30));
   }
 
   @override

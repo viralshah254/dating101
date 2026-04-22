@@ -44,6 +44,11 @@ class FakeSubscriptionRepository implements SubscriptionRepository {
   Future<SubscriptionEntitlements> getEntitlements() async {
     await Future.delayed(const Duration(milliseconds: 50));
     return const SubscriptionEntitlements(
+      tier: SubscriptionTier.none,
+      gender: 'unknown',
+      canExpressInterest: true,
+      canShortlist: true,
+      canViewFullProfile: true,
       canSendMessage: false,
       canSeeWhoLikedYou: false,
       canSeeWhoShortlistedYou: false,

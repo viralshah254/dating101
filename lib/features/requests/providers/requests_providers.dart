@@ -38,6 +38,7 @@ final sentInteractionsProvider =
 
 /// Requests tab badge: sum of pending interests + contact + photo view + inbound message requests.
 /// If one of the count APIs fails (e.g. 500 from backend), we use 0 for that part so the badge and UI still work.
+/// Sub-requests are fired in parallel to avoid sequential latency.
 final receivedRequestsCountProvider = FutureProvider.autoDispose<int>((
   ref,
 ) async {
@@ -46,28 +47,20 @@ final receivedRequestsCountProvider = FutureProvider.autoDispose<int>((
   final contactRequestRepo = ref.watch(contactRequestRepositoryProvider);
   final photoViewRepo = ref.watch(photoViewRequestRepositoryProvider);
   final chatRepo = ref.watch(chatRepositoryProvider);
-  int interactionsCount = 0;
-  int contactRequestsCount = 0;
-  int photoViewCount = 0;
-  int messageRequestsCount = 0;
-  try {
-    interactionsCount = await interactionsRepo.getReceivedInteractionsCount(
-      status: 'pending',
-      mode: mode,
-    );
-  } catch (_) {}
-  try {
-    contactRequestsCount = await contactRequestRepo
-        .getReceivedContactRequestsCount();
-  } catch (_) {}
-  try {
-    photoViewCount = await photoViewRepo.getReceivedCount();
-  } catch (_) {}
-  try {
-    final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
-    messageRequestsCount = await chatRepo.getMessageRequestsCount(mode: modeStr);
-  } catch (_) {}
-  return interactionsCount + contactRequestsCount + photoViewCount + messageRequestsCount;
+  final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+
+  // Fire all four count requests in parallel; swallow individual failures so
+  // the badge still renders (just shows 0 for the failed portion).
+  int safe(Object? _) => 0;
+  final results = await Future.wait<int>([
+    interactionsRepo
+        .getReceivedInteractionsCount(status: 'pending', mode: mode)
+        .catchError(safe),
+    contactRequestRepo.getReceivedContactRequestsCount().catchError(safe),
+    photoViewRepo.getReceivedCount().catchError(safe),
+    chatRepo.getMessageRequestsCount(mode: modeStr).catchError(safe),
+  ]);
+  return results.fold<int>(0, (sum, c) => sum + c);
 });
 
 /// Pending received interests count — for "Received" tab label. Scoped to current mode.

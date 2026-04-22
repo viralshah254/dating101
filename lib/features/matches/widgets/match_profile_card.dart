@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/entitlements/entitlements.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/premium_badge.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/matrimony_extensions.dart';
@@ -58,7 +57,7 @@ class MatchProfileCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     final ent = ref.watch(entitlementsProvider);
 
     return GestureDetector(
@@ -142,14 +141,17 @@ class _PhotoHeader extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: profile.imageUrl != null
-                ? Image.network(
-                    profile.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _AvatarPlaceholder(profile: profile, accent: accent),
-                  )
-                : _AvatarPlaceholder(profile: profile, accent: accent),
+            child: Hero(
+              tag: 'profile_photo_${profile.id}',
+              child: profile.imageUrl != null
+                  ? Image.network(
+                      profile.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _AvatarPlaceholder(profile: profile, accent: accent),
+                    )
+                  : _AvatarPlaceholder(profile: profile, accent: accent),
+            ),
           ),
           // Gradient overlay at bottom for readability
           Positioned(
@@ -269,32 +271,17 @@ class _PhotoHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (profile.verified)
+          if (profile.verified || (profile.verificationScore ?? 0) >= 0.25)
             Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text(
-                      'Verified',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              top: 10,
+              left: 10,
+              child: _TrustBadge(profile: profile, accent: accent),
+            ),
+          if (profile.isNew)
+            Positioned(
+              top: 10,
+              right: 48,
+              child: _NewProfileBadge(),
             ),
           // Safety menu (3-dots) + optional photo count
           Positioned(
@@ -438,7 +425,9 @@ class _MatchBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = score >= 70
         ? accent
-        : (score >= 45 ? AppColors.saffron : AppColors.lightTextTertiary);
+        : (score >= 45
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -526,7 +515,7 @@ class _ManagedByChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = _label(context, role);
     if (label.isEmpty) return const SizedBox.shrink();
-    final accent = AppColors.indiaGreen;
+    final accent = Theme.of(context).colorScheme.secondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -552,6 +541,95 @@ class _ManagedByChip extends StatelessWidget {
             ),
             overflow: TextOverflow.ellipsis,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NewProfileBadge extends StatelessWidget {
+  const _NewProfileBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF97316),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: const Text(
+        'NEW',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+/// Trust badge for match profile cards — shows score tier and verification flags.
+class _TrustBadge extends StatelessWidget {
+  const _TrustBadge({required this.profile, required this.accent});
+  final ProfileSummary profile;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = profile.verificationScore ?? (profile.verified ? 0.5 : 0.0);
+    final Color badgeColor;
+    final String label;
+    if (score >= 0.8) {
+      badgeColor = const Color(0xFF00C853);
+      label = 'Fully Verified';
+    } else if (score >= 0.5) {
+      badgeColor = const Color(0xFF1565C0);
+      label = 'Verified';
+    } else {
+      badgeColor = const Color(0xFFF57C00);
+      label = '${(score * 100).round()}% verified';
+    }
+
+    final flags = <String>[];
+    if (profile.photoVerified) flags.add('📸');
+    if (profile.idVerified) flags.add('🪪');
+    if (profile.linkedInVerified) flags.add('💼');
+    if (profile.educationVerified) flags.add('🎓');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: badgeColor.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (flags.isNotEmpty) ...[
+            const SizedBox(width: 4),
+            Text(flags.join(' '), style: const TextStyle(fontSize: 9)),
+          ],
         ],
       ),
     );
@@ -599,7 +677,12 @@ class _ActionBar extends StatelessWidget {
     bool primaryEnabled = true;
     Color primaryColor = accent;
 
-    if (isPriorityInterested) {
+    if (messageUnlockedByMatch) {
+      primaryLabel = l.ctaSendMessage;
+      primaryIcon = Icons.chat_bubble_outline_rounded;
+      primaryOnTap = onMessage;
+      primaryColor = accent;
+    } else if (isPriorityInterested) {
       primaryLabel = l.prioritySent;
       primaryIcon = Icons.check_circle_rounded;
       primaryOnTap = null;
@@ -609,7 +692,7 @@ class _ActionBar extends StatelessWidget {
       primaryLabel = l.addPriority;
       primaryIcon = Icons.auto_awesome;
       primaryOnTap = onSuperLike;
-      primaryColor = AppColors.saffron;
+      primaryColor = Theme.of(context).colorScheme.primary;
     } else {
       primaryLabel = l.ctaSendInterest;
       primaryIcon = Icons.favorite_border_rounded;
@@ -667,7 +750,9 @@ class _PrimaryActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAccent = color == AppColors.indiaGreen || color == AppColors.saffron;
+    final primary = Theme.of(context).colorScheme.primary;
+    final secondary = Theme.of(context).colorScheme.secondary;
+    final isAccent = color == primary || color == secondary;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
@@ -746,7 +831,7 @@ class _CompactIconButton extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: AppColors.saffron,
+                      color: Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1),
                     ),

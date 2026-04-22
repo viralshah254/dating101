@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/brand_theme.dart';
 
-/// Week 13 — Loading skeleton components for lists and cards.
+/// Loading skeleton components for lists and cards.
 class LoadingSkeleton extends StatelessWidget {
   const LoadingSkeleton({
     super.key,
@@ -17,13 +17,11 @@ class LoadingSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark
-        ? AppColors.darkSurfaceVariant
-        : AppColors.lightSurfaceVariant;
-    final highlightColor = isDark
-        ? AppColors.darkSurfaceVariant.withValues(alpha: 0.6)
-        : AppColors.lightSurface.withValues(alpha: 0.8);
+    final brand = Theme.of(context).extension<BrandTheme>();
+    final baseColor = brand?.shimmerBase ??
+        Theme.of(context).colorScheme.surfaceContainerHighest;
+    final highlightColor = brand?.shimmerHighlight ??
+        Theme.of(context).colorScheme.surface;
 
     return Shimmer.fromColors(
       baseColor: baseColor,

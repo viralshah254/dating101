@@ -11,7 +11,9 @@ import 'core/ads/ad_service.dart';
 import 'core/mode/mode_provider.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/providers/repository_providers.dart';
+import 'data/api/api_client.dart';
 import 'data/api/token_storage.dart';
+import 'features/premium/services/paywall_trigger_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -40,6 +42,21 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final tokens = TokenStorage();
   await tokens.load();
+
+  // Record this app open for the day-streak paywall trigger.
+  await PaywallTriggerService.recordAppOpen();
+
+  // Proactively refresh the access token while the app is still initialising.
+  // This eliminates the "N requests × (401 + retry)" cold-start penalty: by the
+  // time the first screen fires its parallel API calls the token is already fresh.
+  if (tokens.isLoggedIn && !resolvedApiConfig.useFakeBackend) {
+    final warmup = ApiClient(
+      baseUrl: resolvedApiConfig.baseUrl,
+      tokenStorage: tokens,
+    );
+    await warmup.warmUpToken();
+  }
+
   runApp(
     ProviderScope(
       overrides: [

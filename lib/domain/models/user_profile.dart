@@ -49,6 +49,19 @@ class UserProfile with _$UserProfile {
     double? creationLng,
     DateTime? creationAt,
     String? creationAddress,
+
+    /// True when the profile is older than 3 days and not verified — hidden from Recommended feed.
+    @Default(false) bool hiddenFromRecommended,
+
+    /// UTC deadline by which the user must verify (accountCreatedAt + 3 days).
+    /// Null once the user is verified.
+    DateTime? verificationDeadlineAt,
+
+    /// "self" | "managed_pending" | "managed_active" — reflects whether a family member manages this profile.
+    @Default('self') String subjectStatus,
+
+    /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
+    String? familyMode,
   }) = _UserProfile;
 
   /// For discovery cards: display location (city or city, country).

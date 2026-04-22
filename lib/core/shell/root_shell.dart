@@ -1,19 +1,53 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../entitlements/entitlements.dart';
 import '../mode/app_mode.dart';
 import '../mode/mode_provider.dart';
+import '../feature_flags/feature_flags.dart';
 import '../providers/repository_providers.dart';
-import '../theme/app_typography.dart';
+import '../theme/app_tokens.dart';
+import '../theme/brand_theme.dart';
+import '../../data/repositories_api/api_profile_repository.dart';
 import '../../features/chat/providers/chat_providers.dart';
+import '../../features/premium/services/paywall_trigger_service.dart';
 import '../../features/requests/providers/requests_providers.dart';
 import '../../features/shortlist/providers/shortlist_providers.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Mode-aware root shell: 5 tabs with labels/icons for Dating or Matrimony.
-/// Dating: Discover, Map, Chats, Likes, Profile.
-/// Matrimony: Discover, Requests, Shortlist, Chats, Profile.
+/// Aggregated nav badge counts — one HTTP call replaces 4+ individual GETs.
+///
+/// Deferred by one microtask so the discovery feed can claim the first
+/// HTTP queue slots before badge-count requests compete on cold start.
+final navBadgesProvider =
+    FutureProvider<({int requests, int shortlist, int msgReq})>((ref) async {
+  // Yield so critical-path providers (recommendedPaginatedProvider, etc.)
+  // get a head-start in the HTTP queue.
+  await Future<void>.delayed(Duration.zero);
+
+  final mode = ref.read(appModeProvider) ?? AppMode.dating;
+  final modeStr = mode.isMatrimony ? 'matrimony' : 'dating';
+  final profileRepo = ref.read(profileRepositoryProvider);
+
+  // Use the batched endpoint when available (real API), fallback to individual
+  // providers for fake backend / older server versions.
+  if (profileRepo is ApiProfileRepository) {
+    return profileRepo.getNavCounts(mode: modeStr);
+  }
+
+  // Fake / legacy fallback: fan out in parallel (no sequential penalty).
+  final results = await Future.wait([
+    ref.read(receivedRequestsCountProvider.future).catchError((_) => 0),
+    ref.read(whoShortlistedMeCountProvider.future).catchError((_) => 0),
+    ref.read(messageRequestsCountProvider.future).catchError((_) => 0),
+  ]);
+  return (requests: results[0], shortlist: results[1], msgReq: results[2]);
+});
+
+/// Mode-aware root shell with premium frosted-glass bottom navigation.
 class RootShell extends ConsumerWidget {
   const RootShell({super.key, required this.navigationShell});
 
@@ -21,64 +55,74 @@ class RootShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Defer side effects so we don't modify provider state during build
-    Future.microtask(() {
-      ref.read(recordSecurityLocationProvider)();
-      ref.read(registerFcmTokenProvider);
-    });
+    Future.microtask(() => ref.read(recordSecurityLocationProvider)());
+    // Watch so after login [invalidateSessionScopedApiCaches] re-runs FCM registration.
+    ref.watch(registerFcmTokenProvider);
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
+    final flags = ref.watch(featureFlagsProvider);
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final items = _navItems(mode, l);
-    final requestsCount = ref.watch(receivedRequestsCountProvider).valueOrNull ?? 0;
-    final shortlistCount = ref.watch(whoShortlistedMeCountProvider).valueOrNull ?? 0;
-    final chatUnread = ref.watch(chatUnreadTotalProvider).valueOrNull ?? 0;
-    final notificationsUnread =
-        ref.watch(navNotificationsUnreadCountProvider).valueOrNull ?? 0;
+    final brand = theme.extension<BrandTheme>();
+    final items = _navItems(mode, flags, l);
+    ref.watch(chatRealtimeHubProvider);
+    final badgesAsync = ref.watch(navBadgesProvider).valueOrNull;
+    final requestsCount = badgesAsync?.requests ?? 0;
+    final shortlistCount = badgesAsync?.shortlist ?? 0;
+    final chatUnread = ref.watch(chatNavUnreadCountProvider);
+    final messageReqCount = badgesAsync?.msgReq ?? 0;
     final badges = _badgesForMode(
       mode,
+      flags,
       requestsCount,
       shortlistCount,
       chatUnread,
-      notificationsUnread,
+      messageReqCount,
     );
 
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(
-            top: BorderSide(
-              color: theme.colorScheme.outline.withValues(alpha: 0.35),
-              width: 1,
+      extendBody: true,
+      bottomNavigationBar: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: brand?.navBarSurface ?? theme.colorScheme.surface.withValues(alpha: 0.92),
+              border: Border(
+                top: BorderSide(
+                  color: brand?.navBarBorder ?? theme.colorScheme.outline.withValues(alpha: 0.2),
+                  width: 0.5,
+                ),
+              ),
             ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                for (int i = 0; i < items.length; i++)
-                  _NavItem(
-                    icon: items[i].icon,
-                    activeIcon: items[i].activeIcon,
-                    label: items[i].label,
-                    index: i,
-                    currentIndex: navigationShell.currentIndex,
-                    badgeCount: badges[i],
-                    onTap: () => _onTap(i),
-                  ),
-              ],
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    for (int i = 0; i < items.length; i++)
+                      _NavItem(
+                        icon: items[i].icon,
+                        activeIcon: items[i].activeIcon,
+                        label: items[i].label,
+                        index: i,
+                        currentIndex: navigationShell.currentIndex,
+                        badgeCount: badges[i],
+                        onTap: () {
+                          // Likes tab (index 3 in dating mode) — trigger paywall for free males
+                          if (mode == AppMode.dating && i == 3) {
+                            final ent = ref.read(entitlementsProvider);
+                            if (!ent.canSeeWhoLikedYou) {
+                              PaywallTriggerService.maybeShow(context, ref, PaywallReason.likesTab);
+                            }
+                          }
+                          _onTap(i);
+                        },
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -86,24 +130,22 @@ class RootShell extends ConsumerWidget {
     );
   }
 
-  /// Badge counts per tab index. [Requests, Shortlist, Chats, Notifications] map to mode indices.
   List<int> _badgesForMode(
     AppMode mode,
+    FeatureFlags flags,
     int requestsCount,
     int shortlistCount,
     int chatUnread,
-    int notificationsUnread,
+    int messageReqCount,
   ) {
+    // Unread in-app notifications are surfaced on Profile → Notifications, not on the tab icon.
     if (mode == AppMode.dating) {
-      return [0, 0, chatUnread, 0, notificationsUnread]; // Profile tab shows notification badge
+      return [0, 0, chatUnread + messageReqCount, 0, 0];
     }
-    return [
-      0,
-      requestsCount,
-      shortlistCount,
-      chatUnread,
-      notificationsUnread,
-    ]; // Requests=1, Shortlist=2, Chats=3, Profile=notifications
+    if (flags.mapInMatrimony) {
+      return [0, 0, shortlistCount, chatUnread + messageReqCount, 0];
+    }
+    return [0, requestsCount, shortlistCount, chatUnread + messageReqCount, 0];
   }
 
   void _onTap(int index) {
@@ -113,13 +155,26 @@ class RootShell extends ConsumerWidget {
     );
   }
 
-  List<_NavItemData> _navItems(AppMode mode, AppLocalizations l) {
+  List<_NavItemData> _navItems(
+    AppMode mode,
+    FeatureFlags flags,
+    AppLocalizations l,
+  ) {
     if (mode == AppMode.dating) {
       return [
         _NavItemData(Icons.explore_outlined, Icons.explore, l.navDiscover),
         _NavItemData(Icons.map_outlined, Icons.map, l.navMap),
         _NavItemData(Icons.chat_bubble_outline, Icons.chat_bubble, l.navChats),
         _NavItemData(Icons.favorite_border, Icons.favorite, l.navLikes),
+        _NavItemData(Icons.person_outline, Icons.person, l.navProfile),
+      ];
+    }
+    if (flags.mapInMatrimony) {
+      return [
+        _NavItemData(Icons.explore_outlined, Icons.explore, l.navDiscover),
+        _NavItemData(Icons.map_outlined, Icons.map, l.navMap),
+        _NavItemData(Icons.star_border_rounded, Icons.star_rounded, l.navShortlist),
+        _NavItemData(Icons.chat_bubble_outline, Icons.chat_bubble, l.navChats),
         _NavItemData(Icons.person_outline, Icons.person, l.navProfile),
       ];
     }
@@ -162,20 +217,23 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = index == currentIndex;
-    final accent = Theme.of(context).colorScheme.primary;
-    final color = isSelected
-        ? accent
-        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
+    final theme = Theme.of(context);
+    final brand = theme.extension<BrandTheme>();
+    final accent = theme.colorScheme.primary;
+    final muted = brand?.textMuted ?? theme.colorScheme.onSurface.withValues(alpha: 0.45);
+    final color = isSelected ? accent : muted;
     final showBadge = badgeCount > 0;
-    return InkWell(
+
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        duration: AppTokens.durationFast,
+        curve: AppTokens.curveDecelerate,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? accent.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          color: isSelected ? accent.withValues(alpha: 0.10) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppTokens.radius14),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -183,45 +241,51 @@ class _NavItem extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(isSelected ? activeIcon : icon, size: 26, color: color),
+                AnimatedSwitcher(
+                  duration: AppTokens.durationFast,
+                  child: Icon(
+                    isSelected ? activeIcon : icon,
+                    key: ValueKey(isSelected),
+                    size: 24,
+                    color: color,
+                  ),
+                ),
                 if (showBadge)
                   Positioned(
                     top: -5,
-                    right: -6,
+                    right: -8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error,
+                        color: brand?.rose ?? theme.colorScheme.error,
                         borderRadius: BorderRadius.circular(9),
-                        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
+                        border: Border.all(
+                          color: brand?.navBarSurface ?? theme.colorScheme.surface,
+                          width: 1.5,
+                        ),
                       ),
                       child: Text(
                         badgeCount > 99 ? '99+' : '$badgeCount',
-                        style: AppTypography.labelSmall.copyWith(
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w700,
+                          height: 1.15,
                         ),
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               label,
-              style: AppTypography.labelSmall.copyWith(
+              style: theme.textTheme.labelSmall?.copyWith(
                 color: color,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 11,
+                fontSize: 10.5,
               ),
             ),
           ],

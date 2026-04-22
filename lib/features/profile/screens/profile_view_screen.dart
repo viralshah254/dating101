@@ -1,13 +1,15 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/app_localizations.dart';
@@ -167,7 +169,9 @@ class _ProfileBody extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         // Header with photo + name
-        SliverToBoxAdapter(child: _buildHeader(context, cs, pct)),
+        SliverToBoxAdapter(
+          child: _buildHeader(context, cs, pct).fadeSlideIn(delay: 100.ms),
+        ),
         // Completeness card
         if (pct < 100)
           SliverToBoxAdapter(
@@ -175,27 +179,37 @@ class _ProfileBody extends StatelessWidget {
               pct: pct,
               missing: missing,
               onTap: () => _editSection(context, 'basic'),
-            ),
+            ).fadeSlideIn(delay: 200.ms),
           ),
-        // Sections — generous spacing, same padding as completeness card
+        // Sections — staggered scroll-reveal entrance
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              const SizedBox(height: 12),
-              _buildBasicDetailsSection(context),
-              if (mode.isMatrimony) _buildReligionSection(context),
-              _buildPhysicalSection(context),
-              if (mode.isMatrimony) _buildEducationCareerSection(context),
-              _buildLifestyleSection(context),
-              _buildInterestsSection(context),
-              if (mode.isMatrimony) _buildFamilySection(context),
-              if (mode.isMatrimony) _buildHoroscopeSection(context),
-              _buildAboutMeSection(context),
-              if (mode.isMatrimony) _buildPreferencesSection(context),
-              _buildPhotosSection(context),
-              const SizedBox(height: 48),
-            ]),
+            delegate: SliverChildListDelegate(() {
+              final sections = <Widget>[
+                _buildBasicDetailsSection(context),
+                if (mode.isMatrimony) _buildReligionSection(context),
+                _buildPhysicalSection(context),
+                if (mode.isMatrimony) _buildEducationCareerSection(context),
+                _buildLifestyleSection(context),
+                _buildInterestsSection(context),
+                if (mode.isMatrimony) _buildFamilySection(context),
+                if (mode.isMatrimony) _buildHoroscopeSection(context),
+                _buildAboutMeSection(context),
+                if (mode.isMatrimony) _buildPreferencesSection(context),
+                _buildPhotosSection(context),
+              ];
+              return [
+                const SizedBox(height: 12),
+                ...sections.asMap().entries.map(
+                  (e) => e.value
+                      .animate()
+                      .fadeIn(delay: AppMotion.stagger(e.key, stepMs: 70), duration: AppMotion.medium)
+                      .slideY(begin: 0.06, end: 0, curve: AppMotion.reveal),
+                ),
+                const SizedBox(height: 48),
+              ];
+            }()),
           ),
         ),
       ],
@@ -204,12 +218,13 @@ class _ProfileBody extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, ColorScheme cs, int pct) {
     final hasPhoto = profile.photoUrls.isNotEmpty;
-    final progressColor = pct >= 80 ? AppColors.indiaGreen : AppColors.saffron;
+    final progressColor =
+        pct >= 80 ? cs.secondary : cs.primary;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.splashPeach.withValues(alpha: 0.5), cs.surface],
+          colors: [cs.primary.withValues(alpha: 0.10), cs.surface],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           stops: const [0.0, 0.6],
@@ -280,17 +295,20 @@ class _ProfileBody extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: ClipOval(
-                      child: hasPhoto
-                          ? _buildImage(profile.photoUrls.first)
-                          : Container(
-                              color: AppColors.saffron.withValues(alpha: 0.12),
-                              child: Icon(
-                                Icons.person_rounded,
-                                size: 48,
-                                color: AppColors.saffron,
+                    child: Hero(
+                      tag: 'profile_photo_own',
+                      child: ClipOval(
+                        child: hasPhoto
+                            ? _buildImage(profile.photoUrls.first)
+                            : Container(
+                                color: cs.primary.withValues(alpha: 0.12),
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  size: 48,
+                                  color: cs.primary,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                 ],
@@ -343,6 +361,21 @@ class _ProfileBody extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            // Add Moment CTA
+            OutlinedButton.icon(
+              onPressed: () => _showAddMomentSheet(context),
+              icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+              label: const Text('Add Moment'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: cs.primary,
+                side: BorderSide(color: cs.primary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -350,17 +383,36 @@ class _ProfileBody extends StatelessWidget {
     );
   }
 
+  void _showAddMomentSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddMomentSheet(),
+    );
+  }
+
   // ── Per-section completion (0–100) ─────────────────────────────────
 
   int _sectionPctBasic() {
+    if (mode.isMatrimony) {
+      // Matrimony: all 6 identity fields count (including hometown, mother tongue, languages).
+      int filled = 0;
+      if (profile.gender != null) filled++;
+      if (profile.dateOfBirth != null) filled++;
+      if (profile.displayLocation.isNotEmpty) filled++;
+      if (profile.originCity != null) filled++;
+      if (profile.motherTongue != null) filled++;
+      if (profile.languagesSpoken.isNotEmpty) filled++;
+      return (filled * 100 / 6).round().clamp(0, 100);
+    }
+    // Dating: only fields actually shown/editable in the Basic Details screen.
     int filled = 0;
     if (profile.gender != null) filled++;
     if (profile.dateOfBirth != null) filled++;
     if (profile.displayLocation.isNotEmpty) filled++;
-    if (profile.originCity != null) filled++;
-    if (profile.motherTongue != null) filled++;
-    if (profile.languagesSpoken.isNotEmpty) filled++;
-    return (filled * 100 / 6).round().clamp(0, 100);
+    return (filled * 100 / 3).round().clamp(0, 100);
   }
 
   int _sectionPctReligion() {
@@ -572,8 +624,8 @@ class _ProfileBody extends StatelessWidget {
     if (p.photoUrls.isEmpty) missing.add('Photos');
     if (p.aboutMe.isEmpty) missing.add('About me');
     if (p.interests.isEmpty) missing.add('Interests');
-    if (p.motherTongue == null) missing.add('Mother tongue');
     if (p.currentCity == null) missing.add('Location');
+    if (mode.isMatrimony && p.motherTongue == null) missing.add('Mother tongue');
     if (mode.isMatrimony) {
       final mat = p.matrimonyExtensions;
       if (mat == null) {
@@ -621,7 +673,7 @@ class _SectionSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final accent = pct >= 100 ? AppColors.indiaGreen : AppColors.saffron;
+    final accent = pct >= 100 ? cs.secondary : cs.primary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
@@ -727,7 +779,7 @@ class _CompletenessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final progressColor = pct >= 80 ? AppColors.indiaGreen : AppColors.saffron;
+    final progressColor = pct >= 80 ? cs.secondary : cs.primary;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Material(
@@ -820,6 +872,133 @@ class _CompletenessCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Icon(Icons.arrow_forward_ios, size: 14, color: progressColor),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Simple bottom sheet for adding a new moment.
+class _AddMomentSheet extends StatefulWidget {
+  @override
+  State<_AddMomentSheet> createState() => _AddMomentSheetState();
+}
+
+class _AddMomentSheetState extends State<_AddMomentSheet> {
+  final _captionCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _captionCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surface.withValues(alpha: 0.95),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                  24, 16, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.outline.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Share a Moment',
+                    style: AppTypography.titleLarge
+                        .copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'One photo per day — your daily hello to potential connections.',
+                    style: AppTypography.bodySmall
+                        .copyWith(color: cs.onSurface.withValues(alpha: 0.55)),
+                  ),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Photo picker — connect image_picker here'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    ),
+                    child: Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_rounded,
+                              size: 40, color: cs.primary.withValues(alpha: 0.5)),
+                          const SizedBox(height: 8),
+                          Text('Tap to choose a photo',
+                              style: AppTypography.bodySmall.copyWith(
+                                  color: cs.onSurface.withValues(alpha: 0.5))),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _captionCtrl,
+                    maxLength: 60,
+                    decoration: InputDecoration(
+                      hintText: 'Add a caption (optional, 60 chars)…',
+                      filled: true,
+                      fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Moment shared!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Share Moment'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

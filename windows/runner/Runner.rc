@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.saathi" "\0"
-            VALUE "FileDescription", "saathi" "\0"
+            VALUE "CompanyName", "com.dvtechventures.shubhmilan" "\0"
+            VALUE "FileDescription", "Shubhmilan" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "saathi" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.saathi. All rights reserved." "\0"
-            VALUE "OriginalFilename", "saathi.exe" "\0"
-            VALUE "ProductName", "saathi" "\0"
+            VALUE "InternalName", "shubhmilan" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.dvtechventures.shubhmilan. All rights reserved." "\0"
+            VALUE "OriginalFilename", "shubhmilan.exe" "\0"
+            VALUE "ProductName", "Shubhmilan" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

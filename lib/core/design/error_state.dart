@@ -1,28 +1,60 @@
 import 'package:flutter/material.dart';
 
-import 'package:saathi/l10n/app_localizations.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
+import 'package:shubhmilan/l10n/app_localizations.dart';
+import '../../data/api/api_client.dart';
+import '../theme/app_tokens.dart';
 
-/// Standard error state with message and retry. Use for discovery, matches,
-/// requests, shortlist, chat when AsyncValue is error.
+/// Standard error state with message and retry. Reads all colors from theme.
+///
+/// Pass either [message] (pre-formatted string) or [error] (raw exception — automatically
+/// converted to a user-safe message for known [ApiException] codes).
 class ErrorState extends StatelessWidget {
   const ErrorState({
     super.key,
-    required this.message,
+    this.message,
+    this.error,
     required this.onRetry,
     this.retryLabel,
-  });
+  }) : assert(message != null || error != null, 'Provide message or error');
 
-  final String message;
+  final String? message;
+
+  /// Raw exception. If [ApiException], its code is translated to a user-safe string.
+  final Object? error;
   final VoidCallback onRetry;
   final String? retryLabel;
 
+  String _resolveMessage(BuildContext context) {
+    if (message != null && message!.isNotEmpty) return message!;
+    final l = AppLocalizations.of(context);
+    final fallback = l?.errorGeneric ?? 'Something went wrong. Please try again.';
+    if (error is ApiException) {
+      final e = error as ApiException;
+      switch (e.code) {
+        case 'RATE_LIMITED':
+          return 'Too many attempts. Please wait a moment and try again.';
+        case 'UNAUTHORIZED':
+        case 'INVALID_TOKEN':
+          return 'Your session has expired. Please sign in again.';
+        case 'PREMIUM_REQUIRED':
+          return 'This feature requires a premium subscription.';
+        case 'SERVICE_UNAVAILABLE':
+          return 'Service temporarily unavailable. Please try again shortly.';
+        case 'NOT_FOUND':
+          return 'This content is no longer available.';
+        case 'CONNECTION_REQUIRED':
+          return 'Send or accept an interest first to access this feature.';
+        default:
+          return e.message.isNotEmpty ? e.message : fallback;
+      }
+    }
+    return fallback;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).brightness == Brightness.dark
-        ? AppColors.darkAccent
-        : AppColors.lightAccent;
+    final theme = Theme.of(context);
+    final resolvedMessage = _resolveMessage(context);
 
     return Center(
       child: Padding(
@@ -32,32 +64,22 @@ class ErrorState extends StatelessWidget {
           children: [
             Icon(
               Icons.error_outline_rounded,
-              size: 48,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+              size: AppTokens.iconHero,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTokens.space20),
             Text(
-              message,
-              style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
+              resolvedMessage,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppTokens.space24),
             FilledButton(
               onPressed: onRetry,
-              style: FilledButton.styleFrom(
-                backgroundColor: accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                minimumSize: const Size(0, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
               child: Text(
                 retryLabel ?? AppLocalizations.of(context)?.retry ?? 'Retry',
-                style: AppTypography.labelLarge,
               ),
             ),
           ],

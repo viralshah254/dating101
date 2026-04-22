@@ -1,21 +1,4 @@
-/// Result of an OTP send attempt.
-sealed class SendOtpResult {
-  const SendOtpResult();
-}
-
-class SendOtpSuccess extends SendOtpResult {
-  const SendOtpSuccess({required this.verificationId, this.expiresInSeconds = 300});
-  final String verificationId;
-  final int expiresInSeconds;
-}
-
-class SendOtpFailure extends SendOtpResult {
-  const SendOtpFailure(this.message, {this.code});
-  final String message;
-  final String? code;
-}
-
-/// Result of OTP verification / sign-in.
+/// Phone + password sign-in / sign-up (no OTP in current product flow).
 sealed class AuthResult {
   const AuthResult();
 }
@@ -29,10 +12,9 @@ class AuthSuccess extends AuthResult {
   final String? userId;
 
   /// true = user has no profile yet → route to mode-select / signup flow
-  /// false = returning user → route to home
   final bool isNewUser;
 
-  /// true when backend applied a valid referral code and granted 30 days Premium (response field referralApplied).
+  /// Referral benefit applied on register.
   final bool referralApplied;
 }
 
@@ -42,31 +24,30 @@ class AuthFailure extends AuthResult {
   final String? code;
 }
 
-/// Auth: phone OTP sign-in, social sign-in, sign-out.
+/// Auth: phone + password, social sign-in, sign-out.
 abstract class AuthRepository {
-  /// Send OTP to phone. Returns verificationId on success.
-  Future<SendOtpResult> sendOtp({required String countryCode, required String phone});
-
-  /// Verify OTP code. Returns auth tokens + whether user is new or returning.
-  /// [referralCode] optional — when provided at sign-up, backend may grant 30 days Premium to the new user.
-  Future<AuthResult> verifyOtp({
-    required String verificationId,
-    required String code,
+  /// New account: POST /auth/register
+  Future<AuthResult> signUpWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
     String? referralCode,
   });
 
-  /// Sign in with Google.
+  /// Existing account: POST /auth/login (legacy OTP-only users: first password is saved, then login)
+  Future<AuthResult> signInWithPassword({
+    required String countryCode,
+    required String phone,
+    required String password,
+  });
+
   Future<AuthResult> signInWithGoogle();
 
-  /// Sign in with Apple.
   Future<AuthResult> signInWithApple();
 
-  /// Current user id (null = not logged in). Synchronous check.
   String? get currentUserId;
 
-  /// Stream of auth state changes.
   Stream<String?> get authStateChanges;
 
-  /// Sign out.
   Future<void> signOut();
 }

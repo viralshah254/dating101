@@ -58,6 +58,6 @@ abstract class ProfileRepository {
   /// Register FCM device token for push (POST /profile/me/fcm-token).
   Future<void> registerFcmToken(String fcmToken);
 
-  /// Remove FCM token on sign out (DELETE /profile/me/fcm-token). Optional; call before sign-out while still authenticated.
+  /// Reserved; API implementation is a no-op (tokens are not removed from the server).
   Future<void> deleteFcmToken();
 }
