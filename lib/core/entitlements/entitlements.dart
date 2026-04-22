@@ -65,9 +65,14 @@ class Entitlements {
 
   bool get isPremium => tier == SubscriptionTier.premium || tier.isAtLeastGold;
   bool get isSilver => tier.isAtLeastSilver;
+  /// True when the user is exactly on Silver (not Gold or above).
+  bool get isSilverOnly => tier.isAtLeastSilver && !tier.isAtLeastGold;
   bool get isGold => tier.isAtLeastGold;
   bool get isPlatinum => tier.isAtLeastPlatinum;
   bool get isFemale => gender == UserGender.female;
+
+  /// Silver+: can see who visited their profile.
+  bool get canViewVisitors => tier.isAtLeastSilver || isFemale;
 
   /// Gold+ users get LLM-powered AI profile review; free/silver get rule-based only.
   bool get hasAiReview => tier.isAtLeastGold;

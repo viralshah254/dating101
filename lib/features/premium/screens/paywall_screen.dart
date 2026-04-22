@@ -275,88 +275,69 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     // ── Tier-keyed feature copy (max 5 bullets, mode-aware) ──────────────────
     const maleMatrimony = {
       PaywallTier.silver: [
-        'Chat with up to 25 matches (no cold messaging)',
-        'See exactly who liked your profile',
+        'Send messages directly — no requests',
         'All photos visible — no blur, no ads',
+        'See who viewed your profile',
+        'Read receipts · Compatibility score',
         '25 daily express interests',
-        '1 priority interest per day',
       ],
       PaywallTier.gold: [
-        'Unlimited chats with all your matches',
+        'Everything in Silver',
+        'See who liked & shortlisted your profile',
         'Request contact details directly',
-        'See who shortlisted you · Travel mode',
-        'Priority placement in discovery',
-        'AI profile review · Read receipts',
-      ],
-      PaywallTier.platinum: [
-        'Everything in Gold',
-        'Daily profile boost (1 hr peak window)',
-        'SuperLike — appear at the top of their feed',
-        '10 priority interests per day',
+        'Travel mode · Priority in discovery',
+        'AI profile review · 10 priority interests/day',
       ],
     };
 
     const maleDating = {
       PaywallTier.silver: [
-        'Message all your mutual matches (up to 25 active)',
-        'See who liked you before you swipe',
+        'Send messages directly to your matches',
         'All photos visible instantly',
+        'See who viewed your profile',
+        'Read receipts · Compatibility insights',
         '25 daily likes',
-        '1 priority like per day',
       ],
       PaywallTier.gold: [
-        'Unlimited matches & messages',
-        'See everyone who liked you',
-        'Priority placement in the feed · Travel mode',
-        'Read receipts & AI-powered match insights',
-      ],
-      PaywallTier.platinum: [
-        'Everything in Gold',
-        'Daily profile boost',
-        'SuperLike — stand out immediately',
-        '10 priority likes per day',
+        'Everything in Silver',
+        'See everyone who liked your profile',
+        'Travel mode · Priority in the feed',
+        'AI-powered match insights',
+        '10 priority likes per day · Profile boost (add-on)',
       ],
     };
 
     const femaleMatrimony = {
       PaywallTier.silver: [
-        'No ads to view interest requests',
-        'Compatibility breakdown for every profile',
-        '1 priority interest per day',
+        'Unlimited messaging — no request needed',
+        'All photos visible — no blur',
+        'Read receipts · Compatibility score',
         '25 daily express interests',
+        'No ads to view interest requests',
       ],
       PaywallTier.gold: [
-        'Travel mode — explore other cities',
-        'Priority placement in discovery',
-        'AI profile review · Read receipts',
-        '5 priority interests per day',
-      ],
-      PaywallTier.platinum: [
-        'Everything in Gold',
-        'Daily profile boost (1 hr peak window)',
-        'SuperLike — stand out immediately',
-        '10 priority interests per day',
+        'Everything in Silver',
+        'See who liked your profile',
+        'Travel mode · Priority in discovery',
+        'AI profile review',
+        'Profile boost (add-on) · 10 priority interests/day',
       ],
     };
 
     const femaleDating = {
       PaywallTier.silver: [
-        'No ads to view match requests',
-        'Compatibility insights for every match',
-        '1 priority like per day',
+        'Unlimited messaging — no request needed',
+        'All photos visible — no blur',
+        'Read receipts · Compatibility insights',
         '25 daily likes',
+        'No ads to view match requests',
       ],
       PaywallTier.gold: [
-        'Travel mode — discover people in other cities',
-        'Priority placement in the feed',
-        'Read receipts & AI-powered match insights',
-        '5 priority likes per day',
-      ],
-      PaywallTier.platinum: [
-        'Everything in Gold',
-        'Daily profile boost',
-        'SuperLike — stand out immediately',
-        '10 priority likes per day',
+        'Everything in Silver',
+        'See who liked your profile',
+        'Travel mode · Priority in the feed',
+        'AI-powered match insights',
+        'Profile boost (add-on) · 10 priority likes/day',
       ],
     };
 
@@ -906,14 +887,12 @@ class _TierSelector extends StatelessWidget {
   };
 
   static const _tierBenefits = {
-    PaywallTier.silver: 'Chat · All photos · See who liked you',
-    PaywallTier.gold: 'Silver + Contact · Travel mode · AI review',
-    PaywallTier.platinum: 'Gold + Daily boost · SuperLike · 10 priority/day',
+    PaywallTier.silver: 'Messages · Photos · Visitors · Read receipts',
+    PaywallTier.gold: 'Silver + Who liked you · Travel · Priority · AI Review',
   };
 
   static const _tierBadge = {
-    PaywallTier.gold: 'Most Popular',
-    PaywallTier.platinum: 'Best Value',
+    PaywallTier.gold: 'Best Value',
   };
 
   @override
@@ -932,7 +911,7 @@ class _TierSelector extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Row(
-          children: PaywallTier.values.map((tier) {
+          children: [PaywallTier.silver, PaywallTier.gold].map((tier) {
             final isSelected = tier == selected;
             final color = _tierColors[tier]!;
             final badge = _tierBadge[tier];
