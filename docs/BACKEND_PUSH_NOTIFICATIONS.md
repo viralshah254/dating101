@@ -1,6 +1,6 @@
 # Shubhmilan Backend — Push Notifications (Firebase Cloud Messaging)
 
-**Last updated:** 2026-04-23  
+**Last updated:** 2026-04-24  
 **Purpose:** Reference document for the complete push notification contract between backend (`push.ts`) and Flutter client (`notification_service.dart`, `notification_deep_link.dart`).
 
 ---
@@ -56,6 +56,7 @@ Every push emits a `notification` block (title/body for the system tray) and a `
 | `threadMode` | string | `"dating"` or `"matrimony"` — controls which mode shell the chat opens in |
 | `messageRequestId` | string | Message request ID |
 | `verificationType` | string | `"id"` or `"education"` (verification pushes) |
+| `imageUrl` | string | *(optional)* HTTPS image for expanded notification (e.g. sender avatar); mirrored from backend rich push |
 
 ### Push reasons
 
@@ -68,9 +69,9 @@ Every push emits a `notification` block (title/body for the system tray) and a `
 | `interest_reminder` | Profile target | `interestReminderReceived` | `requests` | `profileId`, `interactionId` |
 | `interest_reminder_prompt` | Interest sender | `interestReminderPrompt` | `likes` | `interactionId`, `profileId` |
 | `mutual_match` | Both users | `mutualMatch` | `matches` | `otherUserId`, `threadId`?, `matchId`? |
-| `new_message` | Message recipient | `newMessage` | *(via threadId)* | `threadId`, `otherUserId`, `threadMode` |
-| `message_request` | Request recipient | `messageRequestReceived` | *(via threadId)* | `threadId`, `otherUserId`, `threadMode`, `messageRequestId` |
-| `message_request_accepted` | Request sender | `messageRequestAccepted` | *(via threadId)* | `threadId`, `otherUserId`, `threadMode` |
+| `new_message` | Message recipient | `newMessage` | `chat` (+ thread fields) | `threadId`, `otherUserId`, `threadMode`, `imageUrl`? |
+| `message_request` | Request recipient | `messageRequestReceived` | `chat` (+ thread fields) | `threadId`, `otherUserId`, `threadMode`, `messageRequestId`, `imageUrl`? |
+| `message_request_accepted` | Request sender | `messageRequestAccepted` | `chat` (+ thread fields) | `threadId`, `otherUserId`, `threadMode`, `imageUrl`? |
 | `message_request_declined` | Request sender | `messageRequestDeclined` | `requests` | — |
 | `profile_visited` | Profile owner | `profileVisited` | `visitors` | — |
 | `shortlisted_you` | Shortlisted user | `shortlistedYou` | `shortlist` | `profileId` |
@@ -214,7 +215,39 @@ Fires all push reasons sequentially with a 400 ms gap. Use this to test every no
 
 ---
 
-## 8. Related docs
+## 8. Rich notifications (emoji, image, CTA hints)
+
+- **Copy:** Titles and bodies use light emoji (e.g. 💬 new message, 💌 interest, ✨ match) and a short **“Tap to …”** line so the intent is obvious.
+- **Image:** When the sender has a profile photo (HTTPS or resolvable via CloudFront), FCM includes **`imageUrl`** for expanded Android notifications and `mutable-content` on iOS for optional rich display.
+- **Android foreground:** The app mirrors FCM with a **big-text** style and an **Open chat** notification action for `new_message`, `message_request`, and `message_request_accepted` (tap/action both deep-link using the same `data` payload).
+
+---
+
+## 9. Testing on iOS
+
+| Topic | Notes |
+|--------|--------|
+| **Simulator** | **Does not receive** remote APNs/FCM pushes. Use a **physical iPhone**. |
+| **Capabilities** | Xcode → **Signing & Capabilities**: enable **Push Notifications**; enable **Background Modes** → *Remote notifications* if you process data in background. |
+| **Firebase ↔ Apple** | Firebase Console → Project → **Cloud Messaging** → upload **APNs Authentication Key** (.p8) with Key ID and Team ID (recommended vs legacy certs). |
+| **Run** | `flutter run -d <your-device-id>`; accept the notification permission; confirm logs: `[FCM] Token registered with backend`. |
+| **Rich images** | iOS shows basic alert/sound by default. **Inline images** in the banner often need a **Notification Service Extension** to download the `imageUrl`; not required for tap-to-open chat. |
+
+---
+
+## 10. Production checklist
+
+| Item | Why |
+|------|-----|
+| `ALLOW_SIMPLE_PUSH_TEST=false` | Disables unauthenticated `/internal/dev/push-test*` on the live API. |
+| Firebase credentials on **senders** | Set `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_SERVICE_ACCOUNT_JSON` on every host that runs the Node API (e.g. EC2), not only your laptop. |
+| Same **DB** as tokens | Pushes use `FcmToken` rows; API and DB must match the environment users hit. |
+| **HTTPS** API URL | Point `ApiConfig.production` / app store builds at `https://…` when ready; update iOS **App Transport Security** if you drop HTTP. |
+| **Secrets** | Never commit `.env`; use host env or a secrets manager for JWT, DB, Firebase JSON. |
+
+---
+
+## 11. Related docs
 
 - [BACKEND_INTERACTIONS_AND_VISITORS.md](./BACKEND_INTERACTIONS_AND_VISITORS.md) — interactions, visits, matches, §9 notifications table.
 - [chat_endpoint.md](./chat_endpoint.md) — chat threads and messages (for `new_message` trigger).

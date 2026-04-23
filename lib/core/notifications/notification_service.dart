@@ -120,17 +120,34 @@ class FirebaseNotificationService extends NotificationService {
       final id = message.messageId?.hashCode.abs() ??
           DateTime.now().millisecondsSinceEpoch.remainder(1 << 30);
       final payload = jsonEncode(message.data);
+      final type = message.data['type']?.toString() ?? '';
+      final isChat = type == 'new_message' ||
+          type == 'message_request' ||
+          type == 'message_request_accepted';
+      final bodyText = n.body ?? '';
       await _localNotifications.show(
         id,
         n.title ?? 'Notification',
-        n.body ?? '',
-        const NotificationDetails(
+        bodyText,
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'high_importance_channel',
             'High importance notifications',
             channelDescription: 'Messages, matches, and alerts',
             importance: Importance.high,
             priority: Priority.high,
+            styleInformation: bodyText.length > 48
+                ? BigTextStyleInformation(bodyText)
+                : null,
+            actions: isChat
+                ? <AndroidNotificationAction>[
+                    AndroidNotificationAction(
+                      'open',
+                      'Open chat',
+                      showsUserInterface: true,
+                    ),
+                  ]
+                : null,
           ),
         ),
         payload: payload,

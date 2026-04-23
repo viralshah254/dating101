@@ -15,6 +15,9 @@ import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/datetime/app_time_format.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
+import '../../../core/notifications/notification_deep_link.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
@@ -859,6 +862,19 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: AppBar(
               backgroundColor: cs.surface.withValues(alpha: isDark ? 0.75 : 0.85),
+              automaticallyImplyLeading: false,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    context.pop();
+                  } else {
+                    final mode = ref.read(appModeProvider) ?? AppMode.dating;
+                    context.go(chatListShellPath(mode));
+                  }
+                },
+              ),
               titleSpacing: 0,
               elevation: 0,
               scrolledUnderElevation: 0,
