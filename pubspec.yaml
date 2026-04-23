@@ -108,6 +108,7 @@ dependencies:
   # on the classpath. See: flutter/issues around integration_test + release.
   integration_test:
     sdk: flutter
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

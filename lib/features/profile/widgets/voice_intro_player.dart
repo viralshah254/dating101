@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../core/theme/app_typography.dart';
 
@@ -16,7 +17,6 @@ class VoiceIntroBadge extends StatefulWidget {
   });
 
   final String url;
-  /// Called when the user taps play — caller is responsible for actual audio.
   final VoidCallback? onPlay;
 
   @override
@@ -30,6 +30,8 @@ class _VoiceIntroBadgeState extends State<VoiceIntroBadge>
   final _bars = List.generate(7, (_) => 0.3);
   final _rng = math.Random();
 
+  final AudioPlayer _player = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -37,11 +39,24 @@ class _VoiceIntroBadgeState extends State<VoiceIntroBadge>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     )..addListener(_updateBars);
+
+    // Pre-load the audio URL; ignore load errors gracefully
+    _player.setUrl(widget.url).catchError((_) => null);
+
+    // Stop waveform animation when playback ends naturally
+    _player.playerStateStream.listen((state) {
+      if (!mounted) return;
+      if (state.processingState == ProcessingState.completed) {
+        setState(() => _playing = false);
+        _pulseCtrl.stop();
+      }
+    });
   }
 
   @override
   void dispose() {
     _pulseCtrl.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -57,16 +72,15 @@ class _VoiceIntroBadgeState extends State<VoiceIntroBadge>
 
   void _toggle() {
     HapticFeedback.selectionClick();
-    setState(() => _playing = !_playing);
     if (_playing) {
+      _player.pause();
+      _pulseCtrl.stop();
+      setState(() => _playing = false);
+    } else {
+      _player.play();
       _pulseCtrl.repeat();
       widget.onPlay?.call();
-      // Simulate playback end after 30s
-      Future.delayed(const Duration(seconds: 30), () {
-        if (mounted && _playing) setState(() => _playing = false);
-      });
-    } else {
-      _pulseCtrl.stop();
+      setState(() => _playing = true);
     }
   }
 
@@ -149,6 +163,8 @@ class _VoiceIntroPlayerCardState extends State<VoiceIntroPlayerCard>
   final _bars = List.generate(20, (_) => 0.3);
   final _rng = math.Random();
 
+  final AudioPlayer _player = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -164,21 +180,37 @@ class _VoiceIntroPlayerCardState extends State<VoiceIntroPlayerCard>
           });
         }
       });
+
+    // Pre-load the audio URL; ignore load errors gracefully
+    _player.setUrl(widget.url).catchError((_) => null);
+
+    // Stop waveform animation when playback ends naturally
+    _player.playerStateStream.listen((state) {
+      if (!mounted) return;
+      if (state.processingState == ProcessingState.completed) {
+        setState(() => _playing = false);
+        _waveCtrl.stop();
+      }
+    });
   }
 
   @override
   void dispose() {
     _waveCtrl.dispose();
+    _player.dispose();
     super.dispose();
   }
 
   void _toggle() {
     HapticFeedback.selectionClick();
-    setState(() => _playing = !_playing);
     if (_playing) {
-      _waveCtrl.repeat();
-    } else {
+      _player.pause();
       _waveCtrl.stop();
+      setState(() => _playing = false);
+    } else {
+      _player.play();
+      _waveCtrl.repeat();
+      setState(() => _playing = true);
     }
   }
 

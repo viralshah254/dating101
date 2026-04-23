@@ -179,6 +179,7 @@ class ApiProfileRepository implements ProfileRepository {
       creationLng: null,
       creationAt: null,
       creationAddress: null,
+      modePreference: j['modePreference'] as String?,
     );
   }
 
@@ -297,6 +298,7 @@ class ApiProfileRepository implements ProfileRepository {
           : null,
       subjectStatus: (j['subjectStatus'] as String?) ?? 'self',
       familyMode: j['familyMode'] as String?,
+      modePreference: j['modePreference'] as String?,
     );
   }
 

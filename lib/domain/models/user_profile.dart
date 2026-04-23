@@ -62,6 +62,10 @@ class UserProfile with _$UserProfile {
 
     /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
     String? familyMode,
+
+    /// User's chosen mode at signup: "dating" | "matrimony" | "both".
+    /// Stored on the server so mode is restored correctly after logout / fresh install.
+    String? modePreference,
   }) = _UserProfile;
 
   /// For discovery cards: display location (city or city, country).

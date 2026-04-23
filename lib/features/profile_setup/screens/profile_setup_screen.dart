@@ -215,6 +215,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         );
         return;
       }
+      _syncModeToFormData();
       setState(() => _isCompleting = true);
 
       if (widget.isEditing) {
@@ -356,6 +357,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   /// Save current changes, then advance to the next step (or close on last step).
   Future<void> _saveAndContinue() async {
     if (_isSaving) return;
+    _syncModeToFormData();
     setState(() => _isSaving = true);
 
     try {
@@ -417,6 +419,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return l?.profileSaveFailed(e.message) ?? 'Failed to save: ${e.message}';
     }
     return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
+  }
+
+  /// Sync the locally-chosen mode preference into [_formData] so it is included
+  /// in every `toFullJson()` call that saves to the backend.
+  void _syncModeToFormData() {
+    final pref = ref.read(modePreferenceProvider).valueOrNull;
+    final effective = ref.read(appModeProvider);
+    final mode = pref ?? effective;
+    if (mode != null) {
+      _formData.modePreference = mode.name;
+    }
   }
 
   /// Core upload logic: sends local-path photos to S3 and replaces them with CDN URLs.
@@ -1198,6 +1211,11 @@ class ProfileFormData {
   /// Non-negotiable deal-breakers
   List<String> dealBreakers = [];
 
+  // Mode
+  /// User's chosen mode at signup: "dating" | "matrimony" | "both".
+  /// Sent to backend so discovery pools stay correct across devices.
+  String? modePreference;
+
   // Dating extras
   String? datingIntent;
   String? interestedIn;
@@ -1309,6 +1327,7 @@ class ProfileFormData {
     creationLng = p.creationLng;
     creationAt = p.creationAt;
     creationAddress = p.creationAddress;
+    if (p.modePreference != null) modePreference = p.modePreference;
 
     final mat = p.matrimonyExtensions;
     if (mat != null) {
@@ -1597,6 +1616,7 @@ class ProfileFormData {
       if (creationLng != null) 'creationLng': creationLng,
       if (creationAt != null) 'creationAt': creationAt!.toIso8601String(),
       if (creationAddress != null) 'creationAddress': creationAddress,
+      if (modePreference != null) 'modePreference': modePreference,
     };
 
     // ── Matrimony extensions ──

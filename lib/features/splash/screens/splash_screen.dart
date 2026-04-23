@@ -13,6 +13,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../auth/auth_post_sign_in.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -72,6 +73,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           debugPrint(
             '[Splash] Profile exists (${profile.name}), going to home',
           );
+          await syncModeFromProfile(profile, ref);
           destination = '/';
         } else {
           debugPrint('[Splash] No profile found, routing to profile setup');
@@ -88,6 +90,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               await ref.read(accountRepositoryProvider).reactivateAccount();
               if (!mounted) return;
               final profile = await profileRepo.getMyProfile();
+              if (profile != null) await syncModeFromProfile(profile, ref);
               destination = profile != null ? '/' : '/profile-for';
             } catch (_) {
               await authRepo.signOut();

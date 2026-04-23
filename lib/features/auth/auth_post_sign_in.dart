@@ -3,9 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/entitlements/entitlements.dart';
+import '../../core/mode/app_mode.dart';
+import '../../core/mode/mode_provider.dart';
 import '../../core/providers/repository_providers.dart';
 import '../../data/api/api_client.dart';
+import '../../domain/models/user_profile.dart';
 import '../../l10n/app_localizations.dart';
+
+/// Restores the locally-stored app mode from the server profile so that users
+/// land on the correct mode (dating/matrimony) after logout or a fresh install.
+Future<void> syncModeFromProfile(UserProfile profile, WidgetRef ref) async {
+  final serverPref = profile.modePreference;
+  if (serverPref == null) return;
+  final mode = AppMode.values.cast<AppMode?>().firstWhere(
+    (m) => m?.name == serverPref,
+    orElse: () => null,
+  );
+  if (mode == null) return;
+  final repo = ref.read(modeRepositoryProvider);
+  final localPref = await repo.getPreference();
+  if (localPref != mode) {
+    await ref.read(appModeProvider.notifier).setMode(mode);
+  }
+}
 
 /// Shows referral premium dialog, then routes after password sign-in / sign-up (same as OTP flow).
 Future<void> navigateAfterAuthSuccess(
@@ -28,6 +48,8 @@ Future<void> navigateAfterAuthSuccess(
     final profile = await ref.read(profileRepositoryProvider).getMyProfile();
     if (!context.mounted) return;
     if (profile != null) {
+      await syncModeFromProfile(profile, ref);
+      if (!context.mounted) return;
       context.go('/');
     } else {
       context.go('/profile-for');
@@ -42,6 +64,8 @@ Future<void> navigateAfterAuthSuccess(
           await ref.read(accountRepositoryProvider).reactivateAccount();
           if (!context.mounted) return;
           final profile = await ref.read(profileRepositoryProvider).getMyProfile();
+          if (!context.mounted) return;
+          if (profile != null) await syncModeFromProfile(profile, ref);
           if (!context.mounted) return;
           context.go(profile != null ? '/' : '/profile-for');
         } catch (err) {
