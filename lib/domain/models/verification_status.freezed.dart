@@ -25,7 +25,15 @@ mixin _$VerificationStatus {
   bool get educationVerified => throw _privateConstructorUsedError;
 
   /// 0.0 to 1.0; derived or stored
-  double get score => throw _privateConstructorUsedError;
+  double get score =>
+      throw _privateConstructorUsedError; // ID verification status string: none | pending | approved | rejected
+  String? get idVerificationStatus =>
+      throw _privateConstructorUsedError; // Rejection reason shown to user when idVerificationStatus == "rejected"
+  String? get idVerificationRejectionReason =>
+      throw _privateConstructorUsedError; // Education verification status string: none | pending | approved | rejected
+  String? get educationVerificationStatus =>
+      throw _privateConstructorUsedError; // Rejection reason shown to user when educationVerificationStatus == "rejected"
+  String? get educationRejectionReason => throw _privateConstructorUsedError;
 
   /// Create a copy of VerificationStatus
   /// with the given fields replaced by the non-null parameter values.
@@ -49,6 +57,10 @@ abstract class $VerificationStatusCopyWith<$Res> {
     bool linkedInVerified,
     bool educationVerified,
     double score,
+    String? idVerificationStatus,
+    String? idVerificationRejectionReason,
+    String? educationVerificationStatus,
+    String? educationRejectionReason,
   });
 }
 
@@ -74,6 +86,10 @@ class _$VerificationStatusCopyWithImpl<$Res, $Val extends VerificationStatus>
     Object? linkedInVerified = null,
     Object? educationVerified = null,
     Object? score = null,
+    Object? idVerificationStatus = freezed,
+    Object? idVerificationRejectionReason = freezed,
+    Object? educationVerificationStatus = freezed,
+    Object? educationRejectionReason = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -105,6 +121,23 @@ class _$VerificationStatusCopyWithImpl<$Res, $Val extends VerificationStatus>
                 ? _value.score
                 : score // ignore: cast_nullable_to_non_nullable
                       as double,
+            idVerificationStatus: freezed == idVerificationStatus
+                ? _value.idVerificationStatus
+                : idVerificationStatus // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            idVerificationRejectionReason:
+                freezed == idVerificationRejectionReason
+                ? _value.idVerificationRejectionReason
+                : idVerificationRejectionReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            educationVerificationStatus: freezed == educationVerificationStatus
+                ? _value.educationVerificationStatus
+                : educationVerificationStatus // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            educationRejectionReason: freezed == educationRejectionReason
+                ? _value.educationRejectionReason
+                : educationRejectionReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -128,6 +161,10 @@ abstract class _$$VerificationStatusImplCopyWith<$Res>
     bool linkedInVerified,
     bool educationVerified,
     double score,
+    String? idVerificationStatus,
+    String? idVerificationRejectionReason,
+    String? educationVerificationStatus,
+    String? educationRejectionReason,
   });
 }
 
@@ -152,6 +189,10 @@ class __$$VerificationStatusImplCopyWithImpl<$Res>
     Object? linkedInVerified = null,
     Object? educationVerified = null,
     Object? score = null,
+    Object? idVerificationStatus = freezed,
+    Object? idVerificationRejectionReason = freezed,
+    Object? educationVerificationStatus = freezed,
+    Object? educationRejectionReason = freezed,
   }) {
     return _then(
       _$VerificationStatusImpl(
@@ -183,6 +224,22 @@ class __$$VerificationStatusImplCopyWithImpl<$Res>
             ? _value.score
             : score // ignore: cast_nullable_to_non_nullable
                   as double,
+        idVerificationStatus: freezed == idVerificationStatus
+            ? _value.idVerificationStatus
+            : idVerificationStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        idVerificationRejectionReason: freezed == idVerificationRejectionReason
+            ? _value.idVerificationRejectionReason
+            : idVerificationRejectionReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        educationVerificationStatus: freezed == educationVerificationStatus
+            ? _value.educationVerificationStatus
+            : educationVerificationStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        educationRejectionReason: freezed == educationRejectionReason
+            ? _value.educationRejectionReason
+            : educationRejectionReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -199,6 +256,10 @@ class _$VerificationStatusImpl implements _VerificationStatus {
     this.linkedInVerified = false,
     this.educationVerified = false,
     this.score = 0.0,
+    this.idVerificationStatus,
+    this.idVerificationRejectionReason,
+    this.educationVerificationStatus,
+    this.educationRejectionReason,
   });
 
   @override
@@ -224,10 +285,22 @@ class _$VerificationStatusImpl implements _VerificationStatus {
   @override
   @JsonKey()
   final double score;
+  // ID verification status string: none | pending | approved | rejected
+  @override
+  final String? idVerificationStatus;
+  // Rejection reason shown to user when idVerificationStatus == "rejected"
+  @override
+  final String? idVerificationRejectionReason;
+  // Education verification status string: none | pending | approved | rejected
+  @override
+  final String? educationVerificationStatus;
+  // Rejection reason shown to user when educationVerificationStatus == "rejected"
+  @override
+  final String? educationRejectionReason;
 
   @override
   String toString() {
-    return 'VerificationStatus(photoVerified: $photoVerified, idVerified: $idVerified, emailVerified: $emailVerified, phoneVerified: $phoneVerified, linkedInVerified: $linkedInVerified, educationVerified: $educationVerified, score: $score)';
+    return 'VerificationStatus(photoVerified: $photoVerified, idVerified: $idVerified, emailVerified: $emailVerified, phoneVerified: $phoneVerified, linkedInVerified: $linkedInVerified, educationVerified: $educationVerified, score: $score, idVerificationStatus: $idVerificationStatus, idVerificationRejectionReason: $idVerificationRejectionReason, educationVerificationStatus: $educationVerificationStatus, educationRejectionReason: $educationRejectionReason)';
   }
 
   @override
@@ -247,7 +320,26 @@ class _$VerificationStatusImpl implements _VerificationStatus {
                 other.linkedInVerified == linkedInVerified) &&
             (identical(other.educationVerified, educationVerified) ||
                 other.educationVerified == educationVerified) &&
-            (identical(other.score, score) || other.score == score));
+            (identical(other.score, score) || other.score == score) &&
+            (identical(other.idVerificationStatus, idVerificationStatus) ||
+                other.idVerificationStatus == idVerificationStatus) &&
+            (identical(
+                  other.idVerificationRejectionReason,
+                  idVerificationRejectionReason,
+                ) ||
+                other.idVerificationRejectionReason ==
+                    idVerificationRejectionReason) &&
+            (identical(
+                  other.educationVerificationStatus,
+                  educationVerificationStatus,
+                ) ||
+                other.educationVerificationStatus ==
+                    educationVerificationStatus) &&
+            (identical(
+                  other.educationRejectionReason,
+                  educationRejectionReason,
+                ) ||
+                other.educationRejectionReason == educationRejectionReason));
   }
 
   @override
@@ -260,6 +352,10 @@ class _$VerificationStatusImpl implements _VerificationStatus {
     linkedInVerified,
     educationVerified,
     score,
+    idVerificationStatus,
+    idVerificationRejectionReason,
+    educationVerificationStatus,
+    educationRejectionReason,
   );
 
   /// Create a copy of VerificationStatus
@@ -283,6 +379,10 @@ abstract class _VerificationStatus implements VerificationStatus {
     final bool linkedInVerified,
     final bool educationVerified,
     final double score,
+    final String? idVerificationStatus,
+    final String? idVerificationRejectionReason,
+    final String? educationVerificationStatus,
+    final String? educationRejectionReason,
   }) = _$VerificationStatusImpl;
 
   @override
@@ -300,7 +400,15 @@ abstract class _VerificationStatus implements VerificationStatus {
 
   /// 0.0 to 1.0; derived or stored
   @override
-  double get score;
+  double get score; // ID verification status string: none | pending | approved | rejected
+  @override
+  String? get idVerificationStatus; // Rejection reason shown to user when idVerificationStatus == "rejected"
+  @override
+  String? get idVerificationRejectionReason; // Education verification status string: none | pending | approved | rejected
+  @override
+  String? get educationVerificationStatus; // Rejection reason shown to user when educationVerificationStatus == "rejected"
+  @override
+  String? get educationRejectionReason;
 
   /// Create a copy of VerificationStatus
   /// with the given fields replaced by the non-null parameter values.

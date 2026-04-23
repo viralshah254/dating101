@@ -48,61 +48,6 @@ class _StepPhotosState extends State<StepPhotos> {
     widget.onChanged();
   }
 
-  Future<void> _pickFromCamera() async {
-    final remaining = _maxPhotos - _photos.length;
-    if (remaining <= 0) return;
-
-    final picked = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-      maxWidth: 1200,
-      maxHeight: 1200,
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      _photos.add(picked.path);
-    });
-    widget.onChanged();
-  }
-
-  /// Show a bottom sheet so the user can pick gallery or camera.
-  void _showAddPhotoSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.photo_library_outlined),
-                  title: const Text('Choose from Gallery'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickPhotos();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.camera_alt_outlined),
-                  title: const Text('Take Photo'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickFromCamera();
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   /// Replace a single slot (same flow as add, but keeps order / main photo index).
   Future<void> _replacePhoto(int index) async {
     if (index < 0 || index >= _photos.length) return;
@@ -397,7 +342,7 @@ class _StepPhotosState extends State<StepPhotos> {
     final canAcceptDrop = _photos.isNotEmpty && i <= _photos.length;
 
     final content = GestureDetector(
-      onTap: showPlus ? _showAddPhotoSheet : null,
+      onTap: showPlus ? _pickPhotos : null,
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,

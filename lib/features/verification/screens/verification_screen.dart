@@ -37,6 +37,10 @@ class VerificationScreen extends ConsumerWidget {
           final l = AppLocalizations.of(context)!;
           final vs = profile?.verificationStatus ?? const VerificationStatus();
           final score = vs.score.clamp(0.0, 1.0);
+          final idRejected = vs.idVerificationStatus == 'rejected';
+          final eduRejected = vs.educationVerificationStatus == 'rejected';
+          final idPending = vs.idVerificationStatus == 'pending';
+          final eduPending = vs.educationVerificationStatus == 'pending';
           return RefreshIndicator(
             onRefresh: () async =>
                 ref.invalidate(_myProfileForVerificationProvider),
@@ -46,6 +50,29 @@ class VerificationScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ── ID rejection banner ───────────────────────────────────
+                  if (idRejected) ...[
+                    _RejectionBanner(
+                      title: 'ID Verification Not Approved',
+                      reason: vs.idVerificationRejectionReason ??
+                          'Your ID verification was not approved.',
+                      onResubmit: () async {
+                        await context.push('/photo-verification');
+                        ref.invalidate(_myProfileForVerificationProvider);
+                      },
+                    ).animate().fadeIn().slideY(begin: -0.05, end: 0),
+                    const SizedBox(height: 16),
+                  ],
+                  // ── Education rejection banner ────────────────────────────
+                  if (eduRejected) ...[
+                    _RejectionBanner(
+                      title: 'Education Verification Not Approved',
+                      reason: vs.educationRejectionReason ??
+                          'Your education verification was not approved.',
+                      onResubmit: () => _showEducationVerification(context, ref),
+                    ).animate().fadeIn().slideY(begin: -0.05, end: 0),
+                    const SizedBox(height: 16),
+                  ],
                   Text(
                     l.verifyPriority,
                     style: AppTypography.headlineMedium,
@@ -60,16 +87,25 @@ class VerificationScreen extends ConsumerWidget {
                     ),
                   ).animate().fadeIn(delay: 80.ms),
                   const SizedBox(height: 32),
-                  // ID + selfie are verified together via Persona's guided flow.
-                  // Both tiles navigate to /photo-verification (which runs Persona).
-                  // After the flow completes, both idVerified and photoVerified are set.
+                  // ID tile — shows pending/rejected status labels
                   _VerificationTile(
                     icon: Icons.badge_outlined,
                     title: AppLocalizations.of(context)!.idVerification,
-                    subtitle: 'Verify your government ID and selfie in one step.',
+                    subtitle: idPending
+                        ? 'Under review — we\'ll notify you shortly.'
+                        : idRejected
+                            ? 'Rejected — tap to re-submit.'
+                            : 'Take a selfie and upload your government ID.',
                     status: vs.idVerified
                         ? VerificationTileStatus.verified
-                        : VerificationTileStatus.pending,
+                        : idPending
+                            ? VerificationTileStatus.pending
+                            : VerificationTileStatus.pending,
+                    statusLabel: idPending
+                        ? 'Pending'
+                        : idRejected
+                            ? 'Rejected'
+                            : null,
                     onTap: vs.idVerified
                         ? null
                         : () async {
@@ -107,13 +143,23 @@ class VerificationScreen extends ConsumerWidget {
                     isComingSoon: !vs.linkedInVerified,
                   ).animate().fadeIn(delay: 200.ms),
                   const SizedBox(height: 12),
+                  // Education tile — shows pending/rejected status labels
                   _VerificationTile(
                     icon: Icons.school_outlined,
                     title: AppLocalizations.of(context)!.education,
-                    subtitle: AppLocalizations.of(context)!.educationSubtitle,
+                    subtitle: eduPending
+                        ? 'Under review — we\'ll notify you shortly.'
+                        : eduRejected
+                            ? 'Rejected — tap to re-submit your degree.'
+                            : AppLocalizations.of(context)!.educationSubtitle,
                     status: vs.educationVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
+                    statusLabel: eduPending
+                        ? 'Pending'
+                        : eduRejected
+                            ? 'Rejected'
+                            : null,
                     onTap: () => _showEducationVerification(context, ref),
                     accent: accent,
                   ).animate().fadeIn(delay: 240.ms),
@@ -291,6 +337,69 @@ class VerificationScreen extends ConsumerWidget {
 /// UI state for a single verification tile (not the domain VerificationStatus).
 enum VerificationTileStatus { pending, verified }
 
+// ── Rejection banner ──────────────────────────────────────────────────────────
+
+class _RejectionBanner extends StatelessWidget {
+  const _RejectionBanner({
+    required this.title,
+    required this.reason,
+    required this.onResubmit,
+  });
+  final String title;
+  final String reason;
+  final VoidCallback onResubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        border: Border.all(color: const Color(0xFFFECACA)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: const Color(0xFFDC2626),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            reason,
+            style: AppTypography.bodySmall.copyWith(
+              color: const Color(0xFF991B1B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onResubmit,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+            icon: const Icon(Icons.upload_outlined, size: 18),
+            label: const Text('Re-submit'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Verification tile ─────────────────────────────────────────────────────────
+
 class _VerificationTile extends StatelessWidget {
   const _VerificationTile({
     required this.icon,
@@ -300,6 +409,7 @@ class _VerificationTile extends StatelessWidget {
     required this.onTap,
     required this.accent,
     this.isComingSoon = false,
+    this.statusLabel,
   });
   final IconData icon;
   final String title;
@@ -308,18 +418,26 @@ class _VerificationTile extends StatelessWidget {
   final VoidCallback? onTap;
   final Color accent;
   final bool isComingSoon;
+  final String? statusLabel;
 
   @override
   Widget build(BuildContext context) {
+    final isRejected = statusLabel == 'Rejected';
+    final isPending = statusLabel == 'Pending';
     return Card(
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.15),
+            color: isRejected
+                ? const Color(0xFFFEE2E2)
+                : accent.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: accent),
+          child: Icon(
+            icon,
+            color: isRejected ? const Color(0xFFDC2626) : accent,
+          ),
         ),
         title: Text(title, style: AppTypography.titleMedium),
         subtitle: Text(
@@ -332,21 +450,44 @@ class _VerificationTile extends StatelessWidget {
         ),
         trailing: status == VerificationTileStatus.verified
             ? Icon(Icons.check_circle, color: accent)
-            : isComingSoon
+            : statusLabel != null
                 ? Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: isRejected
+                          ? const Color(0xFFFEE2E2)
+                          : isPending
+                              ? const Color(0xFFFEF3C7)
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Soon',
+                      statusLabel!,
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: isRejected
+                            ? const Color(0xFFDC2626)
+                            : isPending
+                                ? const Color(0xFFD97706)
+                                : null,
                       ),
                     ),
                   )
-                : const Icon(Icons.chevron_right),
+                : isComingSoon
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'Soon',
+                          style: AppTypography.labelSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );

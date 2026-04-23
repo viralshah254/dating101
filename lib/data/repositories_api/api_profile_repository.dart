@@ -311,6 +311,10 @@ class ApiProfileRepository implements ProfileRepository {
       linkedInVerified: j['linkedInVerified'] as bool? ?? false,
       educationVerified: j['educationVerified'] as bool? ?? false,
       score: (j['score'] as num?)?.toDouble() ?? 0.0,
+      idVerificationStatus: j['idVerificationStatus'] as String?,
+      idVerificationRejectionReason: j['idVerificationRejectionReason'] as String?,
+      educationVerificationStatus: j['educationVerificationStatus'] as String?,
+      educationRejectionReason: j['educationRejectionReason'] as String?,
     );
   }
 
