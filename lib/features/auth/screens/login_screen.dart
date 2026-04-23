@@ -113,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _confirmPasswordController.text == _passwordController.text;
 
   bool get _canContinue =>
-      _ageConfirmed &&
+      (!_isSignUp || _ageConfirmed) &&
       _normalizedPhone.length >= 7 &&
       _passwordLongEnough &&
       !_isSending &&
@@ -432,36 +432,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       _buildErrorWidget(context),
                                     ],
                                     const SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () => setState(
-                                        () => _ageConfirmed = !_ageConfirmed,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: Checkbox(
-                                              value: _ageConfirmed,
-                                              onChanged: (v) => setState(
-                                                  () => _ageConfirmed = v ?? false),
-                                              activeColor: AppColors.rosePrimary,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(6),
+                                    if (_isSignUp) ...[
+                                      GestureDetector(
+                                        onTap: () => setState(
+                                          () => _ageConfirmed = !_ageConfirmed,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: Checkbox(
+                                                value: _ageConfirmed,
+                                                onChanged: (v) => setState(
+                                                    () => _ageConfirmed = v ?? false),
+                                                activeColor: AppColors.rosePrimary,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              l.ageConfirmation,
-                                              style: AppTypography.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.8)),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                l.ageConfirmation,
+                                                style: AppTypography.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.8)),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    if (_isSignUp) ...[
                                       const SizedBox(height: 8),
                                       Text(
                                         l.referralCodeHint,

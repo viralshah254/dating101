@@ -10,20 +10,52 @@ import '../../data/api/api_client.dart';
 import '../../domain/models/user_profile.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Restores the locally-stored app mode from the server profile so that users
-/// land on the correct mode (dating/matrimony) after logout or a fresh install.
+/// Restores the app mode from the server profile so that users land on the
+/// correct mode (dating/matrimony) after logout or a fresh install.
+///
+/// When the server has no [modePreference] (legacy accounts), the mode is
+/// derived from the profile content: matrimony-only → matrimony,
+/// dating-only → dating. The derived value is then written back to the server
+/// so future logins are instant.
 Future<void> syncModeFromProfile(UserProfile profile, WidgetRef ref) async {
   final serverPref = profile.modePreference;
-  if (serverPref == null) return;
-  final mode = AppMode.values.cast<AppMode?>().firstWhere(
-    (m) => m?.name == serverPref,
-    orElse: () => null,
-  );
+  AppMode? mode;
+
+  if (serverPref != null) {
+    // Server has an explicit preference — use it directly.
+    mode = AppMode.values.cast<AppMode?>().firstWhere(
+      (m) => m?.name == serverPref,
+      orElse: () => null,
+    );
+  } else {
+    // Legacy account: derive mode from which profile extensions are present.
+    final hasMat = profile.matrimonyExtensions != null;
+    final hasDating = profile.datingExtensions != null;
+    if (hasMat && !hasDating) {
+      mode = AppMode.matrimony;
+    } else if (hasDating && !hasMat) {
+      mode = AppMode.dating;
+    }
+    // Both or neither: leave mode null and do not override local preference.
+  }
+
   if (mode == null) return;
-  final repo = ref.read(modeRepositoryProvider);
-  final localPref = await repo.getPreference();
+
+  final localPref = await ref.read(modeRepositoryProvider).getPreference();
   if (localPref != mode) {
     await ref.read(appModeProvider.notifier).setMode(mode);
+  }
+
+  // Backfill the server if modePreference was not set (one-time write).
+  if (serverPref == null) {
+    try {
+      await ref.read(profileRepositoryProvider).saveProfileJson(
+        {'modePreference': mode.name},
+        create: false,
+      );
+    } catch (_) {
+      // Best-effort: non-blocking. Will retry next login.
+    }
   }
 }
 

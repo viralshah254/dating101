@@ -914,6 +914,14 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
           onPressed: () async {
             Navigator.pop(ctx);
             await ref.read(appModeProvider.notifier).setCurrentView(newMode);
+            // Persist the active view to the backend so a fresh install
+            // restores the correct tab for "both" users.
+            try {
+              await ref.read(profileRepositoryProvider).saveProfileJson(
+                {'modePreference': 'both'},
+                create: false,
+              );
+            } catch (_) {}
             if (!context.mounted) return;
             context.go('/');
           },
@@ -955,6 +963,13 @@ void _showAddOtherModeDialog(BuildContext context, WidgetRef ref, AppMode curren
             final notifier = ref.read(appModeProvider.notifier);
             await notifier.setMode(AppMode.both);
             await notifier.setCurrentView(currentMode);
+            // Persist the new "both" preference to the backend.
+            try {
+              await ref.read(profileRepositoryProvider).saveProfileJson(
+                {'modePreference': 'both'},
+                create: false,
+              );
+            } catch (_) {}
             ref.invalidate(modePreferenceProvider);
             if (!context.mounted) return;
             context.go('/');
