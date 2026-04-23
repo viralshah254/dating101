@@ -409,34 +409,34 @@ class _SheetContent extends StatelessWidget {
                   ),
                 ],
 
-                // ── Matrimony-only sections ────────────────────────
-                if (isMatrimony) ...[
-                  if (opts.diet != null && opts.diet!.options.isNotEmpty) ...[
-                    const _Divider(),
-                    _SectionHeader(label: l.diet, onSurface: onSurface, strict: opts.diet!.strict),
-                    const SizedBox(height: 8),
-                    _ChipGrid(
-                      dimension: opts.diet!,
-                      selected: diet,
-                      onChanged: onDietChanged,
-                      accent: cs.primary,
-                    ),
-                  ],
-                  if (opts.maritalStatus != null && opts.maritalStatus!.options.isNotEmpty) ...[
-                    const _Divider(),
-                    _SectionHeader(
-                      label: l.maritalStatus,
-                      onSurface: onSurface,
-                      strict: opts.maritalStatus!.strict,
-                    ),
-                    const SizedBox(height: 8),
-                    _ChipGrid(
-                      dimension: opts.maritalStatus!,
-                      selected: maritalStatus,
-                      onChanged: onMaritalStatusChanged,
-                      accent: cs.primary,
-                    ),
-                  ],
+                // ── Marital status (all modes) ────────────────────
+                if (opts.maritalStatus != null && opts.maritalStatus!.options.isNotEmpty) ...[
+                  const _Divider(),
+                  _SectionHeader(
+                    label: l.maritalStatus,
+                    onSurface: onSurface,
+                    strict: opts.maritalStatus!.strict,
+                  ),
+                  const SizedBox(height: 8),
+                  _ChipGrid(
+                    dimension: opts.maritalStatus!,
+                    selected: maritalStatus,
+                    onChanged: onMaritalStatusChanged,
+                    accent: cs.primary,
+                  ),
+                ],
+
+                // ── Diet (matrimony only) ─────────────────────────
+                if (isMatrimony && opts.diet != null && opts.diet!.options.isNotEmpty) ...[
+                  const _Divider(),
+                  _SectionHeader(label: l.diet, onSurface: onSurface, strict: opts.diet!.strict),
+                  const SizedBox(height: 8),
+                  _ChipGrid(
+                    dimension: opts.diet!,
+                    selected: diet,
+                    onChanged: onDietChanged,
+                    accent: cs.primary,
+                  ),
                 ],
               ],
             ),
@@ -749,7 +749,13 @@ class _ChipGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final options = dimension.options.where((o) => o.count > 0 || dimension.options.length <= 5).toList();
+    // Only filter by count when the backend provides live counts (at least one
+    // option has count > 0). When all counts are 0 (plain-string legacy path)
+    // show every option so the chip grid is never empty.
+    final hasLiveCounts = dimension.options.any((o) => o.count > 0);
+    final options = hasLiveCounts
+        ? dimension.options.where((o) => o.count > 0).toList()
+        : List<FilterOption>.from(dimension.options);
     if (options.isEmpty) {
       return const SizedBox.shrink();
     }

@@ -292,8 +292,30 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     }
     try {
       final ent = ref.read(entitlementsProvider);
-      final isMatch = widget.otherUserId != null &&
-          (await ref.read(matchedUserIdsProvider.future)).contains(widget.otherUserId!);
+
+      // Resolve other participant: deep links sometimes omit query param; thread list always has it.
+      var resolvedOtherUserId = widget.otherUserId?.trim();
+      if (resolvedOtherUserId == null || resolvedOtherUserId.isEmpty) {
+        final threads = ref.read(chatThreadsProvider).valueOrNull;
+        if (threads != null) {
+          for (final t in threads) {
+            if (t.id == widget.threadId) {
+              final o = t.otherUserId.trim();
+              if (o.isNotEmpty) resolvedOtherUserId = o;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fresh mutual matches so client "is match?" matches server (e.g. after admin accepted interest).
+      ref.invalidate(mutualMatchesProvider);
+      await ref.read(mutualMatchesProvider.future);
+      final matchIds = await ref.read(matchedUserIdsProvider.future);
+      final isMatch = resolvedOtherUserId != null &&
+          resolvedOtherUserId.isNotEmpty &&
+          matchIds.contains(resolvedOtherUserId);
+
       if (!mounted || !context.mounted) {
         _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
         return;

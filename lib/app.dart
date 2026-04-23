@@ -79,6 +79,10 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
           (defaultTargetPlatform == TargetPlatform.iOS ||
               defaultTargetPlatform == TargetPlatform.android)) {
         ref.invalidate(iapProductsProvider);
+        // Retry FCM registration if the first attempt ran before permission / token was ready.
+        if (ref.read(tokenStorageProvider).isLoggedIn) {
+          ref.invalidate(registerFcmTokenProvider);
+        }
       }
       _maybeShowVerificationNudge();
     }
@@ -133,12 +137,28 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     try {
       final router = ref.read(appRouterProvider);
       final service = ref.read(notificationServiceProvider);
-      service.setOnNotificationTap((data) {
+
+      void navigate(Map<String, dynamic> data) {
         final mode = ref.read(appModeProvider) ?? AppMode.dating;
         final path = notificationDataToPath(data, appMode: mode);
+        if (kDebugMode) debugPrint('[FCM] Navigating to $path (type=${data['type']})');
         if (path != null) router.go(path);
-      });
+      }
+
+      service.setOnNotificationTap(navigate);
       service.initialize();
+
+      // Cold-start tap: drain after the splash animation finishes (~2.2 s)
+      // plus a small buffer so the router is in its final authenticated state.
+      Future.delayed(const Duration(milliseconds: 2600), () {
+        if (!mounted) return;
+        final coldStart = service.drainColdStartTap();
+        if (coldStart != null) {
+          if (kDebugMode) debugPrint('[FCM] Applying cold-start tap type=${coldStart['type']}');
+          navigate(coldStart);
+        }
+      });
+
       if (kDebugMode) debugPrint('[FCM] Initialized');
     } catch (e) {
       if (kDebugMode) debugPrint('[FCM] Init failed: $e');

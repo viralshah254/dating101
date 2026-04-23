@@ -1,220 +1,216 @@
 # Shubhmilan Backend — Push Notifications (Firebase Cloud Messaging)
 
-**Purpose:** Feed this document to Cursor when implementing backend push notifications. The Flutter app uses Firebase Cloud Messaging (FCM); the backend is responsible for **sending** all push notifications when server-side events occur. The frontend only registers the device token and handles taps (deep links).
+**Last updated:** 2026-04-23  
+**Purpose:** Reference document for the complete push notification contract between backend (`push.ts`) and Flutter client (`notification_service.dart`, `notification_deep_link.dart`).
 
 ---
 
-## 1. Frontend vs backend responsibilities
+## 1. Responsibilities
 
 | Responsibility | Owner |
 |----------------|--------|
-| Request notification permission (iOS/Android) | **Frontend** |
-| Get FCM device token | **Frontend** |
-| Register FCM token with backend (POST /profile/me/fcm-token) | **Frontend** |
-| Send push when interest/match/message/visit happens | **Backend** |
+| Request notification permission (iOS/Android 13+) | **Frontend** |
+| Get FCM device token, handle `onTokenRefresh` | **Frontend** |
+| Register FCM token with backend (`POST /profile/me/fcm-token`) | **Frontend** (on shell mount) |
+| Send push when server events occur | **Backend** |
 | Respect user notification preferences | **Backend** |
-| Handle notification tap and navigate (deep link) | **Frontend** |
-| Delete token on logout (optional) | **Frontend** (deleteToken); **Backend** may support DELETE device |
+| Handle foreground/background/cold-start taps and navigate | **Frontend** |
+| Clean up token on logout | **Backend** (prunes invalid tokens automatically) |
 
-All **sending** of push notifications is done by the backend. The frontend never sends push; it only registers the token and reacts to incoming messages.
+All push **sending** is done by the backend. The frontend registers tokens and reacts to taps.
 
 ---
 
 ## 2. Device token registration
 
-The Flutter app calls this after login when the user reaches the main shell.
-
-### Endpoint
-
 ```http
 POST /profile/me/fcm-token
-Content-Type: application/json
 Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{ "fcmToken": "<FCM token from FirebaseMessaging.getToken()>" }
 ```
 
-**Request body**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| fcmToken | string | Yes | FCM device token from the client. |
-
-**Example**
-
-```json
-{
-  "fcmToken": "dG9rZW4uZXhhbXBsZS5mY20..."
-}
-```
-
-**Success:** `200 OK` or `204 No Content` (body optional).
-
-**Behaviour**
-
-- Store the token for the current user. Prefer one token per user per device (upsert by userId + optional deviceId if you track multiple devices).
-- When sending a push, look up the recipient’s stored FCM token(s) and use Firebase Admin SDK to send the message.
-- If the client sends a new token (e.g. after reinstall), overwrite or add for that user/device.
-
-**Optional:** Support `DELETE /profile/me/fcm-token` with body `{ "fcmToken": "..." }` or no body (delete current device) for logout cleanup.
+- Called automatically by `registerFcmTokenProvider` when the logged-in user enters the main shell.
+- Called again after `onTokenRefresh` fires.
+- Upserts by `(userId, token)` — multiple devices are supported.
+- Stale/invalid tokens are pruned automatically when FCM returns `messaging/registration-token-not-registered`.
 
 ---
 
-## 3. When to send push (backend-only)
+## 3. Complete push payload contract
 
-Send a push only when the **recipient’s** notification preference for that type is enabled (see §6). Default to `true` for any new preference key.
+Every push emits a `notification` block (title/body for the system tray) and a `data` map for deep-linking. **All `data` values are strings.**
 
-| Event | Recipient | Preference key | Push title | Push body |
-|-------|-----------|----------------|------------|-----------|
-| Interest received | B (target of interest) | interestReceived | New interest | `{A.name} is interested in your profile` |
-| Priority interest received | B | priorityInterestReceived | Priority interest! | `{A.name} sent you a priority interest` |
-| Interest accepted | A (sender of interest) | interestAccepted | Interest accepted | `{B.name} accepted your interest!` |
-| Interest declined | A | interestDeclined | (optional) | Your interest was not accepted |
-| Mutual match created | Both A and B | mutualMatch | It's a match! | You and `{other.name}` matched! |
-| Profile visited | B (profile owner) | profileVisited | New visitor | Someone viewed your profile |
-| **New chat message** | Recipient of message | newMessage | `{senderName}` | Preview of message text (e.g. first 50 chars) |
+### Core data fields
 
-- **Interest/priority interest:** When A sends interest (or priority interest) to B, send push to B.
-- **Interest accepted/declined:** When B accepts or declines A’s interest, send push to A.
-- **Mutual match:** When a mutual match is created (both interested or B accepted), send push to **both** users.
-- **Profile visited:** When A opens B’s full profile, backend records visit (existing behaviour); send push to B.
-- **New message:** When a message is stored in a chat thread, send push to the **other** participant (not the sender). Respect `newMessage` preference.
+| Key | Type | Description |
+|-----|------|-------------|
+| `type` | string | Notification reason (see table below) |
+| `screen` | string | Fallback/hint for the client (see §4) |
+| `threadId` | string | Chat thread ID (for message/chat pushes) |
+| `otherUserId` | string | Other participant's user ID |
+| `profileId` | string | Profile to open on tap |
+| `interactionId` | string | Interest/interaction ID |
+| `matchId` | string | Mutual match ID |
+| `threadMode` | string | `"dating"` or `"matrimony"` — controls which mode shell the chat opens in |
+| `messageRequestId` | string | Message request ID |
+| `verificationType` | string | `"id"` or `"education"` (verification pushes) |
 
----
+### Push reasons
 
-## 4. FCM payload format
+| `type` | Recipient | Pref key | `screen` | Other data fields |
+|--------|-----------|----------|----------|-------------------|
+| `interest_received` | Profile target | `interestReceived` | `requests` | — |
+| `priority_interest_received` | Profile target | `priorityInterestReceived` | `requests` | — |
+| `interest_accepted` | Interest sender | `interestAccepted` | `matches` | — |
+| `interest_declined` | Interest sender | `interestDeclined` | `matches` | — |
+| `interest_reminder` | Profile target | `interestReminderReceived` | `requests` | `profileId`, `interactionId` |
+| `interest_reminder_prompt` | Interest sender | `interestReminderPrompt` | `likes` | `interactionId`, `profileId` |
+| `mutual_match` | Both users | `mutualMatch` | `matches` | `otherUserId`, `threadId`?, `matchId`? |
+| `new_message` | Message recipient | `newMessage` | *(via threadId)* | `threadId`, `otherUserId`, `threadMode` |
+| `message_request` | Request recipient | `messageRequestReceived` | *(via threadId)* | `threadId`, `otherUserId`, `threadMode`, `messageRequestId` |
+| `message_request_accepted` | Request sender | `messageRequestAccepted` | *(via threadId)* | `threadId`, `otherUserId`, `threadMode` |
+| `message_request_declined` | Request sender | `messageRequestDeclined` | `requests` | — |
+| `profile_visited` | Profile owner | `profileVisited` | `visitors` | — |
+| `shortlisted_you` | Shortlisted user | `shortlistedYou` | `shortlist` | `profileId` |
+| `contact_request_accepted` | Requester | `contactRequestAccepted` | `profile` | `profileId`, `otherUserId` |
+| `contact_request_declined` | Requester | `contactRequestDeclined` | `matches` | — |
+| `photo_view_request` | Photo owner | `photoViewRequestReceived` | `requests` | `profileId` |
+| `photo_view_accepted` | Requester | `photoViewRequestAccepted` | `profile` | `profileId`, `otherUserId` |
+| `photo_view_declined` | Requester | `photoViewRequestDeclined` | `notifications` | — |
+| `morning_reminder` | User | `morningReminder` | `matches` | — |
+| `inactive_reminder` | User | `inactiveReminder` | `matches` | — |
+| `admin_message` | User | *(no pref gate)* | `notifications` | — |
+| `admin_warning` | User | *(no pref gate)* | `notifications` | — |
+| `verification_approved` | User | *(no pref gate)* | `profile_settings` | `verificationType` |
+| `verification_rejected` | User | *(no pref gate)* | `profile_settings` | `verificationType` |
 
-Use **data-only** or **notification + data** messages so the Flutter app can open the correct screen when the user taps.
-
-### Recommended: notification + data
-
-- **notification:** title and body for the system tray.
-- **data:** key-value map for deep linking. All values must be strings.
-
-**Data payload (all optional; include what the route needs)**
-
-| Key | Description | Example |
-|-----|-------------|--------|
-| type | Event type (see below) | `new_message` |
-| screen | Target tab/screen | `chats`, `requests`, `matches`, `visitors` |
-| threadId | Chat thread id | `thread_abc` |
-| otherUserId | Other participant’s user id (for chat) | `usr_xyz` |
-| profileId | Profile to open | `usr_abc` |
-| interactionId | Interaction id (e.g. for requests) | `int_123` |
-| matchId | Match id | `match_abc` |
-
-**Type values:** `interest_received`, `priority_interest_received`, `interest_accepted`, `interest_declined`, `mutual_match`, `profile_visited`, `new_message`, `contact_request_accepted`, `contact_request_declined`.
-
-### Deep link paths (Flutter app)
-
-The app uses these paths. Build `data` so the client can build the same path. When the user taps a notification, the app calls `router.go(path)` so that **shell routes** (`/chats`, `/community`, `/`, `/profile-settings`) switch to the correct tab; use the paths above so the correct branch is selected.
-
-| Intent | Path | data suggestion |
-|--------|------|------------------|
-| Chat thread | `/chat/:threadId?otherUserId=...` | type: `new_message`, threadId, otherUserId |
-| Chats list | `/chats` | screen: `chats` |
-| Requests inbox | `/requests` | screen: `requests` or type: `interest_received` / `priority_interest_received` |
-| Matches | `/` (home) | screen: `matches` |
-| Profile | `/profile/:id` | profileId |
-| Visitors | `/community` | screen: `visitors` |
-| Contact request accepted | `/profile/:id` or `/` | type: `contact_request_accepted`, profileId |
-| Contact request declined | `/` | type: `contact_request_declined` |
-
-Example for **new message:**
-
-```json
-{
-  "notification": {
-    "title": "Priya",
-    "body": "Hey! Are we still on for tomorrow?"
-  },
-  "data": {
-    "type": "new_message",
-    "threadId": "thread_abc",
-    "otherUserId": "usr_priya"
-  }
-}
-```
-
-Example for **mutual match:**
-
-```json
-{
-  "notification": {
-    "title": "It's a match!",
-    "body": "You and Priya matched!"
-  },
-  "data": {
-    "type": "mutual_match",
-    "screen": "matches"
-  }
-}
-```
-
-Example for **profile visited:**
-
-```json
-{
-  "notification": {
-    "title": "New visitor",
-    "body": "Someone viewed your profile"
-  },
-  "data": {
-    "type": "profile_visited",
-    "screen": "visitors"
-  }
-}
-```
+> **Admin and verification pushes always deliver** — they do not check notification preferences.
 
 ---
 
-## 5. Sending via Firebase Admin SDK
+## 4. Flutter deep-link routing (`notification_deep_link.dart`)
 
-- Use the **Firebase Admin SDK** (e.g. Node.js `firebase-admin`, or your backend’s FCM API) with a **server key** or **service account**.
-- Recipient: use the stored **FCM token** for the target user (and optionally platform: Android vs iOS if you use different options).
-- Always include the `data` map for deep linking; include `notification` for visibility in tray.
-- For Android, you may need to set `android.channel_id` if the app uses a specific channel.
+The function `notificationDataToPath(data, appMode: mode)` converts FCM `data` into a GoRouter path.
+
+### Resolution order
+
+1. If `screen` field is set, map it directly:
+   - `requests` → `/requests`
+   - `chats` → `/chats` (dating) or `/likes` (matrimony)
+   - `matches` → `/`
+   - `visitors` → `/likes?tab=visitors` (dating) or `/notifications` (matrimony)
+   - `likes` → `/likes?tab=you_liked`
+   - `profile_settings` → `/profile-settings`
+   - `notifications` → `/notifications`
+   - `shortlist` → `/chats` (dating) or `/chats` (matrimony)
+   - `profile` + `profileId` → `/profile/:profileId`
+   - `chat` → `/chat/:threadId?otherUserId=...&threadMode=...`
+2. Otherwise switch on `type`:
+
+| `type` | Route |
+|--------|-------|
+| `new_message`, `message` | `/chat/:threadId?otherUserId=...&threadMode=...` or chat list |
+| `message_request` | `<chatList>?tab=requests` |
+| `message_request_accepted` | `/chat/:threadId?otherUserId=...&threadMode=...` |
+| `message_request_declined` | `<chatList>?tab=requests` |
+| `mutual_match`, `interest_accepted` | Chat thread if `threadId`, else `/` |
+| `interest_received`, `priority_interest_received` | `/requests` |
+| `interest_reminder` | `/profile/:profileId` or `/requests` |
+| `interest_reminder_prompt` | `/likes?tab=you_liked` (dating) / shortlist (matrimony) |
+| `interest_declined` | `/` |
+| `profile_visited` | `/likes?tab=visitors` (dating) or `/notifications` (matrimony) |
+| `contact_request_accepted` | `/profile/:profileId` or `/` |
+| `contact_request_declined` | `/` |
+| `shortlisted_you` | `/profile/:profileId` or shortlist |
+| `photo_view_request` | `/requests` |
+| `photo_view_accepted` | `/profile/:profileId` or `/requests` |
+| `photo_view_declined` | `/notifications` |
+| `morning_reminder`, `inactive_reminder` | `/` |
+| `admin_message`, `admin_warning` | `/notifications` |
+| `verification_approved`, `verification_rejected` | `/profile-settings` |
+| *(anything else)* | `/notifications` |
+
+### `threadMode` handling
+
+When `threadMode` is present in the push payload, the client opens the chat thread in the correct mode shell (`dating` vs `matrimony`). The `threadMode` value is forwarded as a query parameter so the chat screen initializes in the right mode.
+
+---
+
+## 5. App lifecycle: foreground / background / cold start
+
+| State | FCM behavior | App handling |
+|-------|-------------|--------------|
+| **Foreground (Android)** | FCM does **not** show a system banner | `notification_service.dart` shows a local notification via `flutter_local_notifications`, preserving full `data` payload for tap routing |
+| **Foreground (iOS)** | FCM shows banner natively (configured via `setForegroundNotificationPresentationOptions`) | `onMessage` fires; iOS shows the banner |
+| **Background** | System shows banner | Tap fires `onMessageOpenedApp` → `notificationDataToPath` → `router.go(path)` |
+| **Cold start (terminated)** | System shows banner | Tap is stored via `getInitialMessage()` in `_coldStartTapData`. **Not navigated immediately.** `drainColdStartTap()` is called from `app.dart` after a 2.6 s delay, after the splash screen finishes and the router is in its final state. |
 
 ---
 
 ## 6. User notification preferences
 
-The app already has:
-
 ```http
 PATCH /profile/me/notifications
+Authorization: Bearer <accessToken>
+Content-Type: application/json
 ```
 
-**Request body (all optional booleans):**
+Partial update — only send keys you want to change.
 
-| Key | Description | Default |
-|-----|-------------|--------|
-| interestReceived | Push when someone sends you interest | true |
-| priorityInterestReceived | Push when someone sends priority interest | true |
-| interestAccepted | Push when someone accepts your interest | true |
-| interestDeclined | Push when someone declines your interest | false |
-| mutualMatch | Push when you get a mutual match | true |
-| profileVisited | Push when someone views your profile | true |
-| newMessage | Push when you receive a new chat message | true |
-| contactRequestAccepted | Push when someone accepts your contact request | true |
-| contactRequestDeclined | Push when someone declines your contact request | false |
-
-Before sending a push for an event, check the recipient’s stored preferences and skip if the corresponding key is `false`.
+| Pref key | Default | Description |
+|----------|---------|-------------|
+| `interestReceived` | `true` | Someone sent you interest |
+| `priorityInterestReceived` | `true` | Someone sent priority interest |
+| `interestAccepted` | `true` | Your interest was accepted |
+| `interestDeclined` | `false` | Your interest was declined |
+| `mutualMatch` | `true` | Mutual match created |
+| `profileVisited` | `true` | Someone viewed your profile |
+| `newMessage` | `true` | New chat message |
+| `messageRequestReceived` | `true` | Inbound message request |
+| `messageRequestAccepted` | `true` | Your message request was accepted |
+| `messageRequestDeclined` | `false` | Your message request was declined |
+| `interestReminderPrompt` | `true` | Prompt to send reminder for old interest |
+| `interestReminderReceived` | `true` | Someone sent you a reminder |
+| `shortlistedYou` | `true` | Added to someone's shortlist |
+| `contactRequestAccepted` | `true` | Contact request accepted |
+| `contactRequestDeclined` | `true` | Contact request declined |
+| `photoViewRequestReceived` | `true` | Photo view request received |
+| `photoViewRequestAccepted` | `true` | Photo view request accepted |
+| `photoViewRequestDeclined` | `false` | Photo view request declined |
+| `morningReminder` | `true` | Daily 7 AM motivation push |
+| `inactiveReminder` | `true` | Re-engagement after 24h inactivity |
 
 ---
 
-## 7. Checklist for backend
+## 7. Dev test endpoints
 
-| # | Task |
-|---|------|
-| 1 | Implement `POST /profile/me/fcm-token` to store FCM token per user/device. |
-| 2 | Integrate Firebase Admin SDK (or FCM HTTP v1 API) to send messages. |
-| 3 | On **interest** (and **priority interest**): send push to recipient; respect `interestReceived` / `priorityInterestReceived`. |
-| 4 | On **accept/decline**: send push to sender; respect `interestAccepted` / `interestDeclined`. |
-| 5 | On **mutual match**: send push to both users; respect `mutualMatch`. |
-| 6 | On **profile visit** (when recording visit): send push to profile owner; respect `profileVisited`. |
-| 7 | On **new chat message**: send push to the other participant; respect `newMessage`. Include `threadId` and `otherUserId` in `data`. |
-| 8 | On **contact request accepted/declined**: send push to the requester; respect `contactRequestAccepted` / `contactRequestDeclined`. Include `profileId` for accepted. |
-| 9 | Store and honour notification preferences from `PATCH /profile/me/notifications` (including `newMessage`, `contactRequestAccepted`, `contactRequestDeclined`). |
-| 10 | (Optional) Implement `DELETE /profile/me/fcm-token` for logout. |
+Only available when `NODE_ENV=development` or `ALLOW_SIMPLE_PUSH_TEST=true`.
+
+### Send single reason
+
+```http
+POST /internal/dev/push-test/reason
+Content-Type: application/json
+
+{
+  "userId": "usr_xxx",        // optional — defaults to first user with FCM token
+  "reason": "new_message",   // see §3 for all type values
+  "threadId": "thread_abc",  // optional
+  "otherUserId": "usr_yyy"   // optional
+}
+```
+
+Valid `reason` values match all `type` values in §3 plus `raw`.
+
+### Send all reasons (matrix)
+
+```http
+POST /internal/dev/push-test/matrix?userId=usr_xxx
+```
+
+Fires all push reasons sequentially with a 400 ms gap. Use this to test every notification in foreground, then put the app into background/killed state and re-send to validate the other states.
 
 ---
 
