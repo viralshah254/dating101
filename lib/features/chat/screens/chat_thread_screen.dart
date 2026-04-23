@@ -18,6 +18,7 @@ import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/notifications/notification_deep_link.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
@@ -863,16 +864,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             child: AppBar(
               backgroundColor: cs.surface.withValues(alpha: isDark ? 0.75 : 0.85),
               automaticallyImplyLeading: false,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    context.pop();
-                  } else {
-                    final mode = ref.read(appModeProvider) ?? AppMode.dating;
-                    context.go(chatListShellPath(mode));
-                  }
+              leading: notificationAwareBackButton(
+                context,
+                onCannotPop: () {
+                  final mode = ref.read(appModeProvider) ?? AppMode.dating;
+                  context.go(chatListShellPath(mode));
                 },
               ),
               titleSpacing: 0,

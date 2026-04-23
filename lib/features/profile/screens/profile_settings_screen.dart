@@ -15,6 +15,7 @@ import '../../../core/locale/language_picker_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
@@ -73,6 +74,11 @@ class ProfileSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: notificationAwareBackButton(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
         title: Text(
           l.profileSettings,
           style: AppTypography.headlineSmall.copyWith(

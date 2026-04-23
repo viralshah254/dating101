@@ -23,6 +23,7 @@ import '../../../core/widgets/premium_badge.dart';
 import '../../../core/widgets/translatable_text.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 
 import '../../../core/theme/app_motion.dart';
@@ -58,14 +59,28 @@ class FullProfileScreen extends ConsumerWidget {
         data: (profile) {
           if (profile == null) {
             return Scaffold(
-              appBar: AppBar(title: Text(l.profileTitle)),
+              appBar: AppBar(
+                automaticallyImplyLeading: false,
+                leading: notificationAwareBackButton(
+                  context,
+                  onCannotPop: () => context.go('/'),
+                ),
+                title: Text(l.profileTitle),
+              ),
               body: Center(child: Text(l.emptyStateGeneric)),
             );
           }
           return _MatrimonyProfileContent(profile: profile);
         },
         loading: () => Scaffold(
-          appBar: AppBar(title: Text(l.profileTitle)),
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            leading: notificationAwareBackButton(
+              context,
+              onCannotPop: () => context.go('/'),
+            ),
+            title: Text(l.profileTitle),
+          ),
           body: const Center(child: CircularProgressIndicator()),
         ),
         error: (_, __) => _ErrorScaffold(
@@ -80,14 +95,28 @@ class FullProfileScreen extends ConsumerWidget {
       data: (profile) {
         if (profile == null) {
           return Scaffold(
-            appBar: AppBar(title: Text(l.profileTitle)),
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              leading: notificationAwareBackButton(
+                context,
+                onCannotPop: () => context.go('/'),
+              ),
+              title: Text(l.profileTitle),
+            ),
             body: Center(child: Text(l.emptyStateGeneric)),
           );
         }
         return _DatingProfileContent(profile: profile);
       },
       loading: () => Scaffold(
-        appBar: AppBar(title: Text(l.profileTitle)),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: notificationAwareBackButton(
+            context,
+            onCannotPop: () => context.go('/'),
+          ),
+          title: Text(l.profileTitle),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (_, __) => _ErrorScaffold(
@@ -1898,7 +1927,10 @@ class _DatingProfileHero extends StatelessWidget {
           ),
           child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
         ),
-        onPressed: () => context.pop(),
+        onPressed: () => handleNotificationAwarePop(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
       ),
       actions: [
         PopupMenuButton<String>(
@@ -3228,7 +3260,10 @@ class _HeroAppBar extends StatelessWidget {
           ),
           child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
         ),
-        onPressed: () => context.pop(),
+        onPressed: () => handleNotificationAwarePop(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
       ),
       actions: [
         PopupMenuButton<String>(
@@ -4931,7 +4966,14 @@ class _ErrorScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(l.profileTitle)),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: notificationAwareBackButton(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
+        title: Text(l.profileTitle),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
