@@ -1330,9 +1330,15 @@ class _SubscriptionCard extends ConsumerWidget {
         final isActive = state.isActive && state.expiresAt != null;
         if (isActive) {
           final expiresAt = state.expiresAt!;
-          final daysLeft = expiresAt.difference(DateTime.now()).inDays;
+          final diff = expiresAt.difference(DateTime.now());
+          final daysLeft = diff.inDays;
+          final hoursLeft = diff.inHours;
           final dateStr = DateFormat('d MMM yyyy').format(expiresAt);
           final showRenew = daysLeft <= _renewWarningDays && daysLeft >= 0;
+          // When less than 1 full day remains, show hours or "Expires today"
+          final timeLeftLabel = daysLeft == 0
+              ? (hoursLeft > 0 ? '$hoursLeft ${hoursLeft == 1 ? 'hour' : 'hours'} left' : 'Expires today')
+              : l.subscriptionDaysLeft(daysLeft);
           return _buildCard(
             context,
             ref: ref,
@@ -1341,7 +1347,7 @@ class _SubscriptionCard extends ConsumerWidget {
             leading: Icon(Icons.workspace_premium, color: primary, size: 28),
             title: l.premium,
             subtitle: showRenew
-                ? '${l.subscriptionExpiresOn(dateStr)} • ${l.subscriptionDaysLeft(daysLeft)}'
+                ? '${l.subscriptionExpiresOn(dateStr)} • $timeLeftLabel'
                 : l.subscriptionExpiresOn(dateStr),
             subtitleStyle: showRenew
                 ? AppTypography.bodySmall.copyWith(

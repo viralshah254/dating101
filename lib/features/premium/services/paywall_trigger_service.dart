@@ -104,7 +104,7 @@ class PaywallTriggerService {
   /// Returns true if the swipe-limit paywall was shown.
   static Future<bool> recordSwipe(BuildContext context, WidgetRef ref) async {
     final entitlements = ref.read(entitlementsProvider);
-    if (entitlements.isPremium || entitlements.isFemale) return false;
+    if (entitlements.isSilver || entitlements.isPremium || entitlements.isFemale) return false;
 
     final prefs = await SharedPreferences.getInstance();
     final sessionStart = prefs.getInt(_kSwipeSessionMs) ?? 0;
@@ -137,7 +137,7 @@ class PaywallTriggerService {
     if (inChat) return false;
 
     final entitlements = ref.read(entitlementsProvider);
-    if (entitlements.isPremium) return false;
+    if (entitlements.isSilver || entitlements.isPremium) return false;
 
     // Female users are not hard-gated on most things; only show for explicit hard gates
     if (entitlements.isFemale &&
