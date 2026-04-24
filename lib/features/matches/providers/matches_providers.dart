@@ -141,6 +141,7 @@ class ExplorePaginatedNotifier
       diet: arg.filters.diet,
       maritalStatus: arg.filters.maritalStatus,
       motherTongue: arg.filters.motherTongue,
+      verifiedOnly: arg.filters.verifiedOnly,
       limit: _explorePageSize,
       cursor: null,
     );
@@ -170,6 +171,7 @@ class ExplorePaginatedNotifier
         diet: arg.filters.diet,
         maritalStatus: arg.filters.maritalStatus,
         motherTongue: arg.filters.motherTongue,
+        verifiedOnly: arg.filters.verifiedOnly,
         limit: _explorePageSize,
         cursor: current.nextCursor,
       );
@@ -263,6 +265,7 @@ final matchesExploreProvider = FutureProvider.autoDispose
         diet: args.filters.diet,
         maritalStatus: args.filters.maritalStatus,
         motherTongue: args.filters.motherTongue,
+        verifiedOnly: args.filters.verifiedOnly,
         limit: 20,
       );
       debugPrint('[Matches] Explore got ${results.length} profiles');
@@ -292,6 +295,7 @@ final matchesExploreWithFallbackProvider = FutureProvider.autoDispose
             diet: f.diet,
             maritalStatus: f.maritalStatus,
             motherTongue: f.motherTongue,
+            verifiedOnly: f.verifiedOnly,
             limit: 20,
           );
 
@@ -361,7 +365,8 @@ bool _hasFilters(MatchesSearchFilters f) =>
     f.heightMaxCm != null ||
     (f.diet != null && f.diet!.isNotEmpty) ||
     (f.maritalStatus != null && f.maritalStatus!.isNotEmpty) ||
-    (f.motherTongue != null && f.motherTongue!.isNotEmpty);
+    (f.motherTongue != null && f.motherTongue!.isNotEmpty) ||
+    f.verifiedOnly;
 
 final matchesSearchProvider = FutureProvider.autoDispose
     .family<List<ProfileSummary>, MatchesSearchFilters>((ref, filters) async {
@@ -510,6 +515,7 @@ class MatchesSearchFilters {
     this.diet,
     this.maritalStatus,
     this.motherTongue,
+    this.verifiedOnly = false,
   });
 
   final int? ageMin;
@@ -522,6 +528,7 @@ class MatchesSearchFilters {
   final String? diet;
   final String? maritalStatus;
   final String? motherTongue;
+  final bool verifiedOnly;
 
   /// [clearCity]/[clearReligion] etc. set the respective string field to null.
   MatchesSearchFilters copyWith({
@@ -535,6 +542,7 @@ class MatchesSearchFilters {
     String? diet,
     String? maritalStatus,
     String? motherTongue,
+    bool? verifiedOnly,
     bool clearCity = false,
     bool clearReligion = false,
     bool clearEducation = false,
@@ -555,6 +563,7 @@ class MatchesSearchFilters {
       diet: clearDiet ? null : (diet ?? this.diet),
       maritalStatus: clearMaritalStatus ? null : (maritalStatus ?? this.maritalStatus),
       motherTongue: clearMotherTongue ? null : (motherTongue ?? this.motherTongue),
+      verifiedOnly: verifiedOnly ?? this.verifiedOnly,
     );
   }
 
@@ -571,12 +580,14 @@ class MatchesSearchFilters {
           heightMaxCm == other.heightMaxCm &&
           diet == other.diet &&
           maritalStatus == other.maritalStatus &&
-          motherTongue == other.motherTongue;
+          motherTongue == other.motherTongue &&
+          verifiedOnly == other.verifiedOnly;
 
   @override
   int get hashCode => Object.hash(
         ageMin, ageMax, city, religion, education,
         heightMinCm, heightMaxCm, diet, maritalStatus, motherTongue,
+        verifiedOnly,
       );
 
   /// Convert to map for saved-search API (only non-null fields).
@@ -592,6 +603,7 @@ class MatchesSearchFilters {
     if (diet != null && diet!.isNotEmpty) m['diet'] = diet;
     if (maritalStatus != null && maritalStatus!.isNotEmpty) m['maritalStatus'] = maritalStatus;
     if (motherTongue != null && motherTongue!.isNotEmpty) m['motherTongue'] = motherTongue;
+    if (verifiedOnly) m['verifiedOnly'] = true;
     return m;
   }
 
@@ -609,6 +621,7 @@ class MatchesSearchFilters {
       diet: m['diet'] as String?,
       maritalStatus: m['maritalStatus'] as String?,
       motherTongue: m['motherTongue'] as String?,
+      verifiedOnly: m['verifiedOnly'] as bool? ?? false,
     );
   }
 }

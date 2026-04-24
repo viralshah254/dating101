@@ -795,6 +795,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           motherTongue: _filters.motherTongue,
           heightMinCm: _filters.heightMinCm,
           heightMaxCm: _filters.heightMaxCm,
+          verifiedOnly: _filters.verifiedOnly,
         ),
         initialSort: ref.read(sortByProvider),
         onApply: (params, sort) {
@@ -810,6 +811,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               motherTongue: params.motherTongue,
               heightMinCm: params.heightMinCm,
               heightMaxCm: params.heightMaxCm,
+              verifiedOnly: params.verifiedOnly,
             );
             _updateFilterCount();
           });

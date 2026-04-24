@@ -48,10 +48,15 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
   late SortOption _sort;
   late bool _verifiedOnly;
 
-  static const int _defaultAgeMin = 22;
-  static const int _defaultAgeMax = 40;
-  static const int _heightMinDefault = 145;
-  static const int _heightMaxDefault = 195;
+  // Use the absolute slider bounds as defaults so that a user who hasn't moved
+  // the sliders doesn't accidentally send an age/height filter — the backend
+  // treats null as "no constraint". Previously 22/40 and 145/195 caused the
+  // filter to be silently dropped (nulled) even when the user intended those
+  // exact values, and caused stored partner-prefs to be injected instead.
+  static const int _defaultAgeMin = 18;   // matches _AgeSlider min (opts.age.min)
+  static const int _defaultAgeMax = 60;   // matches _AgeSlider max (opts.age.max)
+  static const int _heightMinDefault = 140; // matches _HeightSlider._minCm
+  static const int _heightMaxDefault = 210; // matches _HeightSlider._maxCm
 
   @override
   void initState() {
@@ -77,16 +82,19 @@ class _UnifiedFilterSheetState extends ConsumerState<UnifiedFilterSheet> {
   void _applyAndClose() {
     widget.onApply(
       DiscoveryFilterParams(
-        ageMin: _ageMin != _defaultAgeMin ? _ageMin : null,
-        ageMax: _ageMax != _defaultAgeMax ? _ageMax : null,
+        // Null out age/height only at the absolute slider extremes so that
+        // "no filter" (show everyone) is expressed as null, not as an explicit
+        // value that the backend would then treat as a hard boundary.
+        ageMin: _ageMin > _defaultAgeMin ? _ageMin : null,
+        ageMax: _ageMax < _defaultAgeMax ? _ageMax : null,
         city: _city?.isNotEmpty == true ? _city : null,
         religion: _religion?.isNotEmpty == true ? _religion : null,
         education: _education?.isNotEmpty == true ? _education : null,
         diet: _diet?.isNotEmpty == true ? _diet : null,
         maritalStatus: _maritalStatus?.isNotEmpty == true ? _maritalStatus : null,
         motherTongue: _motherTongue?.isNotEmpty == true ? _motherTongue : null,
-        heightMinCm: _heightMin != _heightMinDefault ? _heightMin : null,
-        heightMaxCm: _heightMax != _heightMaxDefault ? _heightMax : null,
+        heightMinCm: _heightMin > _heightMinDefault ? _heightMin : null,
+        heightMaxCm: _heightMax < _heightMaxDefault ? _heightMax : null,
         intentFilter: _intentFilter?.isNotEmpty == true ? _intentFilter : null,
         verifiedOnly: _verifiedOnly,
       ),

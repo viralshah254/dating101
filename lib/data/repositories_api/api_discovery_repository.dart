@@ -338,7 +338,10 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     // Support both shapes: (1) defaults + options (legacy), (2) age/cities/religions/education (strict-preferences with counts)
     final defaults = j['defaults'] as Map<String, dynamic>?;
     final options = j['options'] as Map<String, dynamic>?;
-    if (defaults != null && options != null) {
+    // Use the legacy path only when the new-shape top-level 'age' map is absent.
+    // The backend now sends both 'defaults'+'options' AND the new shape simultaneously,
+    // so we must check for the new shape first to get diet/motherTongue/strict flags.
+    if (!j.containsKey('age') && defaults != null && options != null) {
       final ageMin = defaults['ageMin'] as int? ?? 21;
       final ageMax = defaults['ageMax'] as int? ?? 45;
       final defaultCity = defaults['city'] as String?;
