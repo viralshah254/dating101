@@ -19,6 +19,7 @@ import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/iap_products_provider.dart';
 import '../services/iap_purchase_service.dart';
+import '../services/paywall_trigger_service.dart';
 
 // ── Hard-coded copy extracted as constants ─────────────────────────────────
 const _kPaywallTitle = 'Unlock more with Shubhmilan';
@@ -87,7 +88,11 @@ extension PremiumPlanX on PremiumPlan {
 }
 
 class PaywallScreen extends ConsumerStatefulWidget {
-  const PaywallScreen({super.key});
+  const PaywallScreen({super.key, this.reason});
+
+  /// Optional reason string from the route query param (e.g. 'photoLimit', 'likesTab').
+  /// Matched against [PaywallReason.queryParam] to show a contextual headline.
+  final String? reason;
 
   @override
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
@@ -423,13 +428,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               textAlign: TextAlign.center,
             ).animate().fadeIn().slideY(begin: -0.05, end: 0),
             const SizedBox(height: 8),
-            Text(
-              ent.upgradeReason,
-              style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ).animate().fadeIn(delay: 80.ms),
+            Builder(builder: (context) {
+              final reasonEnum = PaywallReason.values.cast<PaywallReason?>().firstWhere(
+                (r) => r?.queryParam == widget.reason,
+                orElse: () => null,
+              );
+              final subtitle = reasonEnum?.headline ?? ent.upgradeReason;
+              return Text(
+                subtitle,
+                style: AppTypography.bodyLarge.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ).animate().fadeIn(delay: 80.ms);
+            }),
 
             if (ent.isFemale) ...[
               const SizedBox(height: 12),

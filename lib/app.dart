@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/entitlements/entitlements.dart';
 import 'features/premium/providers/iap_products_provider.dart';
+import 'core/feature_flags/feature_flags.dart';
 import 'core/locale/app_locale_provider.dart';
 import 'core/mode/app_mode.dart';
 import 'core/mode/mode_provider.dart';
@@ -15,6 +16,7 @@ import 'core/providers/repository_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/session/session_api_cache_invalidation.dart';
+import 'core/update/app_update_service.dart';
 import 'features/premium/services/paywall_trigger_service.dart';
 import 'features/verification/services/verification_nudge_service.dart';
 import 'l10n/app_localizations.dart';
@@ -43,6 +45,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     WidgetsBinding.instance.addPostFrameCallback((_) => _initNotifications());
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowStreakPaywall());
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowVerificationNudge());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
   }
 
   void _onTokenStorageChanged() {
@@ -75,6 +78,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     if (state == AppLifecycleState.resumed) {
       _refreshSubscriptionAccess();
       _touchChatPresenceAfterResume();
+      _checkForUpdate();
       if (!kIsWeb &&
           (defaultTargetPlatform == TargetPlatform.iOS ||
               defaultTargetPlatform == TargetPlatform.android)) {
@@ -102,6 +106,11 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
         }),
       );
     }
+  }
+
+  Future<void> _checkForUpdate() async {
+    final forceUpdate = await ref.read(androidUpdateConfigProvider.future);
+    await AppUpdateService.checkForUpdate(forceUpdate: forceUpdate);
   }
 
   void _refreshSubscriptionAccess() {

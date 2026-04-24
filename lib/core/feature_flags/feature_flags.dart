@@ -80,3 +80,16 @@ final remoteFeatureFlagsProvider = FutureProvider<Map<String, bool>>((
     return const {};
   }
 });
+
+/// Whether Android users should see an immediate (blocking) update UI rather
+/// than the default flexible (background-download) update flow.
+/// Controlled by ANDROID_FORCE_UPDATE env var on the backend.
+/// Defaults to false so a network failure never blocks the app.
+final androidUpdateConfigProvider = FutureProvider<bool>((ref) async {
+  try {
+    final res = await ref.read(apiClientProvider).get('/config/feature-flags');
+    return res['androidForceUpdate'] as bool? ?? false;
+  } catch (_) {
+    return false;
+  }
+});

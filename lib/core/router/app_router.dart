@@ -166,7 +166,20 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           return _buildPage(state, ProfileSectionEditScreen(sectionId: section));
         },
       ),
-      GoRoute(path: '/paywall', pageBuilder: (_, s) => _buildPage(s, const PaywallScreen())),
+      GoRoute(
+        path: '/paywall',
+        pageBuilder: (_, s) {
+          final reason = s.uri.queryParameters['reason'];
+          return _buildPage(s, PaywallScreen(reason: reason));
+        },
+      ),
+      GoRoute(
+        path: '/premium',
+        redirect: (_, state) {
+          final reason = state.uri.queryParameters['reason'];
+          return reason != null ? '/paywall?reason=$reason' : '/paywall';
+        },
+      ),
       GoRoute(
         path: '/verification',
         pageBuilder: (_, s) => _buildPage(s, const VerificationScreen()),
