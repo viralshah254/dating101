@@ -68,6 +68,7 @@
   "authPasswordLabel": "Password",
   "authPasswordsMismatch": "Passwords do not match.",
   "authPasswordTooShort": "Password must be at least 8 characters.",
+  "authPasswordSignUpHint": "Use at least 8 characters (maximum 128).",
   "authSignInButton": "Sign in",
   "authSignInLink": "Have an account? Sign in",
   "authSignInUsePassword": "Use password",

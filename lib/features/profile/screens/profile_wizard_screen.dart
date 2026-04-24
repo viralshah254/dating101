@@ -66,6 +66,8 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
       l.recordYourIntro,
     ];
 
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -133,10 +135,10 @@ class _ProfileWizardScreenState extends State<ProfileWizardScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(24, keyboardOpen ? 8 : 24, 24, keyboardOpen ? 8 : 24),
             child: Column(
               children: [
-                if (_profileCompletion < 70)
+                if (_profileCompletion < 70 && !keyboardOpen)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(

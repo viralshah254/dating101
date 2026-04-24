@@ -37,109 +37,127 @@ class WizardStepShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final onSurface = cs.onSurface;
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Header ───────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon circle
-              Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.brandGradient,
-                ),
-                child: Icon(icon, color: Colors.white, size: 28),
-              )
-                  .animate()
-                  .scale(
-                    begin: const Offset(0.7, 0.7),
-                    end: const Offset(1, 1),
-                    duration: 350.ms,
-                    curve: Curves.elasticOut,
-                  )
-                  .fadeIn(duration: 200.ms),
-
-              const SizedBox(height: 16),
-
-              // Headline
-              Text(
-                headline,
-                style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: onSurface,
-                  height: 1.2,
-                ),
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms, delay: 60.ms)
-                  .slideX(begin: 0.08, end: 0, duration: 300.ms, curve: Curves.easeOut),
-
-              if (subtitle != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  subtitle!,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: onSurface.withValues(alpha: 0.55),
-                    height: 1.4,
-                  ),
-                )
-                    .animate()
-                    .fadeIn(duration: 300.ms, delay: 120.ms),
-              ],
-
-              const SizedBox(height: 12),
-
-              // Save / completeness pills
-              if (saveStatus != null || completenessGain != null)
-                Row(
-                  children: [
-                    if (saveStatus != null)
-                      _StatusPill(
-                        label: saveStatus == 'saving' ? 'Saving…' : 'Saved',
-                        icon: saveStatus == 'saving'
-                            ? Icons.sync_rounded
-                            : Icons.check_circle_outline_rounded,
-                        color: saveStatus == 'saving'
-                            ? AppColors.saffron.withValues(alpha: 0.8)
-                            : AppColors.indiaGreen,
-                        spin: saveStatus == 'saving',
-                      ).animate().fadeIn(duration: 200.ms).scale(
-                            begin: const Offset(0.85, 0.85),
-                            end: const Offset(1, 1),
-                            duration: 200.ms,
-                          ),
-                    if (completenessGain != null) ...[
-                      const SizedBox(width: 8),
-                      _StatusPill(
-                        label: '+$completenessGain% complete',
-                        icon: Icons.trending_up_rounded,
-                        color: AppColors.rosePrimary,
+        // ── Header — collapses when keyboard is open to free space for inputs ──
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: keyboardOpen
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Icon circle
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: AppColors.brandGradient,
+                        ),
+                        child: Icon(icon, color: Colors.white, size: 28),
                       )
                           .animate()
-                          .fadeIn(duration: 200.ms, delay: 80.ms)
                           .scale(
-                            begin: const Offset(0.85, 0.85),
+                            begin: const Offset(0.7, 0.7),
                             end: const Offset(1, 1),
-                            duration: 200.ms,
-                            delay: 80.ms,
+                            duration: 350.ms,
+                            curve: Curves.elasticOut,
+                          )
+                          .fadeIn(duration: 200.ms),
+
+                      const SizedBox(height: 16),
+
+                      // Headline
+                      Text(
+                        headline,
+                        style: AppTypography.headlineSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: onSurface,
+                          height: 1.2,
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(duration: 300.ms, delay: 60.ms)
+                          .slideX(begin: 0.08, end: 0, duration: 300.ms, curve: Curves.easeOut),
+
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle!,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: onSurface.withValues(alpha: 0.55),
+                            height: 1.4,
                           ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 300.ms, delay: 120.ms),
+                      ],
+
+                      const SizedBox(height: 12),
+
+                      // Save / completeness pills
+                      if (saveStatus != null || completenessGain != null)
+                        Row(
+                          children: [
+                            if (saveStatus != null)
+                              _StatusPill(
+                                label: saveStatus == 'saving' ? 'Saving…' : 'Saved',
+                                icon: saveStatus == 'saving'
+                                    ? Icons.sync_rounded
+                                    : Icons.check_circle_outline_rounded,
+                                color: saveStatus == 'saving'
+                                    ? AppColors.saffron.withValues(alpha: 0.8)
+                                    : AppColors.indiaGreen,
+                                spin: saveStatus == 'saving',
+                              ).animate().fadeIn(duration: 200.ms).scale(
+                                    begin: const Offset(0.85, 0.85),
+                                    end: const Offset(1, 1),
+                                    duration: 200.ms,
+                                  ),
+                            if (completenessGain != null) ...[
+                              const SizedBox(width: 8),
+                              _StatusPill(
+                                label: '+$completenessGain% complete',
+                                icon: Icons.trending_up_rounded,
+                                color: AppColors.rosePrimary,
+                              )
+                                  .animate()
+                                  .fadeIn(duration: 200.ms, delay: 80.ms)
+                                  .scale(
+                                    begin: const Offset(0.85, 0.85),
+                                    end: const Offset(1, 1),
+                                    duration: 200.ms,
+                                    delay: 80.ms,
+                                  ),
+                            ],
+                          ],
+                        ),
                     ],
-                  ],
+                  ),
                 ),
-            ],
-          ),
         ),
 
-        const SizedBox(height: 20),
-        const Divider(height: 1, indent: 24, endIndent: 24),
-        const SizedBox(height: 20),
+        // Divider + spacing — also collapses with keyboard
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: keyboardOpen
+              ? const SizedBox.shrink()
+              : const Column(
+                  children: [
+                    SizedBox(height: 20),
+                    Divider(height: 1, indent: 24, endIndent: 24),
+                    SizedBox(height: 20),
+                  ],
+                ),
+        ),
 
         // ── Content ──────────────────────────────────────────────────────
         // Must be expanded: parent is inside PageView with fixed height; without this,

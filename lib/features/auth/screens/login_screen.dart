@@ -27,6 +27,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  static const int _minPasswordLength = 8;
+  static const int _maxPasswordLength = 128;
+
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -107,7 +110,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return raw.replaceFirst(RegExp(r'^0+'), '');
   }
 
-  bool get _passwordLongEnough => _passwordController.text.length >= 8;
+  bool get _passwordLongEnough =>
+      _passwordController.text.length >= _minPasswordLength;
 
   bool get _passwordsMatch =>
       _confirmPasswordController.text == _passwordController.text;
@@ -183,6 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final cs = Theme.of(context).colorScheme;
     // On the gradient background, text in the hero area is always white
     const heroTextColor = Colors.white;
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -233,35 +238,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 20),
-                          Text(
-                            l.loginHeroTitle,
-                            style: AppTypography.displayLarge.copyWith(
-                              color: heroTextColor,
-                              fontSize: 42,
-                              height: 1.1,
-                              fontWeight: FontWeight.w700,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                          )
-                              .animate()
-                              .fadeIn(duration: 500.ms)
-                              .slideY(begin: -0.15, end: 0, curve: Curves.easeOut),
-                          const SizedBox(height: 10),
-                          Text(
-                            l.loginHeroSubtitle,
-                            style: AppTypography.bodyLarge.copyWith(
-                              color: Colors.white.withValues(alpha: 0.82),
-                              height: 1.4,
-                            ),
-                          ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
-                          const SizedBox(height: 32),
+                          // Hero title + subtitle collapse when keyboard is open
+                          // so the form card has maximum vertical space available.
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            child: keyboardOpen
+                                ? const SizedBox.shrink()
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 20),
+                                      Text(
+                                        l.loginHeroTitle,
+                                        style: AppTypography.displayLarge.copyWith(
+                                          color: heroTextColor,
+                                          fontSize: 42,
+                                          height: 1.1,
+                                          fontWeight: FontWeight.w700,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha: 0.25),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                          .animate()
+                                          .fadeIn(duration: 500.ms)
+                                          .slideY(begin: -0.15, end: 0, curve: Curves.easeOut),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        l.loginHeroSubtitle,
+                                        style: AppTypography.bodyLarge.copyWith(
+                                          color: Colors.white.withValues(alpha: 0.82),
+                                          height: 1.4,
+                                        ),
+                                      ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
+                                      const SizedBox(height: 32),
+                                    ],
+                                  ),
+                          ),
                           // Glassmorphism form card — now has a rich gradient to blur
                           ClipRRect(
                             borderRadius: BorderRadius.circular(24),
@@ -359,9 +377,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     TextField(
                                       controller: _passwordController,
                                       obscureText: _obscurePassword,
+                                      maxLength: _isSignUp ? _maxPasswordLength : null,
+                                      buildCounter: _isSignUp
+                                          ? (_, {required currentLength, required isFocused, maxLength}) =>
+                                              null
+                                          : null,
                                       style: AppTypography.bodyLarge.copyWith(color: cs.onSurface),
                                       decoration: InputDecoration(
                                         labelText: l.authPasswordLabel,
+                                        helperText: _isSignUp &&
+                                                (_passwordController.text.isEmpty ||
+                                                    _passwordLongEnough)
+                                            ? l.authPasswordSignUpHint
+                                            : null,
+                                        errorText: _isSignUp &&
+                                                _passwordController.text.isNotEmpty &&
+                                                !_passwordLongEnough
+                                            ? l.authPasswordTooShort
+                                            : null,
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
                                         ),
@@ -386,6 +419,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       TextField(
                                         controller: _confirmPasswordController,
                                         obscureText: _obscureConfirm,
+                                        maxLength: _maxPasswordLength,
+                                        buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                                            null,
                                         style: AppTypography.bodyLarge.copyWith(color: cs.onSurface),
                                         decoration: InputDecoration(
                                           labelText: l.authConfirmPasswordLabel,

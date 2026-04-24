@@ -99,8 +99,11 @@ class RecommendedPaginatedNotifier extends AsyncNotifier<PaginatedFeedState> {
         limit: _recommendedPageSize,
         cursor: current.nextCursor,
       );
+      final merged = [...current.profiles, ...page.profiles];
+      final seen = <String>{};
+      final deduped = merged.where((p) => seen.add(p.id)).toList();
       final updated = current.copyWith(
-        profiles: [...current.profiles, ...page.profiles],
+        profiles: deduped,
         nextCursor: page.nextCursor,
         loadingMore: false,
       );
@@ -170,8 +173,11 @@ class ExplorePaginatedNotifier
         limit: _explorePageSize,
         cursor: current.nextCursor,
       );
+      final mergedExplore = [...current.profiles, ...page.profiles];
+      final seenExplore = <String>{};
+      final dedupedExplore = mergedExplore.where((p) => seenExplore.add(p.id)).toList();
       final updated = current.copyWith(
-        profiles: [...current.profiles, ...page.profiles],
+        profiles: dedupedExplore,
         nextCursor: page.nextCursor,
         loadingMore: false,
       );

@@ -380,6 +380,12 @@ abstract class AppLocalizations {
   /// **'Password must be at least 8 characters.'**
   String get authPasswordTooShort;
 
+  /// No description provided for @authPasswordSignUpHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 8 characters (maximum 128).'**
+  String get authPasswordSignUpHint;
+
   /// No description provided for @authSignInButton.
   ///
   /// In en, this message translates to:

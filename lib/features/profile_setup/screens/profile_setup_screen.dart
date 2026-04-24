@@ -484,6 +484,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     if (_isLoading) {
       return Scaffold(
@@ -582,39 +583,45 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 child: Column(
                   children: [
                     if (signupPreference.isBoth && !widget.isEditing) ...[
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.merge_type_rounded,
-                              color: accent,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                l.bothModeSetupHint,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: onSurface.withValues(alpha: 0.78),
-                                  fontWeight: FontWeight.w500,
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeInOut,
+                        child: keyboardOpen
+                            ? const SizedBox.shrink()
+                            : Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: accent.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.merge_type_rounded,
+                                      color: accent,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        l.bothModeSetupHint,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: onSurface.withValues(alpha: 0.78),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                     Row(
@@ -658,7 +665,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
               // Bottom — same style as ProfileSectionEditScreen (Save & close / Next)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                padding: EdgeInsets.fromLTRB(24, keyboardOpen ? 8 : 12, 24, keyboardOpen ? 8 : 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
