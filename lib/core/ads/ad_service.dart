@@ -36,6 +36,8 @@ enum AdRewardReason {
   extraInterest,
   /// Free user unlocking one blurred liked-you profile in the Likes tab.
   unlockLikedYou,
+  /// Free user unlocking all photos on a profile for the current session.
+  photoUnlock,
 }
 
 /// Service for loading and showing interstitial/rewarded ads.
@@ -49,6 +51,7 @@ class AdService {
       AdRewardReason.unlockVisitor: null,
       AdRewardReason.extraInterest: null,
       AdRewardReason.unlockLikedYou: null,
+      AdRewardReason.photoUnlock: null,
     };
   }
 

@@ -9,14 +9,16 @@ enum GateDecision { upgrade, watchAd, notNow }
 /// Shows a bottom sheet giving the user a choice: Upgrade, Watch Ad (if budget allows), or Not Now.
 ///
 /// [canWatchAd]     Whether the feature supports ad-unlock at all.
-/// [adsRemaining]   Current daily ad budget remaining. If null, budget is fetched automatically.
-///                  Pass 0 to force-hide the ad option regardless of [canWatchAd].
+/// [adActionType]   Backend action key (e.g. `AdActionType.photoUnlock`). When set with no
+///                  [adsRemaining] override, remaining count is read for that feature only.
+/// [adsRemaining]   Override remaining for this gate. Pass 0 to force-hide the ad option.
 Future<GateDecision?> showGateDecisionSheet(
   BuildContext context, {
   required String title,
   required String message,
   required bool canWatchAd,
   String? watchAdLabel,
+  String? adActionType,
   int? adsRemaining,
 }) {
   return showModalBottomSheet<GateDecision>(
@@ -26,6 +28,7 @@ Future<GateDecision?> showGateDecisionSheet(
       message: message,
       canWatchAd: canWatchAd,
       watchAdLabel: watchAdLabel,
+      adActionType: adActionType,
       adsRemainingOverride: adsRemaining,
     ),
   );
@@ -37,6 +40,7 @@ class _GateDecisionSheetContent extends ConsumerWidget {
     required this.message,
     required this.canWatchAd,
     this.watchAdLabel,
+    this.adActionType,
     this.adsRemainingOverride,
   });
 
@@ -44,17 +48,19 @@ class _GateDecisionSheetContent extends ConsumerWidget {
   final String message;
   final bool canWatchAd;
   final String? watchAdLabel;
+  final String? adActionType;
   final int? adsRemainingOverride;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
 
-    // Resolve remaining budget: use override if provided, otherwise fetch live.
     final budgetAsync = ref.watch(adBudgetProvider);
+    final map = budgetAsync.valueOrNull;
+    final limit = map?.limitPerAction ?? 2;
     final remaining = adsRemainingOverride ??
-        budgetAsync.valueOrNull?.remaining ??
-        10; // optimistic fallback while loading
+        (adActionType != null ? map?.forType(adActionType!).remaining : null) ??
+        limit;
 
     final budgetExhausted = remaining <= 0;
     final showAdOption = canWatchAd && !budgetExhausted;
@@ -102,7 +108,7 @@ class _GateDecisionSheetContent extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '$remaining of 10 ads remaining today',
+                '$remaining of $limit ad unlocks remaining today (this action)',
                 style: AppTypography.labelSmall.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                 ),

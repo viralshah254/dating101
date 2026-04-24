@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
@@ -490,8 +491,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     required AppMode mode,
     required String? message,
   }) async {
-    final budget = ref.read(adBudgetProvider).valueOrNull;
-    final remaining = budget?.remaining ?? 0;
     if (!mounted) return;
     final decision = await showGateDecisionSheet(
       context,
@@ -499,7 +498,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
       canWatchAd: true,
       watchAdLabel: 'Watch ad — send 1 more interest',
-      adsRemaining: remaining,
+      adActionType: AdActionType.extraInterest,
     );
     if (!mounted || decision == null) return;
     if (decision == GateDecision.upgrade) {
@@ -526,6 +525,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             );
         ref.invalidate(sentInteractionsProvider(mode));
         invalidateLikesScreenData(ref);
+        ref.invalidate(adBudgetProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profile.name)),

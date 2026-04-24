@@ -4,8 +4,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
+import '../../../core/ads/ad_budget_provider.dart';
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/premium_badge.dart';
@@ -476,7 +483,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _HeroImageCarousel extends StatefulWidget {
+class _HeroImageCarousel extends ConsumerStatefulWidget {
   const _HeroImageCarousel({
     required this.imageUrls,
     required this.name,
@@ -494,14 +501,15 @@ class _HeroImageCarousel extends StatefulWidget {
   final VoidCallback onUpgradeNeeded;
 
   @override
-  State<_HeroImageCarousel> createState() => _HeroImageCarouselState();
+  ConsumerState<_HeroImageCarousel> createState() => _HeroImageCarouselState();
 }
 
-class _HeroImageCarouselState extends State<_HeroImageCarousel> {
+class _HeroImageCarouselState extends ConsumerState<_HeroImageCarousel> {
   late PageController _pageController;
   int _currentIndex = 0;
   // Ad-unlocked photos for this session (0–2; photo 4+ always hard-gated)
   int _adUnlockedCount = 0;
+  bool _photosUnlocked = false;
 
   @override
   void initState() {
@@ -515,10 +523,38 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
     super.dispose();
   }
 
+  Future<void> _handlePhotoGate() async {
+    final decision = await showGateDecisionSheet(
+      context,
+      title: 'See all photos',
+      message: 'Subscribe to always see every photo. Or watch a short ad to unlock this profile\'s photos now.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad — see all photos',
+      adActionType: AdActionType.photoUnlock,
+    );
+    if (!mounted || decision == null) return;
+    if (decision == GateDecision.upgrade) {
+      widget.onUpgradeNeeded();
+      return;
+    }
+    if (decision == GateDecision.watchAd) {
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.photoUnlock);
+      if (!mounted || !shown) return;
+      final api = ref.read(apiClientProvider);
+      final token = const Uuid().v4();
+      try {
+        await api.post('/ads/consume', body: {'actionType': 'photo_unlock', 'adCompletionToken': token});
+      } catch (_) {}
+      ref.invalidate(adBudgetProvider);
+      setState(() => _photosUnlocked = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final urls = widget.imageUrls.isEmpty ? <String>[] : widget.imageUrls;
     final hasMultiple = urls.length > 1;
+    final effectiveVisible = _photosUnlocked ? 999 : widget.photosVisibleCount;
 
     return Stack(
       fit: StackFit.expand,
@@ -542,7 +578,7 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
             onPageChanged: (i) => setState(() => _currentIndex = i),
             itemBuilder: (_, i) => GatedPhoto(
               photoIndex: i,
-              photosVisibleCount: widget.photosVisibleCount,
+              photosVisibleCount: effectiveVisible,
               adUnlockedCount: _adUnlockedCount,
               isAccepted: widget.isAccepted,
               onAdUnlock: () {
@@ -550,7 +586,7 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
                   setState(() => _adUnlockedCount++);
                 }
               },
-              onUpgradeNeeded: widget.onUpgradeNeeded,
+              onUpgradeNeeded: _handlePhotoGate,
               child: _HeroImage(imageUrl: urls[i], name: widget.name),
             ),
           ),

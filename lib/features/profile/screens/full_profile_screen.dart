@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
@@ -630,14 +631,13 @@ class _FloatingActionBar extends ConsumerWidget {
         return;
       }
       if (e.code == 'DAILY_LIMIT') {
-        final budget = ref.read(adBudgetProvider).valueOrNull;
         final decision = await showGateDecisionSheet(
           context,
           title: 'Daily interest limit reached',
           message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
           canWatchAd: true,
           watchAdLabel: 'Watch ad — send 1 more interest',
-          adsRemaining: budget?.remaining,
+          adActionType: AdActionType.extraInterest,
         );
         if (!context.mounted || decision == null) return;
         if (decision == GateDecision.upgrade) {
@@ -666,6 +666,7 @@ class _FloatingActionBar extends ConsumerWidget {
                   (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
                 );
             ref.invalidate(sentInteractionsProvider(mode));
+            ref.invalidate(adBudgetProvider);
             if (result.mutualMatch) {
               _showMutualMatchCelebration(context, result.chatThreadId);
             } else {
@@ -1808,6 +1809,34 @@ class _DatingPhotoGrid extends ConsumerStatefulWidget {
 
 class _DatingPhotoGridState extends ConsumerState<_DatingPhotoGrid> {
   int _adUnlockedCount = 0;
+  bool _photosUnlocked = false;
+
+  Future<void> _handlePhotoGate() async {
+    final decision = await showGateDecisionSheet(
+      context,
+      title: 'See all photos',
+      message: 'Subscribe to always see every photo. Or watch a short ad to unlock this profile\'s photos now.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad — see all photos',
+      adActionType: AdActionType.photoUnlock,
+    );
+    if (!mounted || decision == null) return;
+    if (decision == GateDecision.upgrade) {
+      context.push('/premium?reason=photoLimit');
+      return;
+    }
+    if (decision == GateDecision.watchAd) {
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.photoUnlock);
+      if (!mounted || !shown) return;
+      final api = ref.read(apiClientProvider);
+      final token = const Uuid().v4();
+      try {
+        await api.post('/ads/consume', body: {'actionType': 'photo_unlock', 'adCompletionToken': token});
+      } catch (_) {}
+      ref.invalidate(adBudgetProvider);
+      setState(() => _photosUnlocked = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1816,18 +1845,20 @@ class _DatingPhotoGridState extends ConsumerState<_DatingPhotoGrid> {
     final urls = widget.imageUrls.skip(1).take(4).toList();
     if (urls.isEmpty) return const SizedBox.shrink();
 
+    final effectiveVisible = _photosUnlocked ? 999 : entitlements.photosVisibleCount;
+
     Widget gated(String url, int gridIdx, double height) {
       // gridIdx is the index within urls (0-based); photoIndex in full array = gridIdx + 1
       final photoIndex = gridIdx + 1;
       return GatedPhoto(
         photoIndex: photoIndex,
-        photosVisibleCount: entitlements.photosVisibleCount,
+        photosVisibleCount: effectiveVisible,
         adUnlockedCount: _adUnlockedCount,
         isAccepted: widget.isAccepted,
         onAdUnlock: () {
           if (_adUnlockedCount < 2) setState(() => _adUnlockedCount++);
         },
-        onUpgradeNeeded: () => context.push('/premium?reason=photoLimit'),
+        onUpgradeNeeded: _handlePhotoGate,
         child: GestureDetector(
           onTap: () => widget.onTap(photoIndex),
           child: ClipRRect(

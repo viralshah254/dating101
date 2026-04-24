@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
@@ -254,7 +255,8 @@ class _LikedYouPremiumGate extends ConsumerWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final unlocked = ref.watch(unlockedReceivedProvider);
     final dailyBudget = ref.watch(adBudgetProvider).valueOrNull;
-    final adsRemainingToday = dailyBudget?.remaining ?? 10;
+    final adsRemainingToday =
+        dailyBudget?.forType(AdActionType.likedYouUnlock).remaining ?? 2;
     final canUnlockMore = adsRemainingToday > 0;
 
     return ListView(
@@ -327,7 +329,7 @@ class _LikedYouPremiumGate extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$adsRemainingToday of 10 ads remaining today',
+                  '$adsRemainingToday of ${dailyBudget?.limitPerAction ?? 2} unlocks left today (Liked you)',
                   style: AppTypography.labelSmall.copyWith(
                     color: onSurface.withValues(alpha: 0.55),
                   ),
@@ -365,7 +367,7 @@ class _LikedYouPremiumGate extends ConsumerWidget {
 
     // Check daily ad budget before showing the ad.
     final budget = ref.read(adBudgetProvider).valueOrNull;
-    if (budget != null && budget.remaining <= 0) {
+    if (budget != null && budget.forType(AdActionType.likedYouUnlock).remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Daily ad limit reached. Try again tomorrow or upgrade.'),
@@ -494,6 +496,7 @@ class _VisitorsTab extends ConsumerWidget {
           : l.visitorUnlockLimitReached,
       canWatchAd: canUnlockByAd,
       watchAdLabel: l.watchAdToUnlock,
+      adActionType: canUnlockByAd ? AdActionType.visitorUnlock : null,
     );
     if (!context.mounted || choice == null) return;
     if (choice == GateDecision.upgrade) {
