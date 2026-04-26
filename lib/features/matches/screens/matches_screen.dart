@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
@@ -635,26 +636,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   Future<bool?> _showWatchAdOrPremiumChoiceForMessage(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.premium),
-        content: Text(
-          l.watchAdToMessageMessage,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.watchAd),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.premium,
+      message: l.watchAdToMessageMessage,
+      canWatchAd: true,
+      watchAdLabel: l.watchAd,
+      adActionType: AdActionType.messageSend,
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   void _onUpgrade() => context.push('/paywall');

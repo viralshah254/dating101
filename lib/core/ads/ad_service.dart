@@ -10,13 +10,13 @@ class AdUnitIds {
   AdUnitIds._();
 
   static String get interstitial {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/1033173712';
+    if (Platform.isAndroid) return 'ca-app-pub-2771287850201892/9882921571';
     if (Platform.isIOS) return 'ca-app-pub-3940256099942544/4411468910';
     return '';
   }
 
   static String get rewarded {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/5224354917';
+    if (Platform.isAndroid) return 'ca-app-pub-2771287850201892/2319811695';
     if (Platform.isIOS) return 'ca-app-pub-3940256099942544/1712485313';
     return '';
   }

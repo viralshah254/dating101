@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/entitlements/entitlements.dart';
@@ -253,7 +254,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final accent = Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
+    /// Selection / checkmarks: brand saffron (avoids Material blue on a gold paywall).
+    final paywallAccent = AppColors.saffronDark;
     final ent = ref.watch(entitlementsProvider);
     final productsAsync = ref.watch(iapProductsProvider);
 
@@ -422,6 +426,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     child: Text(
                       _kPaywallTitle,
                       style: AppTypography.titleLarge.copyWith(
+                        color: onSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -431,8 +436,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               const SizedBox(height: 6),
               Text(
                 subtitle,
-                style: AppTypography.bodySmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: onSurface.withValues(alpha: 0.78),
+                  height: 1.45,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -477,15 +483,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: accent),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: paywallAccent),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      l.loading,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                  Text(
+                    l.loading,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: onSurface.withValues(alpha: 0.72),
                     ),
+                  ),
                   ],
                 ),
               ],
@@ -493,13 +499,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.info_outline, size: 14, color: accent),
+                    Icon(Icons.info_outline, size: 14, color: paywallAccent),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         l.paywallStorePricesHint,
                         style: AppTypography.labelSmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: onSurface.withValues(alpha: 0.78),
+                          height: 1.35,
                         ),
                       ),
                     ),
@@ -523,7 +530,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 period: '/month',
                 savings: null,
                 isSelected: _selectedPlan == PremiumPlan.monthly,
-                accent: accent,
+                accent: paywallAccent,
                 onTap: () {
                   setState(() => _selectedPlan = PremiumPlan.monthly);
                   AnalyticsService.instance.log(
@@ -539,7 +546,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 period: '/3 months',
                 savings: 'Save 29%',
                 isSelected: _selectedPlan == PremiumPlan.quarterly,
-                accent: accent,
+                accent: paywallAccent,
                 onTap: () {
                   setState(() => _selectedPlan = PremiumPlan.quarterly);
                   AnalyticsService.instance.log(
@@ -555,7 +562,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 period: '/year',
                 savings: 'Best value',
                 isSelected: _selectedPlan == PremiumPlan.annual,
-                accent: accent,
+                accent: paywallAccent,
                 onTap: () {
                   setState(() => _selectedPlan = PremiumPlan.annual);
                   AnalyticsService.instance.log(
@@ -569,8 +576,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               const SizedBox(height: 12),
               Text(
                 '${_selectedTier.label} includes:',
-                style: AppTypography.labelSmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                style: AppTypography.labelLarge.copyWith(
+                  color: onSurface.withValues(alpha: 0.88),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -581,12 +588,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.check_circle, size: 15, color: accent),
+                      Icon(Icons.check_circle, size: 16, color: paywallAccent),
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
                           f,
-                          style: AppTypography.bodySmall.copyWith(height: 1.3),
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                            color: onSurface.withValues(alpha: 0.9),
+                          ),
                         ),
                       ),
                     ],
@@ -619,14 +631,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   ),
                   child: const Text(_kManageSubscriptionLabel),
                 ),
-              Text(
-                _kPaywallBoostNote,
-                style: AppTypography.bodySmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                  fontSize: 11,
-                ),
-                textAlign: TextAlign.center,
+            Text(
+              _kPaywallBoostNote,
+              style: AppTypography.bodySmall.copyWith(
+                color: onSurface.withValues(alpha: 0.55),
+                fontSize: 12,
               ),
+              textAlign: TextAlign.center,
+            ),
               const SizedBox(height: 12),
             ],
           ),
@@ -697,10 +709,11 @@ class _GradientCtaButtonState extends State<_GradientCtaButton>
           child: Text(
             widget.label,
             textAlign: TextAlign.center,
-            style: AppTypography.titleMedium.copyWith(
-              color: Colors.white,
+            style: GoogleFonts.inter(
+              fontSize: 16,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
+              letterSpacing: 0.3,
+              color: Colors.white,
             ),
           ),
         ),
@@ -730,11 +743,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // Use ColorScheme, not AppTypography static colors — they track a global dark
-    // flag and can mismatch Theme brightness (e.g. near-white text on light cards).
-    final titleColor = isSelected ? cs.primary : cs.onSurface;
-    final priceLineColor = cs.onSurface.withValues(alpha: 0.68);
-    final trailingPriceColor = isSelected ? accent : cs.onSurface.withValues(alpha: 0.9);
+    final onSurface = cs.onSurface;
+    final titleColor = isSelected ? accent : onSurface;
+    final priceLineColor = onSurface.withValues(alpha: 0.72);
+    final trailingPriceColor = isSelected ? accent : onSurface.withValues(alpha: 0.92);
 
     return AnimatedScale(
       scale: isSelected ? 1.02 : 1.0,
@@ -779,7 +791,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
                   ) : null,
                 ),
                 child: isSelected
-                    ? Icon(Icons.check, size: 14, color: cs.onPrimary)
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
                     : null,
               ),
               const SizedBox(width: 14),
@@ -791,9 +803,11 @@ class _SubscriptionPlanTile extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: AppTypography.titleMedium.copyWith(
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: titleColor,
+                            height: 1.25,
                           ),
                         ),
                         if (savings != null && savings!.isNotEmpty) ...[
@@ -806,9 +820,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
                             ),
                             child: Text(
                               savings!,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: accent,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
+                                color: accent,
                               ),
                             ),
                           ),
@@ -818,8 +833,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '$price$period',
-                      style: AppTypography.bodySmall.copyWith(
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
                         color: priceLineColor,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -827,9 +844,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
               ),
               Text(
                 price,
-                style: AppTypography.titleMedium.copyWith(
-                  color: trailingPriceColor,
+                style: GoogleFonts.inter(
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
+                  color: trailingPriceColor,
                 ),
               ),
             ],
@@ -871,10 +889,10 @@ class _TierSelector extends StatelessWidget {
       children: [
         Text(
           'Choose your plan',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: cs.onSurface.withValues(alpha: 0.7),
+            color: cs.onSurface.withValues(alpha: 0.82),
           ),
         ),
         const SizedBox(height: 10),
@@ -954,10 +972,11 @@ class _TierSelector extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             _tierBenefits[selected]!,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 11,
-              color: cs.onSurface.withValues(alpha: 0.55),
               fontStyle: FontStyle.italic,
+              color: cs.onSurface.withValues(alpha: 0.68),
+              height: 1.3,
             ),
             textAlign: TextAlign.center,
           ),

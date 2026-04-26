@@ -21,7 +21,7 @@ import '../../../core/theme/app_typography.dart';
 
 // ── Test ad unit IDs (replace with real IDs before release) ──────────────────
 
-const _kRewardedAdUnitIdAndroid = 'ca-app-pub-3940256099942544/5354046379';
+const _kRewardedAdUnitIdAndroid = 'ca-app-pub-2771287850201892/2319811695';
 const _kRewardedAdUnitIdIos = 'ca-app-pub-3940256099942544/1712485313';
 
 // ── GatedPhoto widget ─────────────────────────────────────────────────────────
