@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/entitlements/entitlements.dart';
@@ -19,11 +19,10 @@ import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/iap_products_provider.dart';
 import '../services/iap_purchase_service.dart';
+import '../services/paywall_trigger_service.dart';
 
 // ── Hard-coded copy extracted as constants ─────────────────────────────────
 const _kPaywallTitle = 'Unlock more with Shubhmilan';
-const _kPaywallFemaleAccess =
-    'You already have free access to messaging, seeing likes, and contact requests.';
 const _kPaywallBoostNote = 'Profile boost available separately';
 const _kManageSubscriptionLabel = 'Manage subscription';
 /// Selected billing period for purchase.
@@ -57,8 +56,8 @@ extension PaywallTierX on PaywallTier {
 }
 
 extension PremiumPlanX on PremiumPlan {
-  /// Returns the gender-prefixed product ID (male_* or female_*).
-  /// Falls back to gender-neutral if [isFemale] is not yet known.
+  /// Returns the gender-prefixed product ID (`male_*` or `female_*`).
+  /// [isFemale] selects discounted women’s SKUs; everyone else should pass false (male SKUs).
   String productIdForTier(PaywallTier tier, {bool isFemale = false}) {
     final genderPrefix = isFemale ? 'female' : 'male';
     final tierPrefix = tier.prefix;
@@ -87,7 +86,11 @@ extension PremiumPlanX on PremiumPlan {
 }
 
 class PaywallScreen extends ConsumerStatefulWidget {
-  const PaywallScreen({super.key});
+  const PaywallScreen({super.key, this.reason});
+
+  /// Optional reason string from the route query param (e.g. 'photoLimit', 'likesTab').
+  /// Matched against [PaywallReason.queryParam] to show a contextual headline.
+  final String? reason;
 
   @override
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
@@ -111,13 +114,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final platform = Platform.isIOS ? 'ios' : 'android';
     final products = await ref.read(iapProductsProvider.future);
     final ent = ref.read(entitlementsProvider);
-    // Use gender-prefixed product IDs so stores serve the correct regional price.
-    // Then try the other gender prefix, then gender-neutral SKUs (gold_monthly, …).
+    // Use gender-prefixed product IDs. Only women use `female_*`; everyone else (male,
+    // non-binary, unknown) uses `male_*` for silver/gold — never fall through to
+    // `female_*` when the male SKU is missing, or we’d show/charge the wrong price.
     String productId = _selectedPlan.productIdForTier(_selectedTier, isFemale: ent.isFemale);
     if (!products.containsKey(productId)) {
-      final otherGender = _selectedPlan.productIdForTier(_selectedTier, isFemale: !ent.isFemale);
-      if (products.containsKey(otherGender)) {
-        productId = otherGender;
+      if (ent.isFemale) {
+        final maleId = _selectedPlan.productIdForTier(_selectedTier, isFemale: false);
+        if (products.containsKey(maleId)) {
+          productId = maleId;
+        }
       }
     }
     if (!products.containsKey(productId)) {
@@ -248,21 +254,26 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final accent = Theme.of(context).colorScheme.primary;
-    final secondary = Theme.of(context).colorScheme.secondary;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
+    /// Selection / checkmarks: brand saffron (avoids Material blue on a gold paywall).
+    final paywallAccent = AppColors.saffronDark;
     final ent = ref.watch(entitlementsProvider);
     final productsAsync = ref.watch(iapProductsProvider);
 
     final products = productsAsync.valueOrNull ?? {};
-    // Resolve prices: gendered SKU → other gender → gender-neutral (gold_monthly, …).
+    // Resolve prices: same rules as purchase — non-female users never use `female_*` for display.
     String tierPrice(PaywallTier tier, PremiumPlan plan) {
       final genderedId = plan.productIdForTier(tier, isFemale: ent.isFemale);
-      final otherGenderId = plan.productIdForTier(tier, isFemale: !ent.isFemale);
+      final maleId = plan.productIdForTier(tier, isFemale: false);
       final neutralId = plan.neutralProductId(tier);
-      return products[genderedId]?.price ??
-          products[otherGenderId]?.price ??
-          products[neutralId]?.price ??
-          '—';
+      if (ent.isFemale) {
+        return products[genderedId]?.price ??
+            products[maleId]?.price ??
+            products[neutralId]?.price ??
+            '—';
+      }
+      return products[genderedId]?.price ?? products[neutralId]?.price ?? '—';
     }
 
     final monthlyPrice = tierPrice(_selectedTier, PremiumPlan.monthly);
@@ -364,304 +375,273 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       );
     }
 
+    final reasonEnum = PaywallReason.values.cast<PaywallReason?>().firstWhere(
+      (r) => r?.queryParam == widget.reason,
+      orElse: () => null,
+    );
+    final subtitle = reasonEnum?.headline ?? ent.upgradeReason;
+
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            // Radial glow hero
-            Center(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.85, end: 1.0),
-                duration: AppMotion.loop,
-                curve: Curves.easeInOut,
-                builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.gold.withValues(alpha: 0.45),
-                        AppColors.saffron.withValues(alpha: 0.18),
-                        AppColors.saffron.withValues(alpha: 0),
-                      ],
-                      stops: const [0.0, 0.55, 1.0],
-                    ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.gold, AppColors.saffron],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: AppTokens.shadowGlow(AppColors.gold, intensity: 0.4),
-                      ),
-                      child: const Icon(Icons.workspace_premium, size: 40, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-            ).animate().fadeIn(duration: AppMotion.enter).scale(begin: const Offset(0.8, 0.8), curve: AppMotion.reveal),
-            const SizedBox(height: 20),
-            Text(
-              _kPaywallTitle,
-              style: AppTypography.displaySmall,
-              textAlign: TextAlign.center,
-            ).animate().fadeIn().slideY(begin: -0.05, end: 0),
-            const SizedBox(height: 8),
-            Text(
-              ent.upgradeReason,
-              style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ).animate().fadeIn(delay: 80.ms),
-
-            if (ent.isFemale) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: secondary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: secondary.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 20,
-                      color: secondary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _kPaywallFemaleAccess,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: secondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            // Female discount badge
-            if (ent.isFemale) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.rosePrimary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.female_rounded, size: 16, color: AppColors.rosePrimary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Women get up to 50% off — exclusive pricing',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.rosePrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            if (loadingPrices) ...[
-              const SizedBox(height: 12),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Compact hero ───────────────────────────────────────────
+              const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: accent,
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.gold, AppColors.saffron],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: AppTokens.shadowGlow(AppColors.gold, intensity: 0.35),
+                    ),
+                    child: const Icon(
+                      Icons.workspace_premium,
+                      size: 26,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    l.loading,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      _kPaywallTitle,
+                      style: AppTypography.titleLarge.copyWith(
+                        color: onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-            if (showStoreHint) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: accent.withValues(alpha: 0.22)),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: onSurface.withValues(alpha: 0.78),
+                  height: 1.45,
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                textAlign: TextAlign.center,
+              ),
+
+              // ── Female badge (single compact chip) ─────────────────────
+              if (ent.isFemale) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.rosePrimary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.rosePrimary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.female_rounded, size: 14, color: AppColors.rosePrimary),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Women get up to 50% off',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.rosePrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              // ── Prices loading / store hint ────────────────────────────
+              if (loadingPrices) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.info_outline, size: 20, color: accent),
-                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: paywallAccent),
+                    ),
+                    const SizedBox(width: 8),
+                  Text(
+                    l.loading,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: onSurface.withValues(alpha: 0.72),
+                    ),
+                  ),
+                  ],
+                ),
+              ],
+              if (showStoreHint) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: paywallAccent),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         l.paywallStorePricesHint,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: onSurface.withValues(alpha: 0.78),
                           height: 1.35,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
 
-            const SizedBox(height: 24),
-            // ── Tier Selector ───────────────────────────────────────────────
-            _TierSelector(
-              selected: _selectedTier,
-              onSelect: (t) => setState(() => _selectedTier = t),
-            ),
-            const SizedBox(height: 12),
-            _SubscriptionPlanTile(
-              title: 'Monthly',
-              price: monthlyPrice,
-              period: '/month',
-              savings: null,
-              isSelected: _selectedPlan == PremiumPlan.monthly,
-              accent: accent,
-              onTap: () {
-                setState(() => _selectedPlan = PremiumPlan.monthly);
-                AnalyticsService.instance.log(
-                  AnalyticsEvent.paywallPlanSelected,
-                  {'plan': PremiumPlan.monthly.productId},
-                );
-              },
-            ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.03, end: 0),
-            const SizedBox(height: 8),
-            _SubscriptionPlanTile(
-              title: 'Quarterly',
-              price: quarterlyPrice,
-              period: '/3 months',
-              savings: 'Save 29%',
-              isSelected: _selectedPlan == PremiumPlan.quarterly,
-              accent: accent,
-              onTap: () {
-                setState(() => _selectedPlan = PremiumPlan.quarterly);
-                AnalyticsService.instance.log(
-                  AnalyticsEvent.paywallPlanSelected,
-                  {'plan': PremiumPlan.quarterly.productId},
-                );
-              },
-            ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.03, end: 0),
-            const SizedBox(height: 8),
-            _SubscriptionPlanTile(
-              title: 'Annual',
-              price: annualPrice,
-              period: '/year',
-              savings: 'Best value',
-              isSelected: _selectedPlan == PremiumPlan.annual,
-              accent: accent,
-              onTap: () {
-                setState(() => _selectedPlan = PremiumPlan.annual);
-                AnalyticsService.instance.log(
-                  AnalyticsEvent.paywallPlanSelected,
-                  {'plan': PremiumPlan.annual.productId},
-                );
-              },
-            ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.03, end: 0),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_selectedTier.label} includes:',
-                    style: AppTypography.labelLarge.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...features.indexed.map(
-                    (entry) {
-                      final (idx, f) = entry;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 1),
-                              child: Icon(Icons.check_circle, size: 18, color: accent),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(f, style: AppTypography.bodySmall)),
-                          ],
-                        ),
-                      ).animate(delay: AppMotion.stagger(idx, stepMs: 60) + 210.ms).fadeIn(duration: AppMotion.medium).slideX(begin: 0.08, curve: AppMotion.spring);
-                    },
-                  ),
-                ],
+              const SizedBox(height: 14),
+
+              // ── Tier Selector ──────────────────────────────────────────
+              _TierSelector(
+                selected: _selectedTier,
+                onSelect: (t) => setState(() => _selectedTier = t),
               ),
-            ),
-            const SizedBox(height: 24),
-            // Gradient CTA button with scale pulse on tap
-            _GradientCtaButton(
-              label: l.subscribe,
-              onPressed: () => _onSubscribe(context, ref),
-            ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.04, curve: AppMotion.spring),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => _onRestore(context, ref),
-              child: Text(l.restorePurchases),
-            ),
-            if (hasActiveSubscription && Platform.isAndroid) ...[
+              const SizedBox(height: 10),
+
+              // ── Plan tiles ─────────────────────────────────────────────
+              _SubscriptionPlanTile(
+                title: 'Monthly',
+                price: monthlyPrice,
+                period: '/month',
+                savings: null,
+                isSelected: _selectedPlan == PremiumPlan.monthly,
+                accent: paywallAccent,
+                onTap: () {
+                  setState(() => _selectedPlan = PremiumPlan.monthly);
+                  AnalyticsService.instance.log(
+                    AnalyticsEvent.paywallPlanSelected,
+                    {'plan': PremiumPlan.monthly.productId},
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+              _SubscriptionPlanTile(
+                title: 'Quarterly',
+                price: quarterlyPrice,
+                period: '/3 months',
+                savings: 'Save 29%',
+                isSelected: _selectedPlan == PremiumPlan.quarterly,
+                accent: paywallAccent,
+                onTap: () {
+                  setState(() => _selectedPlan = PremiumPlan.quarterly);
+                  AnalyticsService.instance.log(
+                    AnalyticsEvent.paywallPlanSelected,
+                    {'plan': PremiumPlan.quarterly.productId},
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+              _SubscriptionPlanTile(
+                title: 'Annual',
+                price: annualPrice,
+                period: '/year',
+                savings: 'Best value',
+                isSelected: _selectedPlan == PremiumPlan.annual,
+                accent: paywallAccent,
+                onTap: () {
+                  setState(() => _selectedPlan = PremiumPlan.annual);
+                  AnalyticsService.instance.log(
+                    AnalyticsEvent.paywallPlanSelected,
+                    {'plan': PremiumPlan.annual.productId},
+                  );
+                },
+              ),
+
+              // ── Key features (top 3 only) ──────────────────────────────
+              const SizedBox(height: 12),
+              Text(
+                '${_selectedTier.label} includes:',
+                style: AppTypography.labelLarge.copyWith(
+                  color: onSurface.withValues(alpha: 0.88),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...features.take(3).map(
+                (f) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_circle, size: 16, color: paywallAccent),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          f,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                            color: onSurface.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // ── Subscribe CTA ──────────────────────────────────────────
+              _GradientCtaButton(
+                label: l.subscribe,
+                onPressed: () => _onSubscribe(context, ref),
+              ),
               const SizedBox(height: 4),
               TextButton(
-                onPressed: () => _openManageSubscription(),
-                child: const Text(_kManageSubscriptionLabel),
+                onPressed: () => _onRestore(context, ref),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(l.restorePurchases),
               ),
-            ],
-            const SizedBox(height: 16),
+              if (hasActiveSubscription && Platform.isAndroid)
+                TextButton(
+                  onPressed: _openManageSubscription,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size.fromHeight(32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(_kManageSubscriptionLabel),
+                ),
             Text(
               _kPaywallBoostNote,
               style: AppTypography.bodySmall.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                color: onSurface.withValues(alpha: 0.55),
+                fontSize: 12,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
@@ -729,10 +709,11 @@ class _GradientCtaButtonState extends State<_GradientCtaButton>
           child: Text(
             widget.label,
             textAlign: TextAlign.center,
-            style: AppTypography.titleMedium.copyWith(
-              color: Colors.white,
+            style: GoogleFonts.inter(
+              fontSize: 16,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
+              letterSpacing: 0.3,
+              color: Colors.white,
             ),
           ),
         ),
@@ -762,11 +743,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // Use ColorScheme, not AppTypography static colors — they track a global dark
-    // flag and can mismatch Theme brightness (e.g. near-white text on light cards).
-    final titleColor = isSelected ? cs.primary : cs.onSurface;
-    final priceLineColor = cs.onSurface.withValues(alpha: 0.68);
-    final trailingPriceColor = isSelected ? accent : cs.onSurface.withValues(alpha: 0.9);
+    final onSurface = cs.onSurface;
+    final titleColor = isSelected ? accent : onSurface;
+    final priceLineColor = onSurface.withValues(alpha: 0.72);
+    final trailingPriceColor = isSelected ? accent : onSurface.withValues(alpha: 0.92);
 
     return AnimatedScale(
       scale: isSelected ? 1.02 : 1.0,
@@ -779,7 +759,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: AppMotion.fast,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -811,7 +791,7 @@ class _SubscriptionPlanTile extends StatelessWidget {
                   ) : null,
                 ),
                 child: isSelected
-                    ? Icon(Icons.check, size: 14, color: cs.onPrimary)
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
                     : null,
               ),
               const SizedBox(width: 14),
@@ -823,9 +803,11 @@ class _SubscriptionPlanTile extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: AppTypography.titleMedium.copyWith(
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: titleColor,
+                            height: 1.25,
                           ),
                         ),
                         if (savings != null && savings!.isNotEmpty) ...[
@@ -838,9 +820,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
                             ),
                             child: Text(
                               savings!,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: accent,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
+                                color: accent,
                               ),
                             ),
                           ),
@@ -850,8 +833,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '$price$period',
-                      style: AppTypography.bodySmall.copyWith(
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
                         color: priceLineColor,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -859,9 +844,10 @@ class _SubscriptionPlanTile extends StatelessWidget {
               ),
               Text(
                 price,
-                style: AppTypography.titleMedium.copyWith(
-                  color: trailingPriceColor,
+                style: GoogleFonts.inter(
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
+                  color: trailingPriceColor,
                 ),
               ),
             ],
@@ -903,10 +889,10 @@ class _TierSelector extends StatelessWidget {
       children: [
         Text(
           'Choose your plan',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: cs.onSurface.withValues(alpha: 0.7),
+            color: cs.onSurface.withValues(alpha: 0.82),
           ),
         ),
         const SizedBox(height: 10),
@@ -986,10 +972,11 @@ class _TierSelector extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             _tierBenefits[selected]!,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 11,
-              color: cs.onSurface.withValues(alpha: 0.55),
               fontStyle: FontStyle.italic,
+              color: cs.onSurface.withValues(alpha: 0.68),
+              height: 1.3,
             ),
             textAlign: TextAlign.center,
           ),

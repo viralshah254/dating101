@@ -18,8 +18,10 @@ class ApiVerificationRepository implements VerificationRepository {
   }
 
   @override
-  Future<void> submitIdVerification(String key) async {
-    await api.post('/verification/id/submit', body: {'key': key});
+  Future<void> submitIdVerification(String key, {String? selfieKey}) async {
+    final body = <String, dynamic>{'key': key};
+    if (selfieKey != null) body['selfieKey'] = selfieKey;
+    await api.post('/verification/id/submit', body: body);
   }
 
   @override
@@ -36,6 +38,18 @@ class ApiVerificationRepository implements VerificationRepository {
   @override
   Future<void> linkedInCallback(String code) async {
     await api.post('/verification/linkedin/callback', body: {'code': code});
+  }
+
+  @override
+  Future<IdUploadUrlResult> getEducationUploadUrl({String contentType = 'image/jpeg'}) async {
+    final body = await api.post(
+      '/verification/education/upload-url',
+      body: {'contentType': contentType},
+    );
+    return IdUploadUrlResult(
+      uploadUrl: body['uploadUrl'] as String? ?? '',
+      key: body['key'] as String? ?? '',
+    );
   }
 
   @override

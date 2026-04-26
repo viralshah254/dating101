@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/repository_providers.dart';
@@ -258,14 +259,16 @@ class ReadinessScoreCard extends ConsumerWidget {
   static void _shareScore(BuildContext context, int score) {
     final text = 'My Marriage Readiness Score on Shubhmilan is $score/100! '
         'Download the app to find your match 💍 https://shubhmilan.app';
-    // Use platform share sheet
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Share your score: $score/100'),
         action: SnackBarAction(
           label: 'Copy',
           onPressed: () {
-            // Could use Clipboard.setData here
+            Clipboard.setData(ClipboardData(text: text));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Message copied to clipboard')),
+            );
           },
         ),
       ),
@@ -368,10 +371,15 @@ class _ScoreDonutPainter extends CustomPainter {
     // Score arc
     final sweepAngle = 2 * math.pi * (score / 100);
     final Color color;
-    if (score >= 75) color = const Color(0xFF00C853);
-    else if (score >= 50) color = const Color(0xFF1565C0);
-    else if (score >= 25) color = const Color(0xFFF57C00);
-    else color = const Color(0xFFE53935);
+    if (score >= 75) {
+      color = const Color(0xFF00C853);
+    } else if (score >= 50) {
+      color = const Color(0xFF1565C0);
+    } else if (score >= 25) {
+      color = const Color(0xFFF57C00);
+    } else {
+      color = const Color(0xFFE53935);
+    }
 
     final scorePaint = Paint()
       ..color = color

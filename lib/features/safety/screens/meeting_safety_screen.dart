@@ -15,8 +15,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
@@ -227,6 +229,11 @@ class _MeetingSafetyScreenState extends State<MeetingSafetyScreen> {
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: notificationAwareBackButton(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
         title: const Text('Meeting Safety'),
         backgroundColor: cs.surface,
         elevation: 0,

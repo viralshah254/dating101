@@ -3,8 +3,9 @@ abstract class VerificationRepository {
   /// POST /verification/id/upload-url — returns uploadUrl and key for ID image.
   Future<IdUploadUrlResult> getIdUploadUrl({String? type});
 
-  /// POST /verification/id/submit — submit after uploading to presigned URL. Key from getIdUploadUrl.
-  Future<void> submitIdVerification(String key);
+  /// POST /verification/id/submit — submit after uploading to presigned URL.
+  /// [key] is the ID document key; [selfieKey] is the selfie key (both from getIdUploadUrl).
+  Future<void> submitIdVerification(String key, {String? selfieKey});
 
   /// POST /verification/photo — set photoVerified (optional body: key).
   Future<void> submitPhotoVerification({String? key});
@@ -14,6 +15,9 @@ abstract class VerificationRepository {
 
   /// POST /verification/linkedin/callback — exchange code for token, set linkedInVerified.
   Future<void> linkedInCallback(String code);
+
+  /// POST /verification/education/upload-url — returns presigned S3 PUT URL for degree doc.
+  Future<IdUploadUrlResult> getEducationUploadUrl({String contentType = 'image/jpeg'});
 
   /// POST /verification/education — set educationVerified.
   Future<void> submitEducationVerification({String? institutionName, String? degree, String? documentKey});

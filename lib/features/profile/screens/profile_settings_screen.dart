@@ -15,6 +15,7 @@ import '../../../core/locale/language_picker_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
@@ -73,6 +74,11 @@ class ProfileSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: notificationAwareBackButton(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
         title: Text(
           l.profileSettings,
           style: AppTypography.headlineSmall.copyWith(
@@ -914,6 +920,14 @@ void _showModeSwitch(BuildContext context, WidgetRef ref, AppMode currentMode) {
           onPressed: () async {
             Navigator.pop(ctx);
             await ref.read(appModeProvider.notifier).setCurrentView(newMode);
+            // Persist the active view to the backend so a fresh install
+            // restores the correct tab for "both" users.
+            try {
+              await ref.read(profileRepositoryProvider).saveProfileJson(
+                {'modePreference': 'both'},
+                create: false,
+              );
+            } catch (_) {}
             if (!context.mounted) return;
             context.go('/');
           },
@@ -955,6 +969,13 @@ void _showAddOtherModeDialog(BuildContext context, WidgetRef ref, AppMode curren
             final notifier = ref.read(appModeProvider.notifier);
             await notifier.setMode(AppMode.both);
             await notifier.setCurrentView(currentMode);
+            // Persist the new "both" preference to the backend.
+            try {
+              await ref.read(profileRepositoryProvider).saveProfileJson(
+                {'modePreference': 'both'},
+                create: false,
+              );
+            } catch (_) {}
             ref.invalidate(modePreferenceProvider);
             if (!context.mounted) return;
             context.go('/');
@@ -1309,9 +1330,15 @@ class _SubscriptionCard extends ConsumerWidget {
         final isActive = state.isActive && state.expiresAt != null;
         if (isActive) {
           final expiresAt = state.expiresAt!;
-          final daysLeft = expiresAt.difference(DateTime.now()).inDays;
+          final diff = expiresAt.difference(DateTime.now());
+          final daysLeft = diff.inDays;
+          final hoursLeft = diff.inHours;
           final dateStr = DateFormat('d MMM yyyy').format(expiresAt);
           final showRenew = daysLeft <= _renewWarningDays && daysLeft >= 0;
+          // When less than 1 full day remains, show hours or "Expires today"
+          final timeLeftLabel = daysLeft == 0
+              ? (hoursLeft > 0 ? '$hoursLeft ${hoursLeft == 1 ? 'hour' : 'hours'} left' : 'Expires today')
+              : l.subscriptionDaysLeft(daysLeft);
           return _buildCard(
             context,
             ref: ref,
@@ -1320,7 +1347,7 @@ class _SubscriptionCard extends ConsumerWidget {
             leading: Icon(Icons.workspace_premium, color: primary, size: 28),
             title: l.premium,
             subtitle: showRenew
-                ? '${l.subscriptionExpiresOn(dateStr)} • ${l.subscriptionDaysLeft(daysLeft)}'
+                ? '${l.subscriptionExpiresOn(dateStr)} • $timeLeftLabel'
                 : l.subscriptionExpiresOn(dateStr),
             subtitleStyle: showRenew
                 ? AppTypography.bodySmall.copyWith(

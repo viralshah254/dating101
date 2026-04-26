@@ -15,6 +15,10 @@ import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/datetime/app_time_format.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
+import '../../../core/notifications/notification_deep_link.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
@@ -292,8 +296,30 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     }
     try {
       final ent = ref.read(entitlementsProvider);
-      final isMatch = widget.otherUserId != null &&
-          (await ref.read(matchedUserIdsProvider.future)).contains(widget.otherUserId!);
+
+      // Resolve other participant: deep links sometimes omit query param; thread list always has it.
+      var resolvedOtherUserId = widget.otherUserId?.trim();
+      if (resolvedOtherUserId == null || resolvedOtherUserId.isEmpty) {
+        final threads = ref.read(chatThreadsProvider).valueOrNull;
+        if (threads != null) {
+          for (final t in threads) {
+            if (t.id == widget.threadId) {
+              final o = t.otherUserId.trim();
+              if (o.isNotEmpty) resolvedOtherUserId = o;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fresh mutual matches so client "is match?" matches server (e.g. after admin accepted interest).
+      ref.invalidate(mutualMatchesProvider);
+      await ref.read(mutualMatchesProvider.future);
+      final matchIds = await ref.read(matchedUserIdsProvider.future);
+      final isMatch = resolvedOtherUserId != null &&
+          resolvedOtherUserId.isNotEmpty &&
+          matchIds.contains(resolvedOtherUserId);
+
       if (!mounted || !context.mounted) {
         _safeCompleteGate(slot, const _OutboundGateResult(proceed: false));
         return;
@@ -837,6 +863,14 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: AppBar(
               backgroundColor: cs.surface.withValues(alpha: isDark ? 0.75 : 0.85),
+              automaticallyImplyLeading: false,
+              leading: notificationAwareBackButton(
+                context,
+                onCannotPop: () {
+                  final mode = ref.read(appModeProvider) ?? AppMode.dating;
+                  context.go(chatListShellPath(mode));
+                },
+              ),
               titleSpacing: 0,
               elevation: 0,
               scrolledUnderElevation: 0,

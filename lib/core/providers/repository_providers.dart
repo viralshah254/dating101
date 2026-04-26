@@ -72,10 +72,9 @@ import '../../domain/repositories/verification_repository.dart';
 
 // ── Configuration ────────────────────────────────────────────────────────
 
-const _apiEnvironment = String.fromEnvironment(
-  'API_ENV',
-  defaultValue: 'localDev',
-);
+/// Override only when needed: `--dart-define=API_ENV=localDev|fake` or `API_BASE_URL=...`
+/// Default (no defines): **production** API — same as release builds.
+const _apiEnvironment = String.fromEnvironment('API_ENV');
 const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
 
 ApiConfig _resolveApiConfig() {
@@ -86,13 +85,13 @@ ApiConfig _resolveApiConfig() {
     );
   }
   switch (_apiEnvironment) {
-    case 'production':
-      return ApiConfig.production;
     case 'fake':
       return ApiConfig.fake;
     case 'localDev':
-    default:
       return ApiConfig.localDev;
+    case 'production':
+    default:
+      return ApiConfig.production;
   }
 }
 
@@ -289,6 +288,18 @@ final registerFcmTokenProvider = FutureProvider<void>((ref) async {
     if (kDebugMode) debugPrint('[FCM] skip register: not logged in');
     return;
   }
+  if (kDebugMode) {
+    debugPrint(
+      '[FCM] Registering device token with ${_config.baseUrl} '
+      '(fakeBackend=${_config.useFakeBackend})',
+    );
+  }
+  if (_config.useFakeBackend) {
+    if (kDebugMode) {
+      debugPrint('[FCM] skip register: fake backend — no POST /profile/me/fcm-token');
+    }
+    return;
+  }
   final service = ref.read(notificationServiceProvider);
   final token = await service.getToken();
   if (token == null) {
@@ -300,8 +311,21 @@ final registerFcmTokenProvider = FutureProvider<void>((ref) async {
     }
     return;
   }
+  Future<void> postFcm() => service.registerTokenWithBackend(token);
+
   try {
-    await service.registerTokenWithBackend(token);
+    try {
+      await postFcm();
+    } on ApiException catch (e) {
+      // Cold start: first request sometimes runs before refresh completes; retry once.
+      if (e.statusCode != 401 || e.code != 'UNAUTHORIZED') rethrow;
+      if (kDebugMode) {
+        debugPrint('[FCM] fcm-token 401 — refreshing access token and retrying once');
+      }
+      final ok = await ref.read(apiClientProvider).warmUpToken();
+      if (!ok) rethrow;
+      await postFcm();
+    }
     if (kDebugMode) debugPrint('[FCM] Token registered with backend (POST /profile/me/fcm-token ok)');
   } catch (e, st) {
     if (kDebugMode) {

@@ -4,14 +4,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists auth tokens securely.
 /// - Access/refresh tokens and userId: stored in flutter_secure_storage (KeyStore / Keychain).
-/// - Non-sensitive metadata (isNewUser): stored in SharedPreferences.
+/// - Non-sensitive metadata (pendingOnboarding): stored in SharedPreferences.
 ///
 /// Notifies listeners when tokens change so GoRouter can redirect to login.
 class TokenStorage extends ChangeNotifier {
   static const _keyAccess = 'auth_access_token';
   static const _keyRefresh = 'auth_refresh_token';
   static const _keyUserId = 'auth_user_id';
-  static const _keyIsNew = 'auth_is_new_user';
+  // Written as `auth_is_new_user` for backwards compatibility with existing installs.
+  static const _keyPendingOnboarding = 'auth_is_new_user';
+
+  // SharedPreferences keys that must survive sign-out (user preferences, not auth data).
+  static const _keysToPreserveOnSignOut = [
+    'app_locale',
+    'auth_default_signup_shown',
+  ];
 
   static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -24,6 +31,7 @@ class TokenStorage extends ChangeNotifier {
   String? _accessToken;
   String? _refreshToken;
   String? _userId;
+  bool _pendingOnboarding = false;
 
   /// Bumped on every [save] / [clear] so [ApiClient] can ignore stale token-refresh
   /// completions that finish after sign-out or a new login.
@@ -35,10 +43,17 @@ class TokenStorage extends ChangeNotifier {
   String? get userId => _userId;
   bool get isLoggedIn => _accessToken != null && _userId != null;
 
+  /// True when the user has registered but has not yet completed the onboarding
+  /// wizard (i.e. their profile does not exist yet). Persisted across restarts
+  /// so that a cold start resumes the correct onboarding route.
+  bool get hasPendingOnboarding => _pendingOnboarding;
+
   Future<void> load() async {
     _accessToken = await _secureStorage.read(key: _keyAccess);
     _refreshToken = await _secureStorage.read(key: _keyRefresh);
     _userId = await _secureStorage.read(key: _keyUserId);
+    final prefs = await SharedPreferences.getInstance();
+    _pendingOnboarding = prefs.getBool(_keyPendingOnboarding) ?? false;
     notifyListeners();
   }
 
@@ -51,6 +66,7 @@ class TokenStorage extends ChangeNotifier {
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     _userId = userId;
+    _pendingOnboarding = isNewUser;
 
     await Future.wait([
       _secureStorage.write(key: _keyAccess, value: accessToken),
@@ -58,9 +74,8 @@ class TokenStorage extends ChangeNotifier {
       _secureStorage.write(key: _keyUserId, value: userId),
     ]);
 
-    // isNewUser is non-sensitive — SharedPreferences is fine
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyIsNew, isNewUser);
+    await prefs.setBool(_keyPendingOnboarding, isNewUser);
 
     _sessionGeneration++;
     notifyListeners();
@@ -72,10 +87,21 @@ class TokenStorage extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Call this once the user has successfully completed their profile (onboarding done).
+  /// Clears the pending-onboarding gate so shell routes are accessible.
+  Future<void> clearPendingOnboarding() async {
+    if (!_pendingOnboarding) return;
+    _pendingOnboarding = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyPendingOnboarding);
+    notifyListeners();
+  }
+
   Future<void> clear() async {
     _accessToken = null;
     _refreshToken = null;
     _userId = null;
+    _pendingOnboarding = false;
 
     await Future.wait([
       _secureStorage.delete(key: _keyAccess),
@@ -83,8 +109,12 @@ class TokenStorage extends ChangeNotifier {
       _secureStorage.delete(key: _keyUserId),
     ]);
 
+    // Delete only auth-related prefs; preserve user preferences (locale, first-install flag, etc.)
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    final keysToRemove = prefs.getKeys()
+        .where((k) => !_keysToPreserveOnSignOut.contains(k))
+        .toList();
+    await Future.wait(keysToRemove.map((k) => prefs.remove(k)));
 
     _sessionGeneration++;
     notifyListeners();

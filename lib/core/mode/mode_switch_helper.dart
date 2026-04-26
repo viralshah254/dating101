@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/auth_post_sign_in.dart';
 import '../../l10n/app_localizations.dart';
 import '../theme/app_typography.dart';
 import 'app_mode.dart';
@@ -18,6 +21,7 @@ Future<void> switchAppMode(
   if (currentMode == newMode) return;
 
   await ref.read(appModeProvider.notifier).setMode(newMode);
+  unawaited(pushModeToServer(newMode, ref));
 
   if (!context.mounted) return;
 

@@ -29,6 +29,7 @@ class NotificationPayload {
   static const matchId = 'matchId';
   static const threadMode = 'threadMode';
   static const messageRequestId = 'messageRequestId';
+  static const verificationType = 'verificationType';
 }
 
 String? _str(Map<String, dynamic> data, String key) {
@@ -36,6 +37,14 @@ String? _str(Map<String, dynamic> data, String key) {
   if (v == null) return null;
   final s = v.toString().trim();
   return s.isEmpty ? null : s;
+}
+
+/// Resolve the effective [AppMode] from a threadMode string in the FCM payload.
+/// Falls back to [appMode] if the value is not recognized.
+AppMode _resolveThreadMode(String? raw, AppMode fallback) {
+  if (raw == 'dating') return AppMode.dating;
+  if (raw == 'matrimony') return AppMode.matrimony;
+  return fallback;
 }
 
 /// Builds a GoRouter path from FCM data. [appMode] must be the effective shell mode (dating vs matrimony/both).
@@ -50,24 +59,35 @@ String? notificationDataToPath(
   final otherUserId = _str(data, NotificationPayload.otherUserId);
   final profileId = _str(data, NotificationPayload.profileId);
   final matchId = _str(data, NotificationPayload.matchId);
+  final rawThreadMode = _str(data, NotificationPayload.threadMode);
 
-  String chatPathWithOther() {
+  // Derive mode from threadMode payload first, then fall back to current app shell mode.
+  final effectiveMode = _resolveThreadMode(rawThreadMode, appMode);
+
+  String chatPathWithOther({AppMode? mode}) {
+    final m = mode ?? effectiveMode;
     if (threadId != null && threadId.isNotEmpty) {
-      final q = otherUserId != null && otherUserId.isNotEmpty
-          ? '?otherUserId=${Uri.encodeComponent(otherUserId)}'
-          : '';
+      final params = <String>[];
+      if (otherUserId != null && otherUserId.isNotEmpty) {
+        params.add('otherUserId=${Uri.encodeComponent(otherUserId)}');
+      }
+      // Pass threadMode so the chat screen opens in the correct mode shell.
+      if (rawThreadMode != null && rawThreadMode.isNotEmpty) {
+        params.add('threadMode=${Uri.encodeComponent(rawThreadMode)}');
+      }
+      final q = params.isNotEmpty ? '?${params.join('&')}' : '';
       return '/chat/$threadId$q';
     }
-    return chatListShellPath(appMode);
+    return chatListShellPath(m);
   }
 
-  // Legacy `screen` hints from backend
+  // `screen` hints take precedence (backend sets these for most types now).
   if (screen != null && screen.isNotEmpty) {
     switch (screen) {
       case 'requests':
         return '/requests';
       case 'chats':
-        return chatListShellPath(appMode);
+        return chatListShellPath(effectiveMode);
       case 'matches':
         return '/';
       case 'visitors':
@@ -79,7 +99,7 @@ String? notificationDataToPath(
       case 'notifications':
         return '/notifications';
       case 'shortlist':
-        return shortlistShellPath(appMode);
+        return shortlistShellPath(effectiveMode);
       case 'profile':
         if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
         return '/notifications';
@@ -93,11 +113,11 @@ String? notificationDataToPath(
     case 'message':
       return chatPathWithOther();
     case 'message_request':
-      return '${chatListShellPath(appMode)}?tab=requests';
+      return '${chatListShellPath(effectiveMode)}?tab=requests';
     case 'message_request_accepted':
       return chatPathWithOther();
     case 'message_request_declined':
-      return '${chatListShellPath(appMode)}?tab=requests';
+      return '${chatListShellPath(effectiveMode)}?tab=requests';
     case 'mutual_match':
     case 'interest_accepted':
       // Prefer opening the chat thread so users can start talking immediately.
@@ -123,7 +143,6 @@ String? notificationDataToPath(
     case 'contact_request_declined':
       return '/';
     case 'shortlisted_you':
-      // Open the person's profile so the recipient can see who shortlisted them.
       if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
       return shortlistShellPath(appMode);
     case 'photo_view_request':
@@ -136,6 +155,16 @@ String? notificationDataToPath(
     case 'morning_reminder':
     case 'inactive_reminder':
       return '/';
+    // ── Admin / system notifications ────────────────────────────────────────
+    case 'admin_message':
+    case 'admin_warning':
+      return '/notifications';
+    // ── Verification ────────────────────────────────────────────────────────
+    case 'verification_approved':
+    case 'verification_rejected':
+      // Route to profile settings where the user can see verification status
+      // and re-submit if rejected.
+      return '/profile-settings';
     default:
       return '/notifications';
   }

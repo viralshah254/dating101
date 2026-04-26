@@ -70,6 +70,10 @@ mixin _$UserProfile {
   /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
   String? get familyMode => throw _privateConstructorUsedError;
 
+  /// User's chosen mode at signup: "dating" | "matrimony" | "both".
+  /// Stored on the server so mode is restored correctly after logout / fresh install.
+  String? get modePreference => throw _privateConstructorUsedError;
+
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -117,6 +121,7 @@ abstract class $UserProfileCopyWith<$Res> {
     DateTime? verificationDeadlineAt,
     String subjectStatus,
     String? familyMode,
+    String? modePreference,
   });
 
   $VerificationStatusCopyWith<$Res> get verificationStatus;
@@ -172,6 +177,7 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? verificationDeadlineAt = freezed,
     Object? subjectStatus = null,
     Object? familyMode = freezed,
+    Object? modePreference = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -303,6 +309,10 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
                 ? _value.familyMode
                 : familyMode // ignore: cast_nullable_to_non_nullable
                       as String?,
+            modePreference: freezed == modePreference
+                ? _value.modePreference
+                : modePreference // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -409,6 +419,7 @@ abstract class _$$UserProfileImplCopyWith<$Res>
     DateTime? verificationDeadlineAt,
     String subjectStatus,
     String? familyMode,
+    String? modePreference,
   });
 
   @override
@@ -467,6 +478,7 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? verificationDeadlineAt = freezed,
     Object? subjectStatus = null,
     Object? familyMode = freezed,
+    Object? modePreference = freezed,
   }) {
     return _then(
       _$UserProfileImpl(
@@ -598,6 +610,10 @@ class __$$UserProfileImplCopyWithImpl<$Res>
             ? _value.familyMode
             : familyMode // ignore: cast_nullable_to_non_nullable
                   as String?,
+        modePreference: freezed == modePreference
+            ? _value.modePreference
+            : modePreference // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -639,6 +655,7 @@ class _$UserProfileImpl extends _UserProfile {
     this.verificationDeadlineAt,
     this.subjectStatus = 'self',
     this.familyMode,
+    this.modePreference,
   }) : _languagesSpoken = languagesSpoken,
        _photoUrls = photoUrls,
        _interests = interests,
@@ -762,9 +779,14 @@ class _$UserProfileImpl extends _UserProfile {
   @override
   final String? familyMode;
 
+  /// User's chosen mode at signup: "dating" | "matrimony" | "both".
+  /// Stored on the server so mode is restored correctly after logout / fresh install.
+  @override
+  final String? modePreference;
+
   @override
   String toString() {
-    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress, hiddenFromRecommended: $hiddenFromRecommended, verificationDeadlineAt: $verificationDeadlineAt, subjectStatus: $subjectStatus, familyMode: $familyMode)';
+    return 'UserProfile(id: $id, name: $name, gender: $gender, age: $age, dateOfBirth: $dateOfBirth, currentCity: $currentCity, currentCountry: $currentCountry, originCity: $originCity, originCountry: $originCountry, languagesSpoken: $languagesSpoken, motherTongue: $motherTongue, photoUrls: $photoUrls, photosHidden: $photosHidden, canViewPhotos: $canViewPhotos, aboutMe: $aboutMe, interests: $interests, verificationStatus: $verificationStatus, profileCompleteness: $profileCompleteness, privacySettings: $privacySettings, datingExtensions: $datingExtensions, matrimonyExtensions: $matrimonyExtensions, partnerPreferences: $partnerPreferences, lastActiveAt: $lastActiveAt, isPremium: $isPremium, creationLat: $creationLat, creationLng: $creationLng, creationAt: $creationAt, creationAddress: $creationAddress, hiddenFromRecommended: $hiddenFromRecommended, verificationDeadlineAt: $verificationDeadlineAt, subjectStatus: $subjectStatus, familyMode: $familyMode, modePreference: $modePreference)';
   }
 
   @override
@@ -838,7 +860,9 @@ class _$UserProfileImpl extends _UserProfile {
             (identical(other.subjectStatus, subjectStatus) ||
                 other.subjectStatus == subjectStatus) &&
             (identical(other.familyMode, familyMode) ||
-                other.familyMode == familyMode));
+                other.familyMode == familyMode) &&
+            (identical(other.modePreference, modePreference) ||
+                other.modePreference == modePreference));
   }
 
   @override
@@ -876,6 +900,7 @@ class _$UserProfileImpl extends _UserProfile {
     verificationDeadlineAt,
     subjectStatus,
     familyMode,
+    modePreference,
   ]);
 
   /// Create a copy of UserProfile
@@ -921,6 +946,7 @@ abstract class _UserProfile extends UserProfile {
     final DateTime? verificationDeadlineAt,
     final String subjectStatus,
     final String? familyMode,
+    final String? modePreference,
   }) = _$UserProfileImpl;
   const _UserProfile._() : super._();
 
@@ -1005,6 +1031,11 @@ abstract class _UserProfile extends UserProfile {
   /// "self" | "assisted" | "hidden" | "joint" — how family involvement is configured post-handover.
   @override
   String? get familyMode;
+
+  /// User's chosen mode at signup: "dating" | "matrimony" | "both".
+  /// Stored on the server so mode is restored correctly after logout / fresh install.
+  @override
+  String? get modePreference;
 
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.

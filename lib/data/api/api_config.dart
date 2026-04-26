@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 /// API environment configuration.
-/// Set [useFakeBackend] to false and provide the real base URL to switch.
-/// Default local API port matches [dating-backend] `PORT` (see `.env.example`).
-/// Next.js (`shubhmilan_web`) dev server uses **3000** — keep the API on **8000** to avoid clashes.
+/// [repository_providers] defaults to [production] unless you pass
+/// `--dart-define=API_ENV=localDev|fake` or `API_BASE_URL=...`.
 class ApiConfig {
   const ApiConfig({
     this.baseUrl = 'http://localhost:8000',
@@ -14,8 +13,10 @@ class ApiConfig {
   final bool useFakeBackend;
 
   /// Production config.
+  /// Live API (EC2 / load balancer). When you add HTTPS + `api.shubhmilan.app`, point this to
+  /// `https://api.shubhmilan.app` and remove cleartext exceptions in iOS/Android.
   static const production = ApiConfig(
-    baseUrl: 'https://api.shubhmilan.app',
+    baseUrl: 'http://34.237.17.228',
     useFakeBackend: false,
   );
 
@@ -33,6 +34,6 @@ class ApiConfig {
   );
   
 
-  /// Fake/mock backend (default for now).
+  /// Fake/mock backend. Enable with `--dart-define=API_ENV=fake`.
   static const fake = ApiConfig(useFakeBackend: true);
 }

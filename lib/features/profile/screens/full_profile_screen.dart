@@ -9,9 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../features/premium/services/paywall_trigger_service.dart';
 import '../../../features/premium/widgets/photo_gate_overlay.dart';
 import '../widgets/voice_intro_player.dart';
@@ -23,6 +25,7 @@ import '../../../core/widgets/premium_badge.dart';
 import '../../../core/widgets/translatable_text.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 
 import '../../../core/theme/app_motion.dart';
@@ -58,14 +61,28 @@ class FullProfileScreen extends ConsumerWidget {
         data: (profile) {
           if (profile == null) {
             return Scaffold(
-              appBar: AppBar(title: Text(l.profileTitle)),
+              appBar: AppBar(
+                automaticallyImplyLeading: false,
+                leading: notificationAwareBackButton(
+                  context,
+                  onCannotPop: () => context.go('/'),
+                ),
+                title: Text(l.profileTitle),
+              ),
               body: Center(child: Text(l.emptyStateGeneric)),
             );
           }
           return _MatrimonyProfileContent(profile: profile);
         },
         loading: () => Scaffold(
-          appBar: AppBar(title: Text(l.profileTitle)),
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            leading: notificationAwareBackButton(
+              context,
+              onCannotPop: () => context.go('/'),
+            ),
+            title: Text(l.profileTitle),
+          ),
           body: const Center(child: CircularProgressIndicator()),
         ),
         error: (_, __) => _ErrorScaffold(
@@ -80,14 +97,28 @@ class FullProfileScreen extends ConsumerWidget {
       data: (profile) {
         if (profile == null) {
           return Scaffold(
-            appBar: AppBar(title: Text(l.profileTitle)),
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              leading: notificationAwareBackButton(
+                context,
+                onCannotPop: () => context.go('/'),
+              ),
+              title: Text(l.profileTitle),
+            ),
             body: Center(child: Text(l.emptyStateGeneric)),
           );
         }
         return _DatingProfileContent(profile: profile);
       },
       loading: () => Scaffold(
-        appBar: AppBar(title: Text(l.profileTitle)),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: notificationAwareBackButton(
+            context,
+            onCannotPop: () => context.go('/'),
+          ),
+          title: Text(l.profileTitle),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (_, __) => _ErrorScaffold(
@@ -601,14 +632,13 @@ class _FloatingActionBar extends ConsumerWidget {
         return;
       }
       if (e.code == 'DAILY_LIMIT') {
-        final budget = ref.read(adBudgetProvider).valueOrNull;
         final decision = await showGateDecisionSheet(
           context,
           title: 'Daily interest limit reached',
           message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
           canWatchAd: true,
           watchAdLabel: 'Watch ad — send 1 more interest',
-          adsRemaining: budget?.remaining,
+          adActionType: AdActionType.extraInterest,
         );
         if (!context.mounted || decision == null) return;
         if (decision == GateDecision.upgrade) {
@@ -637,6 +667,7 @@ class _FloatingActionBar extends ConsumerWidget {
                   (m) => {...m, mode: {...(m[mode] ?? {}), profileId}},
                 );
             ref.invalidate(sentInteractionsProvider(mode));
+            ref.invalidate(adBudgetProvider);
             if (result.mutualMatch) {
               _showMutualMatchCelebration(context, result.chatThreadId);
             } else {
@@ -906,26 +937,16 @@ class _FloatingActionBar extends ConsumerWidget {
   }
 
   Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.priorityInterest),
-        content: const Text(
-          'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Watch ad'),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.priorityInterest,
+      message: 'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad',
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   void _showMutualMatchCelebration(BuildContext context, String? chatThreadId) {
@@ -1779,6 +1800,34 @@ class _DatingPhotoGrid extends ConsumerStatefulWidget {
 
 class _DatingPhotoGridState extends ConsumerState<_DatingPhotoGrid> {
   int _adUnlockedCount = 0;
+  bool _photosUnlocked = false;
+
+  Future<void> _handlePhotoGate() async {
+    final decision = await showGateDecisionSheet(
+      context,
+      title: 'See all photos',
+      message: 'Subscribe to always see every photo. Or watch a short ad to unlock this profile\'s photos now.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad — see all photos',
+      adActionType: AdActionType.photoUnlock,
+    );
+    if (!mounted || decision == null) return;
+    if (decision == GateDecision.upgrade) {
+      context.push('/premium?reason=photoLimit');
+      return;
+    }
+    if (decision == GateDecision.watchAd) {
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.photoUnlock);
+      if (!mounted || !shown) return;
+      final api = ref.read(apiClientProvider);
+      final token = const Uuid().v4();
+      try {
+        await api.post('/ads/consume', body: {'actionType': 'photo_unlock', 'adCompletionToken': token});
+      } catch (_) {}
+      ref.invalidate(adBudgetProvider);
+      setState(() => _photosUnlocked = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1787,18 +1836,20 @@ class _DatingPhotoGridState extends ConsumerState<_DatingPhotoGrid> {
     final urls = widget.imageUrls.skip(1).take(4).toList();
     if (urls.isEmpty) return const SizedBox.shrink();
 
+    final effectiveVisible = _photosUnlocked ? 999 : entitlements.photosVisibleCount;
+
     Widget gated(String url, int gridIdx, double height) {
       // gridIdx is the index within urls (0-based); photoIndex in full array = gridIdx + 1
       final photoIndex = gridIdx + 1;
       return GatedPhoto(
         photoIndex: photoIndex,
-        photosVisibleCount: entitlements.photosVisibleCount,
+        photosVisibleCount: effectiveVisible,
         adUnlockedCount: _adUnlockedCount,
         isAccepted: widget.isAccepted,
         onAdUnlock: () {
           if (_adUnlockedCount < 2) setState(() => _adUnlockedCount++);
         },
-        onUpgradeNeeded: () => context.push('/premium?reason=photoLimit'),
+        onUpgradeNeeded: _handlePhotoGate,
         child: GestureDetector(
           onTap: () => widget.onTap(photoIndex),
           child: ClipRRect(
@@ -1898,7 +1949,10 @@ class _DatingProfileHero extends StatelessWidget {
           ),
           child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
         ),
-        onPressed: () => context.pop(),
+        onPressed: () => handleNotificationAwarePop(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
       ),
       actions: [
         PopupMenuButton<String>(
@@ -3228,7 +3282,10 @@ class _HeroAppBar extends StatelessWidget {
           ),
           child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
         ),
-        onPressed: () => context.pop(),
+        onPressed: () => handleNotificationAwarePop(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
       ),
       actions: [
         PopupMenuButton<String>(
@@ -4393,12 +4450,6 @@ class _FamilyCard extends StatelessWidget {
     if (fam.motherOccupation != null) {
       rows.add(_DetailRow('Mother\'s occupation', fam.motherOccupation));
     }
-    if (fam.fatherAge != null) {
-      rows.add(_DetailRow('Father\'s age', fam.fatherAge));
-    }
-    if (fam.motherAge != null) {
-      rows.add(_DetailRow('Mother\'s age', fam.motherAge));
-    }
     if (fam.brothers != null || fam.sisters != null) {
       final parts = <String>[];
       if (fam.brothers != null) {
@@ -4931,7 +4982,14 @@ class _ErrorScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(l.profileTitle)),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: notificationAwareBackButton(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
+        title: Text(l.profileTitle),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

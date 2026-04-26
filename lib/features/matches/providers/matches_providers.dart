@@ -28,23 +28,30 @@ class PaginatedFeedState {
     this.nextCursor,
     this.isWidenedSearch = false,
     this.loadingMore = false,
+    this.paginationFromExplore = false,
   });
   final List<ProfileSummary> profiles;
   final String? nextCursor;
   final bool isWidenedSearch;
   final bool loadingMore;
+  /// True when the first page came from the explore fallback (no recommendations).
+  /// [RecommendedPaginatedNotifier.loadMore] must continue on the explore endpoint
+  /// rather than recommended when this flag is set, to avoid cursor cross-contamination.
+  final bool paginationFromExplore;
 
   PaginatedFeedState copyWith({
     List<ProfileSummary>? profiles,
     Object? nextCursor = _unchanged,
     bool? isWidenedSearch,
     bool? loadingMore,
+    bool? paginationFromExplore,
   }) =>
       PaginatedFeedState(
         profiles: profiles ?? this.profiles,
         nextCursor: identical(nextCursor, _unchanged) ? this.nextCursor : nextCursor as String?,
         isWidenedSearch: isWidenedSearch ?? this.isWidenedSearch,
         loadingMore: loadingMore ?? this.loadingMore,
+        paginationFromExplore: paginationFromExplore ?? this.paginationFromExplore,
       );
 
   bool get hasMore => nextCursor != null && nextCursor!.isNotEmpty;
@@ -77,6 +84,7 @@ class RecommendedPaginatedNotifier extends AsyncNotifier<PaginatedFeedState> {
         profiles: recommended.profiles,
         nextCursor: recommended.nextCursor,
         isWidenedSearch: false,
+        paginationFromExplore: false,
       );
     }
     debugPrint('[Matches] No recommendations; using explore as fallback (parallel).');
@@ -84,6 +92,7 @@ class RecommendedPaginatedNotifier extends AsyncNotifier<PaginatedFeedState> {
       profiles: explore.profiles,
       nextCursor: explore.nextCursor,
       isWidenedSearch: explore.profiles.isNotEmpty,
+      paginationFromExplore: true,
     );
   }
 
@@ -94,15 +103,31 @@ class RecommendedPaginatedNotifier extends AsyncNotifier<PaginatedFeedState> {
     try {
       final mode = ref.read(appModeProvider) ?? AppMode.matrimony;
       final repo = ref.read(discoveryRepositoryProvider);
-      final page = await repo.getRecommendedPage(
-        mode: mode,
-        limit: _recommendedPageSize,
-        cursor: current.nextCursor,
-      );
+
+      // Continue on the same endpoint that served the first page.
+      // When the first page came from the explore fallback the cursor belongs to
+      // the explore pipeline; sending it to /recommended would return wrong results.
+      final page = current.paginationFromExplore
+          ? await repo.getExplorePage(
+              mode: mode,
+              limit: _explorePageSize,
+              cursor: current.nextCursor,
+            )
+          : await repo.getRecommendedPage(
+              mode: mode,
+              limit: _recommendedPageSize,
+              cursor: current.nextCursor,
+            );
+
+      final merged = [...current.profiles, ...page.profiles];
+      final seen = <String>{};
+      final deduped = merged.where((p) => seen.add(p.id)).toList();
       final updated = current.copyWith(
-        profiles: [...current.profiles, ...page.profiles],
+        profiles: deduped,
         nextCursor: page.nextCursor,
         loadingMore: false,
+        // Preserve the source flag so subsequent loadMore calls also use the right endpoint.
+        paginationFromExplore: current.paginationFromExplore,
       );
       state = AsyncValue.data(updated);
     } catch (e, st) {
@@ -138,6 +163,7 @@ class ExplorePaginatedNotifier
       diet: arg.filters.diet,
       maritalStatus: arg.filters.maritalStatus,
       motherTongue: arg.filters.motherTongue,
+      verifiedOnly: arg.filters.verifiedOnly,
       limit: _explorePageSize,
       cursor: null,
     );
@@ -167,11 +193,15 @@ class ExplorePaginatedNotifier
         diet: arg.filters.diet,
         maritalStatus: arg.filters.maritalStatus,
         motherTongue: arg.filters.motherTongue,
+        verifiedOnly: arg.filters.verifiedOnly,
         limit: _explorePageSize,
         cursor: current.nextCursor,
       );
+      final mergedExplore = [...current.profiles, ...page.profiles];
+      final seenExplore = <String>{};
+      final dedupedExplore = mergedExplore.where((p) => seenExplore.add(p.id)).toList();
       final updated = current.copyWith(
-        profiles: [...current.profiles, ...page.profiles],
+        profiles: dedupedExplore,
         nextCursor: page.nextCursor,
         loadingMore: false,
       );
@@ -257,6 +287,7 @@ final matchesExploreProvider = FutureProvider.autoDispose
         diet: args.filters.diet,
         maritalStatus: args.filters.maritalStatus,
         motherTongue: args.filters.motherTongue,
+        verifiedOnly: args.filters.verifiedOnly,
         limit: 20,
       );
       debugPrint('[Matches] Explore got ${results.length} profiles');
@@ -286,6 +317,7 @@ final matchesExploreWithFallbackProvider = FutureProvider.autoDispose
             diet: f.diet,
             maritalStatus: f.maritalStatus,
             motherTongue: f.motherTongue,
+            verifiedOnly: f.verifiedOnly,
             limit: 20,
           );
 
@@ -355,7 +387,8 @@ bool _hasFilters(MatchesSearchFilters f) =>
     f.heightMaxCm != null ||
     (f.diet != null && f.diet!.isNotEmpty) ||
     (f.maritalStatus != null && f.maritalStatus!.isNotEmpty) ||
-    (f.motherTongue != null && f.motherTongue!.isNotEmpty);
+    (f.motherTongue != null && f.motherTongue!.isNotEmpty) ||
+    f.verifiedOnly;
 
 final matchesSearchProvider = FutureProvider.autoDispose
     .family<List<ProfileSummary>, MatchesSearchFilters>((ref, filters) async {
@@ -504,6 +537,7 @@ class MatchesSearchFilters {
     this.diet,
     this.maritalStatus,
     this.motherTongue,
+    this.verifiedOnly = false,
   });
 
   final int? ageMin;
@@ -516,6 +550,7 @@ class MatchesSearchFilters {
   final String? diet;
   final String? maritalStatus;
   final String? motherTongue;
+  final bool verifiedOnly;
 
   /// [clearCity]/[clearReligion] etc. set the respective string field to null.
   MatchesSearchFilters copyWith({
@@ -529,6 +564,7 @@ class MatchesSearchFilters {
     String? diet,
     String? maritalStatus,
     String? motherTongue,
+    bool? verifiedOnly,
     bool clearCity = false,
     bool clearReligion = false,
     bool clearEducation = false,
@@ -549,6 +585,7 @@ class MatchesSearchFilters {
       diet: clearDiet ? null : (diet ?? this.diet),
       maritalStatus: clearMaritalStatus ? null : (maritalStatus ?? this.maritalStatus),
       motherTongue: clearMotherTongue ? null : (motherTongue ?? this.motherTongue),
+      verifiedOnly: verifiedOnly ?? this.verifiedOnly,
     );
   }
 
@@ -565,12 +602,14 @@ class MatchesSearchFilters {
           heightMaxCm == other.heightMaxCm &&
           diet == other.diet &&
           maritalStatus == other.maritalStatus &&
-          motherTongue == other.motherTongue;
+          motherTongue == other.motherTongue &&
+          verifiedOnly == other.verifiedOnly;
 
   @override
   int get hashCode => Object.hash(
         ageMin, ageMax, city, religion, education,
         heightMinCm, heightMaxCm, diet, maritalStatus, motherTongue,
+        verifiedOnly,
       );
 
   /// Convert to map for saved-search API (only non-null fields).
@@ -586,6 +625,7 @@ class MatchesSearchFilters {
     if (diet != null && diet!.isNotEmpty) m['diet'] = diet;
     if (maritalStatus != null && maritalStatus!.isNotEmpty) m['maritalStatus'] = maritalStatus;
     if (motherTongue != null && motherTongue!.isNotEmpty) m['motherTongue'] = motherTongue;
+    if (verifiedOnly) m['verifiedOnly'] = true;
     return m;
   }
 
@@ -603,6 +643,7 @@ class MatchesSearchFilters {
       diet: m['diet'] as String?,
       maritalStatus: m['maritalStatus'] as String?,
       motherTongue: m['motherTongue'] as String?,
+      verifiedOnly: m['verifiedOnly'] as bool? ?? false,
     );
   }
 }

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,6 +25,7 @@ import '../widgets/step_about_you.dart';
 import '../widgets/step_lifestyle.dart';
 import '../widgets/step_creating_for.dart';
 import '../../profile_for/providers/creating_for_provider.dart';
+import '../widgets/wizard_step_shell.dart';
 
 /// API / backend store `partnerPreferences.genderPreference` as `Male`/`Female` (and variants).
 /// The profile form uses `Man`/`Woman`/`Any` so chips and matching stay consistent.
@@ -215,6 +219,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         );
         return;
       }
+      _syncModeToFormData();
       setState(() => _isCompleting = true);
 
       if (widget.isEditing) {
@@ -310,7 +315,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         totalSteps: _steps.length,
         profileCompletionPercent: _profileCompletionPercent(),
       );
-      context.go('/');
+      // Profile created — onboarding is done. Clear the gate so shell routes
+      // are no longer blocked by the router guard.
+      await ref.read(tokenStorageProvider).clearPendingOnboarding();
+      if (!mounted) return;
+      context.go('/profile-ready');
     }
   }
 
@@ -356,6 +365,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   /// Save current changes, then advance to the next step (or close on last step).
   Future<void> _saveAndContinue() async {
     if (_isSaving) return;
+    _syncModeToFormData();
     setState(() => _isSaving = true);
 
     try {
@@ -419,6 +429,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     return l?.profileSaveFailedGeneric ?? 'Failed to save. Please try again.';
   }
 
+  /// Sync the locally-chosen mode preference into [_formData] so it is included
+  /// in every `toFullJson()` call that saves to the backend.
+  void _syncModeToFormData() {
+    final pref = ref.read(modePreferenceProvider).valueOrNull;
+    final effective = ref.read(appModeProvider);
+    final mode = pref ?? effective;
+    if (mode != null) {
+      _formData.modePreference = mode.name;
+    }
+  }
+
   /// Core upload logic: sends local-path photos to S3 and replaces them with CDN URLs.
   /// Does NOT touch [_photoUploadTask] — call this from the task itself or after awaiting it.
   Future<void> _doUploadPhotos() async {
@@ -471,6 +492,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     if (_isLoading) {
       return Scaffold(
@@ -509,7 +531,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       });
     }
     if (_currentStep >= _steps.length) _currentStep = _steps.length - 1;
-    final progress = (_currentStep + 1) / _steps.length;
+    // Progress calculation excludes milestone steps so the bar reflects real form progress.
+    final formSteps = _steps.where((s) => !s.isMilestone).toList();
+    final formStepsBefore = _steps
+        .sublist(0, _currentStep + 1)
+        .where((s) => !s.isMilestone)
+        .length;
+    final progress = formSteps.isEmpty ? 1.0 : formStepsBefore / formSteps.length;
     final currentStep = _steps[_currentStep];
     if (_lastLoggedStep != _currentStep) {
       _lastLoggedStep = _currentStep;
@@ -547,94 +575,123 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
             ),
           ),
-          leading: IconButton(
-            onPressed: _currentStep > 0 ? _back : () => context.pop(),
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          ),
-          title: Text(
-            currentStep.label,
-            style: AppTypography.titleLarge.copyWith(
-              color: onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          leading: currentStep.isMilestone
+              ? const SizedBox.shrink()
+              : IconButton(
+                  onPressed: _currentStep > 0 ? _back : () => context.pop(),
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                ),
+          title: currentStep.isMilestone
+              ? null
+              : Text(
+                  currentStep.label,
+                  style: AppTypography.titleLarge.copyWith(
+                    color: onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+          actions: [
+            if (!widget.isEditing && currentStep.skippable && _currentStep < _steps.length - 1)
+              TextButton(
+                onPressed: _skip,
+                child: Text(
+                  'Skip',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: onSurface.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+          ],
         ),
         body: SafeArea(
           top: false,
           child: Column(
             children: [
-              // Step progress — same concept as section edit: clear, minimal
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                child: Column(
-                  children: [
-                    if (signupPreference.isBoth && !widget.isEditing) ...[
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.merge_type_rounded,
-                              color: accent,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                l.bothModeSetupHint,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: onSurface.withValues(alpha: 0.78),
-                                  fontWeight: FontWeight.w500,
+              // Phase-aware progress bar — no "Step X of Y" text; just the animated fill.
+              if (!currentStep.isMilestone)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (signupPreference.isBoth && !widget.isEditing) ...[
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          child: keyboardOpen
+                              ? const SizedBox.shrink()
+                              : Container(
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: accent.withValues(alpha: 0.22),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.merge_type_rounded,
+                                        color: accent,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          l.bothModeSetupHint,
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: onSurface.withValues(alpha: 0.78),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                        ),
+                      ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${(progress * 100).round()}% complete',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: onSurface.withValues(alpha: 0.55),
                             ),
-                          ],
+                          ),
+                          Text(
+                            '${(progress * 100).round()}%',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: progress),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeOut,
+                          builder: (_, value, __) => LinearProgressIndicator(
+                            value: value,
+                            backgroundColor: onSurface.withValues(alpha: 0.08),
+                            valueColor: AlwaysStoppedAnimation(accent),
+                            minHeight: 7,
+                          ),
                         ),
                       ),
                     ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          l.stepOfTotal(_currentStep + 1, _steps.length),
-                          style: AppTypography.labelMedium.copyWith(
-                            color: onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        Text(
-                          '${(progress * 100).round()}%',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: accent,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: onSurface.withValues(alpha: 0.1),
-                        valueColor: AlwaysStoppedAnimation(accent),
-                        minHeight: 6,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
               Expanded(
                 child: PageView(
                   controller: _pageController,
@@ -643,9 +700,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
               ),
 
-              // Bottom — same style as ProfileSectionEditScreen (Save & close / Next)
+              // Bottom bar — hidden on milestone slides (they are self-advancing).
+              if (!currentStep.isMilestone)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                padding: EdgeInsets.fromLTRB(24, keyboardOpen ? 8 : 12, 24, keyboardOpen ? 8 : 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -711,20 +769,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                                   ),
                       ),
                     ),
-                    if (!widget.isEditing &&
-                        currentStep.skippable &&
-                        _currentStep < _steps.length - 1) ...[
-                      const SizedBox(height: 10),
-                      TextButton(
-                        onPressed: _skip,
-                        child: Text(
-                          l.skipForNow,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: onSurface.withValues(alpha: 0.55),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -736,6 +780,36 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         if (_isCompleting && !widget.isEditing)
           const Positioned.fill(child: CreatingProfileLoadingOverlay()),
       ],
+    );
+  }
+
+  /// Build a non-form phase-milestone slide. Auto-advances when tapped or after delay.
+  _StepInfo _milestone({
+    required String analyticsKey,
+    required String emoji,
+    required String headline,
+    required String subtext,
+  }) {
+    return _StepInfo(
+      analyticsKey: analyticsKey,
+      label: '',
+      isMilestone: true,
+      hasMandatory: false,
+      skippable: false,
+      widget: _PhaseMilestoneWidget(
+        emoji: emoji,
+        headline: headline,
+        subtext: subtext,
+        onAdvance: () {
+          if (_currentStep < _steps.length - 1) {
+            _pageController.nextPage(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOut,
+            );
+            setState(() => _currentStep++);
+          }
+        },
+      ),
     );
   }
 
@@ -915,9 +989,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hasMandatory: false,
           skippable: true,
         ),
+        // Phase 1 milestone
+        if (!editing)
+          _milestone(
+            analyticsKey: 'milestone_phase1',
+            emoji: '✨',
+            headline: 'Looking great!',
+            subtext: 'Your profile is already attracting interest.\nKeep going — it gets better.',
+          ),
         _StepInfo(
           analyticsKey: 'matrimony_about',
-          label: 'About you',
+          label: 'Write your story',
           widget: StepAboutYouMatrimony(formData: _formData, onChanged: onChanged),
           hasMandatory: true,
           skippable: false,
@@ -925,7 +1007,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
         _StepInfo(
           analyticsKey: 'matrimony_background',
-          label: 'Background',
+          label: 'Your roots',
           widget: StepDetails(
             mode: mode,
             formData: _formData,
@@ -935,6 +1017,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hasMandatory: false,
           skippable: true,
         ),
+        // Phase 2 milestone
+        if (!editing)
+          _milestone(
+            analyticsKey: 'milestone_phase2',
+            emoji: '🌟',
+            headline: 'Your story is coming alive',
+            subtext: 'Families love profiles this detailed.\nA few more steps to unlock all matches.',
+          ),
         _StepInfo(
           analyticsKey: 'matrimony_intent',
           label: l.marriageIntentSection,
@@ -953,6 +1043,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hasMandatory: false,
           skippable: true,
         ),
+        // Phase 3 milestone
+        if (!editing)
+          _milestone(
+            analyticsKey: 'milestone_phase3',
+            emoji: '💫',
+            headline: 'You know what you want',
+            subtext: 'That clarity attracts serious matches.\nOne last section and you\'re live!',
+          ),
         _StepInfo(
           analyticsKey: 'matrimony_education',
           label: l.profileStepEducation,
@@ -969,7 +1067,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
         _StepInfo(
           analyticsKey: 'matrimony_lifestyle',
-          label: 'Lifestyle & Horoscope',
+          label: 'Your lifestyle',
           widget: StepDetails(
             mode: mode,
             formData: _formData,
@@ -988,7 +1086,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
       ];
     }
-    // Dating-only flow: You → Photos → About you → Lifestyle → Interests → Looking for
+    // Dating-only flow: You → Photos → (milestone) → About you → Lifestyle → Interests → Looking for
     return [
       _StepInfo(
         analyticsKey: 'identity',
@@ -1015,9 +1113,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         hasMandatory: false,
         skippable: true,
       ),
+      // Dating phase 1 milestone
+      if (!editing)
+        _milestone(
+          analyticsKey: 'milestone_dating_phase1',
+          emoji: '✨',
+          headline: 'Nice start!',
+          subtext: 'Profiles with photos get 8× more matches.\nLet\'s add a little more of you.',
+        ),
       _StepInfo(
         analyticsKey: 'dating_about',
-        label: 'About you',
+        label: 'Tell us what makes you tick',
         widget: StepAboutYou(formData: _formData, onChanged: onChanged),
         hasMandatory: true,
         skippable: false,
@@ -1025,7 +1131,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       ),
       _StepInfo(
         analyticsKey: 'dating_lifestyle',
-        label: 'Lifestyle',
+        label: 'How do you actually live?',
         widget: StepLifestyle(formData: _formData, onChanged: onChanged),
         hasMandatory: false,
         skippable: true,
@@ -1059,6 +1165,7 @@ class _StepInfo {
     required this.widget,
     this.hasMandatory = false,
     this.skippable = false,
+    this.isMilestone = false,
     bool Function(ProfileFormData)? isMandatorySatisfied,
   }) : _isMandatorySatisfied = isMandatorySatisfied;
 
@@ -1067,10 +1174,125 @@ class _StepInfo {
   final Widget widget;
   final bool hasMandatory;
   final bool skippable;
+
+  /// When true this step is a phase-celebration card, not a form.
+  final bool isMilestone;
+
   final bool Function(ProfileFormData)? _isMandatorySatisfied;
 
   bool isMandatorySatisfied(ProfileFormData d) =>
       _isMandatorySatisfied?.call(d) ?? true;
+}
+
+/// A full-screen phase-celebration card inserted between wizard phases.
+/// Auto-advances after 2 seconds or on tap.
+class _PhaseMilestoneWidget extends StatefulWidget {
+  const _PhaseMilestoneWidget({
+    required this.emoji,
+    required this.headline,
+    required this.subtext,
+    required this.onAdvance,
+  });
+
+  final String emoji;
+  final String headline;
+  final String subtext;
+  final VoidCallback onAdvance;
+
+  @override
+  State<_PhaseMilestoneWidget> createState() => _PhaseMilestoneWidgetState();
+}
+
+class _PhaseMilestoneWidgetState extends State<_PhaseMilestoneWidget> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 2000), () {
+      if (mounted) widget.onAdvance();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onAdvance,
+      child: Container(
+        color: Colors.transparent,
+        child: CompletionConfetti(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.emoji,
+                    style: const TextStyle(fontSize: 64),
+                  )
+                      .animate()
+                      .scale(
+                        begin: const Offset(0.5, 0.5),
+                        end: const Offset(1.0, 1.0),
+                        duration: 500.ms,
+                        curve: Curves.elasticOut,
+                      ),
+                  const SizedBox(height: 24),
+                  Text(
+                    widget.headline,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.headlineMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 200.ms)
+                      .slideY(
+                        begin: 0.1,
+                        end: 0,
+                        duration: 400.ms,
+                        delay: 200.ms,
+                        curve: Curves.easeOut,
+                      ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.subtext,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                      height: 1.5,
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 350.ms),
+                  const SizedBox(height: 40),
+                  Text(
+                    'Tap to continue',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.35),
+                    ),
+                  ).animate().fadeIn(duration: 400.ms, delay: 800.ms),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// One education entry (degree, institution, year, grade).
@@ -1198,6 +1420,11 @@ class ProfileFormData {
   /// Non-negotiable deal-breakers
   List<String> dealBreakers = [];
 
+  // Mode
+  /// User's chosen mode at signup: "dating" | "matrimony" | "both".
+  /// Sent to backend so discovery pools stay correct across devices.
+  String? modePreference;
+
   // Dating extras
   String? datingIntent;
   String? interestedIn;
@@ -1309,6 +1536,7 @@ class ProfileFormData {
     creationLng = p.creationLng;
     creationAt = p.creationAt;
     creationAddress = p.creationAddress;
+    if (p.modePreference != null) modePreference = p.modePreference;
 
     final mat = p.matrimonyExtensions;
     if (mat != null) {
@@ -1597,6 +1825,7 @@ class ProfileFormData {
       if (creationLng != null) 'creationLng': creationLng,
       if (creationAt != null) 'creationAt': creationAt!.toIso8601String(),
       if (creationAddress != null) 'creationAddress': creationAddress,
+      if (modePreference != null) 'modePreference': modePreference,
     };
 
     // ── Matrimony extensions ──

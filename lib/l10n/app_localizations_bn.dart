@@ -157,6 +157,10 @@ class AppLocalizationsBn extends AppLocalizations {
   String get authPasswordTooShort => 'Password must be at least 8 characters.';
 
   @override
+  String get authPasswordSignUpHint =>
+      'Use at least 8 characters (maximum 128).';
+
+  @override
   String get authSignInButton => 'Sign in';
 
   @override

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/entitlements/entitlements.dart';
 import 'features/premium/providers/iap_products_provider.dart';
+import 'core/feature_flags/feature_flags.dart';
 import 'core/locale/app_locale_provider.dart';
 import 'core/mode/app_mode.dart';
 import 'core/mode/mode_provider.dart';
@@ -15,6 +16,7 @@ import 'core/providers/repository_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/session/session_api_cache_invalidation.dart';
+import 'core/update/app_update_service.dart';
 import 'features/premium/services/paywall_trigger_service.dart';
 import 'features/verification/services/verification_nudge_service.dart';
 import 'l10n/app_localizations.dart';
@@ -30,6 +32,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     with WidgetsBindingObserver {
   late final VoidCallback _tokenStorageListener;
   bool _wasLoggedIn = false;
+  Timer? _verificationNudgeTimer;
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     WidgetsBinding.instance.addPostFrameCallback((_) => _initNotifications());
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowStreakPaywall());
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowVerificationNudge());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
   }
 
   void _onTokenStorageChanged() {
@@ -65,6 +69,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
 
   @override
   void dispose() {
+    _verificationNudgeTimer?.cancel();
     ref.read(tokenStorageProvider).removeListener(_tokenStorageListener);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -75,10 +80,15 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     if (state == AppLifecycleState.resumed) {
       _refreshSubscriptionAccess();
       _touchChatPresenceAfterResume();
+      _checkForUpdate();
       if (!kIsWeb &&
           (defaultTargetPlatform == TargetPlatform.iOS ||
               defaultTargetPlatform == TargetPlatform.android)) {
         ref.invalidate(iapProductsProvider);
+        // Retry FCM registration if the first attempt ran before permission / token was ready.
+        if (ref.read(tokenStorageProvider).isLoggedIn) {
+          ref.invalidate(registerFcmTokenProvider);
+        }
       }
       _maybeShowVerificationNudge();
     }
@@ -100,6 +110,11 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     }
   }
 
+  Future<void> _checkForUpdate() async {
+    final forceUpdate = await ref.read(androidUpdateConfigProvider.future);
+    await AppUpdateService.checkForUpdate(forceUpdate: forceUpdate);
+  }
+
   void _refreshSubscriptionAccess() {
     final authRepo = ref.read(authRepositoryProvider);
     if (authRepo.currentUserId == null) return;
@@ -109,7 +124,8 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
   void _maybeShowVerificationNudge() {
     final authRepo = ref.read(authRepositoryProvider);
     if (authRepo.currentUserId == null || !mounted) return;
-    Future.delayed(const Duration(seconds: 6), () {
+    _verificationNudgeTimer?.cancel();
+    _verificationNudgeTimer = Timer(const Duration(seconds: 6), () {
       if (!mounted) return;
       VerificationNudgeService.maybeShow(context, ref);
     });
@@ -133,12 +149,28 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     try {
       final router = ref.read(appRouterProvider);
       final service = ref.read(notificationServiceProvider);
-      service.setOnNotificationTap((data) {
+
+      void navigate(Map<String, dynamic> data) {
         final mode = ref.read(appModeProvider) ?? AppMode.dating;
         final path = notificationDataToPath(data, appMode: mode);
+        if (kDebugMode) debugPrint('[FCM] Navigating to $path (type=${data['type']})');
         if (path != null) router.go(path);
-      });
+      }
+
+      service.setOnNotificationTap(navigate);
       service.initialize();
+
+      // Cold-start tap: drain after the splash animation finishes (~2.2 s)
+      // plus a small buffer so the router is in its final authenticated state.
+      Future.delayed(const Duration(milliseconds: 2600), () {
+        if (!mounted) return;
+        final coldStart = service.drainColdStartTap();
+        if (coldStart != null) {
+          if (kDebugMode) debugPrint('[FCM] Applying cold-start tap type=${coldStart['type']}');
+          navigate(coldStart);
+        }
+      });
+
       if (kDebugMode) debugPrint('[FCM] Initialized');
     } catch (e) {
       if (kDebugMode) debugPrint('[FCM] Init failed: $e');

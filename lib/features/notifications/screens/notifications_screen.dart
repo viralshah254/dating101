@@ -6,6 +6,7 @@ import '../../../core/design/design.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/notifications/notification_deep_link.dart';
+import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
@@ -24,6 +25,11 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: notificationAwareBackButton(
+          context,
+          onCannotPop: () => context.go('/'),
+        ),
         title: Text(l.notifications),
         actions: [
           if (unread > 0)

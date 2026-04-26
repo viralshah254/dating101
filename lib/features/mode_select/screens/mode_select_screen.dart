@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../auth/auth_post_sign_in.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
@@ -22,6 +25,7 @@ class _ModeSelectScreenState extends ConsumerState<ModeSelectScreen> {
   Future<void> _confirm() async {
     if (_selected == null) return;
     await ref.read(appModeProvider.notifier).setMode(_selected!);
+    unawaited(pushModeToServer(_selected!, ref));
     if (!mounted) return;
     context.go('/onboarding');
   }

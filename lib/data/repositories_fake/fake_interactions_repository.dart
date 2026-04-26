@@ -178,7 +178,7 @@ class FakeInteractionsRepository implements InteractionsRepository {
               age: 26,
               city: 'Mumbai',
             ),
-      adsRemainingToday: 9,
+      adsRemainingToday: 2,
     );
   }
 }

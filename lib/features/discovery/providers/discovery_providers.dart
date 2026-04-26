@@ -66,6 +66,7 @@ final discoveryFeedProvider = FutureProvider<List<ProfileSummary>>((
         bodyType: filterParams.bodyType,
         maritalStatus: filterParams.maritalStatus,
         motherTongue: filterParams.motherTongue,
+        verifiedOnly: filterParams.verifiedOnly,
         limit: 20,
       );
     }

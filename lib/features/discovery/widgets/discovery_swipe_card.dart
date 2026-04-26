@@ -4,8 +4,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
+import '../../../core/ads/ad_budget_provider.dart';
+import '../../../core/ads/ad_loading_dialog.dart';
+import '../../../core/ads/ad_service.dart';
 import '../../../core/entitlements/entitlements.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/premium_badge.dart';
@@ -184,6 +191,7 @@ class DiscoverySwipeCard extends ConsumerWidget {
     this.onTap,
     required this.onPass,
     required this.onLike,
+    this.onLikeWithNote,
     required this.onSuperLike,
     required this.onBlock,
     required this.onReport,
@@ -194,6 +202,7 @@ class DiscoverySwipeCard extends ConsumerWidget {
   final VoidCallback? onTap;
   final VoidCallback onPass;
   final VoidCallback onLike;
+  final VoidCallback? onLikeWithNote;
   final VoidCallback onSuperLike;
   final VoidCallback onBlock;
   final VoidCallback onReport;
@@ -294,6 +303,12 @@ class DiscoverySwipeCard extends ConsumerWidget {
                                   variant: _ActionVariant.like,
                                   onPressed: onLike,
                                 ),
+                                if (onLikeWithNote != null)
+                                  _ActionButton(
+                                    icon: Icons.edit_note_rounded,
+                                    variant: _ActionVariant.note,
+                                    onPressed: onLikeWithNote!,
+                                  ),
                                 _ActionButton(
                                   icon: Icons.expand_less_rounded,
                                   variant: _ActionVariant.info,
@@ -395,7 +410,7 @@ class DiscoverySwipeCard extends ConsumerWidget {
   }
 }
 
-enum _ActionVariant { pass, superLike, like, info }
+enum _ActionVariant { pass, superLike, like, note, info }
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
@@ -410,6 +425,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isLike = variant == _ActionVariant.like;
     final isSuperLike = variant == _ActionVariant.superLike;
     final size = isLike ? 60.0 : (isSuperLike ? 52.0 : 46.0);
@@ -425,6 +441,7 @@ class _ActionButton extends StatelessWidget {
       _ActionVariant.pass => Colors.white.withValues(alpha: 0.9),
       _ActionVariant.superLike => AppColors.goldDark,
       _ActionVariant.like => Colors.white,
+      _ActionVariant.note => cs.primary.withValues(alpha: 0.95),
       _ActionVariant.info => Colors.white.withValues(alpha: 0.75),
     };
 
@@ -432,6 +449,7 @@ class _ActionButton extends StatelessWidget {
       _ActionVariant.like => Colors.transparent,
       _ActionVariant.superLike => AppColors.gold.withValues(alpha: 0.4),
       _ActionVariant.pass => Colors.white.withValues(alpha: 0.3),
+      _ActionVariant.note => cs.primary.withValues(alpha: 0.35),
       _ActionVariant.info => Colors.white.withValues(alpha: 0.2),
     };
 
@@ -465,7 +483,11 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: buttonGradient,
-            color: buttonGradient == null ? Colors.white.withValues(alpha: 0.12) : null,
+            color: buttonGradient == null
+                ? (variant == _ActionVariant.note
+                    ? cs.primary.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.12))
+                : null,
             border: Border.all(color: borderColor),
             boxShadow: shadows,
           ),
@@ -476,7 +498,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _HeroImageCarousel extends StatefulWidget {
+class _HeroImageCarousel extends ConsumerStatefulWidget {
   const _HeroImageCarousel({
     required this.imageUrls,
     required this.name,
@@ -494,14 +516,15 @@ class _HeroImageCarousel extends StatefulWidget {
   final VoidCallback onUpgradeNeeded;
 
   @override
-  State<_HeroImageCarousel> createState() => _HeroImageCarouselState();
+  ConsumerState<_HeroImageCarousel> createState() => _HeroImageCarouselState();
 }
 
-class _HeroImageCarouselState extends State<_HeroImageCarousel> {
+class _HeroImageCarouselState extends ConsumerState<_HeroImageCarousel> {
   late PageController _pageController;
   int _currentIndex = 0;
   // Ad-unlocked photos for this session (0–2; photo 4+ always hard-gated)
   int _adUnlockedCount = 0;
+  bool _photosUnlocked = false;
 
   @override
   void initState() {
@@ -515,10 +538,38 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
     super.dispose();
   }
 
+  Future<void> _handlePhotoGate() async {
+    final decision = await showGateDecisionSheet(
+      context,
+      title: 'See all photos',
+      message: 'Subscribe to always see every photo. Or watch a short ad to unlock this profile\'s photos now.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad — see all photos',
+      adActionType: AdActionType.photoUnlock,
+    );
+    if (!mounted || decision == null) return;
+    if (decision == GateDecision.upgrade) {
+      widget.onUpgradeNeeded();
+      return;
+    }
+    if (decision == GateDecision.watchAd) {
+      final shown = await loadAndShowInterstitialWithLoading(context, ref, AdRewardReason.photoUnlock);
+      if (!mounted || !shown) return;
+      final api = ref.read(apiClientProvider);
+      final token = const Uuid().v4();
+      try {
+        await api.post('/ads/consume', body: {'actionType': 'photo_unlock', 'adCompletionToken': token});
+      } catch (_) {}
+      ref.invalidate(adBudgetProvider);
+      setState(() => _photosUnlocked = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final urls = widget.imageUrls.isEmpty ? <String>[] : widget.imageUrls;
     final hasMultiple = urls.length > 1;
+    final effectiveVisible = _photosUnlocked ? 999 : widget.photosVisibleCount;
 
     return Stack(
       fit: StackFit.expand,
@@ -542,7 +593,7 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
             onPageChanged: (i) => setState(() => _currentIndex = i),
             itemBuilder: (_, i) => GatedPhoto(
               photoIndex: i,
-              photosVisibleCount: widget.photosVisibleCount,
+              photosVisibleCount: effectiveVisible,
               adUnlockedCount: _adUnlockedCount,
               isAccepted: widget.isAccepted,
               onAdUnlock: () {
@@ -550,7 +601,7 @@ class _HeroImageCarouselState extends State<_HeroImageCarousel> {
                   setState(() => _adUnlockedCount++);
                 }
               },
-              onUpgradeNeeded: widget.onUpgradeNeeded,
+              onUpgradeNeeded: _handlePhotoGate,
               child: _HeroImage(imageUrl: urls[i], name: widget.name),
             ),
           ),

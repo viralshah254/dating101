@@ -8,7 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../providers/family_providers.dart';
 
-/// Deep-link landing screen for `app.shubhmilan.com/family/handover?token=XYZ`.
+/// Deep-link landing screen for `app.shubhmilan.app/family/handover?token=XYZ`.
 /// The user must be signed in; if not, they are sent to login first.
 /// On success: the profile transfers to their account and they go to the discovery feed.
 class HandoverAcceptScreen extends ConsumerStatefulWidget {

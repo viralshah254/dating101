@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/design/design.dart';
@@ -15,6 +18,8 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/daily_matches/daily_matches_provider.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -481,29 +486,20 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     );
   }
 
-  /// Shows dialog: Watch ad (true) or Upgrade to Premium (false). Returns null if dismissed.
+  /// Shows the branded Premium gate dialog for priority interest.
+  /// Returns true = watch ad, false = upgrade, null = dismissed.
   Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.priorityInterest),
-        content: Text(
-          l.priorityInterestAdMessage,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.watchAd),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.priorityInterest,
+      message: l.priorityInterestAdMessage,
+      canWatchAd: true,
+      watchAdLabel: l.watchAd,
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   void _onShortlist(ProfileSummary p) async {
@@ -642,26 +638,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
 
   Future<bool?> _showWatchAdOrPremiumChoiceForMessage(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.premium),
-        content: Text(
-          l.watchAdToMessageMessage,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.watchAd),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.premium,
+      message: l.watchAdToMessageMessage,
+      canWatchAd: true,
+      watchAdLabel: l.watchAd,
+      adActionType: AdActionType.messageSend,
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   void _onUpgrade() => context.push('/paywall');
@@ -795,6 +782,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
           motherTongue: _filters.motherTongue,
           heightMinCm: _filters.heightMinCm,
           heightMaxCm: _filters.heightMaxCm,
+          verifiedOnly: _filters.verifiedOnly,
         ),
         initialSort: ref.read(sortByProvider),
         onApply: (params, sort) {
@@ -810,6 +798,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
               motherTongue: params.motherTongue,
               heightMinCm: params.heightMinCm,
               heightMaxCm: params.heightMaxCm,
+              verifiedOnly: params.verifiedOnly,
             );
             _updateFilterCount();
           });
@@ -1460,7 +1449,7 @@ class _WidenedSearchBanner extends StatelessWidget {
   }
 }
 
-class _ProfileList extends StatelessWidget {
+class _ProfileList extends StatefulWidget {
   const _ProfileList({
     required this.profiles,
     this.shortlistedIds,
@@ -1509,29 +1498,60 @@ class _ProfileList extends StatelessWidget {
   static const int _profilesPerReferralCard = 10;
   static const double _referralCardHeight = 160.0;
   static const double _loadMoreTriggerPixels = 400;
+  static const Duration _debounce = Duration(milliseconds: 250);
+
+  @override
+  State<_ProfileList> createState() => _ProfileListState();
+}
+
+class _ProfileListState extends State<_ProfileList> {
+  Timer? _debounceTimer;
+  bool _shortViewportPrefetchFired = false;
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_ProfileList old) {
+    super.didUpdateWidget(old);
+    // Reset the short-viewport guard whenever the profile list or hasMore changes
+    // so a new page of results can trigger the check again if needed.
+    if (old.profiles.length != widget.profiles.length || old.hasMore != widget.hasMore) {
+      _shortViewportPrefetchFired = false;
+    }
+  }
+
+  void _maybeLoadMore() {
+    if (widget.onLoadMore == null || !widget.hasMore || widget.loadingMore) return;
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_ProfileList._debounce, widget.onLoadMore!);
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (profiles.isEmpty && !loadingMore) {
-      return EmptyState(icon: emptyIcon, title: emptyTitle, body: emptyBody);
+    if (widget.profiles.isEmpty && !widget.loadingMore) {
+      return EmptyState(icon: widget.emptyIcon, title: widget.emptyTitle, body: widget.emptyBody);
     }
     final viewportHeight = MediaQuery.sizeOf(context).height;
     final cardHeight = (viewportHeight * 0.78).clamp(380.0, 520.0);
     const horizontalPadding = 12.0;
     const peekGap = 12.0;
 
-    final useReferral = showReferralCards;
-    final adCount = useReferral ? (profiles.length / _profilesPerReferralCard).floor() : 0;
-    var itemCount = useReferral ? profiles.length + adCount : profiles.length;
-    if (onLoadMore != null && (hasMore || loadingMore)) itemCount += 1;
+    final useReferral = widget.showReferralCards;
+    final adCount = useReferral ? (widget.profiles.length / _ProfileList._profilesPerReferralCard).floor() : 0;
+    var itemCount = useReferral ? widget.profiles.length + adCount : widget.profiles.length;
+    if (widget.onLoadMore != null && (widget.hasMore || widget.loadingMore)) itemCount += 1;
 
     final list = NotificationListener<ScrollNotification>(
       onNotification: (ScrollNotification notification) {
-        if (onLoadMore == null || !hasMore || loadingMore) return false;
+        if (widget.onLoadMore == null || !widget.hasMore || widget.loadingMore) return false;
         if (notification is ScrollEndNotification || notification is ScrollUpdateNotification) {
           final metrics = notification.metrics;
-          if (metrics.pixels >= metrics.maxScrollExtent - _loadMoreTriggerPixels) {
-            onLoadMore!();
+          if (metrics.pixels >= metrics.maxScrollExtent - _ProfileList._loadMoreTriggerPixels) {
+            _maybeLoadMore();
           }
         }
         return false;
@@ -1545,11 +1565,11 @@ class _ProfileList extends StatelessWidget {
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          if (index >= (useReferral ? profiles.length + adCount : profiles.length)) {
+          if (index >= (useReferral ? widget.profiles.length + adCount : widget.profiles.length)) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: loadingMore
+                child: widget.loadingMore
                     ? const SizedBox(
                         height: 32,
                         width: 32,
@@ -1560,13 +1580,13 @@ class _ProfileList extends StatelessWidget {
             );
           }
         if (useReferral) {
-          final isAdSlot = (index + 1) % (_profilesPerReferralCard + 1) == 0 &&
-              (index + 1) ~/ (_profilesPerReferralCard + 1) <= adCount;
+          final isAdSlot = (index + 1) % (_ProfileList._profilesPerReferralCard + 1) == 0 &&
+              (index + 1) ~/ (_ProfileList._profilesPerReferralCard + 1) <= adCount;
           if (isAdSlot) {
             return Padding(
               padding: const EdgeInsets.only(bottom: peekGap),
               child: SizedBox(
-                height: _referralCardHeight,
+                height: _ProfileList._referralCardHeight,
                 child: ReferralPromoBanner(
                   aspectRatio: 1.15,
                   borderRadius: 12,
@@ -1577,14 +1597,14 @@ class _ProfileList extends StatelessWidget {
         }
 
         final profileIndex = useReferral
-            ? index - (index + 1) ~/ (_profilesPerReferralCard + 1)
+            ? index - (index + 1) ~/ (_ProfileList._profilesPerReferralCard + 1)
             : index;
-        final p = profiles[profileIndex];
-        final isShortlisted = shortlistedIds?.contains(p.id) ?? false;
-        final isInterested = sentInterestIds?.contains(p.id) ?? false;
+        final p = widget.profiles[profileIndex];
+        final isShortlisted = widget.shortlistedIds?.contains(p.id) ?? false;
+        final isInterested = widget.sentInterestIds?.contains(p.id) ?? false;
         final isPriorityInterested =
-            sentPriorityInterestIds?.contains(p.id) ?? false;
-        final is20thProfile = onReached20thProfile != null && profileIndex == 19;
+            widget.sentPriorityInterestIds?.contains(p.id) ?? false;
+        final is20thProfile = widget.onReached20thProfile != null && profileIndex == 19;
         final card = Padding(
           padding: const EdgeInsets.only(bottom: peekGap),
           child: SizedBox(
@@ -1595,19 +1615,19 @@ class _ProfileList extends StatelessWidget {
               isInterested: isInterested,
               isPriorityInterested: isPriorityInterested,
               messageUnlockedByMatch: true,
-              onTap: () => onTap(p),
-              onLike: () => onLike(p),
-              onSuperLike: () => onSuperLike(p),
-              onShortlist: () => onShortlist(p),
-              onMessage: () => onMessage(p),
-              onUpgrade: onUpgrade,
-              onBlock: () => onBlock(p),
-              onReport: () => onReport(p),
+              onTap: () => widget.onTap(p),
+              onLike: () => widget.onLike(p),
+              onSuperLike: () => widget.onSuperLike(p),
+              onShortlist: () => widget.onShortlist(p),
+              onMessage: () => widget.onMessage(p),
+              onUpgrade: widget.onUpgrade,
+              onBlock: () => widget.onBlock(p),
+              onReport: () => widget.onReport(p),
             ).animate(key: ValueKey(p.id)).fadeIn(delay: AppMotion.stagger(index), duration: AppMotion.medium).slideY(begin: 0.08, end: 0, curve: AppMotion.spring),
           ),
         );
         if (is20thProfile) {
-          final trigger = onReached20thProfile!;
+          final trigger = widget.onReached20thProfile!;
           return _ReferralPopupTrigger(
             onTrigger: trigger,
             child: card,
@@ -1617,12 +1637,30 @@ class _ProfileList extends StatelessWidget {
         },
       ),
     );
-    if (widenedSearchBanner != null) {
+
+    // Short-viewport prefetch: when all cards fit on screen there is no scroll
+    // event to trigger loadMore, but more profiles are available. Fire once per
+    // page so the user always sees a full feed without having to scroll.
+    if (widget.hasMore && widget.onLoadMore != null && !widget.loadingMore && !_shortViewportPrefetchFired) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // Heuristic: if total estimated content height is less than 1.5 viewport
+        // heights the user may not be able to scroll far enough to hit the
+        // 400px trigger, so prefetch eagerly.
+        final estimatedContentHeight = widget.profiles.length * (MediaQuery.sizeOf(context).height * 0.82);
+        if (estimatedContentHeight <= MediaQuery.sizeOf(context).height * 1.5) {
+          _shortViewportPrefetchFired = true;
+          widget.onLoadMore!();
+        }
+      });
+    }
+
+    if (widget.widenedSearchBanner != null) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          widenedSearchBanner!,
+          widget.widenedSearchBanner!,
           Expanded(child: list),
         ],
       );

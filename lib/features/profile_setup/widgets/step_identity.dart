@@ -137,18 +137,26 @@ class StepIdentity extends StatelessWidget {
     }
 
     final isBasicOnly = onlySection == StepIdentityOnlySection.basic;
+
+    // Conversational setup titles — mode-aware for first-time profile creation.
+    String _setupTitle() {
+      if (!forSelf) return l.dynSetupTitle(subject);
+      if (mode.isMatrimony) return "Let's start\nwith the basics";
+      return l.profileSetupTitle; // "What should we call you?"
+    }
+
+    String _setupSubtitle() {
+      if (!forSelf) return l.dynSetupSubtitle(subject);
+      if (mode.isMatrimony) return 'A few details — the rest we\'ll figure out together.';
+      return l.profileSetupSubtitle; // "This is how you'll appear — make it real."
+    }
+
     final title = isBasicOnly && isEditing
         ? l.identityStepTitle
-        : (isEditing
-              ? l.identityEditTitle
-              : (forSelf ? l.profileSetupTitle : l.dynSetupTitle(subject)));
+        : (isEditing ? l.identityEditTitle : _setupTitle());
     final subtitle = isBasicOnly && isEditing
         ? l.identityStepSubtitle
-        : (isEditing
-              ? l.identityEditSubtitle
-              : (forSelf
-                    ? l.profileSetupSubtitle
-                    : l.dynSetupSubtitle(subject)));
+        : (isEditing ? l.identityEditSubtitle : _setupSubtitle());
     final nameLabel = forSelf ? l.yourName : l.dynName(subject);
     final genderLabel = forSelf ? l.genderQuestion : l.dynGender(subject);
     final dobLabel = forSelf ? l.dateOfBirth : l.dynDob(subject);

@@ -21,6 +21,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// - Handles incoming messages and invokes [onTap] with FCM `data` when user taps
 abstract class NotificationService {
   /// Initialize listeners. Call once after Firebase.initializeApp().
+  ///
+  /// Cold-start taps (via [FirebaseMessaging.getInitialMessage]) are **not**
+  /// dispatched immediately — they are queued so the splash screen cannot
+  /// override the navigation. Call [drainColdStartTap] after the app shell is
+  /// ready (e.g. 2.5 s after init, once splash has finished) to apply it.
   Future<void> initialize();
 
   /// Request notification permission (iOS). On Android returns current settings.
@@ -35,6 +40,10 @@ abstract class NotificationService {
 
   /// Set callback to navigate when a notification is tapped (deep link).
   void setOnNotificationTap(void Function(Map<String, dynamic> data) onTap);
+
+  /// Returns and clears the cold-start tap payload (from [FirebaseMessaging.getInitialMessage]).
+  /// Returns null if the app was not cold-started by a notification tap.
+  Map<String, dynamic>? drainColdStartTap();
 
   /// Clean up on logout (e.g. delete token on backend if supported).
   Future<void> onLogout();
@@ -56,6 +65,8 @@ class FirebaseNotificationService extends NotificationService {
   bool _localNotificationsReady = false;
   /// True after [MissingPluginException] — native code not linked (need full `flutter run`, not hot reload).
   bool _localNotificationsBroken = false;
+  /// Stores the cold-start notification data until [drainColdStartTap] is called.
+  Map<String, dynamic>? _coldStartTapData;
 
   @override
   void setOnNotificationTap(void Function(Map<String, dynamic> data) onTap) {
@@ -109,17 +120,34 @@ class FirebaseNotificationService extends NotificationService {
       final id = message.messageId?.hashCode.abs() ??
           DateTime.now().millisecondsSinceEpoch.remainder(1 << 30);
       final payload = jsonEncode(message.data);
+      final type = message.data['type']?.toString() ?? '';
+      final isChat = type == 'new_message' ||
+          type == 'message_request' ||
+          type == 'message_request_accepted';
+      final bodyText = n.body ?? '';
       await _localNotifications.show(
         id,
         n.title ?? 'Notification',
-        n.body ?? '',
-        const NotificationDetails(
+        bodyText,
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'high_importance_channel',
             'High importance notifications',
             channelDescription: 'Messages, matches, and alerts',
             importance: Importance.high,
             priority: Priority.high,
+            styleInformation: bodyText.length > 48
+                ? BigTextStyleInformation(bodyText)
+                : null,
+            actions: isChat
+                ? <AndroidNotificationAction>[
+                    AndroidNotificationAction(
+                      'open',
+                      'Open chat',
+                      showsUserInterface: true,
+                    ),
+                  ]
+                : null,
           ),
         ),
         payload: payload,
@@ -145,8 +173,17 @@ class FirebaseNotificationService extends NotificationService {
         await _showForegroundLocalNotification(message);
       });
 
+      // Cold-start: if the app was opened by tapping a notification, store the
+      // payload but do NOT navigate yet. The splash screen runs for ~2.2 s and
+      // its context.go('/') would override an immediate router.go(). The caller
+      // must call [drainColdStartTap] after the splash has completed.
       final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) _navigateFromData(initial.data);
+      if (initial != null && initial.data.isNotEmpty) {
+        _coldStartTapData = Map<String, dynamic>.from(initial.data);
+        if (kDebugMode) {
+          debugPrint('[FCM] Cold-start tap queued type=${_coldStartTapData?['type']}');
+        }
+      }
 
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
         onRegisterToken(newToken);
@@ -239,6 +276,13 @@ class FirebaseNotificationService extends NotificationService {
     } on MissingPluginException {
       return null;
     }
+  }
+
+  @override
+  Map<String, dynamic>? drainColdStartTap() {
+    final data = _coldStartTapData;
+    _coldStartTapData = null;
+    return data;
   }
 
   @override

@@ -8,19 +8,29 @@ import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/profile_summary.dart';
 
-/// Bottom sheet shown when user commits a like swipe.
-/// Gives them the option to send silently or attach a note / prompt reply.
-/// Returns [LikeNoteResult] with optional [message].
+/// Whether to show the "choose action" tiles or go straight to composing a note.
+enum LikeNoteSheetMode {
+  /// Full sheet: "Send silently" + "Add a note" tiles (legacy entry point).
+  chooseAction,
+
+  /// Compose-only: note field open immediately, Cancel or Like & send.
+  composeNoteOnly,
+}
+
+/// Bottom sheet for the like flow.
+/// - [LikeNoteSheetMode.chooseAction]: full picker with silent / note options.
+/// - [LikeNoteSheetMode.composeNoteOnly]: straight to note compose; null pop = cancel.
 Future<LikeNoteResult?> showLikeNoteSheet(
   BuildContext context,
-  ProfileSummary profile,
-) {
+  ProfileSummary profile, {
+  LikeNoteSheetMode mode = LikeNoteSheetMode.chooseAction,
+}) {
   return showModalBottomSheet<LikeNoteResult>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => LikeNoteSheet(profile: profile),
+    builder: (_) => LikeNoteSheet(profile: profile, mode: mode),
   );
 }
 
@@ -30,8 +40,13 @@ class LikeNoteResult {
 }
 
 class LikeNoteSheet extends StatefulWidget {
-  const LikeNoteSheet({super.key, required this.profile});
+  const LikeNoteSheet({
+    super.key,
+    required this.profile,
+    this.mode = LikeNoteSheetMode.chooseAction,
+  });
   final ProfileSummary profile;
+  final LikeNoteSheetMode mode;
 
   @override
   State<LikeNoteSheet> createState() => _LikeNoteSheetState();
@@ -43,6 +58,16 @@ class _LikeNoteSheetState extends State<LikeNoteSheet> {
   String? _selectedPrompt;
 
   static const int _maxNoteChars = 140;
+
+  bool get _isComposeOnly => widget.mode == LikeNoteSheetMode.composeNoteOnly;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isComposeOnly) {
+      _showNoteField = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -61,6 +86,8 @@ class _LikeNoteSheetState extends State<LikeNoteSheet> {
     Navigator.of(context).pop(LikeNoteResult(message: message));
   }
 
+  void _cancel() => Navigator.of(context).pop();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -77,9 +104,7 @@ class _LikeNoteSheetState extends State<LikeNoteSheet> {
             color: cs.surface.withValues(alpha: 0.95),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
-              top: BorderSide(
-                color: cs.outline.withValues(alpha: 0.12),
-              ),
+              top: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
             ),
           ),
           child: SafeArea(
@@ -90,258 +115,426 @@ class _LikeNoteSheetState extends State<LikeNoteSheet> {
                 24,
                 MediaQuery.viewInsetsOf(context).bottom + 24,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.outline.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Header
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              cs.primary,
-                              cs.secondary,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.favorite_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'You liked ${widget.profile.name}',
-                              style: AppTypography.titleMedium.copyWith(
-                                color: cs.onSurface,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              'Make it memorable — add a note',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: cs.onSurface.withValues(alpha: 0.55),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                      .animate()
-                      .fadeIn(duration: AppMotion.medium, curve: AppMotion.spring)
-                      .slideY(begin: 0.2, end: 0),
-                  const SizedBox(height: 24),
-
-                  // Option 1: Send silently
-                  _OptionTile(
-                    icon: Icons.send_rounded,
-                    iconColor: cs.onSurface.withValues(alpha: 0.6),
-                    title: 'Send silently',
-                    subtitle: 'Let the like speak for itself',
-                    delay: const Duration(milliseconds: 60),
-                    onTap: () => _send(),
-                  ),
-
-                  // Option 2: Add a note
-                  _OptionTile(
-                    icon: Icons.edit_note_rounded,
-                    iconColor: cs.primary,
-                    title: 'Add a note',
-                    subtitle: 'Stand out with a personal message',
-                    delay: const Duration(milliseconds: 120),
-                    onTap: () {
-                      setState(() {
-                        _showNoteField = !_showNoteField;
-                        _selectedPrompt = null;
-                      });
-                    },
-                    selected: _showNoteField,
-                  ),
-
-                  // Note field
-                  if (_showNoteField) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: cs.primary.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          TextField(
-                            controller: _noteController,
-                            maxLength: _maxNoteChars,
-                            maxLines: 3,
-                            minLines: 2,
-                            decoration: InputDecoration(
-                              hintText: 'What caught your eye about ${widget.profile.name}?',
-                              border: InputBorder.none,
-                              counterText: '',
-                              hintStyle: AppTypography.bodyMedium.copyWith(
-                                color: cs.onSurface.withValues(alpha: 0.35),
-                              ),
-                            ),
-                            style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
-                            onChanged: (_) => setState(() {}),
-                            autofocus: true,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              '$remaining chars left',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: remaining < 20
-                                    ? cs.error
-                                    : cs.onSurface.withValues(alpha: 0.4),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(duration: 200.ms)
-                        .slideY(begin: -0.1, end: 0),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: _noteController.text.trim().isEmpty
-                          ? null
-                          : () => _send(message: _noteController.text.trim()),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: cs.primary,
-                        foregroundColor: cs.onPrimary,
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Send with Note'),
-                    ),
-                  ],
-
-                  // Option 3: Answer a prompt (only if profile has a prompt)
-                  if (prompt != null) ...[
-                    _OptionTile(
-                      icon: Icons.question_answer_rounded,
-                      iconColor: cs.secondary,
-                      title: 'Answer their prompt',
-                      subtitle: '"${prompt.length > 60 ? '${prompt.substring(0, 60)}…' : prompt}"',
-                      delay: const Duration(milliseconds: 180),
-                      onTap: () {
-                        setState(() {
-                          _selectedPrompt = prompt;
-                          _showNoteField = false;
-                        });
-                      },
-                      selected: _selectedPrompt != null,
-                    ),
-                    if (_selectedPrompt != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: cs.secondary.withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                          color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            TextField(
-                              controller: _noteController,
-                              maxLength: _maxNoteChars,
-                              maxLines: 3,
-                              minLines: 2,
-                              decoration: InputDecoration(
-                                hintText: 'Your answer to their prompt…',
-                                border: InputBorder.none,
-                                counterText: '',
-                                hintStyle: AppTypography.bodyMedium.copyWith(
-                                  color: cs.onSurface.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
-                              onChanged: (_) => setState(() {}),
-                              autofocus: true,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                '${_maxNoteChars - _noteController.text.length} chars left',
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: remaining < 20
-                                      ? cs.error
-                                      : cs.onSurface.withValues(alpha: 0.4),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 200.ms)
-                          .slideY(begin: -0.1, end: 0),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: _noteController.text.trim().isEmpty
-                            ? null
-                            : () => _send(
-                                  message:
-                                      '↩ "${_selectedPrompt!.length > 40 ? '${_selectedPrompt!.substring(0, 40)}…' : _selectedPrompt!}" — ${_noteController.text.trim()}',
-                                ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: cs.secondary,
-                          foregroundColor: cs.onSecondary,
-                          minimumSize: const Size.fromHeight(50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: const Text('Send Prompt Reply'),
-                      ),
-                    ],
-                  ],
-                  const SizedBox(height: 8),
-                ],
-              ),
+              child: _isComposeOnly
+                  ? _buildComposeOnly(context, cs, prompt, remaining)
+                  : _buildChooseAction(context, cs, prompt, remaining),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ── Compose-only mode ──────────────────────────────────────────────────────
+
+  Widget _buildComposeOnly(
+    BuildContext context,
+    ColorScheme cs,
+    String? prompt,
+    int remaining,
+  ) {
+    final noteText = _noteController.text.trim();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Handle
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: cs.outline.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Header
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [cs.primary, cs.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add a note for ${widget.profile.name}',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    'Stand out with a personal message',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ).animate().fadeIn(duration: AppMotion.medium, curve: AppMotion.spring).slideY(begin: 0.2, end: 0),
+        const SizedBox(height: 20),
+
+        // Note field
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: cs.primary.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TextField(
+                controller: _noteController,
+                maxLength: _maxNoteChars,
+                maxLines: 4,
+                minLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'What caught your eye about ${widget.profile.name}?',
+                  border: InputBorder.none,
+                  counterText: '',
+                  hintStyle: AppTypography.bodyMedium.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.35),
+                  ),
+                ),
+                style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
+                onChanged: (_) => setState(() {}),
+                autofocus: true,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '$remaining chars left',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: remaining < 20
+                        ? cs.error
+                        : cs.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 200.ms).slideY(begin: -0.05, end: 0),
+
+        // Prompt reply option
+        if (prompt != null) ...[
+          const SizedBox(height: 12),
+          _OptionTile(
+            icon: Icons.question_answer_rounded,
+            iconColor: cs.secondary,
+            title: 'Answer their prompt instead',
+            subtitle: '"${prompt.length > 60 ? '${prompt.substring(0, 60)}…' : prompt}"',
+            onTap: () {
+              setState(() {
+                _selectedPrompt = _selectedPrompt == null ? prompt : null;
+                _noteController.clear();
+              });
+            },
+            selected: _selectedPrompt != null,
+          ),
+        ],
+
+        const SizedBox(height: 16),
+
+        // Actions
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _cancel,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(color: cs.outline.withValues(alpha: 0.4)),
+                ),
+                child: const Text('Cancel'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: FilledButton(
+                onPressed: noteText.isEmpty
+                    ? null
+                    : () => _send(
+                          message: _selectedPrompt != null
+                              ? '↩ "${_selectedPrompt!.length > 40 ? '${_selectedPrompt!.substring(0, 40)}…' : _selectedPrompt!}" — ${_noteController.text.trim()}'
+                              : _noteController.text.trim(),
+                        ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Like & send note'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ── Choose-action mode (legacy) ────────────────────────────────────────────
+
+  Widget _buildChooseAction(
+    BuildContext context,
+    ColorScheme cs,
+    String? prompt,
+    int remaining,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Handle
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: cs.outline.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Header
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [cs.primary, cs.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You liked ${widget.profile.name}',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    'Make it memorable — add a note',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        )
+            .animate()
+            .fadeIn(duration: AppMotion.medium, curve: AppMotion.spring)
+            .slideY(begin: 0.2, end: 0),
+        const SizedBox(height: 24),
+
+        // Option 1: Send silently
+        _OptionTile(
+          icon: Icons.send_rounded,
+          iconColor: cs.onSurface.withValues(alpha: 0.6),
+          title: 'Send silently',
+          subtitle: 'Let the like speak for itself',
+          delay: const Duration(milliseconds: 60),
+          onTap: () => _send(),
+        ),
+
+        // Option 2: Add a note
+        _OptionTile(
+          icon: Icons.edit_note_rounded,
+          iconColor: cs.primary,
+          title: 'Add a note',
+          subtitle: 'Stand out with a personal message',
+          delay: const Duration(milliseconds: 120),
+          onTap: () {
+            setState(() {
+              _showNoteField = !_showNoteField;
+              _selectedPrompt = null;
+            });
+          },
+          selected: _showNoteField,
+        ),
+
+        if (_showNoteField) ...[
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.3), width: 1.5),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                TextField(
+                  controller: _noteController,
+                  maxLength: _maxNoteChars,
+                  maxLines: 3,
+                  minLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'What caught your eye about ${widget.profile.name}?',
+                    border: InputBorder.none,
+                    counterText: '',
+                    hintStyle: AppTypography.bodyMedium.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
+                  onChanged: (_) => setState(() {}),
+                  autofocus: true,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    '$remaining chars left',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: remaining < 20
+                          ? cs.error
+                          : cs.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fadeIn(duration: 200.ms)
+              .slideY(begin: -0.1, end: 0),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _noteController.text.trim().isEmpty
+                ? null
+                : () => _send(message: _noteController.text.trim()),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.primary,
+              foregroundColor: cs.onPrimary,
+              minimumSize: const Size.fromHeight(50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text('Send with Note'),
+          ),
+        ],
+
+        // Option 3: Answer a prompt
+        if (prompt != null) ...[
+          _OptionTile(
+            icon: Icons.question_answer_rounded,
+            iconColor: cs.secondary,
+            title: 'Answer their prompt',
+            subtitle: '"${prompt.length > 60 ? '${prompt.substring(0, 60)}…' : prompt}"',
+            delay: const Duration(milliseconds: 180),
+            onTap: () {
+              setState(() {
+                _selectedPrompt = prompt;
+                _showNoteField = false;
+              });
+            },
+            selected: _selectedPrompt != null,
+          ),
+          if (_selectedPrompt != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cs.secondary.withValues(alpha: 0.3), width: 1.5),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  TextField(
+                    controller: _noteController,
+                    maxLength: _maxNoteChars,
+                    maxLines: 3,
+                    minLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Your answer to their prompt…',
+                      border: InputBorder.none,
+                      counterText: '',
+                      hintStyle: AppTypography.bodyMedium.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
+                    onChanged: (_) => setState(() {}),
+                    autofocus: true,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      '${_maxNoteChars - _noteController.text.length} chars left',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: remaining < 20
+                            ? cs.error
+                            : cs.onSurface.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+                .animate()
+                .fadeIn(duration: 200.ms)
+                .slideY(begin: -0.1, end: 0),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _noteController.text.trim().isEmpty
+                  ? null
+                  : () => _send(
+                        message:
+                            '↩ "${_selectedPrompt!.length > 40 ? '${_selectedPrompt!.substring(0, 40)}…' : _selectedPrompt!}" — ${_noteController.text.trim()}',
+                      ),
+              style: FilledButton.styleFrom(
+                backgroundColor: cs.secondary,
+                foregroundColor: cs.onSecondary,
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Send Prompt Reply'),
+            ),
+          ],
+        ],
+        const SizedBox(height: 8),
+      ],
     );
   }
 }

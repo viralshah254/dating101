@@ -4,15 +4,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 
 /// Full recording/playback widget for Voice Intro.
 /// Uses the `record` package for recording; caller gets back the audio file path.
-///
-/// Because `record` requires platform-level permissions, callers should request
-/// [Permission.microphone] before showing this widget.
 ///
 /// The widget calls [onRecordingComplete] with the local file path when the
 /// user stops recording and confirms. Call [onUpload] to upload to storage.
@@ -43,6 +43,8 @@ class _VoiceIntroRecorderState extends State<VoiceIntroRecorder>
   int _elapsedSeconds = 0;
   Timer? _timer;
 
+  final AudioRecorder _recorder = AudioRecorder();
+
   // Waveform animation
   late AnimationController _waveCtrl;
   final List<double> _waveAmplitudes = List.generate(24, (i) => 0.15);
@@ -65,6 +67,7 @@ class _VoiceIntroRecorderState extends State<VoiceIntroRecorder>
   void dispose() {
     _timer?.cancel();
     _waveCtrl.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -79,8 +82,31 @@ class _VoiceIntroRecorderState extends State<VoiceIntroRecorder>
   }
 
   Future<void> _startRecording() async {
-    // In a real integration: await _recorder.start(...)
-    // Here we simulate recording with a timer for the UI demo.
+    // Request microphone permission
+    final status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Microphone permission is required to record a voice intro.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final hasPermission = await _recorder.hasPermission();
+    if (!hasPermission) return;
+
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/voice_intro_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000),
+      path: path,
+    );
+
     HapticFeedback.mediumImpact();
     setState(() {
       _state = _RecorderState.recording;
@@ -98,12 +124,13 @@ class _VoiceIntroRecorderState extends State<VoiceIntroRecorder>
     _timer?.cancel();
     _waveCtrl.stop();
     HapticFeedback.lightImpact();
-    // In a real integration: final path = await _recorder.stop();
-    // For now, we use a placeholder path that the caller handles.
-    const simulatedPath = '/tmp/voice_intro.m4a';
+
+    final path = await _recorder.stop();
+    if (path == null) return;
+
     setState(() {
       _state = _RecorderState.recorded;
-      _recordedPath = simulatedPath;
+      _recordedPath = path;
       for (int i = 0; i < _waveAmplitudes.length; i++) {
         _waveAmplitudes[i] = 0.1 + _rng.nextDouble() * 0.6;
       }

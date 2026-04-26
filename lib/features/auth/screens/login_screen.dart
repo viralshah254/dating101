@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/locale/language_picker_sheet.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -27,6 +29,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  static const int _minPasswordLength = 8;
+  static const int _maxPasswordLength = 128;
+
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -76,10 +81,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     '\u{1F1EE}\u{1F1F3}',
   );
 
+  /// After first app install, default to the sign-up tab once; later sessions default to sign-in.
+  static const _kAuthFirstLaunchKey = 'auth_default_signup_shown';
+
   @override
   void initState() {
     super.initState();
     _country = _countryCodeFromDeviceLocale();
+    _prefillReferralCode();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyFirstInstallSignUpDefault());
+  }
+
+  Future<void> _applyFirstInstallSignUpDefault() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    if (prefs.getBool(_kAuthFirstLaunchKey) ?? false) return;
+    if (!mounted) return;
+    setState(() => _isSignUp = true);
+    await prefs.setBool(_kAuthFirstLaunchKey, true);
+  }
+
+  void _prefillReferralCode() {
+    SharedPreferences.getInstance().then((prefs) {
+      final pending = prefs.getString('pending_referral_code') ?? '';
+      if (pending.isNotEmpty && mounted) {
+        setState(() => _referralCodeController.text = pending);
+      }
+    });
   }
 
   _CountryCode _countryCodeFromDeviceLocale() {
@@ -107,13 +134,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return raw.replaceFirst(RegExp(r'^0+'), '');
   }
 
-  bool get _passwordLongEnough => _passwordController.text.length >= 8;
+  bool get _passwordLongEnough =>
+      _passwordController.text.length >= _minPasswordLength;
 
   bool get _passwordsMatch =>
       _confirmPasswordController.text == _passwordController.text;
 
   bool get _canContinue =>
-      _ageConfirmed &&
+      (!_isSignUp || _ageConfirmed) &&
       _normalizedPhone.length >= 7 &&
       _passwordLongEnough &&
       !_isSending &&
@@ -183,6 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final cs = Theme.of(context).colorScheme;
     // On the gradient background, text in the hero area is always white
     const heroTextColor = Colors.white;
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -233,35 +262,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 20),
-                          Text(
-                            l.loginHeroTitle,
-                            style: AppTypography.displayLarge.copyWith(
-                              color: heroTextColor,
-                              fontSize: 42,
-                              height: 1.1,
-                              fontWeight: FontWeight.w700,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                          )
-                              .animate()
-                              .fadeIn(duration: 500.ms)
-                              .slideY(begin: -0.15, end: 0, curve: Curves.easeOut),
-                          const SizedBox(height: 10),
-                          Text(
-                            l.loginHeroSubtitle,
-                            style: AppTypography.bodyLarge.copyWith(
-                              color: Colors.white.withValues(alpha: 0.82),
-                              height: 1.4,
-                            ),
-                          ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
-                          const SizedBox(height: 32),
+                          // Hero title + subtitle collapse when keyboard is open
+                          // so the form card has maximum vertical space available.
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            child: keyboardOpen
+                                ? const SizedBox.shrink()
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 20),
+                                      Text(
+                                        l.loginHeroTitle,
+                                        style: AppTypography.displayLarge.copyWith(
+                                          color: heroTextColor,
+                                          fontSize: 42,
+                                          height: 1.1,
+                                          fontWeight: FontWeight.w700,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha: 0.25),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                          .animate()
+                                          .fadeIn(duration: 500.ms)
+                                          .slideY(begin: -0.15, end: 0, curve: Curves.easeOut),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        l.loginHeroSubtitle,
+                                        style: AppTypography.bodyLarge.copyWith(
+                                          color: Colors.white.withValues(alpha: 0.82),
+                                          height: 1.4,
+                                        ),
+                                      ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
+                                      const SizedBox(height: 32),
+                                    ],
+                                  ),
+                          ),
                           // Glassmorphism form card — now has a rich gradient to blur
                           ClipRRect(
                             borderRadius: BorderRadius.circular(24),
@@ -359,9 +401,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     TextField(
                                       controller: _passwordController,
                                       obscureText: _obscurePassword,
+                                      maxLength: _isSignUp ? _maxPasswordLength : null,
+                                      buildCounter: _isSignUp
+                                          ? (_, {required currentLength, required isFocused, maxLength}) =>
+                                              null
+                                          : null,
                                       style: AppTypography.bodyLarge.copyWith(color: cs.onSurface),
                                       decoration: InputDecoration(
                                         labelText: l.authPasswordLabel,
+                                        helperText: _isSignUp &&
+                                                (_passwordController.text.isEmpty ||
+                                                    _passwordLongEnough)
+                                            ? l.authPasswordSignUpHint
+                                            : null,
+                                        errorText: _isSignUp &&
+                                                _passwordController.text.isNotEmpty &&
+                                                !_passwordLongEnough
+                                            ? l.authPasswordTooShort
+                                            : null,
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
                                         ),
@@ -386,6 +443,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       TextField(
                                         controller: _confirmPasswordController,
                                         obscureText: _obscureConfirm,
+                                        maxLength: _maxPasswordLength,
+                                        buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                                            null,
                                         style: AppTypography.bodyLarge.copyWith(color: cs.onSurface),
                                         decoration: InputDecoration(
                                           labelText: l.authConfirmPasswordLabel,
@@ -432,36 +492,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       _buildErrorWidget(context),
                                     ],
                                     const SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () => setState(
-                                        () => _ageConfirmed = !_ageConfirmed,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: Checkbox(
-                                              value: _ageConfirmed,
-                                              onChanged: (v) => setState(
-                                                  () => _ageConfirmed = v ?? false),
-                                              activeColor: AppColors.rosePrimary,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(6),
+                                    if (_isSignUp) ...[
+                                      GestureDetector(
+                                        onTap: () => setState(
+                                          () => _ageConfirmed = !_ageConfirmed,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: Checkbox(
+                                                value: _ageConfirmed,
+                                                onChanged: (v) => setState(
+                                                    () => _ageConfirmed = v ?? false),
+                                                activeColor: AppColors.rosePrimary,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              l.ageConfirmation,
-                                              style: AppTypography.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.8)),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                l.ageConfirmation,
+                                                style: AppTypography.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.8)),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    if (_isSignUp) ...[
                                       const SizedBox(height: 8),
                                       Text(
                                         l.referralCodeHint,

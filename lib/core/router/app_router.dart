@@ -17,6 +17,8 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/screens/profile_wizard_screen.dart';
 import '../../features/profile_setup/screens/profile_setup_screen.dart';
 import '../../features/profile_setup/screens/profile_section_edit_screen.dart';
+import '../../features/profile_setup/screens/profile_welcome_screen.dart';
+import '../../features/profile_setup/screens/profile_ready_screen.dart';
 import '../../features/profile/screens/full_profile_screen.dart';
 import '../../features/family/screens/family_circle_screen.dart';
 import '../../features/family/screens/handover_accept_screen.dart';
@@ -39,7 +41,8 @@ import '../shell/root_shell.dart';
 import '../shell/shell_branch_content.dart';
 import '../providers/repository_providers.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+/// Under [MaterialApp.router] — use for overlays when caller [BuildContext] is above MaterialApp.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Routes that do not require an authenticated user (sign-in / sign-up flow).
 const _publicPaths = [
@@ -48,9 +51,11 @@ const _publicPaths = [
   '/language-select',
   '/login',
   '/location-required',
+  '/profile-welcome',
   '/profile-for',
   '/mode-select',
   '/onboarding',
+  '/profile-ready',
 ];
 
 Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
@@ -58,7 +63,7 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
 
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: tokenStorage.authChangeListenable,
     redirect: (context, state) async {
@@ -108,6 +113,14 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/likes') ||
           loc.startsWith('/profile-settings') ||
           loc.startsWith('/notifications');
+
+      // Onboarding gate: authenticated users who have not yet created a profile
+      // cannot access shell routes. Use the in-memory flag to avoid an extra API
+      // call on every navigation event (splash / profile-setup clears it once done).
+      if (isShellRoute && authRepo.currentUserId != null && tokenStorage.hasPendingOnboarding) {
+        return '/profile-welcome';
+      }
+
       if (isShellRoute) {
         final access = await ref.read(locationServiceProvider).checkAccess();
         if (access != LocationAccess.granted) {
@@ -131,6 +144,14 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/login', pageBuilder: (_, s) => _buildPage(s, const LoginScreen())),
+      GoRoute(
+        path: '/profile-welcome',
+        pageBuilder: (_, s) => _buildPage(s, const ProfileWelcomeScreen()),
+      ),
+      GoRoute(
+        path: '/profile-ready',
+        pageBuilder: (_, s) => _buildPage(s, const ProfileReadyScreen()),
+      ),
       GoRoute(
         path: '/profile-for',
         pageBuilder: (_, s) => _buildPage(s, const ProfileForScreen()),
@@ -166,7 +187,20 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           return _buildPage(state, ProfileSectionEditScreen(sectionId: section));
         },
       ),
-      GoRoute(path: '/paywall', pageBuilder: (_, s) => _buildPage(s, const PaywallScreen())),
+      GoRoute(
+        path: '/paywall',
+        pageBuilder: (_, s) {
+          final reason = s.uri.queryParameters['reason'];
+          return _buildPage(s, PaywallScreen(reason: reason));
+        },
+      ),
+      GoRoute(
+        path: '/premium',
+        redirect: (_, state) {
+          final reason = state.uri.queryParameters['reason'];
+          return reason != null ? '/paywall?reason=$reason' : '/paywall';
+        },
+      ),
       GoRoute(
         path: '/verification',
         pageBuilder: (_, s) => _buildPage(s, const VerificationScreen()),
@@ -326,7 +360,7 @@ Page<T> _buildCardPage<T>(GoRouterState state, Widget child) =>
 GoRouter createAppRouter() {
   // Used when router is not created via Provider (e.g. tests or app.dart without ref).
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),

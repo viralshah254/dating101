@@ -75,8 +75,8 @@ class _StepAboutYouState extends State<StepAboutYou> {
 
     return WizardStepShell(
       icon: Icons.auto_stories_rounded,
-      headline: 'Tell your story',
-      subtitle: 'Your bio is the first thing a match reads. Make it real, make it you.',
+      headline: 'Tell us what makes you tick',
+      subtitle: 'Be honest — the right person will love it.',
       saveStatus: _saveStatus,
       child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -366,8 +366,8 @@ class _StepAboutYouMatrimonyState extends State<StepAboutYouMatrimony> {
 
     return WizardStepShell(
       icon: Icons.auto_stories_rounded,
-      headline: 'Your story',
-      subtitle: 'Let potential matches know who you really are before the details.',
+      headline: 'Write your story',
+      subtitle: 'Families read this first. Be warm, be real.',
       saveStatus: _saveStatus,
       child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

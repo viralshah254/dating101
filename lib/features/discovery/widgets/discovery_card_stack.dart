@@ -15,6 +15,7 @@ class DiscoveryCardStack extends StatefulWidget {
     required this.currentIndex,
     required this.onPass,
     required this.onLike,
+    this.onLikeWithNote,
     required this.onSuperLike,
     required this.onTapProfile,
     required this.onBlock,
@@ -26,6 +27,7 @@ class DiscoveryCardStack extends StatefulWidget {
   final int currentIndex;
   final void Function(ProfileSummary) onPass;
   final void Function(ProfileSummary) onLike;
+  final void Function(ProfileSummary)? onLikeWithNote;
   final void Function(ProfileSummary) onSuperLike;
   final void Function(ProfileSummary) onTapProfile;
   final void Function(ProfileSummary) onBlock;
@@ -113,7 +115,7 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
               child: child,
             );
           },
-          child: DiscoverySwipeableCard(
+            child: DiscoverySwipeableCard(
             key: ValueKey(profiles[index].id),
             likeLabel: l.discoverLike,
             passLabel: l.discoverPass,
@@ -127,6 +129,9 @@ class _DiscoveryCardStackState extends State<DiscoveryCardStack>
               onTap: () => widget.onTapProfile(profiles[index]),
               onPass: () => widget.onPass(profiles[index]),
               onLike: () => widget.onLike(profiles[index]),
+              onLikeWithNote: widget.onLikeWithNote != null
+                  ? () => widget.onLikeWithNote!(profiles[index])
+                  : null,
               onSuperLike: () => widget.onSuperLike(profiles[index]),
               onBlock: () => widget.onBlock(profiles[index]),
               onReport: () => widget.onReport(profiles[index]),

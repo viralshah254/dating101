@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import 'package:uuid/uuid.dart';
 
+import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../core/design/design.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
@@ -283,6 +285,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               currentIndex: _currentPage,
               onPass: _onPass,
               onLike: _onLike,
+              onLikeWithNote: _onLikeWithNote,
               onSuperLike: _onSuperLike,
               onTapProfile: (p) => context.push('/profile/${p.id}'),
               onBlock: _onBlock,
@@ -408,12 +411,28 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     _advanceToNext();
   }
 
+  /// Silent like — swipe right or heart tap. No sheet; interest fires immediately.
   Future<void> _onLike(ProfileSummary profile) async {
+    await _expressInterestAfterLike(profile, message: null);
+  }
+
+  /// Note like — triggered by the note button on the card. Opens compose sheet first.
+  Future<void> _onLikeWithNote(ProfileSummary profile) async {
+    final result = await showLikeNoteSheet(
+      context,
+      profile,
+      mode: LikeNoteSheetMode.composeNoteOnly,
+    );
+    if (result == null || !mounted) return; // user cancelled
+    await _expressInterestAfterLike(profile, message: result.message);
+  }
+
+  /// Shared completion path for all like actions (silent, with note, ad-rewarded).
+  Future<void> _expressInterestAfterLike(
+    ProfileSummary profile, {
+    required String? message,
+  }) async {
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
-    // Show "Like With a Note" sheet before sending — card has already animated out.
-    final noteResult = await showLikeNoteSheet(context, profile);
-    // If user dismissed the sheet entirely (back button), still send silently.
-    final message = noteResult?.message;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
@@ -429,16 +448,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
             );
-        // Prompt free users to upgrade when they get a mutual match
         if (mounted) {
           await PaywallTriggerService.maybeShow(context, ref, PaywallReason.matchAccepted);
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastMatchWith(profile.name),
-            ),
+            content: Text(AppLocalizations.of(context)!.toastMatchWith(profile.name)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -453,9 +469,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastInterestSentTo(profile.name),
-            ),
+            content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profile.name)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -474,7 +488,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'DAILY_LIMIT') {
-        await _handleDailyLimitWithAd(profile, mode: mode, message: null);
+        await _handleDailyLimitWithAd(profile, mode: mode, message: message);
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -490,8 +504,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     required AppMode mode,
     required String? message,
   }) async {
-    final budget = ref.read(adBudgetProvider).valueOrNull;
-    final remaining = budget?.remaining ?? 0;
     if (!mounted) return;
     final decision = await showGateDecisionSheet(
       context,
@@ -499,7 +511,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       message: 'You\'ve sent your maximum interests for today. Watch a short ad to send 1 more, or upgrade for unlimited.',
       canWatchAd: true,
       watchAdLabel: 'Watch ad — send 1 more interest',
-      adsRemaining: remaining,
+      adActionType: AdActionType.extraInterest,
     );
     if (!mounted || decision == null) return;
     if (decision == GateDecision.upgrade) {
@@ -526,6 +538,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             );
         ref.invalidate(sentInteractionsProvider(mode));
         invalidateLikesScreenData(ref);
+        ref.invalidate(adBudgetProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profile.name)),
@@ -551,18 +564,18 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     String? adToken;
     if (ent.dailyPriorityInterestLimit == 0) {
       // Free user: must watch an ad or upgrade.
-      final watchAd = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Priority Like'),
-          content: const Text('Watch a short ad to send a priority like, or upgrade to Silver for 1/day.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Upgrade')),
-            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Watch Ad')),
-          ],
-        ),
+      final gateDecision = await showPremiumGateDialog(
+        context,
+        title: 'Priority Like',
+        message: 'Watch a short ad to send a priority like, or upgrade to Silver for 1/day.',
+        canWatchAd: true,
+        watchAdLabel: 'Watch Ad',
       );
+      final watchAd = gateDecision == GateDecision.watchAd
+          ? true
+          : gateDecision == GateDecision.upgrade
+              ? false
+              : null;
       if (!mounted) return;
       if (watchAd == null) return;
       if (watchAd == false) {

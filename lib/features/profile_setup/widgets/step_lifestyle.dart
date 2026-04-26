@@ -23,8 +23,8 @@ class StepLifestyle extends StatelessWidget {
   Widget build(BuildContext context) {
     return WizardStepShell(
       icon: Icons.self_improvement_rounded,
-      headline: 'Your lifestyle',
-      subtitle: 'Helps matches find someone with a compatible day-to-day life.',
+      headline: 'How do you actually live?',
+      subtitle: 'These details spark the best conversations.',
       child: StepDetails(
         mode: AppMode.dating,
         formData: formData,
