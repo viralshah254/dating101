@@ -13,6 +13,7 @@ import '../../../core/ads/ad_action_types.dart';
 import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../features/premium/services/paywall_trigger_service.dart';
 import '../../../features/premium/widgets/photo_gate_overlay.dart';
 import '../widgets/voice_intro_player.dart';
@@ -936,26 +937,16 @@ class _FloatingActionBar extends ConsumerWidget {
   }
 
   Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.priorityInterest),
-        content: const Text(
-          'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Watch ad'),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.priorityInterest,
+      message: 'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
+      canWatchAd: true,
+      watchAdLabel: 'Watch ad',
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   void _showMutualMatchCelebration(BuildContext context, String? chatThreadId) {

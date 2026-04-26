@@ -15,6 +15,8 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/daily_matches/daily_matches_provider.dart';
 import '../../../core/referral_promo/referral_promo_provider.dart';
 import '../../../core/safety/safety_reason_picker.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -481,29 +483,20 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen>
     );
   }
 
-  /// Shows dialog: Watch ad (true) or Upgrade to Premium (false). Returns null if dismissed.
+  /// Shows the branded Premium gate dialog for priority interest.
+  /// Returns true = watch ad, false = upgrade, null = dismissed.
   Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.priorityInterest),
-        content: Text(
-          l.priorityInterestAdMessage,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.watchAd),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.priorityInterest,
+      message: l.priorityInterestAdMessage,
+      canWatchAd: true,
+      watchAdLabel: l.watchAd,
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   void _onShortlist(ProfileSummary p) async {

@@ -22,6 +22,8 @@ import '../../../domain/models/matrimony_extensions.dart';
 import '../../../domain/models/profile_summary.dart';
 import '../../../domain/models/shortlist_entry.dart';
 import '../../../domain/models/who_shortlisted_me_entry.dart';
+import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../matches/providers/matches_providers.dart';
 import '../../requests/providers/requests_providers.dart';
@@ -200,26 +202,16 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
 
   Future<bool?> _showWatchAdOrPremiumChoice(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.priorityInterest),
-        content: const Text(
-          'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(AppLocalizations.of(context)!.watchAd),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.priorityInterest,
+      message: 'Watch an ad to send your priority interest, or upgrade to Premium to send without ads.',
+      canWatchAd: true,
+      watchAdLabel: l.watchAd,
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   Future<void> _onMessage(ProfileSummary p) async {
@@ -328,26 +320,16 @@ class _ShortlistedTabState extends ConsumerState<_ShortlistedTab> {
 
   Future<bool?> _showWatchAdOrPremiumChoiceForMessage(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.premium),
-        content: const Text(
-          'Watch an ad to send a message, or upgrade to Premium to message without ads.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.ctaUpgradeToPremium),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(AppLocalizations.of(context)!.watchAd),
-          ),
-        ],
-      ),
+    final decision = await showPremiumGateDialog(
+      context,
+      title: l.premium,
+      message: 'Watch an ad to send a message, or upgrade to Premium to message without ads.',
+      canWatchAd: true,
+      watchAdLabel: l.watchAd,
     );
+    if (decision == GateDecision.watchAd) return true;
+    if (decision == GateDecision.upgrade) return false;
+    return null;
   }
 
   Future<void> _onBlock(ProfileSummary p) async {

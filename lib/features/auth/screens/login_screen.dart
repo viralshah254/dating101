@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/locale/language_picker_sheet.dart';
 import '../../../core/providers/repository_providers.dart';
@@ -83,6 +84,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     _country = _countryCodeFromDeviceLocale();
+    _prefillReferralCode();
+  }
+
+  void _prefillReferralCode() {
+    SharedPreferences.getInstance().then((prefs) {
+      final pending = prefs.getString('pending_referral_code') ?? '';
+      if (pending.isNotEmpty && mounted) {
+        setState(() => _referralCodeController.text = pending);
+      }
+    });
   }
 
   _CountryCode _countryCodeFromDeviceLocale() {

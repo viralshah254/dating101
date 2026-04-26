@@ -9,6 +9,7 @@ import '../../../core/ads/ad_budget_provider.dart';
 import '../../../core/ads/ad_loading_dialog.dart';
 import '../../../core/ads/ad_service.dart';
 import '../../../core/monetization/gate_decision_sheet.dart';
+import '../../../core/monetization/premium_gate_dialog.dart';
 import '../../../core/design/design.dart';
 import '../../../core/entitlements/entitlements.dart';
 import '../../../core/mode/app_mode.dart';
@@ -563,18 +564,18 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     String? adToken;
     if (ent.dailyPriorityInterestLimit == 0) {
       // Free user: must watch an ad or upgrade.
-      final watchAd = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Priority Like'),
-          content: const Text('Watch a short ad to send a priority like, or upgrade to Silver for 1/day.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Upgrade')),
-            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Watch Ad')),
-          ],
-        ),
+      final gateDecision = await showPremiumGateDialog(
+        context,
+        title: 'Priority Like',
+        message: 'Watch a short ad to send a priority like, or upgrade to Silver for 1/day.',
+        canWatchAd: true,
+        watchAdLabel: 'Watch Ad',
       );
+      final watchAd = gateDecision == GateDecision.watchAd
+          ? true
+          : gateDecision == GateDecision.upgrade
+              ? false
+              : null;
       if (!mounted) return;
       if (watchAd == null) return;
       if (watchAd == false) {
