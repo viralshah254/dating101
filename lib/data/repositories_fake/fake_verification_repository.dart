@@ -9,9 +9,8 @@ class FakeVerificationRepository implements VerificationRepository {
       key: 'verification/id/fake-key',
     );
   }
-
   @override
-  Future<void> submitIdVerification(String key) async {
+  Future<void> submitIdVerification(String key, {String? selfieKey}) async {
     await Future.delayed(const Duration(milliseconds: 150));
   }
 

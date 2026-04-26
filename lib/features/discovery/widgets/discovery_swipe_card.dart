@@ -191,6 +191,7 @@ class DiscoverySwipeCard extends ConsumerWidget {
     this.onTap,
     required this.onPass,
     required this.onLike,
+    this.onLikeWithNote,
     required this.onSuperLike,
     required this.onBlock,
     required this.onReport,
@@ -201,6 +202,7 @@ class DiscoverySwipeCard extends ConsumerWidget {
   final VoidCallback? onTap;
   final VoidCallback onPass;
   final VoidCallback onLike;
+  final VoidCallback? onLikeWithNote;
   final VoidCallback onSuperLike;
   final VoidCallback onBlock;
   final VoidCallback onReport;
@@ -301,6 +303,12 @@ class DiscoverySwipeCard extends ConsumerWidget {
                                   variant: _ActionVariant.like,
                                   onPressed: onLike,
                                 ),
+                                if (onLikeWithNote != null)
+                                  _ActionButton(
+                                    icon: Icons.edit_note_rounded,
+                                    variant: _ActionVariant.note,
+                                    onPressed: onLikeWithNote!,
+                                  ),
                                 _ActionButton(
                                   icon: Icons.expand_less_rounded,
                                   variant: _ActionVariant.info,
@@ -402,7 +410,7 @@ class DiscoverySwipeCard extends ConsumerWidget {
   }
 }
 
-enum _ActionVariant { pass, superLike, like, info }
+enum _ActionVariant { pass, superLike, like, note, info }
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
@@ -417,6 +425,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isLike = variant == _ActionVariant.like;
     final isSuperLike = variant == _ActionVariant.superLike;
     final size = isLike ? 60.0 : (isSuperLike ? 52.0 : 46.0);
@@ -432,6 +441,7 @@ class _ActionButton extends StatelessWidget {
       _ActionVariant.pass => Colors.white.withValues(alpha: 0.9),
       _ActionVariant.superLike => AppColors.goldDark,
       _ActionVariant.like => Colors.white,
+      _ActionVariant.note => cs.primary.withValues(alpha: 0.95),
       _ActionVariant.info => Colors.white.withValues(alpha: 0.75),
     };
 
@@ -439,6 +449,7 @@ class _ActionButton extends StatelessWidget {
       _ActionVariant.like => Colors.transparent,
       _ActionVariant.superLike => AppColors.gold.withValues(alpha: 0.4),
       _ActionVariant.pass => Colors.white.withValues(alpha: 0.3),
+      _ActionVariant.note => cs.primary.withValues(alpha: 0.35),
       _ActionVariant.info => Colors.white.withValues(alpha: 0.2),
     };
 
@@ -472,7 +483,11 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: buttonGradient,
-            color: buttonGradient == null ? Colors.white.withValues(alpha: 0.12) : null,
+            color: buttonGradient == null
+                ? (variant == _ActionVariant.note
+                    ? cs.primary.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.12))
+                : null,
             border: Border.all(color: borderColor),
             boxShadow: shadows,
           ),

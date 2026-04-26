@@ -20,9 +20,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AdService.initialize();
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     if (Firebase.apps.isEmpty) {
-      if (kDebugMode) debugPrint('[Firebase] No default app after init');
+      try {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      } on FirebaseException catch (e) {
+        // Native layer may already have registered [DEFAULT] while Dart's [Firebase.apps] is still empty.
+        if (e.code != 'duplicate-app' && kDebugMode) {
+          debugPrint('[Firebase] Init failed: $e');
+        }
+      }
     }
     if (kDebugMode) debugPrint('[Firebase] Initialized');
     // FCM is only available on iOS/Android; skip on macOS/Windows/web (MissingPluginException)

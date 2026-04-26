@@ -408,12 +408,6 @@ const _motherTongueAndLanguageOptions = [
   'Other',
 ];
 
-/// Parent age dropdown: Deceased + ages 35–95.
-final _parentAgeOptions = [
-  'Deceased',
-  ...List.generate(61, (i) => '${35 + i}'),
-];
-
 /// Household income in India — Rs (LPA).
 const _householdIncomeLPA = [
   'Not specified',
@@ -2241,28 +2235,6 @@ class _MatrimonyDetails extends StatelessWidget {
                   selected: formData.familyValues,
                   onSelected: (v) {
                     formData.familyValues = v;
-                    onChanged();
-                  },
-                ),
-                const SizedBox(height: 16),
-                _SearchableSelectField(
-                  label: l.motherAgeQuestion,
-                  value: formData.motherAge,
-                  hint: l.motherAgeHint,
-                  options: _parentAgeOptions,
-                  onChanged: (v) {
-                    formData.motherAge = v;
-                    onChanged();
-                  },
-                ),
-                const SizedBox(height: 16),
-                _SearchableSelectField(
-                  label: l.fatherAgeQuestion,
-                  value: formData.fatherAge,
-                  hint: l.fatherAgeHint,
-                  options: _parentAgeOptions,
-                  onChanged: (v) {
-                    formData.fatherAge = v;
                     onChanged();
                   },
                 ),

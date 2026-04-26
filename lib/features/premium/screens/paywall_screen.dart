@@ -58,8 +58,8 @@ extension PaywallTierX on PaywallTier {
 }
 
 extension PremiumPlanX on PremiumPlan {
-  /// Returns the gender-prefixed product ID (male_* or female_*).
-  /// Falls back to gender-neutral if [isFemale] is not yet known.
+  /// Returns the gender-prefixed product ID (`male_*` or `female_*`).
+  /// [isFemale] selects discounted women’s SKUs; everyone else should pass false (male SKUs).
   String productIdForTier(PaywallTier tier, {bool isFemale = false}) {
     final genderPrefix = isFemale ? 'female' : 'male';
     final tierPrefix = tier.prefix;
@@ -116,13 +116,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final platform = Platform.isIOS ? 'ios' : 'android';
     final products = await ref.read(iapProductsProvider.future);
     final ent = ref.read(entitlementsProvider);
-    // Use gender-prefixed product IDs so stores serve the correct regional price.
-    // Then try the other gender prefix, then gender-neutral SKUs (gold_monthly, …).
+    // Use gender-prefixed product IDs. Only women use `female_*`; everyone else (male,
+    // non-binary, unknown) uses `male_*` for silver/gold — never fall through to
+    // `female_*` when the male SKU is missing, or we’d show/charge the wrong price.
     String productId = _selectedPlan.productIdForTier(_selectedTier, isFemale: ent.isFemale);
     if (!products.containsKey(productId)) {
-      final otherGender = _selectedPlan.productIdForTier(_selectedTier, isFemale: !ent.isFemale);
-      if (products.containsKey(otherGender)) {
-        productId = otherGender;
+      if (ent.isFemale) {
+        final maleId = _selectedPlan.productIdForTier(_selectedTier, isFemale: false);
+        if (products.containsKey(maleId)) {
+          productId = maleId;
+        }
       }
     }
     if (!products.containsKey(productId)) {
@@ -259,15 +262,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final productsAsync = ref.watch(iapProductsProvider);
 
     final products = productsAsync.valueOrNull ?? {};
-    // Resolve prices: gendered SKU → other gender → gender-neutral (gold_monthly, …).
+    // Resolve prices: same rules as purchase — non-female users never use `female_*` for display.
     String tierPrice(PaywallTier tier, PremiumPlan plan) {
       final genderedId = plan.productIdForTier(tier, isFemale: ent.isFemale);
-      final otherGenderId = plan.productIdForTier(tier, isFemale: !ent.isFemale);
+      final maleId = plan.productIdForTier(tier, isFemale: false);
       final neutralId = plan.neutralProductId(tier);
-      return products[genderedId]?.price ??
-          products[otherGenderId]?.price ??
-          products[neutralId]?.price ??
-          '—';
+      if (ent.isFemale) {
+        return products[genderedId]?.price ??
+            products[maleId]?.price ??
+            products[neutralId]?.price ??
+            '—';
+      }
+      return products[genderedId]?.price ?? products[neutralId]?.price ?? '—';
     }
 
     final monthlyPrice = tierPrice(_selectedTier, PremiumPlan.monthly);

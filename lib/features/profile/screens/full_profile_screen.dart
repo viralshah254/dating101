@@ -4459,12 +4459,6 @@ class _FamilyCard extends StatelessWidget {
     if (fam.motherOccupation != null) {
       rows.add(_DetailRow('Mother\'s occupation', fam.motherOccupation));
     }
-    if (fam.fatherAge != null) {
-      rows.add(_DetailRow('Father\'s age', fam.fatherAge));
-    }
-    if (fam.motherAge != null) {
-      rows.add(_DetailRow('Mother\'s age', fam.motherAge));
-    }
     if (fam.brothers != null || fam.sisters != null) {
       final parts = <String>[];
       if (fam.brothers != null) {

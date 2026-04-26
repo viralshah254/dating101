@@ -10,6 +10,20 @@ import '../../data/api/api_client.dart';
 import '../../domain/models/user_profile.dart';
 import '../../l10n/app_localizations.dart';
 
+/// Pushes the user's chosen mode to the server so it survives logout and
+/// device changes. Fire-and-forget (non-blocking); errors are swallowed.
+Future<void> pushModeToServer(AppMode mode, WidgetRef ref) async {
+  try {
+    await ref.read(profileRepositoryProvider).saveProfileJson(
+      {
+        'modePreference': mode.name,
+        'profileMode': mode.name,
+      },
+      create: false,
+    );
+  } catch (_) {}
+}
+
 /// Restores the app mode from the server profile so that users land on the
 /// correct mode (dating/matrimony) after logout or a fresh install.
 ///
@@ -72,7 +86,7 @@ Future<void> navigateAfterAuthSuccess(
       await _showReferralSuccessDialog(context);
       if (!context.mounted) return;
     }
-    context.go('/profile-for');
+    context.go('/profile-welcome');
     return;
   }
 

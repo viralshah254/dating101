@@ -69,6 +69,8 @@ class Entitlements {
   bool get isSilverOnly => tier.isAtLeastSilver && !tier.isAtLeastGold;
   bool get isGold => tier.isAtLeastGold;
   bool get isPlatinum => tier.isAtLeastPlatinum;
+  /// In-app `female_*` / `male_*` SKUs: only explicit female users get discounted
+  /// `female_silver_*` / `female_gold_*`. Male, non-binary ([other]), and [unknown] use `male_*`.
   bool get isFemale => gender == UserGender.female;
 
   /// Silver+: can see who visited their profile.

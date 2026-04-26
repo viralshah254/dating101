@@ -18,8 +18,10 @@ class ApiVerificationRepository implements VerificationRepository {
   }
 
   @override
-  Future<void> submitIdVerification(String key) async {
-    await api.post('/verification/id/submit', body: {'key': key});
+  Future<void> submitIdVerification(String key, {String? selfieKey}) async {
+    final body = <String, dynamic>{'key': key};
+    if (selfieKey != null) body['selfieKey'] = selfieKey;
+    await api.post('/verification/id/submit', body: body);
   }
 
   @override

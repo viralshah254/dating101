@@ -1249,14 +1249,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interests => 'Interests';
 
   @override
-  String get interestsAndHobbies => 'Interests & Hobbies';
+  String get interestsAndHobbies => 'What are you into?';
 
   @override
   String get interestsAndHobbiesSection => 'Interests & Hobbies';
 
   @override
   String get interestsAndHobbiesSubtitle =>
-      'Pick up to 6 — we\'ll use them for better matches.';
+      'Pick at least 3 — we use these to find your people.';
 
   @override
   String get interestsMaxReached =>
@@ -1905,11 +1905,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get partnerPrefSettledAbroad => 'Settled abroad';
 
   @override
-  String get partnerPrefsStepSubtitle =>
-      'Help us find the right match. You can refine these anytime.';
+  String get partnerPrefsStepSubtitle => 'Dream a little — we\'ll do our best.';
 
   @override
-  String get partnerPrefsStepTitle => 'Partner\npreferences';
+  String get partnerPrefsStepTitle => 'Your ideal\npartner';
 
   @override
   String get partnerPrefStrictSuffix => ' (Strict)';
@@ -2047,10 +2046,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsStepSubtitle =>
-      'We\'ll use these to show you relevant people. You can always refine later.';
+      'No pressure — you can always change this later.';
 
   @override
-  String get prefsStepTitle => 'Your\npreferences';
+  String get prefsStepTitle => 'Who are you hoping\nto meet?';
 
   @override
   String get premium => 'Premium';
@@ -2107,7 +2106,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileBuilderPartnerPrefs => 'Partner preferences';
 
   @override
-  String get profileBuilderPhotos => 'Photos';
+  String get profileBuilderPhotos => 'Now, show us you';
 
   @override
   String get profileBuilderPrompts => 'Prompts & voice';
@@ -2176,14 +2175,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileSetupPhotosHint =>
-      'Add at least 2 photos. Profiles with clear face photos get more matches.';
+      'Profiles with photos get 8× more connections.';
 
   @override
   String get profileSetupSubtitle =>
-      'Takes about 2 minutes. You can always edit later.';
+      'This is how you\'ll appear — make it real.';
 
   @override
-  String get profileSetupTitle => 'Let\'s set up\nyour profile';
+  String get profileSetupTitle => 'What should we\ncall you?';
 
   @override
   String get profileStepCareer => 'Career';

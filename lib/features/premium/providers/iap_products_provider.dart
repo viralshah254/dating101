@@ -92,8 +92,8 @@ class IapProductIds {
 
   static const Set<String> all = {...subscriptionIds, boostOneTime};
 
-  /// Returns the correct product ID for [tier] and [period] based on [isFemale].
-  /// Falls back to gender-neutral IDs if gender-prefixed ones are not yet in store.
+  /// Returns the product ID for [tier] and [period]. [isFemale] true → `female_*`;
+  /// all other genders (male, non-binary, unknown) should pass false → `male_*`.
   static String forTier(String tier, String period, {required bool isFemale}) {
     final prefix = isFemale ? 'female' : 'male';
     switch (tier) {

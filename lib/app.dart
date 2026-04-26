@@ -32,6 +32,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
     with WidgetsBindingObserver {
   late final VoidCallback _tokenStorageListener;
   bool _wasLoggedIn = false;
+  Timer? _verificationNudgeTimer;
 
   @override
   void initState() {
@@ -68,6 +69,7 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
 
   @override
   void dispose() {
+    _verificationNudgeTimer?.cancel();
     ref.read(tokenStorageProvider).removeListener(_tokenStorageListener);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -122,7 +124,8 @@ class _ShubhmilanAppState extends ConsumerState<ShubhmilanApp>
   void _maybeShowVerificationNudge() {
     final authRepo = ref.read(authRepositoryProvider);
     if (authRepo.currentUserId == null || !mounted) return;
-    Future.delayed(const Duration(seconds: 6), () {
+    _verificationNudgeTimer?.cancel();
+    _verificationNudgeTimer = Timer(const Duration(seconds: 6), () {
       if (!mounted) return;
       VerificationNudgeService.maybeShow(context, ref);
     });

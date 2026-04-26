@@ -1,66 +1,120 @@
 /// VerificationNudgeService
 ///
-/// Shows a bottom-sheet on every app open while the user is unverified:
-/// - Before deadline: dismissable, countdown shown ("X days Y hours left").
-/// - After deadline:  non-dismissable; only "Verify now" is shown.
+/// While the user is unverified:
+/// - Before deadline: dismissable countdown; **at most once per local calendar day** per user
+///   (avoids spam on resume / duplicate timers).
+/// - After deadline: non-dismissable; may appear again on a later app open / resume until verified.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/mode/app_mode.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
+
+const String _kNudgeDayPrefix = 'verification_nudge_last_day_';
 
 class VerificationNudgeService {
   VerificationNudgeService._();
 
+  /// Prevents concurrent [maybeShow] calls from opening stacked sheets (async gap before sheet).
+  static bool _busy = false;
+
+  static String _prefsDayKey(String userId) => '$_kNudgeDayPrefix$userId';
+
+  static String _dateStringLocal(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
   static Future<void> maybeShow(BuildContext context, WidgetRef ref) async {
+    if (_busy) return;
     if (!context.mounted) return;
 
     final authRepo = ref.read(authRepositoryProvider);
-    if (authRepo.currentUserId == null) return;
+    final userId = authRepo.currentUserId;
+    if (userId == null) return;
 
-    UserProfile? profile;
+    _busy = true;
     try {
-      profile = await ref.read(profileRepositoryProvider).getMyProfile();
-    } catch (_) {
-      return;
+      UserProfile? profile;
+      try {
+        profile = await ref.read(profileRepositoryProvider).getMyProfile();
+      } catch (_) {
+        return;
+      }
+      if (profile == null) return;
+
+      // Never interrupt profile setup or any onboarding screen.
+      const setupPaths = [
+        '/profile-setup',
+        '/profile-for',
+        '/mode-select',
+        '/onboarding',
+        '/location-required',
+        '/profile-welcome',
+      ];
+      final router = ref.read(appRouterProvider);
+      final currentPath = router.routerDelegate.currentConfiguration.uri.path;
+      if (setupPaths.any((p) => currentPath.startsWith(p))) return;
+
+      final vs = profile.verificationStatus;
+      if (vs.photoVerified || vs.score >= 0.5) return;
+      if (vs.idVerificationStatus == 'pending') return;
+
+      if (!context.mounted) return;
+
+      final deadline = profile.verificationDeadlineAt;
+      final nowUtc = DateTime.now().toUtc();
+      final pastDeadline = deadline != null && nowUtc.isAfter(deadline);
+      final remaining =
+          deadline != null && !pastDeadline ? deadline.difference(nowUtc) : Duration.zero;
+      final mode = ref.read(appModeProvider) ?? AppMode.dating;
+
+      SharedPreferences? prefs;
+      if (!pastDeadline) {
+        prefs = await SharedPreferences.getInstance();
+        final todayLocal = _dateStringLocal(DateTime.now());
+        final last = prefs.getString(_prefsDayKey(userId));
+        if (last == todayLocal) return;
+      }
+
+      // Same as GoRouter: [context] from ShubhmilanApp is above MaterialApp, so it has no
+      // MaterialLocalizations. Use the navigator under MaterialApp.router.
+      final sheetContext = rootNavigatorKey.currentContext;
+      if (sheetContext == null || !sheetContext.mounted) return;
+
+      if (!pastDeadline) {
+        await prefs!.setString(_prefsDayKey(userId), _dateStringLocal(DateTime.now()));
+      }
+
+      if (!sheetContext.mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: sheetContext,
+        isScrollControlled: true,
+        isDismissible: !pastDeadline,
+        enableDrag: !pastDeadline,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _VerificationNudgeSheet(
+          pastDeadline: pastDeadline,
+          remaining: remaining,
+          isMatrimony: mode.isMatrimony,
+          onVerifyNow: () {
+            Navigator.of(ctx).pop();
+            router.push('/verification');
+          },
+          onDismiss: pastDeadline
+              ? null
+              : () => Navigator.of(ctx).pop(),
+        ),
+      );
+    } finally {
+      _busy = false;
     }
-    if (profile == null) return;
-
-    final vs = profile.verificationStatus;
-    if (vs.photoVerified || vs.score >= 0.5) return;
-
-    if (!context.mounted) return;
-
-    final deadline = profile.verificationDeadlineAt;
-    final now = DateTime.now().toUtc();
-    final pastDeadline = deadline != null && now.isAfter(deadline);
-    final remaining = deadline != null && !pastDeadline ? deadline.difference(now) : Duration.zero;
-
-    final router = GoRouter.of(context);
-    if (!context.mounted) return;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: !pastDeadline,
-      enableDrag: !pastDeadline,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _VerificationNudgeSheet(
-        pastDeadline: pastDeadline,
-        remaining: remaining,
-        onVerifyNow: () {
-          Navigator.of(ctx).pop();
-          router.push('/verification');
-        },
-        onDismiss: pastDeadline
-            ? null
-            : () => Navigator.of(ctx).pop(),
-      ),
-    );
   }
 }
 
@@ -68,12 +122,14 @@ class _VerificationNudgeSheet extends StatelessWidget {
   const _VerificationNudgeSheet({
     required this.pastDeadline,
     required this.remaining,
+    required this.isMatrimony,
     required this.onVerifyNow,
     this.onDismiss,
   });
 
   final bool pastDeadline;
   final Duration remaining;
+  final bool isMatrimony;
   final VoidCallback onVerifyNow;
   final VoidCallback? onDismiss;
 
@@ -137,7 +193,9 @@ class _VerificationNudgeSheet extends StatelessWidget {
               Text(
                 pastDeadline
                     ? 'Your verification deadline has passed. Please complete photo verification to continue using the app.'
-                    : 'Verified profiles receive 3× more interest. Complete your photo verification to unlock all features.',
+                    : isMatrimony
+                        ? 'Verified profiles get 3× more interest from families. Complete your photo verification to unlock all features.'
+                        : 'Verified profiles receive 3× more interest. Complete your photo verification to unlock all features.',
                 style: AppTypography.bodyMedium.copyWith(
                   color: onSurface.withValues(alpha: 0.65),
                 ),

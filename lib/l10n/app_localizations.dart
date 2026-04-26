@@ -2381,7 +2381,7 @@ abstract class AppLocalizations {
   /// No description provided for @interestsAndHobbies.
   ///
   /// In en, this message translates to:
-  /// **'Interests & Hobbies'**
+  /// **'What are you into?'**
   String get interestsAndHobbies;
 
   /// No description provided for @interestsAndHobbiesSection.
@@ -2393,7 +2393,7 @@ abstract class AppLocalizations {
   /// No description provided for @interestsAndHobbiesSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Pick up to 6 — we\'ll use them for better matches.'**
+  /// **'Pick at least 3 — we use these to find your people.'**
   String get interestsAndHobbiesSubtitle;
 
   /// No description provided for @interestsMaxReached.
@@ -3587,13 +3587,13 @@ abstract class AppLocalizations {
   /// No description provided for @partnerPrefsStepSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Help us find the right match. You can refine these anytime.'**
+  /// **'Dream a little — we\'ll do our best.'**
   String get partnerPrefsStepSubtitle;
 
   /// No description provided for @partnerPrefsStepTitle.
   ///
   /// In en, this message translates to:
-  /// **'Partner\npreferences'**
+  /// **'Your ideal\npartner'**
   String get partnerPrefsStepTitle;
 
   /// No description provided for @partnerPrefStrictSuffix.
@@ -3857,13 +3857,13 @@ abstract class AppLocalizations {
   /// No description provided for @prefsStepSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'We\'ll use these to show you relevant people. You can always refine later.'**
+  /// **'No pressure — you can always change this later.'**
   String get prefsStepSubtitle;
 
   /// No description provided for @prefsStepTitle.
   ///
   /// In en, this message translates to:
-  /// **'Your\npreferences'**
+  /// **'Who are you hoping\nto meet?'**
   String get prefsStepTitle;
 
   /// No description provided for @premium.
@@ -3971,7 +3971,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileBuilderPhotos.
   ///
   /// In en, this message translates to:
-  /// **'Photos'**
+  /// **'Now, show us you'**
   String get profileBuilderPhotos;
 
   /// No description provided for @profileBuilderPrompts.
@@ -4097,19 +4097,19 @@ abstract class AppLocalizations {
   /// No description provided for @profileSetupPhotosHint.
   ///
   /// In en, this message translates to:
-  /// **'Add at least 2 photos. Profiles with clear face photos get more matches.'**
+  /// **'Profiles with photos get 8× more connections.'**
   String get profileSetupPhotosHint;
 
   /// No description provided for @profileSetupSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Takes about 2 minutes. You can always edit later.'**
+  /// **'This is how you\'ll appear — make it real.'**
   String get profileSetupSubtitle;
 
   /// No description provided for @profileSetupTitle.
   ///
   /// In en, this message translates to:
-  /// **'Let\'s set up\nyour profile'**
+  /// **'What should we\ncall you?'**
   String get profileSetupTitle;
 
   /// No description provided for @profileStepCareer.

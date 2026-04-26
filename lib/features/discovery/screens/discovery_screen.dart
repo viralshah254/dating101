@@ -284,6 +284,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               currentIndex: _currentPage,
               onPass: _onPass,
               onLike: _onLike,
+              onLikeWithNote: _onLikeWithNote,
               onSuperLike: _onSuperLike,
               onTapProfile: (p) => context.push('/profile/${p.id}'),
               onBlock: _onBlock,
@@ -409,12 +410,28 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     _advanceToNext();
   }
 
+  /// Silent like — swipe right or heart tap. No sheet; interest fires immediately.
   Future<void> _onLike(ProfileSummary profile) async {
+    await _expressInterestAfterLike(profile, message: null);
+  }
+
+  /// Note like — triggered by the note button on the card. Opens compose sheet first.
+  Future<void> _onLikeWithNote(ProfileSummary profile) async {
+    final result = await showLikeNoteSheet(
+      context,
+      profile,
+      mode: LikeNoteSheetMode.composeNoteOnly,
+    );
+    if (result == null || !mounted) return; // user cancelled
+    await _expressInterestAfterLike(profile, message: result.message);
+  }
+
+  /// Shared completion path for all like actions (silent, with note, ad-rewarded).
+  Future<void> _expressInterestAfterLike(
+    ProfileSummary profile, {
+    required String? message,
+  }) async {
     final mode = ref.read(appModeProvider) ?? AppMode.dating;
-    // Show "Like With a Note" sheet before sending — card has already animated out.
-    final noteResult = await showLikeNoteSheet(context, profile);
-    // If user dismissed the sheet entirely (back button), still send silently.
-    final message = noteResult?.message;
     try {
       final result = await ref
           .read(interactionsRepositoryProvider)
@@ -430,16 +447,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         ref.read(shortlistUnlockedEntriesProvider.notifier).update(
               (list) => list.where((e) => e.profileId != profile.id).toList(),
             );
-        // Prompt free users to upgrade when they get a mutual match
         if (mounted) {
           await PaywallTriggerService.maybeShow(context, ref, PaywallReason.matchAccepted);
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastMatchWith(profile.name),
-            ),
+            content: Text(AppLocalizations.of(context)!.toastMatchWith(profile.name)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -454,9 +468,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.toastInterestSentTo(profile.name),
-            ),
+            content: Text(AppLocalizations.of(context)!.toastInterestSentTo(profile.name)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -475,7 +487,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.code == 'DAILY_LIMIT') {
-        await _handleDailyLimitWithAd(profile, mode: mode, message: null);
+        await _handleDailyLimitWithAd(profile, mode: mode, message: message);
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(

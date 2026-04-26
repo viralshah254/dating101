@@ -3,8 +3,9 @@ abstract class VerificationRepository {
   /// POST /verification/id/upload-url — returns uploadUrl and key for ID image.
   Future<IdUploadUrlResult> getIdUploadUrl({String? type});
 
-  /// POST /verification/id/submit — submit after uploading to presigned URL. Key from getIdUploadUrl.
-  Future<void> submitIdVerification(String key);
+  /// POST /verification/id/submit — submit after uploading to presigned URL.
+  /// [key] is the ID document key; [selfieKey] is the selfie key (both from getIdUploadUrl).
+  Future<void> submitIdVerification(String key, {String? selfieKey});
 
   /// POST /verification/photo — set photoVerified (optional body: key).
   Future<void> submitPhotoVerification({String? key});

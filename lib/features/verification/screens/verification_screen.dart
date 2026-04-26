@@ -118,11 +118,16 @@ class VerificationScreen extends ConsumerWidget {
                   _VerificationTile(
                     icon: Icons.face_retouching_natural,
                     title: AppLocalizations.of(context)!.faceMatch,
-                    subtitle: AppLocalizations.of(context)!.faceMatchSubtitle,
+                    subtitle: vs.photoVerified
+                        ? 'Your selfie has been verified.'
+                        : idPending
+                            ? 'Under review — submitted with your ID.'
+                            : 'Your selfie is submitted together with your ID document.',
                     status: vs.photoVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
-                    onTap: vs.photoVerified
+                    statusLabel: !vs.photoVerified && idPending ? 'Under review' : null,
+                    onTap: vs.photoVerified || idPending
                         ? null
                         : () async {
                             await context.push('/photo-verification');

@@ -17,6 +17,8 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/screens/profile_wizard_screen.dart';
 import '../../features/profile_setup/screens/profile_setup_screen.dart';
 import '../../features/profile_setup/screens/profile_section_edit_screen.dart';
+import '../../features/profile_setup/screens/profile_welcome_screen.dart';
+import '../../features/profile_setup/screens/profile_ready_screen.dart';
 import '../../features/profile/screens/full_profile_screen.dart';
 import '../../features/family/screens/family_circle_screen.dart';
 import '../../features/family/screens/handover_accept_screen.dart';
@@ -39,7 +41,8 @@ import '../shell/root_shell.dart';
 import '../shell/shell_branch_content.dart';
 import '../providers/repository_providers.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+/// Under [MaterialApp.router] — use for overlays when caller [BuildContext] is above MaterialApp.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Routes that do not require an authenticated user (sign-in / sign-up flow).
 const _publicPaths = [
@@ -48,9 +51,11 @@ const _publicPaths = [
   '/language-select',
   '/login',
   '/location-required',
+  '/profile-welcome',
   '/profile-for',
   '/mode-select',
   '/onboarding',
+  '/profile-ready',
 ];
 
 Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
@@ -58,7 +63,7 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
 
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: tokenStorage.authChangeListenable,
     redirect: (context, state) async {
@@ -131,6 +136,14 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/login', pageBuilder: (_, s) => _buildPage(s, const LoginScreen())),
+      GoRoute(
+        path: '/profile-welcome',
+        pageBuilder: (_, s) => _buildPage(s, const ProfileWelcomeScreen()),
+      ),
+      GoRoute(
+        path: '/profile-ready',
+        pageBuilder: (_, s) => _buildPage(s, const ProfileReadyScreen()),
+      ),
       GoRoute(
         path: '/profile-for',
         pageBuilder: (_, s) => _buildPage(s, const ProfileForScreen()),
@@ -339,7 +352,7 @@ Page<T> _buildCardPage<T>(GoRouterState state, Widget child) =>
 GoRouter createAppRouter() {
   // Used when router is not created via Provider (e.g. tests or app.dart without ref).
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
