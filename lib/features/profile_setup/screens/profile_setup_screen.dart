@@ -315,6 +315,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         totalSteps: _steps.length,
         profileCompletionPercent: _profileCompletionPercent(),
       );
+      // Profile created — onboarding is done. Clear the gate so shell routes
+      // are no longer blocked by the router guard.
+      await ref.read(tokenStorageProvider).clearPendingOnboarding();
+      if (!mounted) return;
       context.go('/profile-ready');
     }
   }

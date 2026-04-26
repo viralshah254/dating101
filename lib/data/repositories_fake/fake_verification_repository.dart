@@ -9,6 +9,16 @@ class FakeVerificationRepository implements VerificationRepository {
       key: 'verification/id/fake-key',
     );
   }
+
+  @override
+  Future<IdUploadUrlResult> getEducationUploadUrl({String contentType = 'image/jpeg'}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return const IdUploadUrlResult(
+      uploadUrl: 'https://fake.s3.amazonaws.com/verification/education/fake-key',
+      key: 'verification/fake-user/education/fake.jpg',
+    );
+  }
+
   @override
   Future<void> submitIdVerification(String key, {String? selfieKey}) async {
     await Future.delayed(const Duration(milliseconds: 150));

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/locale/language_picker_sheet.dart';
+import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -80,11 +81,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     '\u{1F1EE}\u{1F1F3}',
   );
 
+  /// After first app install, default to the sign-up tab once; later sessions default to sign-in.
+  static const _kAuthFirstLaunchKey = 'auth_default_signup_shown';
+
   @override
   void initState() {
     super.initState();
     _country = _countryCodeFromDeviceLocale();
     _prefillReferralCode();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyFirstInstallSignUpDefault());
+  }
+
+  Future<void> _applyFirstInstallSignUpDefault() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    if (prefs.getBool(_kAuthFirstLaunchKey) ?? false) return;
+    if (!mounted) return;
+    setState(() => _isSignUp = true);
+    await prefs.setBool(_kAuthFirstLaunchKey, true);
   }
 
   void _prefillReferralCode() {

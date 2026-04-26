@@ -1,7 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:app_links/app_links.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/repository_providers.dart';
@@ -16,13 +22,66 @@ final _myProfileForVerificationProvider = FutureProvider((ref) async {
 
 /// Verification hub: ID, face match, LinkedIn, education. Uses [VerificationStatus]
 /// from GET /profile/me for tile state and safety score. See docs/BACKEND_VERIFICATION.md.
-class VerificationScreen extends ConsumerWidget {
+class VerificationScreen extends ConsumerStatefulWidget {
   const VerificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VerificationScreen> createState() => _VerificationScreenState();
+}
+
+class _VerificationScreenState extends ConsumerState<VerificationScreen> {
+  StreamSubscription<Uri>? _deepLinkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenDeepLinks();
+  }
+
+  void _listenDeepLinks() {
+    final appLinks = AppLinks();
+    _deepLinkSub = appLinks.uriLinkStream.listen((uri) async {
+      if (uri.scheme == 'shubhmilan' && uri.host == 'linkedin-callback') {
+        final code = uri.queryParameters['code'];
+        if (code == null || code.isEmpty) return;
+        await _handleLinkedInCode(code);
+      }
+    });
+  }
+
+  Future<void> _handleLinkedInCode(String code) async {
+    try {
+      await ref.read(verificationRepositoryProvider).linkedInCallback(code);
+      ref.invalidate(_myProfileForVerificationProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('LinkedIn verified successfully!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('LinkedIn verification failed. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _deepLinkSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
     final profileAsync = ref.watch(_myProfileForVerificationProvider);
+
 
     return Scaffold(
       appBar: AppBar(
@@ -69,7 +128,7 @@ class VerificationScreen extends ConsumerWidget {
                       title: 'Education Verification Not Approved',
                       reason: vs.educationRejectionReason ??
                           'Your education verification was not approved.',
-                      onResubmit: () => _showEducationVerification(context, ref),
+                      onResubmit: () => _showEducationVerification(context),
                     ).animate().fadeIn().slideY(begin: -0.05, end: 0),
                     const SizedBox(height: 16),
                   ],
@@ -139,13 +198,14 @@ class VerificationScreen extends ConsumerWidget {
                   _VerificationTile(
                     icon: Icons.work_outline,
                     title: AppLocalizations.of(context)!.linkedIn,
-                    subtitle: AppLocalizations.of(context)!.linkedInSubtitle,
+                    subtitle: vs.linkedInVerified
+                        ? 'Verified via LinkedIn.'
+                        : AppLocalizations.of(context)!.linkedInSubtitle,
                     status: vs.linkedInVerified
                         ? VerificationTileStatus.verified
                         : VerificationTileStatus.pending,
-                    onTap: () => _startLinkedInVerification(context, ref),
+                    onTap: vs.linkedInVerified ? null : () => _startLinkedInVerification(context),
                     accent: accent,
-                    isComingSoon: !vs.linkedInVerified,
                   ).animate().fadeIn(delay: 200.ms),
                   const SizedBox(height: 12),
                   // Education tile — shows pending/rejected status labels
@@ -165,7 +225,7 @@ class VerificationScreen extends ConsumerWidget {
                         : eduRejected
                             ? 'Rejected'
                             : null,
-                    onTap: () => _showEducationVerification(context, ref),
+                    onTap: () => _showEducationVerification(context),
                     accent: accent,
                   ).animate().fadeIn(delay: 240.ms),
                   const SizedBox(height: 32),
@@ -226,22 +286,17 @@ class VerificationScreen extends ConsumerWidget {
     );
   }
 
-  static Future<void> _startLinkedInVerification(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _startLinkedInVerification(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
     try {
       final repo = ref.read(verificationRepositoryProvider);
       final url = await repo.getLinkedInAuthUrl();
-      if (url.isEmpty) {
-        throw Exception('auth-url-unavailable');
-      }
+      if (url.isEmpty) throw Exception('auth-url-unavailable');
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('LinkedIn verification opened in browser.'),
+        const SnackBar(
+          content: Text('LinkedIn opened — return here after authorising.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -256,87 +311,278 @@ class VerificationScreen extends ConsumerWidget {
     }
   }
 
-  static Future<void> _showEducationVerification(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final l = AppLocalizations.of(context)!;
-    final institutionController = TextEditingController();
-    final degreeController = TextEditingController();
+  Future<void> _showEducationVerification(BuildContext context) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          16,
-          20,
-          16 + MediaQuery.viewInsetsOf(ctx).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l.education, style: AppTypography.titleLarge),
-            const SizedBox(height: 12),
-            TextField(
-              controller: institutionController,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'School or college',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: degreeController,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: l.education,
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () async {
-                try {
-                  await ref.read(verificationRepositoryProvider).submitEducationVerification(
-                        institutionName: institutionController.text.trim().isEmpty
-                            ? null
-                            : institutionController.text.trim(),
-                        degree: degreeController.text.trim().isEmpty
-                            ? null
-                            : degreeController.text.trim(),
-                      );
-                  if (!ctx.mounted) return;
-                  Navigator.of(ctx).pop();
-                  ref.invalidate(_myProfileForVerificationProvider);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l.idSubmittedNotify),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                } catch (_) {
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(l.failedToSendTryAgain),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              child: Text(l.submit),
-            ),
-          ],
-        ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EducationVerificationSheet(
+        onSubmitted: () {
+          ref.invalidate(_myProfileForVerificationProvider);
+        },
       ),
     );
-    institutionController.dispose();
-    degreeController.dispose();
+  }
+}
+
+// ── Education verification bottom sheet ──────────────────────────────────────
+
+class _EducationVerificationSheet extends ConsumerStatefulWidget {
+  const _EducationVerificationSheet({required this.onSubmitted});
+  final VoidCallback onSubmitted;
+
+  @override
+  ConsumerState<_EducationVerificationSheet> createState() =>
+      _EducationVerificationSheetState();
+}
+
+class _EducationVerificationSheetState
+    extends ConsumerState<_EducationVerificationSheet> {
+  final _institutionCtrl = TextEditingController();
+  final _degreeCtrl = TextEditingController();
+
+  // Document upload state
+  PlatformFile? _pickedFile;
+  double? _uploadProgress;
+  bool _uploading = false;
+  bool _submitting = false;
+  String? _errorMessage;
+  String? _documentKey;
+
+  @override
+  void dispose() {
+    _institutionCtrl.dispose();
+    _degreeCtrl.dispose();
+    super.dispose();
   }
 
+  Future<void> _pickDocument() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      withData: false,
+      withReadStream: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    setState(() {
+      _pickedFile = result.files.first;
+      _documentKey = null;
+      _uploadProgress = null;
+      _errorMessage = null;
+    });
+    await _uploadDocument(result.files.first);
+  }
 
+  Future<void> _uploadDocument(PlatformFile file) async {
+    setState(() { _uploading = true; _uploadProgress = 0; _errorMessage = null; });
+    try {
+      final ext = (file.extension ?? 'jpg').toLowerCase();
+      final contentType = ext == 'pdf' ? 'application/pdf' : 'image/jpeg';
+      final repo = ref.read(verificationRepositoryProvider);
+      final result = await repo.getEducationUploadUrl(contentType: contentType);
+
+      final bytes = await File(file.path!).readAsBytes();
+      final uploadReq = http.Request('PUT', Uri.parse(result.uploadUrl))
+        ..headers['Content-Type'] = contentType
+        ..bodyBytes = bytes;
+
+      setState(() { _uploadProgress = 0.3; });
+      final streamedResponse = await uploadReq.send();
+      setState(() { _uploadProgress = 0.9; });
+
+      if (streamedResponse.statusCode != 200) {
+        throw Exception('Upload failed: ${streamedResponse.statusCode}');
+      }
+      setState(() {
+        _documentKey = result.key;
+        _uploadProgress = 1.0;
+        _uploading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _uploading = false;
+        _uploadProgress = null;
+        _errorMessage = 'Upload failed. Tap to retry.';
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    final l = AppLocalizations.of(context)!;
+    setState(() { _submitting = true; _errorMessage = null; });
+    try {
+      await ref.read(verificationRepositoryProvider).submitEducationVerification(
+        institutionName: _institutionCtrl.text.trim().isEmpty ? null : _institutionCtrl.text.trim(),
+        degree: _degreeCtrl.text.trim().isEmpty ? null : _degreeCtrl.text.trim(),
+        documentKey: _documentKey,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onSubmitted();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.idSubmittedNotify),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _errorMessage = AppLocalizations.of(context)!.failedToSendTryAgain;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: scheme.onSurface.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.school_outlined, color: scheme.primary, size: 22),
+              const SizedBox(width: 8),
+              Text(l.education, style: AppTypography.titleLarge),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Upload a degree or marksheet to get verified faster.',
+            style: AppTypography.bodySmall.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _institutionCtrl,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'School or college'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _degreeCtrl,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(labelText: 'Degree / course name'),
+          ),
+          const SizedBox(height: 16),
+          // Document upload row
+          GestureDetector(
+            onTap: (_uploading || _submitting) ? null : _pickDocument,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _documentKey != null
+                      ? Colors.green
+                      : _errorMessage != null
+                          ? Colors.red
+                          : scheme.outline.withValues(alpha: 0.5),
+                ),
+                borderRadius: BorderRadius.circular(12),
+                color: _documentKey != null
+                    ? Colors.green.withValues(alpha: 0.06)
+                    : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              ),
+              child: _uploading
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Uploading…',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_uploadProgress != null) ...[
+                          const SizedBox(height: 6),
+                          LinearProgressIndicator(value: _uploadProgress),
+                        ],
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Icon(
+                          _documentKey != null
+                              ? Icons.check_circle
+                              : Icons.upload_file_outlined,
+                          color: _documentKey != null
+                              ? Colors.green
+                              : _errorMessage != null
+                                  ? Colors.red
+                                  : scheme.onSurface.withValues(alpha: 0.5),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _documentKey != null
+                                ? (_pickedFile?.name ?? 'Document uploaded')
+                                : _errorMessage ?? 'Upload degree / marksheet (JPG, PNG, PDF)',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: _documentKey != null
+                                  ? Colors.green
+                                  : _errorMessage != null
+                                      ? Colors.red
+                                      : scheme.onSurface.withValues(alpha: 0.55),
+                            ),
+                          ),
+                        ),
+                        if (_errorMessage != null)
+                          Icon(Icons.refresh, color: Colors.red, size: 18),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Optional — but helps our team verify faster.',
+            style: AppTypography.caption.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: (_submitting || _uploading) ? null : _submit,
+            child: _submitting
+                ? const SizedBox(
+                    height: 18, width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text(l.submit),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// UI state for a single verification tile (not the domain VerificationStatus).
@@ -413,7 +659,6 @@ class _VerificationTile extends StatelessWidget {
     required this.status,
     required this.onTap,
     required this.accent,
-    this.isComingSoon = false,
     this.statusLabel,
   });
   final IconData icon;
@@ -422,7 +667,6 @@ class _VerificationTile extends StatelessWidget {
   final VerificationTileStatus status;
   final VoidCallback? onTap;
   final Color accent;
-  final bool isComingSoon;
   final String? statusLabel;
 
   @override
@@ -478,21 +722,7 @@ class _VerificationTile extends StatelessWidget {
                       ),
                     ),
                   )
-                : isComingSoon
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Soon',
-                          style: AppTypography.labelSmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      )
-                    : const Icon(Icons.chevron_right),
+                : const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );

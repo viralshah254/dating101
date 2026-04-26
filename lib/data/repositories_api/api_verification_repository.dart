@@ -41,6 +41,18 @@ class ApiVerificationRepository implements VerificationRepository {
   }
 
   @override
+  Future<IdUploadUrlResult> getEducationUploadUrl({String contentType = 'image/jpeg'}) async {
+    final body = await api.post(
+      '/verification/education/upload-url',
+      body: {'contentType': contentType},
+    );
+    return IdUploadUrlResult(
+      uploadUrl: body['uploadUrl'] as String? ?? '',
+      key: body['key'] as String? ?? '',
+    );
+  }
+
+  @override
   Future<void> submitEducationVerification({
     String? institutionName,
     String? degree,

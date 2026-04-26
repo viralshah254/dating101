@@ -113,6 +113,14 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/likes') ||
           loc.startsWith('/profile-settings') ||
           loc.startsWith('/notifications');
+
+      // Onboarding gate: authenticated users who have not yet created a profile
+      // cannot access shell routes. Use the in-memory flag to avoid an extra API
+      // call on every navigation event (splash / profile-setup clears it once done).
+      if (isShellRoute && authRepo.currentUserId != null && tokenStorage.hasPendingOnboarding) {
+        return '/profile-welcome';
+      }
+
       if (isShellRoute) {
         final access = await ref.read(locationServiceProvider).checkAccess();
         if (access != LocationAccess.granted) {

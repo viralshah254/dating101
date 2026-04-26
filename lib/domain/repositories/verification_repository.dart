@@ -16,6 +16,9 @@ abstract class VerificationRepository {
   /// POST /verification/linkedin/callback — exchange code for token, set linkedInVerified.
   Future<void> linkedInCallback(String code);
 
+  /// POST /verification/education/upload-url — returns presigned S3 PUT URL for degree doc.
+  Future<IdUploadUrlResult> getEducationUploadUrl({String contentType = 'image/jpeg'});
+
   /// POST /verification/education — set educationVerified.
   Future<void> submitEducationVerification({String? institutionName, String? degree, String? documentKey});
 

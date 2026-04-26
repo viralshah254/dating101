@@ -9,7 +9,6 @@ import '../../../core/location/app_location_service.dart';
 import '../../../core/location/location_service_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
 import '../../../l10n/app_localizations.dart';
@@ -67,17 +66,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // User is authenticated — check if they have a profile
       debugPrint('[Splash] User authenticated ($userId), checking profile...');
       final profileRepo = ref.read(profileRepositoryProvider);
+      final tokenStorage = ref.read(tokenStorageProvider);
       try {
         final profile = await profileRepo.getMyProfile();
         if (profile != null) {
           debugPrint(
             '[Splash] Profile exists (${profile.name}), going to home',
           );
+          // Profile exists — onboarding is complete by definition.
+          await tokenStorage.clearPendingOnboarding();
           await syncModeFromProfile(profile, ref);
           destination = '/';
         } else {
-          debugPrint('[Splash] No profile found, routing to profile setup');
-          destination = '/profile-for';
+          // No profile yet. Route to the same entry point that navigateAfterAuthSuccess
+          // uses so the experience is consistent regardless of when the app was killed.
+          final pending = tokenStorage.hasPendingOnboarding;
+          debugPrint('[Splash] No profile found, pendingOnboarding=$pending');
+          destination = pending ? '/profile-welcome' : '/profile-for';
         }
       } catch (e) {
         if (e is ApiException && e.code == 'ACCOUNT_DEACTIVATED') {

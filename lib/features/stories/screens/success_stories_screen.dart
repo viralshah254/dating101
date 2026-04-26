@@ -252,7 +252,7 @@ class _StoryCard extends StatelessWidget {
   }
 
   void _shareStory(BuildContext context) {
-    final text = '💍 ${story.title ?? "A Beautiful Shubhmilan Story"}\n\n${story.storyText.length > 200 ? "${story.storyText.substring(0, 200)}..." : story.storyText}\n\nFind your match on Shubhmilan 💫\nhttps://shubhmilan.com';
+    final text = '💍 ${story.title ?? "A Beautiful Shubhmilan Story"}\n\n${story.storyText.length > 200 ? "${story.storyText.substring(0, 200)}..." : story.storyText}\n\nFind your match on Shubhmilan 💫\nhttps://shubhmilan.app';
     Share.share(text);
   }
 }
