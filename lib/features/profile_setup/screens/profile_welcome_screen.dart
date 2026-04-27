@@ -33,15 +33,19 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
 
   String _greeting() {
     final name = _firstName;
-    if (name != null && name.isNotEmpty) return 'Hi $name 👋';
-    return 'Welcome 👋';
+    if (name != null && name.isNotEmpty) {
+      return 'Hi, $name';
+    }
+    return 'Where love begins';
   }
 
   String _subtext(AppMode mode) {
     if (mode.isMatrimony) {
-      return "Let's build the profile that finds\nyour life partner.";
+      return "Let's build a profile that helps you"
+          "\nmeet someone to share a life with.";
     }
-    return "Let's show the world\nthe real you.";
+    return 'Real connection starts with the real you.\n'
+        "Let's help the right person find you.";
   }
 
   @override
@@ -191,7 +195,7 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              "Let's go",
+                              'Start my story',
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
