@@ -1204,6 +1204,26 @@ class AppLocalizationsMr extends AppLocalizations {
   String get identityStepTitle => 'Your details';
 
   @override
+  String get identityWizardLocationTitle => 'Where you are';
+
+  @override
+  String get identityWizardLocationSubtitle =>
+      'City and a bit of context help the right people find you.';
+
+  @override
+  String get profileEditSectionLocationStatus => 'Location & status';
+
+  @override
+  String get profileEditSectionLocationSubtitle =>
+      'Update where you live and your relationship status.';
+
+  @override
+  String get profileStepLocationStatus => 'Location & status';
+
+  @override
+  String get locationAndStatusSectionTitle => 'Location & status';
+
+  @override
   String get idSubmittedNotify => 'ओळख सादर केली. सत्यापन पूर्ण झाल्यावर कळवू.';
 
   @override

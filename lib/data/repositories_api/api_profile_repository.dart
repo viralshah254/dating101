@@ -153,7 +153,7 @@ class ApiProfileRepository implements ProfileRepository {
     }
     return UserProfile(
       id: (j['id'] as String?) ?? '',
-      name: (j['name'] as String?) ?? 'Unknown',
+      name: (j['name'] as String?)?.trim() ?? '',
       gender: j['gender'] as String?,
       age: _safeInt(j['age']),
       dateOfBirth: j['dateOfBirth'] as String?,

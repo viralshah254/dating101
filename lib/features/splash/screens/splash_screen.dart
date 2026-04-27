@@ -11,6 +11,8 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
 import '../../../data/api/api_client.dart';
+import '../../../core/onboarding/onboarding_progress_storage.dart';
+import '../../../domain/models/user_profile_onboarding.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/auth_post_sign_in.dart';
 
@@ -70,13 +72,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       try {
         final profile = await profileRepo.getMyProfile();
         if (profile != null) {
-          debugPrint(
-            '[Splash] Profile exists (${profile.name}), going to home',
-          );
-          // Profile exists — onboarding is complete by definition.
-          await tokenStorage.clearPendingOnboarding();
           await syncModeFromProfile(profile, ref);
-          destination = '/';
+          // Check in-progress onboarding FIRST — a saved key means the user never
+          // completed the wizard, regardless of what needsOnboardingCompletion returns.
+          // (Draft saves create partial profile rows that can fool the completion check.)
+          final saved = await OnboardingProgressStorage.readStepKey(userId);
+          if (saved != null && saved.isNotEmpty) {
+            debugPrint(
+              '[Splash] Saved onboarding step "$saved" found — resuming wizard',
+            );
+            await tokenStorage.setPendingOnboardingFlag(true);
+            destination = '/profile-setup?step=${Uri.encodeComponent(saved)}';
+          } else if (profile.needsOnboardingCompletion) {
+            debugPrint(
+              '[Splash] Profile row exists but identity incomplete (${profile.name}) — gating onboarding',
+            );
+            await tokenStorage.setPendingOnboardingFlag(true);
+            destination = '/profile-welcome';
+          } else {
+            debugPrint(
+              '[Splash] Profile complete (${profile.name}), going to home',
+            );
+            await tokenStorage.clearPendingOnboarding();
+            destination = '/';
+          }
         } else {
           // No profile yet. Route to the same entry point that navigateAfterAuthSuccess
           // uses so the experience is consistent regardless of when the app was killed.
@@ -95,8 +114,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               await ref.read(accountRepositoryProvider).reactivateAccount();
               if (!mounted) return;
               final profile = await profileRepo.getMyProfile();
-              if (profile != null) await syncModeFromProfile(profile, ref);
-              destination = profile != null ? '/' : '/profile-for';
+              if (profile != null) {
+                await syncModeFromProfile(profile, ref);
+                final reUid = authRepo.currentUserId;
+                final reactivateSaved = await OnboardingProgressStorage.readStepKey(reUid);
+                if (reactivateSaved != null && reactivateSaved.isNotEmpty) {
+                  await tokenStorage.setPendingOnboardingFlag(true);
+                  destination = '/profile-setup?step=${Uri.encodeComponent(reactivateSaved)}';
+                } else if (profile.needsOnboardingCompletion) {
+                  await tokenStorage.setPendingOnboardingFlag(true);
+                  destination = '/profile-welcome';
+                } else {
+                  destination = '/';
+                }
+              } else {
+                destination = '/profile-for';
+              }
             } catch (_) {
               await authRepo.signOut();
               destination = '/login';

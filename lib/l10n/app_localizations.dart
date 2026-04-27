@@ -2288,6 +2288,42 @@ abstract class AppLocalizations {
   /// **'Your details'**
   String get identityStepTitle;
 
+  /// No description provided for @identityWizardLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where you are'**
+  String get identityWizardLocationTitle;
+
+  /// No description provided for @identityWizardLocationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'City and a bit of context help the right people find you.'**
+  String get identityWizardLocationSubtitle;
+
+  /// No description provided for @profileEditSectionLocationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Location & status'**
+  String get profileEditSectionLocationStatus;
+
+  /// No description provided for @profileEditSectionLocationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update where you live and your relationship status.'**
+  String get profileEditSectionLocationSubtitle;
+
+  /// No description provided for @profileStepLocationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Location & status'**
+  String get profileStepLocationStatus;
+
+  /// No description provided for @locationAndStatusSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location & status'**
+  String get locationAndStatusSectionTitle;
+
   /// No description provided for @idSubmittedNotify.
   ///
   /// In en, this message translates to:

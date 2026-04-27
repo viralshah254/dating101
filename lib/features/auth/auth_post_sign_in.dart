@@ -6,9 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/entitlements/entitlements.dart';
 import '../../core/mode/app_mode.dart';
 import '../../core/mode/mode_provider.dart';
+import '../../core/onboarding/onboarding_progress_storage.dart';
 import '../../core/providers/repository_providers.dart';
 import '../../data/api/api_client.dart';
 import '../../domain/models/user_profile.dart';
+import '../../domain/models/user_profile_onboarding.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Pushes the user's chosen mode to the server so it survives logout and
@@ -101,7 +103,23 @@ Future<void> navigateAfterAuthSuccess(
     if (profile != null) {
       await syncModeFromProfile(profile, ref);
       if (!context.mounted) return;
-      context.go('/');
+      // Check saved step key first — a key means the wizard was never completed,
+      // regardless of what needsOnboardingCompletion returns (draft saves can create
+      // partial profile rows that make the completion check return false too early).
+      final uid = ref.read(authRepositoryProvider).currentUserId;
+      final saved = await OnboardingProgressStorage.readStepKey(uid);
+      if (!context.mounted) return;
+      if (saved != null && saved.isNotEmpty) {
+        await ref.read(tokenStorageProvider).setPendingOnboardingFlag(true);
+        if (!context.mounted) return;
+        context.go('/profile-setup?step=${Uri.encodeComponent(saved)}');
+      } else if (profile.needsOnboardingCompletion) {
+        await ref.read(tokenStorageProvider).setPendingOnboardingFlag(true);
+        if (!context.mounted) return;
+        context.go('/profile-welcome');
+      } else {
+        context.go('/');
+      }
     } else {
       context.go('/profile-for');
     }
@@ -116,9 +134,26 @@ Future<void> navigateAfterAuthSuccess(
           if (!context.mounted) return;
           final profile = await ref.read(profileRepositoryProvider).getMyProfile();
           if (!context.mounted) return;
-          if (profile != null) await syncModeFromProfile(profile, ref);
-          if (!context.mounted) return;
-          context.go(profile != null ? '/' : '/profile-for');
+          if (profile != null) {
+            await syncModeFromProfile(profile, ref);
+            if (!context.mounted) return;
+            final reUid = ref.read(authRepositoryProvider).currentUserId;
+            final reactivateSaved = await OnboardingProgressStorage.readStepKey(reUid);
+            if (!context.mounted) return;
+            if (reactivateSaved != null && reactivateSaved.isNotEmpty) {
+              await ref.read(tokenStorageProvider).setPendingOnboardingFlag(true);
+              if (!context.mounted) return;
+              context.go('/profile-setup?step=${Uri.encodeComponent(reactivateSaved)}');
+            } else if (profile.needsOnboardingCompletion) {
+              await ref.read(tokenStorageProvider).setPendingOnboardingFlag(true);
+              if (!context.mounted) return;
+              context.go('/profile-welcome');
+            } else {
+              context.go('/');
+            }
+          } else {
+            context.go('/profile-for');
+          }
         } catch (err) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

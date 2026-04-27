@@ -10,6 +10,7 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
+import '../../../core/onboarding/onboarding_progress_storage.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -56,6 +57,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
     super.key,
     this.isEditing = false,
     this.initialStep,
+    this.initialStepKey,
   });
 
   /// When true, the user already has a profile — locked fields, different title.
@@ -64,22 +66,32 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
   /// Jump directly to a specific step (0-based). Null starts at step 0.
   final int? initialStep;
 
+  /// Jump directly to the step with this analytics key (e.g. `"photos"`).
+  /// Preferred over [initialStep] when both are provided.
+  final String? initialStepKey;
+
   @override
   ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
-  final PageController _pageController = PageController();
+  PageController _pageController = PageController();
   int _currentStep = 0;
   late final ProfileFormData _formData = ProfileFormData(
     isEditing: widget.isEditing,
   );
   bool _isCompleting = false;
   bool _isLoading = true;
-  int? _pendingInitialStep;
   bool _selectedBothPrimaryTrack = false;
   AppMode _bothPrimaryTrack = AppMode.dating;
   int _lastLoggedStep = -1;
+
+  /// Pinned on first open so [PageView] children and [_currentStep] never drift
+  /// out of sync when [ref.watch] on mode/creatingFor rebuilds a different
+  /// step list (e.g. dating → matrimony after prefs load), which previously
+  /// made earlier steps look empty when navigating back.
+  AppMode? _lockedSignupPreference;
+  bool? _lockedCreatingForAnswered;
 
   /// Background upload started as soon as the user leaves the photos step.
   /// Awaited at save time so photos are already uploaded (or close to it).
@@ -96,31 +108,176 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  /// Redirect to location-required if permission not granted (app must not run without location).
-  /// If user has an existing profile, prefills the form for seamless edit / mode switch.
+  /// Prefills the form from any existing server profile, restores creatingFor
+  /// state, resolves the initial step index, and sets up the PageController —
+  /// all before calling setState so the PageView starts on the right page
+  /// without any flash to page 0.
   Future<void> _ensureLocationAndProceed() async {
     if (!mounted) return;
+    final uid = ref.read(authRepositoryProvider).currentUserId;
     final repo = ref.read(profileRepositoryProvider);
     final existing = await repo.getMyProfile();
     if (existing != null && mounted) {
       _formData.fillFrom(existing);
     }
-    // Pre-seed creatingFor from the sign-up flow (ProfileForScreen) so the
-    // in-wizard StepCreatingFor is skipped when already answered.
+
+    // Restore or seed creatingFor so _buildSteps can decide whether to insert
+    // the creating_for step and keep step indices stable across restarts.
     if (!widget.isEditing && mounted) {
-      final answered = ref.read(creatingForAnsweredProvider);
-      if (answered) {
-        _formData.creatingFor = ref.read(creatingForProvider);
+      await _restoreCreatingFor(uid, existing);
+    }
+
+    if (!mounted) return;
+
+    // Prefer explicit key from constructor, else explicit int, else stored key.
+    String? stepKey = widget.initialStepKey;
+    final int? stepInt = widget.initialStep;
+    if (stepKey == null && stepInt == null && !widget.isEditing) {
+      stepKey = await OnboardingProgressStorage.readStepKey(uid);
+    }
+
+    if (!mounted) return;
+
+    // Resolve the target page index now, while provider state is stable.
+    // We call _buildSteps here purely to extract keys (the same list will be
+    // rebuilt in build()); widget creation is lightweight.
+    //
+    // Await the FutureProvider to guarantee the mode is fully loaded from
+    // SharedPreferences before building the step list. Reading appModeProvider
+    // synchronously can return null when AppModeNotifier._load() hasn't
+    // completed yet, which would default the step list to dating and cause any
+    // matrimony step key (e.g. "matrimony_about") to be unresolvable → target=0.
+    final l = AppLocalizations.of(context)!;
+    final creatingForAnswered = ref.read(creatingForAnsweredProvider);
+    final signupPreference = await ref.read(modePreferenceProvider.future);
+    final stepKeys = _buildSteps(signupPreference, l, creatingForAnswered: creatingForAnswered)
+        .map((s) => s.analyticsKey)
+        .toList();
+
+    int target = 0;
+    if (stepKey != null) {
+      final idx = stepKeys.indexOf(stepKey);
+      target = (idx >= 0 ? idx : 0).clamp(0, stepKeys.isEmpty ? 0 : stepKeys.length - 1);
+    } else if (stepInt != null) {
+      target = stepInt.clamp(0, stepKeys.isEmpty ? 0 : stepKeys.length - 1);
+    }
+
+    // Recreate the PageController with the correct initial page BEFORE setState
+    // so the PageView renders directly at the right page (no flash to page 0).
+    if (target != 0) {
+      _pageController.dispose();
+      _pageController = PageController(initialPage: target);
+    }
+
+    setState(() {
+      _isLoading = false;
+      _currentStep = target;
+      if (!widget.isEditing) {
+        _lockedSignupPreference = signupPreference;
+        _lockedCreatingForAnswered = creatingForAnswered;
+      }
+    });
+    _maybeSelectBothPrimaryTrack();
+  }
+
+  /// Resolves and seeds [_formData.creatingFor] + updates Riverpod providers.
+  /// Priority: (1) memory provider (if already answered), (2) SharedPreferences,
+  /// (3) infer from API `matrimonyExtensions.roleManagingProfile`.
+  Future<void> _restoreCreatingFor(String? uid, dynamic existing) async {
+    final answered = ref.read(creatingForAnsweredProvider);
+    if (answered) {
+      // Already set in memory from ProfileForScreen this session — just seed formData.
+      _formData.creatingFor = ref.read(creatingForProvider);
+      if (mounted) {
         final l = AppLocalizations.of(context)!;
         _formData.applyGenderFromCreatingForRelationship(l);
       }
+      return;
     }
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _pendingInitialStep = widget.initialStep;
-      });
-      _maybeSelectBothPrimaryTrack();
+
+    // Try storage first.
+    final stored = await OnboardingProgressStorage.readCreatingFor(uid);
+    if (stored.answered) {
+      ref.read(creatingForProvider.notifier).state = stored.value;
+      ref.read(creatingForAnsweredProvider.notifier).state = true;
+      _formData.creatingFor = stored.value;
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        _formData.applyGenderFromCreatingForRelationship(l);
+      }
+      return;
+    }
+
+    // Fall back: infer from the API profile's roleManagingProfile.
+    // `parent` is ambiguous (son or daughter), so we only infer for unambiguous roles.
+    if (existing != null) {
+      final role = existing.matrimonyExtensions?.roleManagingProfile;
+      String? inferred;
+      if (role != null) {
+        switch (role.name) {
+          case 'sibling':
+            inferred = 'brother'; // best guess; chip shows man options
+            break;
+          case 'guardian':
+            inferred = 'relative';
+            break;
+          case 'friend':
+            inferred = 'friend';
+            break;
+          case 'parent':
+            inferred = 'son'; // ambiguous — defaults to son; user can correct
+            break;
+          default:
+            inferred = null; // 'self' → Myself
+        }
+      }
+      // If the profile has any substantive progress (name set, city, or marital)
+      // we mark as answered so the creating_for step is not reinserted.
+      final hasProgress =
+          (existing.name.trim().isNotEmpty && existing.name.toLowerCase() != 'unknown') ||
+          existing.currentCity != null ||
+          existing.matrimonyExtensions?.maritalStatus != null;
+      if (hasProgress) {
+        ref.read(creatingForProvider.notifier).state = inferred;
+        ref.read(creatingForAnsweredProvider.notifier).state = true;
+        _formData.creatingFor = inferred;
+        if (mounted) {
+          final l = AppLocalizations.of(context)!;
+          _formData.applyGenderFromCreatingForRelationship(l);
+        }
+        // Persist inferred value so future restarts are stable.
+        await OnboardingProgressStorage.saveCreatingFor(
+          uid,
+          value: inferred,
+          answered: true,
+        );
+      }
+    }
+  }
+
+  void _persistOnboardingStep() {
+    if (widget.isEditing) return;
+    final uid = ref.read(authRepositoryProvider).currentUserId;
+    if (uid == null) return;
+    final key = _currentStep < _steps.length
+        ? _steps[_currentStep].analyticsKey
+        : '';
+    if (key.isEmpty) return;
+    unawaited(OnboardingProgressStorage.saveStep(uid, key));
+  }
+
+  /// Saves the current form data to the server as a background draft.
+  /// Called at the identity_physical checkpoint (after a short delay) so that
+  /// name / gender / DOB / city / height survive a cold restart.
+  Future<void> _saveDraftInBackground() async {
+    try {
+      final repo = ref.read(profileRepositoryProvider);
+      final existing = await repo.getMyProfile();
+      final json = _formData.toFullJson();
+      await repo.saveProfileJson(json, create: existing == null);
+      debugPrint('[ProfileSetup] Draft saved ✓');
+    } catch (e) {
+      debugPrint('[ProfileSetup] Draft save failed (ignored): $e');
     }
   }
 
@@ -191,33 +348,66 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         _photoUploadTask = _doUploadPhotos();
       }
 
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
-      setState(() => _currentStep++);
+      _advanceToStepIndex(_currentStep + 1);
+
+      // Save a draft to the server after the identity_physical step completes.
+      // This single checkpoint captures name / gender / DOB / city / height so
+      // the data survives a cold restart without needing to re-enter everything.
+      // The 500 ms delay lets the page-transition animation finish and ensures
+      // Flutter is not mid-build when the network call starts.
+      if (!widget.isEditing && step.analyticsKey == 'identity_physical') {
+        unawaited(Future.delayed(
+          const Duration(milliseconds: 500),
+          () { if (mounted) _saveDraftInBackground(); },
+        ));
+      }
     } else {
-      if (!widget.isEditing && !_passesMinimumProfileQuality()) {
-        AnalyticsService.instance.logOnboardingQualityBlocked(
-          mode: (ref.read(modePreferenceProvider).valueOrNull ?? ref.read(appModeProvider) ?? AppMode.dating).name,
-          photoCount: _formData.photos.length,
-          interestsCount: _formData.selectedInterests.length,
-          bioLength: _formData.bio.trim().length,
-        );
-        final effectiveMode = ref.read(modePreferenceProvider).valueOrNull ??
-            ref.read(appModeProvider) ??
-            AppMode.dating;
-        final l10n = AppLocalizations.of(context)!;
-        final gateMsg = effectiveMode.isMatrimony
-            ? l10n.qualityGateMatrimony
-            : l10n.qualityGateDating;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(gateMsg),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
+      if (!widget.isEditing) {
+        if (!_passesMinimumProfileQuality()) {
+          try {
+            final fresh = await ref.read(profileRepositoryProvider).getMyProfile();
+            if (fresh != null && mounted) {
+              if (fresh.photoUrls.length >= 2 && _formData.photos.length < 2) {
+                _formData.photos
+                  ..clear()
+                  ..addAll(List<String>.from(fresh.photoUrls));
+              }
+              final serverBio = fresh.aboutMe.trim();
+              if (serverBio.length >= 20 && _formData.bio.trim().length < 20) {
+                _formData.bio = fresh.aboutMe;
+              }
+              if (fresh.interests.isNotEmpty &&
+                  fresh.interests.length >= 3 &&
+                  _formData.selectedInterests.length < 3) {
+                _formData.selectedInterests = List<String>.from(fresh.interests);
+              }
+              if (mounted) setState(() {});
+            }
+          } catch (_) {}
+        }
+        if (mounted && !_passesMinimumProfileQuality()) {
+          final modeForLog = _lockedSignupPreference ??
+              ref.read(modePreferenceProvider).valueOrNull ??
+              ref.read(appModeProvider) ??
+              AppMode.dating;
+          AnalyticsService.instance.logOnboardingQualityBlocked(
+            mode: modeForLog.name,
+            photoCount: _formData.photos.length,
+            interestsCount: _formData.selectedInterests.length,
+            bioLength: _formData.bio.trim().length,
+          );
+          final l10n = AppLocalizations.of(context)!;
+          final gateMsg = modeForLog.isMatrimony
+              ? l10n.qualityGateMatrimony
+              : l10n.qualityGateDating;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(gateMsg),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
       }
       _syncModeToFormData();
       setState(() => _isCompleting = true);
@@ -317,6 +507,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
       // Profile created — onboarding is done. Clear the gate so shell routes
       // are no longer blocked by the router guard.
+      final userId = ref.read(authRepositoryProvider).currentUserId;
+      if (userId != null) {
+        await OnboardingProgressStorage.clearForUser(userId);
+      }
       await ref.read(tokenStorageProvider).clearPendingOnboarding();
       if (!mounted) return;
       context.go('/profile-ready');
@@ -324,9 +518,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   bool _passesMinimumProfileQuality() {
-    final mode = ref.read(modePreferenceProvider).valueOrNull ??
-        ref.read(appModeProvider) ??
-        AppMode.dating;
+    final mode = widget.isEditing
+        ? (ref.read(modePreferenceProvider).valueOrNull ??
+            ref.read(appModeProvider) ??
+            AppMode.dating)
+        : (_lockedSignupPreference ??
+            ref.read(modePreferenceProvider).valueOrNull ??
+            ref.read(appModeProvider) ??
+            AppMode.dating);
 
     final hasPhotos = _formData.photos.length >= 2;
     final hasInterests = _formData.selectedInterests.length >= 3;
@@ -352,11 +551,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   void _skip() {
     FocusScope.of(context).unfocus();
     if (_currentStep < _steps.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
-      setState(() => _currentStep++);
+      _advanceToStepIndex(_currentStep + 1);
     }
   }
 
@@ -365,6 +560,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   /// Save current changes, then advance to the next step (or close on last step).
   Future<void> _saveAndContinue() async {
     if (_isSaving) return;
+    FocusScope.of(context).unfocus();
     _syncModeToFormData();
     setState(() => _isSaving = true);
 
@@ -405,11 +601,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
 
     if (_currentStep < _steps.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
-      setState(() => _currentStep++);
+      _advanceToStepIndex(_currentStep + 1);
     } else {
       context.pop();
     }
@@ -473,22 +665,92 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     await _doUploadPhotos();
   }
 
+  /// Returns the index of the previous non-milestone form step, skipping
+  /// one-off celebration slides so "Back" from Education → Preferences,
+  /// not the interstitial in between (which was hiding the back control and
+  /// auto-advancing, making navigation feel random).
+  int _backTargetIndex() {
+    if (_currentStep <= 0) return 0;
+    int target = _currentStep - 1;
+    while (target > 0 && _steps[target].isMilestone) {
+      target--;
+    }
+    return target;
+  }
+
   void _back() {
     FocusScope.of(context).unfocus();
-    if (_currentStep > 0) {
+    if (_currentStep <= 0) return;
+    if (_steps.isEmpty) return;
+
+    final target = _backTargetIndex();
+    if (target < 0) return;
+
+    if (target == _currentStep - 1) {
       _pageController.previousPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
       );
-      setState(() => _currentStep--);
+    } else {
+      _pageController.jumpToPage(target);
     }
+    setState(() => _currentStep = target);
+    _persistOnboardingStep();
+  }
+
+  /// Drives the [PageView] to [nextIndex] after the controller is attached.
+  /// [PageController.nextPage] can no-op if called before the first layout; that
+  /// desyncs [_currentStep] from the visible page and breaks celebration slides
+  /// (e.g. after Photos) so the user appears stuck or “snaps” back on back nav.
+  void _advanceToStepIndex(int nextIndex) {
+    if (nextIndex < 0 || nextIndex >= _steps.length) return;
+    var tries = 0;
+    void tryAdvance(Duration _) {
+      if (!mounted) return;
+      if (nextIndex < 0 || nextIndex >= _steps.length) return;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          nextIndex,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+        );
+        setState(() => _currentStep = nextIndex);
+        _persistOnboardingStep();
+        return;
+      }
+      if (tries++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback(tryAdvance);
+      } else {
+        debugPrint(
+          '[ProfileSetup] PageController has no clients; syncing index to $nextIndex only.',
+        );
+        setState(() => _currentStep = nextIndex);
+        _persistOnboardingStep();
+        WidgetsBinding.instance.addPostFrameCallback((Duration __) {
+          if (mounted && _pageController.hasClients) {
+            _pageController.jumpToPage(nextIndex);
+          }
+        });
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback(tryAdvance);
   }
 
   @override
   Widget build(BuildContext context) {
     final effectiveMode = ref.watch(appModeProvider) ?? AppMode.dating;
     final modePreference = ref.watch(modePreferenceProvider).valueOrNull;
-    final signupPreference = modePreference ?? effectiveMode;
+    final liveCreatingFor = ref.watch(creatingForAnsweredProvider);
+    final AppMode signupPreference;
+    final bool creatingForAnswered;
+    if (widget.isEditing) {
+      signupPreference = modePreference ?? effectiveMode;
+      creatingForAnswered = liveCreatingFor;
+    } else {
+      signupPreference = _lockedSignupPreference ?? (modePreference ?? effectiveMode);
+      creatingForAnswered =
+          _lockedCreatingForAnswered ?? liveCreatingFor;
+    }
     final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final accent = Theme.of(context).colorScheme.primary;
@@ -515,22 +777,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       );
     }
 
-    final creatingForAnswered = ref.watch(creatingForAnsweredProvider);
     _steps = _buildSteps(signupPreference, l, creatingForAnswered: creatingForAnswered);
     if (_steps.isNotEmpty && _currentStep >= _steps.length) {
       _currentStep = _steps.length - 1;
     }
-    if (_pendingInitialStep != null && _steps.isNotEmpty) {
-      final target = _pendingInitialStep!.clamp(0, _steps.length - 1);
-      _pendingInitialStep = null;
-      _currentStep = target;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(target);
-        }
-      });
-    }
-    if (_currentStep >= _steps.length) _currentStep = _steps.length - 1;
     // Progress calculation excludes milestone steps so the bar reflects real form progress.
     final formSteps = _steps.where((s) => !s.isMilestone).toList();
     final formStepsBefore = _steps
@@ -575,12 +825,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
             ),
           ),
-          leading: currentStep.isMilestone
-              ? const SizedBox.shrink()
-              : IconButton(
-                  onPressed: _currentStep > 0 ? _back : () => context.pop(),
-                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                ),
+          leading: IconButton(
+            onPressed: _currentStep > 0 ? _back : () => context.pop(),
+            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          ),
           title: currentStep.isMilestone
               ? null
               : Text(
@@ -696,12 +944,49 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 child: PageView(
                   controller: _pageController,
                   physics: const NeverScrollableScrollPhysics(),
-                  children: _steps.map((s) => s.widget).toList(),
+                  children: _steps
+                      .map(
+                        (s) => KeyedSubtree(
+                          key: ValueKey<String>(s.analyticsKey),
+                          child: s.widget,
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
 
-              // Bottom bar — hidden on milestone slides (they are self-advancing).
-              if (!currentStep.isMilestone)
+              // Milestone: same primary action as tap-to-continue (reliable on all devices).
+              if (currentStep.isMilestone && !widget.isEditing)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    keyboardOpen ? 8 : 12,
+                    24,
+                    keyboardOpen ? 8 : 24,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton(
+                      onPressed: _isCompleting
+                          ? null
+                          : () {
+                              if (_currentStep < _steps.length - 1) {
+                                _advanceToStepIndex(_currentStep + 1);
+                              }
+                            },
+                      child: Text(
+                        l.next,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              // Normal form steps
+              else if (!currentStep.isMilestone)
               Padding(
                 padding: EdgeInsets.fromLTRB(24, keyboardOpen ? 8 : 12, 24, keyboardOpen ? 8 : 24),
                 child: Column(
@@ -783,7 +1068,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  /// Build a non-form phase-milestone slide. Auto-advances when tapped or after delay.
+  /// Build a non-form phase-milestone slide (tap in body, or [Next] in bottom bar).
   _StepInfo _milestone({
     required String analyticsKey,
     required String emoji,
@@ -802,15 +1087,73 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         subtext: subtext,
         onAdvance: () {
           if (_currentStep < _steps.length - 1) {
-            _pageController.nextPage(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeInOut,
-            );
-            setState(() => _currentStep++);
+            _advanceToStepIndex(_currentStep + 1);
           }
         },
       ),
     );
+  }
+
+  /// Identity split: basics → location & status → physical (less scrolling per step).
+  List<_StepInfo> _identitySubsteps(
+    AppMode mode,
+    AppLocalizations l, {
+    required bool editing,
+    required void Function() onChanged,
+  }) {
+    return [
+      _StepInfo(
+        analyticsKey: 'identity_basics',
+        label: l.profileStepIdentity,
+        widget: StepIdentity(
+          mode: mode,
+          formData: _formData,
+          onChanged: onChanged,
+          isEditing: editing,
+          onlySection: StepIdentityOnlySection.basics,
+        ),
+        hasMandatory: true,
+        skippable: false,
+        isMandatorySatisfied: (d) =>
+            ProfileFormData.isNameValid(d.name) &&
+            d.gender != null &&
+            d.dateOfBirth != null &&
+            ProfileFormData.isAtLeast18(d.dateOfBirth) &&
+            (editing || d.confirmedAge18),
+      ),
+      _StepInfo(
+        analyticsKey: 'identity_location',
+        label: l.profileStepLocationStatus,
+        widget: StepIdentity(
+          mode: mode,
+          formData: _formData,
+          onChanged: onChanged,
+          isEditing: editing,
+          onlySection: StepIdentityOnlySection.locationStatus,
+        ),
+        hasMandatory: true,
+        skippable: false,
+        isMandatorySatisfied: (d) {
+          if (mode.isMatrimony) {
+            return d.location.trim().isNotEmpty && d.maritalStatus != null;
+          }
+          return d.location.trim().isNotEmpty;
+        },
+      ),
+      _StepInfo(
+        analyticsKey: 'identity_physical',
+        label: l.physicalAttributes,
+        widget: StepIdentity(
+          mode: mode,
+          formData: _formData,
+          onChanged: onChanged,
+          isEditing: editing,
+          onlySection: StepIdentityOnlySection.physical,
+        ),
+        hasMandatory: false,
+        skippable: true,
+      ),
+    ];
   }
 
   List<_StepInfo> _buildSteps(AppMode mode, AppLocalizations l, {bool creatingForAnswered = false}) {
@@ -819,23 +1162,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (mode.isBoth) {
       final runDatingFirst = _bothPrimaryTrack.isDating;
       final shared = [
-        _StepInfo(
-          analyticsKey: 'identity',
-          label: editing ? l.editProfile : l.profileStepIdentity,
-          widget: StepIdentity(
-            mode: _bothPrimaryTrack,
-            formData: _formData,
-            onChanged: onChanged,
-            isEditing: editing,
-          ),
-          hasMandatory: true,
-          skippable: false,
-          isMandatorySatisfied: (d) =>
-              ProfileFormData.isNameValid(d.name) &&
-              d.gender != null &&
-              d.dateOfBirth != null &&
-              ProfileFormData.isAtLeast18(d.dateOfBirth) &&
-              (editing || d.confirmedAge18),
+        ..._identitySubsteps(
+          _bothPrimaryTrack,
+          l,
+          editing: editing,
+          onChanged: onChanged,
         ),
         _StepInfo(
           analyticsKey: 'photos',
@@ -964,23 +1295,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             hasMandatory: false,
             skippable: true,
           ),
-        _StepInfo(
-          analyticsKey: 'identity',
-          label: editing ? l.editProfile : l.profileStepIdentity,
-          widget: StepIdentity(
-            mode: mode,
-            formData: _formData,
-            onChanged: onChanged,
-            isEditing: editing,
-          ),
-          hasMandatory: true,
-          skippable: false,
-          isMandatorySatisfied: (d) =>
-              ProfileFormData.isNameValid(d.name) &&
-              d.gender != null &&
-              d.dateOfBirth != null &&
-              ProfileFormData.isAtLeast18(d.dateOfBirth) &&
-              (editing || d.confirmedAge18),
+        ..._identitySubsteps(
+          mode,
+          l,
+          editing: editing,
+          onChanged: onChanged,
         ),
         _StepInfo(
           analyticsKey: 'photos',
@@ -1086,25 +1405,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
       ];
     }
-    // Dating-only flow: You → Photos → (milestone) → About you → Lifestyle → Interests → Looking for
+    // Dating-only flow: Identity (3) → Photos → (milestone) → About you → …
     return [
-      _StepInfo(
-        analyticsKey: 'identity',
-        label: editing ? l.editProfile : l.profileStepIdentity,
-        widget: StepIdentity(
-          mode: mode,
-          formData: _formData,
-          onChanged: onChanged,
-          isEditing: editing,
-        ),
-        hasMandatory: true,
-        skippable: false,
-        isMandatorySatisfied: (d) =>
-            ProfileFormData.isNameValid(d.name) &&
-            d.gender != null &&
-            d.dateOfBirth != null &&
-            ProfileFormData.isAtLeast18(d.dateOfBirth) &&
-            (editing || d.confirmedAge18),
+      ..._identitySubsteps(
+        mode,
+        l,
+        editing: editing,
+        onChanged: onChanged,
       ),
       _StepInfo(
         analyticsKey: 'photos',
@@ -1185,8 +1492,9 @@ class _StepInfo {
 }
 
 /// A full-screen phase-celebration card inserted between wizard phases.
-/// Auto-advances after 2 seconds or on tap.
-class _PhaseMilestoneWidget extends StatefulWidget {
+/// Advances on tap only (no timer) so going back to this slide does not
+/// auto-redirect forward and the global back button can skip past it.
+class _PhaseMilestoneWidget extends StatelessWidget {
   const _PhaseMilestoneWidget({
     required this.emoji,
     required this.headline,
@@ -1200,30 +1508,10 @@ class _PhaseMilestoneWidget extends StatefulWidget {
   final VoidCallback onAdvance;
 
   @override
-  State<_PhaseMilestoneWidget> createState() => _PhaseMilestoneWidgetState();
-}
-
-class _PhaseMilestoneWidgetState extends State<_PhaseMilestoneWidget> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer(const Duration(milliseconds: 2000), () {
-      if (mounted) widget.onAdvance();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onAdvance,
+      behavior: HitTestBehavior.opaque,
+      onTap: onAdvance,
       child: Container(
         color: Colors.transparent,
         child: CompletionConfetti(
@@ -1234,7 +1522,7 @@ class _PhaseMilestoneWidgetState extends State<_PhaseMilestoneWidget> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.emoji,
+                    emoji,
                     style: const TextStyle(fontSize: 64),
                   )
                       .animate()
@@ -1246,9 +1534,10 @@ class _PhaseMilestoneWidgetState extends State<_PhaseMilestoneWidget> {
                       ),
                   const SizedBox(height: 24),
                   Text(
-                    widget.headline,
+                    headline,
                     textAlign: TextAlign.center,
                     style: AppTypography.headlineMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
                   )
@@ -1263,7 +1552,7 @@ class _PhaseMilestoneWidgetState extends State<_PhaseMilestoneWidget> {
                       ),
                   const SizedBox(height: 12),
                   Text(
-                    widget.subtext,
+                    subtext,
                     textAlign: TextAlign.center,
                     style: AppTypography.bodyLarge.copyWith(
                       color: Theme.of(context)
@@ -1505,10 +1794,18 @@ class ProfileFormData {
     }
   }
 
+  /// Strips placeholder names from API so the onboarding name field starts empty.
+  static String _normalizeNameFromServer(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    if (t.toLowerCase() == 'unknown') return '';
+    return raw;
+  }
+
   /// Prefill from existing profile so edit / mode switch is seamless. Shared and mode-specific fields are mapped.
   void fillFrom(UserProfile? p) {
     if (p == null) return;
-    name = p.name;
+    name = _normalizeNameFromServer(p.name);
     gender = p.gender;
     if (p.dateOfBirth != null) {
       dateOfBirth = DateTime.tryParse(p.dateOfBirth!);
@@ -1808,7 +2105,8 @@ class ProfileFormData {
     final ht = _parsedHometown;
 
     final json = <String, dynamic>{
-      'name': name,
+      // Omit empty name so PATCH stays valid (Zod rejects "") and later steps can save photos/location.
+      if (name.trim().isNotEmpty) 'name': name.trim(),
       if (gender != null) 'gender': gender,
       if (dateOfBirth != null)
         'dateOfBirth': dateOfBirth!.toIso8601String().split('T').first,

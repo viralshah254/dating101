@@ -1,6 +1,8 @@
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'place_search_service.dart';
+
 /// Result of capturing profile creation location (for audit/safety).
 class ProfileCreationLocation {
   const ProfileCreationLocation({
@@ -130,4 +132,56 @@ class AppLocationService implements LocationService {
   /// Open system app settings so user can enable location.
   @override
   Future<bool> openAppSettings() => Geolocator.openAppSettings();
+
+  /// Best-effort [PlaceSuggestion] from device GPS + reverse geocoding for profile "where you live".
+  /// Returns null if permission denied, service off, or lookup fails.
+  Future<PlaceSuggestion?> getCurrentLocationAsPlaceSuggestion() async {
+    final access = await checkAccess();
+    if (access != LocationAccess.granted) return null;
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (placemarks.isEmpty) return null;
+      final p = placemarks.first;
+      String? city = p.locality;
+      if (city == null || city.trim().isEmpty) {
+        city = p.subLocality;
+      }
+      if (city == null || city.trim().isEmpty) {
+        city = p.administrativeArea;
+      }
+      final country = (p.country ?? '').trim();
+      if (country.isEmpty && (city == null || city.isEmpty)) {
+        return null;
+      }
+      final displayParts = <String>[
+        if (city != null && city.isNotEmpty) city,
+        if (p.administrativeArea != null &&
+            p.administrativeArea!.isNotEmpty &&
+            p.administrativeArea != city) ...[
+          p.administrativeArea!,
+        ],
+        if (country.isNotEmpty) country,
+      ];
+      final displayName =
+          displayParts.isNotEmpty ? displayParts.join(', ') : country;
+      return PlaceSuggestion(
+        displayName: displayName,
+        country: country,
+        countryCode: p.isoCountryCode,
+        state: p.administrativeArea,
+        city: city,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }

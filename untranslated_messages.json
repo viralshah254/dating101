@@ -1,1 +1,91 @@
-{}
+{
+  "bn": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "gu": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "hi": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "kn": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "ml": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "mr": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "pa": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "ta": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "te": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ],
+
+  "ur": [
+    "identityWizardLocationTitle",
+    "identityWizardLocationSubtitle",
+    "profileEditSectionLocationStatus",
+    "profileEditSectionLocationSubtitle",
+    "profileStepLocationStatus",
+    "locationAndStatusSectionTitle"
+  ]
+}

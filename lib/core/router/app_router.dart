@@ -37,6 +37,7 @@ import '../../features/requests/screens/requests_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../analytics/analytics_service.dart';
 import '../feature_flags/feature_flags.dart';
+import '../onboarding/onboarding_progress_storage.dart';
 import '../shell/root_shell.dart';
 import '../shell/shell_branch_content.dart';
 import '../providers/repository_providers.dart';
@@ -118,6 +119,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       // cannot access shell routes. Use the in-memory flag to avoid an extra API
       // call on every navigation event (splash / profile-setup clears it once done).
       if (isShellRoute && authRepo.currentUserId != null && tokenStorage.hasPendingOnboarding) {
+        final saved = await OnboardingProgressStorage.readStepKey(authRepo.currentUserId);
+        if (saved != null && saved.isNotEmpty) {
+          return '/profile-setup?step=${Uri.encodeComponent(saved)}';
+        }
         return '/profile-welcome';
       }
 
@@ -176,8 +181,18 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile-setup',
         pageBuilder: (_, state) {
           final editing = state.uri.queryParameters['edit'] == 'true';
-          final step = int.tryParse(state.uri.queryParameters['step'] ?? '');
-          return _buildPage(state, ProfileSetupScreen(isEditing: editing, initialStep: step));
+          final stepParam = state.uri.queryParameters['step'] ?? '';
+          // Support both legacy int steps and new key-based resume (e.g. ?step=photos).
+          final stepInt = int.tryParse(stepParam);
+          final stepKey = stepInt == null && stepParam.isNotEmpty ? stepParam : null;
+          return _buildPage(
+            state,
+            ProfileSetupScreen(
+              isEditing: editing,
+              initialStep: stepInt,
+              initialStepKey: stepKey,
+            ),
+          );
         },
       ),
       GoRoute(

@@ -24,6 +24,30 @@ class PlaceSuggestion {
       country.toLowerCase().contains('india');
 }
 
+/// Same city + country (or same normalized display) — Nominatim often returns duplicates.
+String _dedupeKey(PlaceSuggestion s) {
+  final co = s.country.trim().toLowerCase();
+  final c = (s.city ?? s.displayName.split(',').first).trim().toLowerCase();
+  if (c.isNotEmpty && co.isNotEmpty) {
+    return '$c|$co';
+  }
+  return s.displayName.trim().toLowerCase();
+}
+
+List<PlaceSuggestion> _deduplicateResults(List<PlaceSuggestion> list) {
+  final seen = <String>{};
+  final out = <PlaceSuggestion>[];
+  for (final s in list) {
+    final k = _dedupeKey(s);
+    if (seen.contains(k)) {
+      continue;
+    }
+    seen.add(k);
+    out.add(s);
+  }
+  return out;
+}
+
 /// Search for cities, states, and countries worldwide (India-focused).
 /// Uses Nominatim (OpenStreetMap) - no API key required.
 class PlaceSearchService {
@@ -73,7 +97,7 @@ class PlaceSearchService {
           ),
         );
       }
-      return out;
+      return _deduplicateResults(out);
     } catch (_) {
       return [];
     }

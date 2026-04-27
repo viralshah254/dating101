@@ -20,6 +20,7 @@ import 'profile_setup_screen.dart';
 /// Section IDs used in route /profile-edit/:section
 const List<String> profileSectionIds = [
   'basic',
+  'location-status',
   'religion',
   'physical',
   'education-career',
@@ -37,6 +38,8 @@ String _sectionTitle(String sectionId, BuildContext context) {
   switch (sectionId) {
     case 'basic':
       return 'Basic Details';
+    case 'location-status':
+      return l.locationAndStatusSectionTitle;
     case 'religion':
       return l.backgroundTitle;
     case 'physical':
@@ -294,7 +297,15 @@ class _ProfileSectionEditScreenState
           formData: _formData,
           onChanged: _onChanged,
           isEditing: true,
-          onlySection: StepIdentityOnlySection.basic,
+          onlySection: StepIdentityOnlySection.basics,
+        );
+      case 'location-status':
+        return StepIdentity(
+          mode: mode,
+          formData: _formData,
+          onChanged: _onChanged,
+          isEditing: true,
+          onlySection: StepIdentityOnlySection.locationStatus,
         );
       case 'physical':
         return StepIdentity(

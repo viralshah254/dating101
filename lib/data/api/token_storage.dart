@@ -87,14 +87,27 @@ class TokenStorage extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Persists the onboarding gate (e.g. profile row exists but identity is still placeholder).
+  Future<void> setPendingOnboardingFlag(bool value) async {
+    if (value) {
+      if (_pendingOnboarding) return;
+      _pendingOnboarding = true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyPendingOnboarding, true);
+      notifyListeners();
+    } else {
+      final was = _pendingOnboarding;
+      _pendingOnboarding = false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyPendingOnboarding);
+      if (was) notifyListeners();
+    }
+  }
+
   /// Call this once the user has successfully completed their profile (onboarding done).
   /// Clears the pending-onboarding gate so shell routes are accessible.
   Future<void> clearPendingOnboarding() async {
-    if (!_pendingOnboarding) return;
-    _pendingOnboarding = false;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyPendingOnboarding);
-    notifyListeners();
+    await setPendingOnboardingFlag(false);
   }
 
   Future<void> clear() async {

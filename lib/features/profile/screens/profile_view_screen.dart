@@ -13,6 +13,7 @@ import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../profile_setup/screens/profile_setup_screen.dart' show ProfileFormData;
 
 final _profileProvider = FutureProvider<UserProfile?>((ref) async {
   final repo = ref.watch(profileRepositoryProvider);
@@ -188,6 +189,7 @@ class _ProfileBody extends StatelessWidget {
             delegate: SliverChildListDelegate(() {
               final sections = <Widget>[
                 _buildBasicDetailsSection(context),
+                _buildLocationAndStatusSection(context),
                 if (mode.isMatrimony) _buildReligionSection(context),
                 _buildPhysicalSection(context),
                 if (mode.isMatrimony) _buildEducationCareerSection(context),
@@ -396,23 +398,24 @@ class _ProfileBody extends StatelessWidget {
   // ── Per-section completion (0–100) ─────────────────────────────────
 
   int _sectionPctBasic() {
-    if (mode.isMatrimony) {
-      // Matrimony: all 6 identity fields count (including hometown, mother tongue, languages).
-      int filled = 0;
-      if (profile.gender != null) filled++;
-      if (profile.dateOfBirth != null) filled++;
-      if (profile.displayLocation.isNotEmpty) filled++;
-      if (profile.originCity != null) filled++;
-      if (profile.motherTongue != null) filled++;
-      if (profile.languagesSpoken.isNotEmpty) filled++;
-      return (filled * 100 / 6).round().clamp(0, 100);
-    }
-    // Dating: only fields actually shown/editable in the Basic Details screen.
     int filled = 0;
+    if (ProfileFormData.isNameValid(profile.name)) filled++;
     if (profile.gender != null) filled++;
     if (profile.dateOfBirth != null) filled++;
-    if (profile.displayLocation.isNotEmpty) filled++;
     return (filled * 100 / 3).round().clamp(0, 100);
+  }
+
+  int _sectionPctLocationStatus() {
+    int filled = 0;
+    if (profile.displayLocation.isNotEmpty) filled++;
+    if (mode.isMatrimony) {
+      if (profile.originCity != null && profile.originCity!.isNotEmpty) {
+        filled++;
+      }
+      if (profile.matrimonyExtensions?.maritalStatus != null) filled++;
+      return (filled * 100 / 3).round().clamp(0, 100);
+    }
+    return (filled * 100 / 1).round().clamp(0, 100);
   }
 
   int _sectionPctReligion() {
@@ -421,8 +424,7 @@ class _ProfileBody extends StatelessWidget {
     int filled = 0;
     if (mat.religion != null) filled++;
     if (mat.casteOrCommunity != null) filled++;
-    if (mat.maritalStatus != null) filled++;
-    return (filled * 100 / 3).round().clamp(0, 100);
+    return (filled * 100 / 2).round().clamp(0, 100);
   }
 
   int _sectionPctPhysical() {
@@ -503,6 +505,15 @@ class _ProfileBody extends StatelessWidget {
       icon: Icons.badge_outlined,
       pct: _sectionPctBasic(),
       onEdit: () => _editSection(context, 'basic'),
+    );
+  }
+
+  Widget _buildLocationAndStatusSection(BuildContext context) {
+    return _SectionSummaryCard(
+      title: AppLocalizations.of(context)!.locationAndStatusSectionTitle,
+      icon: Icons.pin_drop_outlined,
+      pct: _sectionPctLocationStatus(),
+      onEdit: () => _editSection(context, 'location-status'),
     );
   }
 

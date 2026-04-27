@@ -1,13 +1,25 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../core/location/app_location_service.dart';
 import '../../../core/location/place_search_service.dart';
 import '../../../core/mode/app_mode.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
 import '../screens/profile_setup_screen.dart';
+
+/// One line stored on the profile; must match [ProfileFormData] + [_IdentityPlaceSearchField] on select.
+String placeSuggestionToFieldLine(PlaceSuggestion s) {
+  final city = s.city ?? s.displayName.split(',').first.trim();
+  if (s.country.isNotEmpty) {
+    return '$city, ${s.country}';
+  }
+  return city;
+}
 
 /// Convert normalized stored value ("Woman", "Man", "Any") to display label.
 String? _genderPrefToDisplay(String? stored, AppMode mode, AppLocalizations l) {
@@ -72,7 +84,25 @@ List<String> _genderChipOptionsForCreatingFor(
 }
 
 /// When non-null, only that part of the identity step is shown (for section-only edit screens).
-enum StepIdentityOnlySection { basic, physical }
+/// [basics] — name, gender, partner preference, DOB, age. [locationStatus] — where you live (+ marital for matrimony). [physical] — height, body type, etc.
+enum StepIdentityOnlySection { basics, locationStatus, physical }
+
+/// [brandRose] — e.g. marital status. [genderSmart] — female-leaning (rose), male-leaning (primary blue), neutral (saffron).
+enum ChipAccent { brandRose, genderSmart }
+
+enum _GenderChipTone { female, male, neutral }
+
+_GenderChipTone _genderChipToneForOption(String opt, AppLocalizations l) {
+  if (opt == l.genderWoman ||
+      opt == l.lookingForBride ||
+      opt == l.interestedInWomen) {
+    return _GenderChipTone.female;
+  }
+  if (opt == l.genderMan || opt == l.lookingForGroom || opt == l.interestedInMen) {
+    return _GenderChipTone.male;
+  }
+  return _GenderChipTone.neutral;
+}
 
 class StepIdentity extends StatelessWidget {
   const StepIdentity({
@@ -136,27 +166,48 @@ class StepIdentity extends StatelessWidget {
       );
     }
 
-    final isBasicOnly = onlySection == StepIdentityOnlySection.basic;
+    final showBasics =
+        onlySection == null || onlySection == StepIdentityOnlySection.basics;
+    final showLocation = onlySection == null ||
+        onlySection == StepIdentityOnlySection.locationStatus;
+    /// Full single-page identity (legacy); split onboarding uses [basics] + [locationStatus] + [physical].
+    final showPhysicalInline = onlySection == null;
+
+    final isBasicsStep = onlySection == StepIdentityOnlySection.basics;
+    final isLocationStep = onlySection == StepIdentityOnlySection.locationStatus;
 
     // Conversational setup titles — mode-aware for first-time profile creation.
-    String _setupTitle() {
+    String setupTitle() {
       if (!forSelf) return l.dynSetupTitle(subject);
       if (mode.isMatrimony) return "Let's start\nwith the basics";
-      return l.profileSetupTitle; // "What should we call you?"
+      return l.profileSetupTitle;
     }
 
-    String _setupSubtitle() {
+    String setupSubtitle() {
       if (!forSelf) return l.dynSetupSubtitle(subject);
-      if (mode.isMatrimony) return 'A few details — the rest we\'ll figure out together.';
-      return l.profileSetupSubtitle; // "This is how you'll appear — make it real."
+      if (mode.isMatrimony) {
+        return 'A few details — the rest we\'ll figure out together.';
+      }
+      return l.profileSetupSubtitle;
     }
 
-    final title = isBasicOnly && isEditing
-        ? l.identityStepTitle
-        : (isEditing ? l.identityEditTitle : _setupTitle());
-    final subtitle = isBasicOnly && isEditing
-        ? l.identityStepSubtitle
-        : (isEditing ? l.identityEditSubtitle : _setupSubtitle());
+    late final String title;
+    late final String subtitle;
+    if (isLocationStep) {
+      title = isEditing ? l.profileEditSectionLocationStatus : l.identityWizardLocationTitle;
+      subtitle = isEditing
+          ? l.profileEditSectionLocationSubtitle
+          : l.identityWizardLocationSubtitle;
+    } else if (isBasicsStep && isEditing) {
+      title = l.identityStepTitle;
+      subtitle = l.identityStepSubtitle;
+    } else if (isEditing) {
+      title = l.identityEditTitle;
+      subtitle = l.identityEditSubtitle;
+    } else {
+      title = setupTitle();
+      subtitle = setupSubtitle();
+    }
     final nameLabel = forSelf ? l.yourName : l.dynName(subject);
     final genderLabel = forSelf ? l.genderQuestion : l.dynGender(subject);
     final dobLabel = forSelf ? l.dateOfBirth : l.dynDob(subject);
@@ -186,7 +237,7 @@ class StepIdentity extends StatelessWidget {
             title,
             style: AppTypography.displayLarge.copyWith(
               color: onSurface,
-              fontSize: isBasicOnly && isEditing ? 26 : 32,
+              fontSize: (isBasicsStep || isLocationStep) && isEditing ? 26 : 32,
               height: 1.2,
             ),
           ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.08, end: 0),
@@ -198,10 +249,10 @@ class StepIdentity extends StatelessWidget {
               height: 1.4,
             ),
           ).animate().fadeIn(delay: 100.ms),
-          SizedBox(height: isBasicOnly && isEditing ? 28 : 32),
+          SizedBox(height: (isBasicsStep || isLocationStep) && isEditing ? 28 : 32),
 
           // ── Creating for (matrimony only, first-time setup only) ──
-          if (mode.isMatrimony && !isEditing) ...[
+          if (showBasics && mode.isMatrimony && !isEditing) ...[
             _SectionLabel(label: l.profileCreatingFor),
             const SizedBox(height: 12),
             _CreatingForSelector(formData: formData, onChanged: onChanged),
@@ -209,6 +260,7 @@ class StepIdentity extends StatelessWidget {
           ],
 
           // ── Name (locked in edit mode) ────────────────────────
+          if (showBasics) ...[
           _SectionLabel(label: nameLabel, mandatory: !isEditing),
           const SizedBox(height: 8),
           _StyledTextField(
@@ -254,6 +306,7 @@ class StepIdentity extends StatelessWidget {
             child: Opacity(
               opacity: isEditing ? 0.6 : 1.0,
               child: _ChipSelector(
+                accent: ChipAccent.genderSmart,
                 options: _genderChipOptionsForCreatingFor(
                   formData.creatingFor,
                   l,
@@ -281,6 +334,7 @@ class StepIdentity extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _ChipSelector(
+            accent: ChipAccent.genderSmart,
             options: mode.isDating
                 ? [
                     l.interestedInWomen,
@@ -342,8 +396,30 @@ class StepIdentity extends StatelessWidget {
             _ConfirmAge18Checkbox(formData: formData, onChanged: onChanged),
           ],
           const SizedBox(height: 24),
+          ],
 
           // ── Location (searchable from place API) ─────────────────────
+          if (showLocation) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.rosePrimary.withValues(alpha: 0.14),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
           _SectionLabel(label: locationLabel),
           const SizedBox(height: 10),
           _IdentityPlaceSearchField(
@@ -351,11 +427,9 @@ class StepIdentity extends StatelessWidget {
             value: formData.location,
             hint: l.currentLocationHint,
             icon: Icons.location_on_outlined,
+            autofillFromGps: !isEditing,
             onSelected: (s) {
-              final city = s.city ?? s.displayName.split(',').first.trim();
-              formData.location = s.country.isNotEmpty
-                  ? '$city, ${s.country}'
-                  : city;
+              formData.location = placeSuggestionToFieldLine(s);
               onChanged();
             },
           ),
@@ -370,10 +444,7 @@ class StepIdentity extends StatelessWidget {
               hint: l.placeOfBirthHint,
               icon: Icons.home_outlined,
               onSelected: (s) {
-                final city = s.city ?? s.displayName.split(',').first.trim();
-                formData.hometown = s.country.isNotEmpty
-                    ? '$city, ${s.country}'
-                    : city;
+                formData.hometown = placeSuggestionToFieldLine(s);
                 onChanged();
               },
             ),
@@ -385,6 +456,7 @@ class StepIdentity extends StatelessWidget {
             _SectionLabel(label: l.maritalStatus),
             const SizedBox(height: 10),
             _ChipSelector(
+              stacked: true,
               options: [
                 l.neverMarried,
                 l.divorced,
@@ -399,18 +471,21 @@ class StepIdentity extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ],
 
-          // ── Physical & Personal section (omit when only basic) ─────
-          if (onlySection != StepIdentityOnlySection.basic)
+          if (showPhysicalInline) ...[
             _PhysicalSection(
               mode: mode,
               formData: formData,
               onChanged: onChanged,
               accent: accent,
             ),
-          if (onlySection != StepIdentityOnlySection.basic)
             const SizedBox(height: 40),
+          ],
         ],
       ),
     );
@@ -858,10 +933,18 @@ class _StyledTextField extends StatefulWidget {
 class _StyledTextFieldState extends State<_StyledTextField> {
   late final TextEditingController _ctrl;
 
+  void _emitFromController() {
+    if (widget.onChanged == null) return;
+    widget.onChanged!(_ctrl.text);
+  }
+
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(text: widget.value);
+    if (widget.onChanged != null) {
+      _ctrl.addListener(_emitFromController);
+    }
   }
 
   @override
@@ -871,10 +954,21 @@ class _StyledTextFieldState extends State<_StyledTextField> {
       _ctrl.text = widget.value;
       _ctrl.selection = TextSelection.collapsed(offset: widget.value.length);
     }
+    if (old.onChanged != widget.onChanged) {
+      if (old.onChanged != null) {
+        _ctrl.removeListener(_emitFromController);
+      }
+      if (widget.onChanged != null) {
+        _ctrl.addListener(_emitFromController);
+      }
+    }
   }
 
   @override
   void dispose() {
+    if (widget.onChanged != null) {
+      _ctrl.removeListener(_emitFromController);
+    }
     _ctrl.dispose();
     super.dispose();
   }
@@ -916,10 +1010,13 @@ class _StyledTextFieldState extends State<_StyledTextField> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: cs.primary, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.rosePrimary,
+            width: 1.5,
+          ),
         ),
       ),
-      onChanged: widget.onChanged,
+      // Parent state is updated via controller listener (avoids desync on Next / restart).
     );
   }
 }
@@ -985,7 +1082,10 @@ class _StyledMultilineFieldState extends State<_StyledMultilineField> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: cs.primary, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.rosePrimary,
+            width: 1.5,
+          ),
         ),
         filled: true,
         fillColor: cs.surfaceContainerHighest,
@@ -1001,54 +1101,105 @@ class _ChipSelector extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onSelected,
+    this.stacked = false,
+    this.accent = ChipAccent.brandRose,
   });
 
   final List<String> options;
   final String? selected;
   final ValueChanged<String> onSelected;
+  final bool stacked;
+  final ChipAccent accent;
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
+    final l = AppLocalizations.of(context)!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: options.map((opt) {
-        final isSelected = opt == selected;
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onSelected(opt),
-            borderRadius: BorderRadius.circular(12),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              constraints: const BoxConstraints(minHeight: 48),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
+    final cs = Theme.of(context).colorScheme;
+
+    ({Color fill, Color border, Color fg}) selectedColorsFor(String opt) {
+      if (accent == ChipAccent.brandRose) {
+        return (
+          fill: AppColors.rosePrimary.withValues(alpha: 0.10),
+          border: AppColors.rosePrimary.withValues(alpha: 0.55),
+          fg: AppColors.rosePrimary,
+        );
+      }
+      switch (_genderChipToneForOption(opt, l)) {
+        case _GenderChipTone.female:
+          return (
+            fill: AppColors.rosePrimary.withValues(alpha: 0.14),
+            border: AppColors.rosePrimary.withValues(alpha: 0.58),
+            fg: AppColors.rosePrimary,
+          );
+        case _GenderChipTone.male:
+          return (
+            fill: cs.primary.withValues(alpha: 0.14),
+            border: cs.primary.withValues(alpha: 0.68),
+            fg: cs.primary,
+          );
+        case _GenderChipTone.neutral:
+          return (
+            fill: AppColors.saffron.withValues(alpha: 0.12),
+            border: AppColors.saffron.withValues(alpha: 0.55),
+            fg: AppColors.saffronDark,
+          );
+      }
+    }
+
+    Widget chip(String opt) {
+      final isSelected = opt == selected;
+      final t = isSelected ? selectedColorsFor(opt) : null;
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onSelected(opt),
+          borderRadius: BorderRadius.circular(14),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: stacked ? double.infinity : null,
+            constraints: const BoxConstraints(minHeight: 50),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected ? t!.fill : cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
                 color: isSelected
-                    ? accent.withValues(alpha: 0.12)
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? accent : Theme.of(context).dividerColor,
-                  width: isSelected ? 1.5 : 1,
-                ),
+                    ? t!.border
+                    : cs.outline.withValues(alpha: 0.2),
+                width: isSelected ? 1.5 : 1,
               ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  opt,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: isSelected ? accent : onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  ),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                opt,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: isSelected ? t!.fg : onSurface,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
             ),
           ),
-        );
-      }).toList(),
+        ),
+      );
+    }
+
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            chip(options[i]),
+          ],
+        ],
+      );
+    }
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: options.map(chip).toList(),
     );
   }
 }
@@ -1132,9 +1283,10 @@ class _DateOfBirthPicker extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
-          final picked = await _showEfficientDatePicker(
+          final picked = await _openCupertinoDobSheet(
             context: context,
-            initial: value ?? DateTime(_today.year - 25, 1, 1),
+            initial: value,
+            firstDate: DateTime(1950, 1, 1),
             lastDate: _maxDate,
           );
           if (picked != null) onChanged(picked);
@@ -1172,38 +1324,85 @@ class _DateOfBirthPicker extends StatelessWidget {
       ),
     );
   }
+}
 
-  /// Uses the platform calendar date picker for a clearer, more intuitive experience.
-  static Future<DateTime?> _showEfficientDatePicker({
-    required BuildContext context,
-    required DateTime initial,
-    required DateTime lastDate,
-  }) {
-    final firstDate = DateTime(1950, 1, 1);
-    final initialDate = DateTime(
-      initial.year.clamp(firstDate.year, lastDate.year),
-      initial.month.clamp(1, 12),
-      initial.day.clamp(1, DateTime(initial.year, initial.month + 1, 0).day),
-    );
-    return showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      helpText: AppLocalizations.of(context)!.selectDate,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: Theme.of(context).colorScheme.primary,
-              surface: Theme.of(context).colorScheme.surface,
-            ),
+/// Scroll-wheel style date of birth (year → month → day) with 18+ bounds.
+Future<DateTime?> _openCupertinoDobSheet({
+  required BuildContext context,
+  required DateTime? initial,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) {
+  final l = AppLocalizations.of(context)!;
+  var selected = initial ?? DateTime(lastDate.year - 25, 6, 15);
+  if (selected.isBefore(firstDate)) selected = firstDate;
+  if (selected.isAfter(lastDate)) selected = lastDate;
+
+  return showModalBottomSheet<DateTime>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) {
+      final bottom = MediaQuery.paddingOf(ctx).bottom;
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.selectDate,
+                textAlign: TextAlign.center,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 220,
+                child: CupertinoTheme(
+                  data: CupertinoThemeData(
+                    brightness: Theme.of(ctx).brightness,
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(
+                        color: Theme.of(ctx).colorScheme.onSurface,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: selected,
+                    minimumDate: firstDate,
+                    maximumDate: lastDate,
+                    use24hFormat: true,
+                    onDateTimeChanged: (d) => selected = d,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(selected),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(l.confirm),
+              ),
+            ],
           ),
-          child: child!,
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
 }
 
 class _CreatingForSelector extends StatelessWidget {
@@ -1289,6 +1488,7 @@ class _IdentityPlaceSearchField extends StatefulWidget {
     required this.hint,
     required this.icon,
     required this.onSelected,
+    this.autofillFromGps = false,
   });
 
   final String label;
@@ -1297,6 +1497,9 @@ class _IdentityPlaceSearchField extends StatefulWidget {
   final IconData icon;
   final void Function(PlaceSuggestion s) onSelected;
 
+  /// When true and [value] is empty, one-shot fill from device GPS (user can edit).
+  final bool autofillFromGps;
+
   @override
   State<_IdentityPlaceSearchField> createState() =>
       _IdentityPlaceSearchFieldState();
@@ -1304,21 +1507,47 @@ class _IdentityPlaceSearchField extends StatefulWidget {
 
 class _IdentityPlaceSearchFieldState extends State<_IdentityPlaceSearchField> {
   late final TextEditingController _ctrl;
+  final FocusNode _focus = FocusNode();
   Timer? _debounce;
   List<PlaceSuggestion> _suggestions = [];
   bool _loading = false;
+
+  /// Set when user picks a result or when synced from parent; blocks duplicate search.
+  String? _committedLine;
 
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(text: widget.value);
+    if (widget.value.trim().isNotEmpty) {
+      _committedLine = widget.value;
+    } else if (widget.autofillFromGps) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _tryAutofillFromGps());
+    }
+  }
+
+  Future<void> _tryAutofillFromGps() async {
+    if (!mounted || widget.value.trim().isNotEmpty) return;
+    final s =
+        await AppLocationService.instance.getCurrentLocationAsPlaceSuggestion();
+    if (!mounted || widget.value.trim().isNotEmpty) return;
+    if (s == null) return;
+    final line = placeSuggestionToFieldLine(s);
+    _committedLine = line;
+    _ctrl.text = line;
+    _ctrl.selection = TextSelection.collapsed(offset: line.length);
+    setState(() {});
+    widget.onSelected(s);
   }
 
   @override
   void didUpdateWidget(_IdentityPlaceSearchField old) {
     super.didUpdateWidget(old);
     if (old.value != widget.value && widget.value != _ctrl.text) {
+      _debounce?.cancel();
       _ctrl.text = widget.value;
+      _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
+      _committedLine = widget.value.trim().isNotEmpty ? widget.value : null;
     }
   }
 
@@ -1326,10 +1555,18 @@ class _IdentityPlaceSearchFieldState extends State<_IdentityPlaceSearchField> {
   void dispose() {
     _debounce?.cancel();
     _ctrl.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   void _onTextChanged(String q) {
+    if (_committedLine != null && q == _committedLine) {
+      return;
+    }
+    if (_committedLine != null && q != _committedLine) {
+      _committedLine = null;
+    }
+
     _debounce?.cancel();
     if (q.trim().length < 2) {
       setState(() {
@@ -1342,6 +1579,13 @@ class _IdentityPlaceSearchFieldState extends State<_IdentityPlaceSearchField> {
     _debounce = Timer(const Duration(milliseconds: 400), () async {
       final list = await PlaceSearchService.searchWithIndiaBias(q);
       if (!mounted) return;
+      if (_committedLine != null && _ctrl.text == _committedLine) {
+        setState(() {
+          _suggestions = [];
+          _loading = false;
+        });
+        return;
+      }
       setState(() {
         _suggestions = list;
         _loading = false;
@@ -1352,24 +1596,44 @@ class _IdentityPlaceSearchFieldState extends State<_IdentityPlaceSearchField> {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
           controller: _ctrl,
+          focusNode: _focus,
+          textInputAction: TextInputAction.search,
+          keyboardType: TextInputType.streetAddress,
           decoration: InputDecoration(
             hintText: widget.hint,
             prefixIcon: Icon(
               widget.icon,
               size: 22,
-              color: onSurface.withValues(alpha: 0.5),
+              color: AppColors.rosePrimary.withValues(alpha: 0.65),
             ),
             filled: true,
-            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            fillColor: cs.surfaceContainerHighest,
+            isDense: true,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
-              vertical: 14,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: AppColors.rosePrimary,
+                width: 1.5,
+              ),
             ),
             suffixIcon: _loading
                 ? const Padding(
@@ -1392,34 +1656,64 @@ class _IdentityPlaceSearchFieldState extends State<_IdentityPlaceSearchField> {
           },
         ),
         if (_suggestions.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 220),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerColor),
-            ),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _suggestions.length,
-              itemBuilder: (context, i) {
-                final s = _suggestions[i];
-                return ListTile(
-                  title: Text(
-                    s.displayName,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: onSurface,
-                      fontWeight: FontWeight.w500,
+          const SizedBox(height: 10),
+          Material(
+            elevation: 1,
+            shadowColor: Colors.black.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                itemCount: _suggestions.length,
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  indent: 16,
+                  endIndent: 16,
+                  color: cs.outlineVariant.withValues(alpha: 0.35),
+                ),
+                itemBuilder: (context, i) {
+                  final s = _suggestions[i];
+                  return InkWell(
+                    onTap: () {
+                      _debounce?.cancel();
+                      final line = placeSuggestionToFieldLine(s);
+                      _committedLine = line;
+                      _ctrl.text = line;
+                      _ctrl.selection =
+                          TextSelection.collapsed(offset: line.length);
+                      setState(() {
+                        _suggestions = [];
+                        _loading = false;
+                      });
+                      _focus.unfocus();
+                      widget.onSelected(s);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Text(
+                        s.displayName,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: onSurface,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
                     ),
-                  ),
-                  onTap: () {
-                    _ctrl.text = s.displayName;
-                    setState(() => _suggestions = []);
-                    widget.onSelected(s);
-                  },
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],

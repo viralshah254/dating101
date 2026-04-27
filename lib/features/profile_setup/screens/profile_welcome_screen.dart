@@ -1,13 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/logo_with_transparent_white.dart';
 
 /// Warm, personalised welcome screen shown to new users immediately after
 /// sign-up — before they answer "who is this for?".
@@ -33,25 +36,31 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
 
   String _greeting() {
     final name = _firstName;
-    if (name != null && name.isNotEmpty) {
-      return 'Hi, $name';
-    }
+    if (name != null && name.isNotEmpty) return 'Hi, $name';
     return 'Where love begins';
   }
 
   String _subtext(AppMode mode) {
     if (mode.isMatrimony) {
-      return "Let's build a profile that helps you"
-          "\nmeet someone to share a life with.";
+      return "Let's build a profile that helps you\nmeet someone to share a life with.";
     }
-    return 'Real connection starts with the real you.\n'
-        "Let's help the right person find you.";
+    return "Real connection starts with the real you.\nLet's help the right person find you.";
   }
 
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(appModeProvider) ?? AppMode.dating;
     final size = MediaQuery.sizeOf(context);
+    final logoWidth = math.min(260.0, size.width * 0.65);
+
+    // Subtle shadow so white text stays legible across the rose-to-gold gradient
+    const textShadow = [
+      Shadow(
+        color: Color(0x26000000),
+        blurRadius: 12,
+        offset: Offset(0, 2),
+      ),
+    ];
 
     return PopScope(
       canPop: false,
@@ -59,9 +68,9 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // Background gradient
-            DecoratedBox(
-              decoration: const BoxDecoration(
+            // Background gradient — rose → saffron → gold (brand CTA gradient extended)
+            const DecoratedBox(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -75,17 +84,17 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
               ),
             ),
 
-            // Subtle radial glow for depth
+            // Radial glow — top-left depth
             Positioned(
               top: -size.height * 0.15,
               left: -size.width * 0.2,
               child: Container(
                 width: size.width * 1.4,
-                height: size.height * 0.7,
+                height: size.height * 0.65,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [Color(0x33FFFFFF), Color(0x00FFFFFF)],
+                    colors: [Color(0x2BFFFFFF), Color(0x00FFFFFF)],
                   ),
                 ),
               ),
@@ -94,54 +103,42 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
             // Content
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Spacer(flex: 2),
 
-                    // Brand mark
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'S',
-                          style: TextStyle(
-                            fontFamily: 'Playfair Display',
-                            fontSize: 38,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+                    // Real brand logo — white-background stripped by LogoWithTransparentWhite
+                    LogoWithTransparentWhite(
+                      assetPath: 'assets/images/shubhmilan_logo.png',
+                      width: logoWidth,
+                      fit: BoxFit.contain,
+                      whiteThreshold: 200,
                     )
                         .animate()
                         .scale(
-                          begin: const Offset(0.6, 0.6),
+                          begin: const Offset(0.72, 0.72),
                           end: const Offset(1.0, 1.0),
-                          duration: 600.ms,
-                          curve: Curves.elasticOut,
+                          duration: 700.ms,
+                          curve: Curves.easeOutBack,
                         )
-                        .fadeIn(duration: 400.ms),
+                        .fadeIn(duration: 450.ms),
 
-                    const SizedBox(height: 32),
+                    SizedBox(height: size.height * 0.06),
 
-                    // Greeting
+                    // Greeting — Playfair Display, centered, with legibility shadow
                     Text(
                       _greeting(),
-                      style: AppTypography.displayLarge.copyWith(
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize:
+                            (size.width < 380 ? 32.0 : 38.0),
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
-                        fontSize: 40,
-                        height: 1.1,
+                        letterSpacing: -0.6,
+                        height: 1.12,
+                        shadows: textShadow,
                       ),
                     )
                         .animate()
@@ -154,34 +151,49 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
                           curve: Curves.easeOut,
                         ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Subtext
-                    Text(
-                      _subtext(mode),
-                      style: TextStyle(
-                        fontSize: 20,
-                        height: 1.45,
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontWeight: FontWeight.w400,
+                    // Subtext — Inter, centered, max-width for readability
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 340),
+                      child: Text(
+                        _subtext(mode),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          height: 1.55,
+                          color: Colors.white.withValues(alpha: 0.90),
+                          fontWeight: FontWeight.w400,
+                          shadows: textShadow,
+                        ),
                       ),
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 450.ms)
+                        .fadeIn(duration: 500.ms, delay: 420.ms)
                         .slideY(
                           begin: 0.12,
                           end: 0,
                           duration: 500.ms,
-                          delay: 450.ms,
+                          delay: 420.ms,
                           curve: Curves.easeOut,
                         ),
 
                     const Spacer(flex: 3),
 
-                    // CTA
-                    SizedBox(
+                    // CTA — white pill, rose foreground, subtle warm lift shadow
+                    Container(
                       width: double.infinity,
                       height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3D2E1C).withValues(alpha: 0.22),
+                            blurRadius: 20,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
                       child: FilledButton(
                         onPressed: () => context.go('/profile-for'),
                         style: FilledButton.styleFrom(
@@ -191,29 +203,30 @@ class _ProfileWelcomeScreenState extends ConsumerState<ProfileWelcomeScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               'Start my story',
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
+                                color: AppColors.rosePrimary,
                               ),
                             ),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward_rounded, size: 20),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 20),
                           ],
                         ),
                       ),
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 700.ms)
+                        .fadeIn(duration: 500.ms, delay: 650.ms)
                         .slideY(
                           begin: 0.2,
                           end: 0,
                           duration: 500.ms,
-                          delay: 700.ms,
+                          delay: 650.ms,
                           curve: Curves.easeOut,
                         ),
 
