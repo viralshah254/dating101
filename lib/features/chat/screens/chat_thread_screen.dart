@@ -22,6 +22,7 @@ import '../../../core/notifications/notification_route_support.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/safety/safety_reason_picker.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_bridge.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
@@ -42,12 +43,17 @@ class ChatThreadScreen extends ConsumerStatefulWidget {
     this.otherUserId,
     this.initialAdToken,
     this.initialText,
+    this.requiresPreChatConsent = false,
   });
 
   final String threadId;
   final String? otherUserId;
   final String? initialAdToken;
   final String? initialText;
+
+  /// True when opened from a notification path that must show peer identity and
+  /// Accept / Decline / Skip before the conversation is active (App Store chat guidelines).
+  final bool requiresPreChatConsent;
 
   @override
   ConsumerState<ChatThreadScreen> createState() => _ChatThreadScreenState();
@@ -94,6 +100,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
   final ScrollController _scrollController = ScrollController();
 
+  /// When [ChatThreadScreen.requiresPreChatConsent] is true, UX blocks the thread until accepted.
+  bool _preChatConsentPending = false;
+
   /// History loaded above the live window (cursor pagination).
   final List<ChatMessage> _olderLoaded = [];
 
@@ -104,6 +113,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   @override
   void initState() {
     super.initState();
+    _preChatConsentPending = widget.requiresPreChatConsent;
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
       if (!mounted) return;
       if (!results.any((r) => r != ConnectivityResult.none)) return;
@@ -114,20 +124,45 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       });
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final repo = ref.read(chatRepositoryProvider);
-      final ws = ref.read(chatWebSocketClientProvider);
-      try {
-        await repo.markThreadRead(widget.threadId);
-        ws?.sendMarkRead(widget.threadId);
-        if (mounted) ref.invalidate(chatThreadsProvider);
-      } catch (_) {}
-      try {
-        final peer = await repo.getPeerLastReadAt(widget.threadId);
-        if (mounted) {
-          ref.read(threadPeerReadAtProvider(widget.threadId).notifier).state = peer;
-        }
-      } catch (_) {}
+      if (_preChatConsentPending) return;
+      await _activateThreadAfterPreChatConsent();
     });
+  }
+
+  Future<void> _activateThreadAfterPreChatConsent() async {
+    final repo = ref.read(chatRepositoryProvider);
+    final ws = ref.read(chatWebSocketClientProvider);
+    try {
+      await repo.markThreadRead(widget.threadId);
+      ws?.sendMarkRead(widget.threadId);
+      if (mounted) ref.invalidate(chatThreadsProvider);
+    } catch (_) {}
+    try {
+      final peer = await repo.getPeerLastReadAt(widget.threadId);
+      if (mounted) {
+        ref.read(threadPeerReadAtProvider(widget.threadId).notifier).state = peer;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _onPreChatAccept() async {
+    if (!mounted) return;
+    setState(() => _preChatConsentPending = false);
+    await _activateThreadAfterPreChatConsent();
+  }
+
+  void _onPreChatDecline(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      final mode = ref.read(appModeProvider) ?? AppMode.dating;
+      context.go(chatListShellPath(mode));
+    }
+  }
+
+  void _onPreChatSkip(BuildContext context) {
+    final mode = ref.read(appModeProvider) ?? AppMode.dating;
+    context.go(chatListShellPath(mode));
   }
 
   @override
@@ -781,7 +816,16 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final suggestionsAsync = ref.watch(chatSuggestionsProvider);
     final icebreakerList =
         suggestionsAsync.valueOrNull ?? _icebreakerSuggestions;
-    final otherUserId = widget.otherUserId;
+    String? otherUserId = widget.otherUserId?.trim();
+    if (otherUserId == null || otherUserId.isEmpty) {
+      for (final t in ref.watch(chatThreadsProvider).valueOrNull ?? const <ChatThreadSummary>[]) {
+        if (t.id == widget.threadId) {
+          final o = t.otherUserId.trim();
+          if (o.isNotEmpty) otherUserId = o;
+          break;
+        }
+      }
+    }
     final profileAsync = otherUserId != null
         ? ref.watch(profileSummaryProvider(otherUserId))
         : null;
@@ -854,7 +898,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final headerSubtitleText =
         peerTypingHere ? l10n.chatPeerTyping : subtitleFinal;
 
-    return Scaffold(
+    final scaffold = Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -1192,6 +1236,142 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
           ),
         ],
       ),
+    );
+    if (!widget.requiresPreChatConsent || !_preChatConsentPending) {
+      return scaffold;
+    }
+    return Stack(
+      children: [
+        AbsorbPointer(absorbing: true, child: scaffold),
+        Positioned.fill(
+          child: Material(
+            color: Colors.black54,
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Card(
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              l10n.pcGateTitle,
+                              style: AppTypography.titleLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: cs.onSurface,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.pcGateBody,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: cs.onSurface.withValues(alpha: 0.72),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 36,
+                                  backgroundColor: cs.primary.withValues(alpha: 0.2),
+                                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                      ? NetworkImage(avatarUrl)
+                                      : null,
+                                  child: avatarUrl == null || avatarUrl.isEmpty
+                                      ? Text(
+                                          initial,
+                                          style: AppTypography.titleLarge.copyWith(
+                                            color: cs.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayName,
+                                        style: AppTypography.titleMedium.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: cs.onSurface,
+                                        ),
+                                      ),
+                                      if (subtitleFinal.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          subtitleFinal,
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: cs.onSurface.withValues(alpha: 0.65),
+                                          ),
+                                        ),
+                                      ],
+                                      if (otherUserId != null) ...[
+                                        const SizedBox(height: 8),
+                                        TextButton(
+                                          onPressed: () => context.push('/profile/$otherUserId'),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
+                                          child: Text(l10n.viewFullProfile),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (profileAsync != null && profileAsync.isLoading) ...[
+                              const SizedBox(height: 16),
+                              const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))),
+                            ],
+                            const SizedBox(height: 24),
+                            FilledButton(
+                              onPressed: () => unawaited(_onPreChatAccept()),
+                              child: Text(l10n.pcGateAccept),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => _onPreChatDecline(context),
+                                    child: Text(l10n.pcGateDecline),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => _onPreChatSkip(context),
+                                    child: Text(l10n.pcGateSkip),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

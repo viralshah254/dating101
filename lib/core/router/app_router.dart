@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/app_motion.dart';
 import '../../l10n/app_localizations.dart';
-import '../location/app_location_service.dart';
-import '../location/location_service_provider.dart';
 import '../../features/splash/screens/splash_screen.dart';
 import '../../features/splash/screens/tagline_screen.dart';
 import '../../features/location/screens/location_required_screen.dart';
@@ -126,12 +124,10 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         return '/profile-welcome';
       }
 
-      if (isShellRoute) {
-        final access = await ref.read(locationServiceProvider).checkAccess();
-        if (access != LocationAccess.granted) {
-          return '/location-required?then=${Uri.encodeComponent(loc)}';
-        }
-      }
+      // Do not block shell routes when location is off — App Store guideline 5.1.5:
+      // core experience must work without Location Services. Map / distance can
+      // prompt for permission in-context; `/location-required` remains available
+      // for users who choose to enable location from settings-driven flows.
       return null;
     },
     routes: [
@@ -281,11 +277,13 @@ Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
           final otherUserId = state.uri.queryParameters['otherUserId'];
           final initialAdToken = state.uri.queryParameters['initialAdToken'];
           final initialText = state.uri.queryParameters['initialText'];
+          final preChatConsent = state.uri.queryParameters['preChatConsent'] == '1';
           return _buildCardPage(state, ChatThreadScreen(
             threadId: id,
             otherUserId: otherUserId,
             initialAdToken: initialAdToken,
             initialText: initialText,
+            requiresPreChatConsent: preChatConsent,
           ));
         },
       ),

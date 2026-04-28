@@ -64,7 +64,7 @@ String? notificationDataToPath(
   // Derive mode from threadMode payload first, then fall back to current app shell mode.
   final effectiveMode = _resolveThreadMode(rawThreadMode, appMode);
 
-  String chatPathWithOther({AppMode? mode}) {
+  String chatPathWithOther({AppMode? mode, bool preChatConsent = false}) {
     final m = mode ?? effectiveMode;
     if (threadId != null && threadId.isNotEmpty) {
       final params = <String>[];
@@ -74,6 +74,10 @@ String? notificationDataToPath(
       // Pass threadMode so the chat screen opens in the correct mode shell.
       if (rawThreadMode != null && rawThreadMode.isNotEmpty) {
         params.add('threadMode=${Uri.encodeComponent(rawThreadMode)}');
+      }
+      // Opens from notifications must show identifiable peer + Accept / Decline / Skip before chatting.
+      if (preChatConsent) {
+        params.add('preChatConsent=1');
       }
       final q = params.isNotEmpty ? '?${params.join('&')}' : '';
       return '/chat/$threadId$q';
@@ -104,14 +108,14 @@ String? notificationDataToPath(
         if (profileId != null && profileId.isNotEmpty) return '/profile/$profileId';
         return '/notifications';
       case 'chat':
-        return chatPathWithOther();
+        return chatPathWithOther(preChatConsent: true);
     }
   }
 
   switch (type) {
     case 'new_message':
     case 'message':
-      return chatPathWithOther();
+      return chatPathWithOther(preChatConsent: true);
     case 'message_request':
       return '${chatListShellPath(effectiveMode)}?tab=requests';
     case 'message_request_accepted':

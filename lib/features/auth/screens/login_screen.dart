@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/locale/language_picker_sheet.dart';
 import '../../../core/mode/mode_provider.dart';
@@ -12,6 +13,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../domain/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_bridge.dart';
 import '../auth_post_sign_in.dart';
 
 class _CountryCode {
@@ -40,6 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _ageConfirmed = false;
+  bool _signupTermsAccepted = false;
   bool _isSending = false;
   String? _errorMessage;
   String? _errorCode;
@@ -141,7 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _confirmPasswordController.text == _passwordController.text;
 
   bool get _canContinue =>
-      (!_isSignUp || _ageConfirmed) &&
+      (!_isSignUp || (_ageConfirmed && _signupTermsAccepted)) &&
       _normalizedPhone.length >= 7 &&
       _passwordLongEnough &&
       !_isSending &&
@@ -475,6 +478,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       child: TextButton(
                                         onPressed: () => setState(() {
                                           _isSignUp = !_isSignUp;
+                                          _signupTermsAccepted = false;
                                           _errorMessage = null;
                                           _errorCode = null;
                                         }),
@@ -521,6 +525,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             ),
                                           ],
                                         ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Checkbox(
+                                              value: _signupTermsAccepted,
+                                              onChanged: (v) =>
+                                                  setState(() => _signupTermsAccepted = v ?? false),
+                                              activeColor: AppColors.rosePrimary,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  l.signupTermsAgreementLabelBridge,
+                                                  style: AppTypography.bodySmall.copyWith(
+                                                    color: cs.onSurface.withValues(alpha: 0.85),
+                                                  ),
+                                                ),
+                                                Align(
+                                                  alignment: Alignment.centerLeft,
+                                                  child: TextButton(
+                                                    onPressed: () async {
+                                                      final uri =
+                                                          Uri.parse('https://shubhmilan.app/terms');
+                                                      if (await canLaunchUrl(uri)) {
+                                                        await launchUrl(
+                                                          uri,
+                                                          mode: LaunchMode.externalApplication,
+                                                        );
+                                                      }
+                                                    },
+                                                    style: TextButton.styleFrom(
+                                                      padding: EdgeInsets.zero,
+                                                      minimumSize: Size.zero,
+                                                      tapTargetSize:
+                                                          MaterialTapTargetSize.shrinkWrap,
+                                                    ),
+                                                    child: Text(
+                                                      l.termsAndPrivacy,
+                                                      style: AppTypography.labelMedium.copyWith(
+                                                        color: AppColors.rosePrimary,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       const SizedBox(height: 8),
                                       Text(

@@ -2758,11 +2758,31 @@ class AppLocalizationsHi extends AppLocalizations {
   String get tapToEdit => 'संपादित करने के लिए टैप करें';
 
   @override
+  String get signupTermsAgreementLabel =>
+      'I agree to the Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content and abusive behaviour.';
+
+  @override
   String get termsAndPrivacy => 'नियम और गोपनीयता';
 
   @override
   String get termsConsent =>
-      'जारी रखकर आप हमारी नियम और गोपनीयता नीति से सहमत हैं।';
+      'जारी रखकर आप उपयोग की शर्तों (EULA), गोपनीयता नीति और समुदायिक दिशानिर्देशों से सहमत हैं — आपत्तिजनक सामग्री और दुराचार पर शून्य सहिष्णुता सहित।';
+
+  @override
+  String get preChatGateTitle => 'बातचीत से पहले';
+
+  @override
+  String get preChatGateBody =>
+      'देखें कि आप किससे जुड़ रहे हैं। आप स्वीकार, अस्वीकार या छोड़ सकते हैं।';
+
+  @override
+  String get preChatGateAccept => 'स्वीकार करें';
+
+  @override
+  String get preChatGateDecline => 'अस्वीकार';
+
+  @override
+  String get preChatGateSkip => 'छोड़ें';
 
   @override
   String get toastAddedToShortlist => 'शॉर्टलिस्ट में जोड़ा गया';

@@ -2749,11 +2749,31 @@ class AppLocalizationsGu extends AppLocalizations {
   String get tapToEdit => 'એડિટ કરવા ટૅપ કરો';
 
   @override
+  String get signupTermsAgreementLabel =>
+      'I agree to the Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content and abusive behaviour.';
+
+  @override
   String get termsAndPrivacy => 'શરતો અને ગોપનીયતા';
 
   @override
   String get termsConsent =>
-      'જારી રાખીને તમે અમારી શરતો અને ગોપનીયતા નીતિથી સહમત છો.';
+      'ચાલુ રાખતાં તમે ઉપયોગની શરતો (EULA), ગોપનીયતા નીતિ અને સમુદાય માર્ગદર્શિકાથી સહમત છો — અમંજૂર સામગ્રી અને દુર્વ્યવહાર માટે શૂન્ય સહિષ્ણુતા સહિત.';
+
+  @override
+  String get preChatGateTitle => 'Before you chat';
+
+  @override
+  String get preChatGateBody =>
+      'Review who you\'re about to message. You can accept, decline, or skip.';
+
+  @override
+  String get preChatGateAccept => 'Accept';
+
+  @override
+  String get preChatGateDecline => 'Decline';
+
+  @override
+  String get preChatGateSkip => 'Skip';
 
   @override
   String get toastAddedToShortlist => 'શૉર્ટલિસ્ટમાં ઉમેરાઈ';

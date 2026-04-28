@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/locale/app_locale_provider.dart';
-import '../../../core/location/app_location_service.dart';
-import '../../../core/location/location_service_provider.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/logo_with_transparent_white.dart';
@@ -154,14 +152,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
 
     if (!mounted) return;
-    final access = await ref.read(locationServiceProvider).checkAccess();
-    if (!mounted) return;
-
-    if (access == LocationAccess.granted) {
-      context.go(destination);
-    } else {
-      context.go('/location-required?then=${Uri.encodeComponent(destination)}');
-    }
+    // Do not block app launch on location (App Store 5.1.5). Discover and
+    // map features can request permission in-context when needed.
+    context.go(destination);
   }
 
   @override

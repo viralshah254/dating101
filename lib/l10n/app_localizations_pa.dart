@@ -2755,11 +2755,31 @@ class AppLocalizationsPa extends AppLocalizations {
   String get tapToEdit => 'Tap to edit';
 
   @override
+  String get signupTermsAgreementLabel =>
+      'I agree to the Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content and abusive behaviour.';
+
+  @override
   String get termsAndPrivacy => 'Terms & Privacy';
 
   @override
   String get termsConsent =>
-      'By continuing you agree to our Terms and Privacy Policy.';
+      'Continuing means you agree to our Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content or abusive behaviour.';
+
+  @override
+  String get preChatGateTitle => 'Before you chat';
+
+  @override
+  String get preChatGateBody =>
+      'Review who you\'re about to message. You can accept, decline, or skip.';
+
+  @override
+  String get preChatGateAccept => 'Accept';
+
+  @override
+  String get preChatGateDecline => 'Decline';
+
+  @override
+  String get preChatGateSkip => 'Skip';
 
   @override
   String get toastAddedToShortlist => 'Added to shortlist';

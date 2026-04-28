@@ -5156,6 +5156,12 @@ abstract class AppLocalizations {
   /// **'Tap to edit'**
   String get tapToEdit;
 
+  /// No description provided for @signupTermsAgreementLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content and abusive behavior.'**
+  String get signupTermsAgreementLabel;
+
   /// No description provided for @termsAndPrivacy.
   ///
   /// In en, this message translates to:
@@ -5165,8 +5171,38 @@ abstract class AppLocalizations {
   /// No description provided for @termsConsent.
   ///
   /// In en, this message translates to:
-  /// **'Continuing means you agree to our Terms and Privacy Policy.'**
+  /// **'Continuing means you agree to our Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content or abusive behavior.'**
   String get termsConsent;
+
+  /// No description provided for @preChatGateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Before you chat'**
+  String get preChatGateTitle;
+
+  /// No description provided for @preChatGateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Review who you\'re about to message. You can accept, decline, or skip.'**
+  String get preChatGateBody;
+
+  /// No description provided for @preChatGateAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get preChatGateAccept;
+
+  /// No description provided for @preChatGateDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get preChatGateDecline;
+
+  /// No description provided for @preChatGateSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get preChatGateSkip;
 
   /// No description provided for @toastAddedToShortlist.
   ///

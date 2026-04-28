@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/api/api_client.dart';
-import '../../../core/location/app_location_service.dart';
 import '../../../core/mode/app_mode.dart';
 import '../../../core/mode/mode_provider.dart';
 import '../../../core/providers/repository_providers.dart';
@@ -80,7 +79,6 @@ class _ProfileSectionEditScreenState
   late final ProfileFormData _formData = ProfileFormData(isEditing: true);
   bool _isLoading = true;
   bool _isSaving = false;
-  static final _locationService = AppLocationService.instance;
 
   @override
   void initState() {
@@ -90,14 +88,6 @@ class _ProfileSectionEditScreenState
 
   Future<void> _loadProfile() async {
     if (!mounted) return;
-    final access = await _locationService.checkAccess();
-    if (access != LocationAccess.granted) {
-      if (!mounted) return;
-      context.go(
-        '/location-required?then=${Uri.encodeComponent('/profile-edit?section=${Uri.encodeComponent(widget.sectionId)}')}',
-      );
-      return;
-    }
     final repo = ref.read(profileRepositoryProvider);
     final existing = await repo.getMyProfile();
     if (existing != null && mounted) {

@@ -2755,11 +2755,31 @@ class AppLocalizationsBn extends AppLocalizations {
   String get tapToEdit => 'এডিট করতে ট্যাপ করুন';
 
   @override
+  String get signupTermsAgreementLabel =>
+      'I agree to the Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content and abusive behaviour.';
+
+  @override
   String get termsAndPrivacy => 'শর্ত ও গোপনীয়তা';
 
   @override
   String get termsConsent =>
-      'চালিয়ে যাওয়ার মাধ্যমে আপনি আমাদের শর্তাবলী ও গোপনীয়তা নীতি মেনে নিচ্ছেন।';
+      'চালিয়ে যাওয়ার মাধ্যমে আপনি ব্যবহারের শর্ত (EULA), গোপনীয়তা নীতি ও কমিউনিটি নির্দেশিকা মেনে নিচ্ছেন — আপত্তিকর বা অপব্যবহারমূলক আচরণে শূন্য সহনশীলতা সহ।';
+
+  @override
+  String get preChatGateTitle => 'Before you chat';
+
+  @override
+  String get preChatGateBody =>
+      'Review who you\'re about to message. You can accept, decline, or skip.';
+
+  @override
+  String get preChatGateAccept => 'Accept';
+
+  @override
+  String get preChatGateDecline => 'Decline';
+
+  @override
+  String get preChatGateSkip => 'Skip';
 
   @override
   String get toastAddedToShortlist => 'শর্টলিস্টে যোগ হয়েছে';

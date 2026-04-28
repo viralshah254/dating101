@@ -2764,11 +2764,31 @@ class AppLocalizationsKn extends AppLocalizations {
   String get tapToEdit => 'ಸಂಪಾದಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ';
 
   @override
+  String get signupTermsAgreementLabel =>
+      'I agree to the Terms of Use (EULA), Privacy Policy, and Community Guidelines — including zero tolerance for objectionable content and abusive behaviour.';
+
+  @override
   String get termsAndPrivacy => 'ನಿಯಮಗಳು ಮತ್ತು ಗೌಪ್ಯತೆ';
 
   @override
   String get termsConsent =>
-      'ಮುಂದುವರಿಸುವ ಮೂಲಕ ನೀವು ನಮ್ಮ ನಿಯಮಗಳು ಮತ್ತು ಗೌಪ್ಯತಾ ನೀತಿಗೆ ಒಪ್ಪುತ್ತೀರಿ.';
+      'ಮುಂದುವರಿಸುವ ಮೂಲಕ ನೀವು ಬಳಕೆಯ ನಿಯಮಗಳು (EULA), ಗೌಪ್ಯತಾ ನೀತಿ ಮತ್ತು ಸಮುದಾಯ ಮಾರ್ಗಸೂಚಿಗಳಿಗೆ ಒಪ್ಪುತ್ತೀರಿ — ಆಕ್ಷೇಪಾರ್ಹ ವಿಷಯ ಮತ್ತು ದುರುವರ್ತನಕ್ಕೆ ಶೂನ್ಯ ಸಹಿಷ್ಣುತೆ ಸೇರಿದಂತೆ.';
+
+  @override
+  String get preChatGateTitle => 'Before you chat';
+
+  @override
+  String get preChatGateBody =>
+      'Review who you\'re about to message. You can accept, decline, or skip.';
+
+  @override
+  String get preChatGateAccept => 'Accept';
+
+  @override
+  String get preChatGateDecline => 'Decline';
+
+  @override
+  String get preChatGateSkip => 'Skip';
 
   @override
   String get toastAddedToShortlist => 'ಶಾರ್ಟ್‌ಲಿಸ್ಟ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ';
